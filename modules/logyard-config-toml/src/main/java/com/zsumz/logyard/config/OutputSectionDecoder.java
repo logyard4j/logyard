@@ -5,18 +5,13 @@ import com.zsumz.logyard.api.Level;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-/** Decodes output transports, per-output delivery overrides, and console themes. */
+/** Decodes output transports and their per-output delivery and formatting options. */
 final class OutputSectionDecoder {
-    private static final Set<String> THEME_ROLES = Set.of(
-            "timestamp", "logger", "thread", "event", "message", "field_key",
-            "field_value", "punctuation", "exception", "stack_frame");
-
     private OutputSectionDecoder() {
     }
 
@@ -48,35 +43,6 @@ final class OutputSectionDecoder {
                 default -> throw output.failure("type", "must be console, stream, file, or custom");
             };
             result.put(name, parsed);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    static Map<String, ThemeConfig> themes(Map<String, Object> raw, String source, Map<String, String> environment) {
-        Map<String, ThemeConfig> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            ConfigReader theme = ConfigReader.fromValue(entry.getValue(), source, "themes." + entry.getKey(), environment);
-            Map<String, TextStyleConfig> roles = new LinkedHashMap<>();
-            for (String role : THEME_ROLES) {
-                if (theme.has(role)) {
-                    roles.put(role, textStyle(theme.object(role)));
-                }
-            }
-            EnumMap<Level, TextStyleConfig> levels = new EnumMap<>(Level.class);
-            Map<String, Object> rawLevels = theme.dynamicObject("level");
-            for (Map.Entry<String, Object> levelEntry : rawLevels.entrySet()) {
-                Level level =
-                        LogyardConfigLoader.parseLevel(levelEntry.getKey(), source, "themes." + entry.getKey() + ".level");
-                levels.put(
-                        level,
-                        textStyle(ConfigReader.fromValue(
-                                levelEntry.getValue(),
-                                source,
-                                "themes." + entry.getKey() + ".level." + levelEntry.getKey(),
-                                environment)));
-            }
-            theme.finish();
-            result.put(entry.getKey(), new ThemeConfig(entry.getKey(), roles, levels));
         }
         return Collections.unmodifiableMap(result);
     }
@@ -196,14 +162,4 @@ final class OutputSectionDecoder {
         return new RotationConfig(size, keep, compress);
     }
 
-    private static TextStyleConfig textStyle(ConfigReader reader) {
-        String foreground = reader.nullableString("fg");
-        String background = reader.nullableString("bg");
-        Boolean bold = reader.nullableBoolean("bold");
-        Boolean dim = reader.nullableBoolean("dim");
-        Boolean italic = reader.nullableBoolean("italic");
-        Boolean underline = reader.nullableBoolean("underline");
-        reader.finish();
-        return new TextStyleConfig(foreground, background, bold, dim, italic, underline);
-    }
 }

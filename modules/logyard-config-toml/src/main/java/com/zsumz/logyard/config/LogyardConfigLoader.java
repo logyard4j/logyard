@@ -74,7 +74,7 @@ public final class LogyardConfigLoader {
                 root.dynamicObject("filters"), source, environment);
         Map<String, OutputConfig> outputs = OutputSectionDecoder.outputs(
                 root.dynamicObject("outputs"), baseDirectory, source, environment);
-        Map<String, ThemeConfig> themes = OutputSectionDecoder.themes(
+        Map<String, ThemeConfig> themes = ThemeSectionDecoder.themes(
                 root.dynamicObject("themes"), source, environment);
         LoggerSectionDecoder.Bundle loggerBundle = LoggerSectionDecoder.decode(
                 root.dynamicObject("loggers"), outputs, source, environment);
