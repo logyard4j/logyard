@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -67,7 +66,7 @@ public final class LogyardConfigLoader {
         } catch (TomlParseException exception) {
             throw new ConfigurationException(exception.getMessage(), exception);
         }
-        Reader root = new Reader(document.root(), source, "", environment);
+        ConfigReader root = new ConfigReader(document.root(), source, "", environment);
         int schema = root.integer("schema", -1);
         if (schema != 1) {
             throw root.failure("schema", "must be 1");
@@ -143,7 +142,7 @@ public final class LogyardConfigLoader {
                 + MAX_CONFIG_BYTES + " UTF-8 bytes");
     }
 
-    private static ServiceConfig parseService(Reader reader) {
+    private static ServiceConfig parseService(ConfigReader reader) {
         String name = reader.string("name", "unknown-service");
         String namespace = reader.string("namespace", "");
         String version = reader.string("version", "unknown");
@@ -157,7 +156,7 @@ public final class LogyardConfigLoader {
         }
     }
 
-    private static ResourceConfig parseResource(Reader reader) {
+    private static ResourceConfig parseResource(ConfigReader reader) {
         Map<String, Object> raw = reader.dynamicObject("attributes");
         Map<String, String> attributes = new LinkedHashMap<>();
         raw.forEach((key, value) -> {
@@ -165,7 +164,7 @@ public final class LogyardConfigLoader {
                 throw reader.failure("attributes." + key, "expected a string");
             }
             attributes.put(key, expandEnvironment(
-                    text, reader.environment, reader.source, reader.childPath("attributes." + key)));
+                    text, reader.environment(), reader.source(), reader.childPath("attributes." + key)));
         });
         reader.finish();
         try {
@@ -175,7 +174,7 @@ public final class LogyardConfigLoader {
         }
     }
 
-    private static RuntimeConfig parseRuntime(Reader reader) {
+    private static RuntimeConfig parseRuntime(ConfigReader reader) {
         Duration shutdown = reader.duration("shutdown_timeout", Duration.ofSeconds(3));
         String status = reader.string("internal_status", "warn").toLowerCase(Locale.ROOT);
         if (!Set.of("off", "error", "warn", "info", "debug").contains(status)) {
@@ -190,7 +189,7 @@ public final class LogyardConfigLoader {
         return new RuntimeConfig(shutdown, status, watch, debounce);
     }
 
-    private static ContextConfig parseContext(Reader reader) {
+    private static ContextConfig parseContext(ConfigReader reader) {
         boolean trace = reader.bool("trace", true);
         List<String> mdc = reader.stringList("mdc", List.of());
         List<String> baggage = reader.stringList("baggage", List.of());
@@ -203,14 +202,14 @@ public final class LogyardConfigLoader {
         }
     }
 
-    private static DeliveryConfig parseDelivery(Reader reader) {
+    private static DeliveryConfig parseDelivery(ConfigReader reader) {
         String mode = reader.string("mode", "async");
         int capacity = reader.integer("capacity", 65_536);
         Map<String, Object> rawOverflow = reader.dynamicObject("overflow");
         EnumMap<Level, OverflowRuleConfig> rules = defaultOverflow();
         for (Map.Entry<String, Object> entry : rawOverflow.entrySet()) {
             Level level = parseLevel(
-                    entry.getKey(), reader.source, reader.childPath("overflow." + entry.getKey()));
+                    entry.getKey(), reader.source(), reader.childPath("overflow." + entry.getKey()));
             rules.put(level, parseOverflowRule(
                     entry.getValue(), reader, "overflow." + entry.getKey()));
         }
@@ -224,13 +223,13 @@ public final class LogyardConfigLoader {
 
     private static OverflowRuleConfig parseOverflowRule(
             Object value,
-            Reader parent,
+            ConfigReader parent,
             String path) {
         if (value instanceof String actionText) {
             return new OverflowRuleConfig(parseOverflowAction(actionText, parent, path), Duration.ZERO);
         }
-        Reader rule = Reader.fromValue(
-                value, parent.source, parent.childPath(path), parent.environment);
+        ConfigReader rule = ConfigReader.fromValue(
+                value, parent.source(), parent.childPath(path), parent.environment());
         OverflowAction action = parseOverflowAction(
                 rule.string("action", "drop"), rule, "action");
         Duration timeout = rule.duration("timeout", Duration.ZERO);
@@ -240,7 +239,7 @@ public final class LogyardConfigLoader {
 
     private static OverflowAction parseOverflowAction(
             String text,
-            Reader reader,
+            ConfigReader reader,
             String key) {
         try {
             return OverflowAction.valueOf(text.trim().toUpperCase(Locale.ROOT));
@@ -267,7 +266,7 @@ public final class LogyardConfigLoader {
         Map<String, FormatterConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            Reader reader = Reader.fromValue(
+            ConfigReader reader = ConfigReader.fromValue(
                     entry.getValue(), source, "formatters." + name, environment);
             String type = reader.requiredString("type").toLowerCase(Locale.ROOT);
             FormatterConfig formatter;
@@ -297,13 +296,13 @@ public final class LogyardConfigLoader {
         Map<String, JsonProfileConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            Reader reader = Reader.fromValue(
+            ConfigReader reader = ConfigReader.fromValue(
                     entry.getValue(), source, "json_profiles." + name, environment);
             String preset = reader.string("preset", "logyard");
             Map<String, String> rename = parseStringMap(
                     reader.dynamicObject("rename"), reader, "rename", 32);
             List<String> drop = reader.stringList("drop", List.of());
-            Reader attributes = reader.object("attributes");
+            ConfigReader attributes = reader.object("attributes");
             String mode = attributes.string("mode", "nested");
             String prefix = attributes.string("prefix", "attributes.");
             List<String> include = attributes.stringList("include", List.of());
@@ -333,7 +332,7 @@ public final class LogyardConfigLoader {
         Map<String, EncoderConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            Reader reader = Reader.fromValue(
+            ConfigReader reader = ConfigReader.fromValue(
                     entry.getValue(), source, "encoders." + name, environment);
             String type = reader.requiredString("type").toLowerCase(Locale.ROOT);
             EncoderConfig encoder;
@@ -362,7 +361,7 @@ public final class LogyardConfigLoader {
         Map<String, EnricherConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            Reader reader = Reader.fromValue(
+            ConfigReader reader = ConfigReader.fromValue(
                     entry.getValue(), source, "enrichers." + name, environment);
             try {
                 result.put(name, new EnricherConfig(name, parseProviderReference(reader)));
@@ -382,7 +381,7 @@ public final class LogyardConfigLoader {
         Map<String, FilterConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            Reader reader = Reader.fromValue(
+            ConfigReader reader = ConfigReader.fromValue(
                     entry.getValue(), source, "filters." + name, environment);
             String type = reader.requiredString("type").toLowerCase(Locale.ROOT);
             FilterConfig filter;
@@ -413,7 +412,7 @@ public final class LogyardConfigLoader {
         return Collections.unmodifiableMap(result);
     }
 
-    private static ProviderReferenceConfig parseProviderReference(Reader reader) {
+    private static ProviderReferenceConfig parseProviderReference(ConfigReader reader) {
         String provider = reader.requiredString("provider");
         String implementation = reader.nullableString("implementation");
         ProviderConfiguration configuration = parseProviderConfiguration(
@@ -427,7 +426,7 @@ public final class LogyardConfigLoader {
 
     private static ProviderConfiguration parseProviderConfiguration(
             Map<String, Object> raw,
-            Reader reader) {
+            ConfigReader reader) {
         LinkedHashMap<String, Object> flattened = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             flattenProviderValue(
@@ -446,7 +445,7 @@ public final class LogyardConfigLoader {
             String key,
             Object value,
             Map<String, Object> flattened,
-            Reader reader,
+            ConfigReader reader,
             String path,
             int depth) {
         if (depth > 4) {
@@ -480,10 +479,10 @@ public final class LogyardConfigLoader {
         }
     }
 
-    private static Object normalizeProviderValue(Object value, Reader reader, String path) {
+    private static Object normalizeProviderValue(Object value, ConfigReader reader, String path) {
         if (value instanceof String text) {
             return expandEnvironment(
-                    text, reader.environment, reader.source, reader.childPath(path));
+                    text, reader.environment(), reader.source(), reader.childPath(path));
         }
         if (value instanceof Long || value instanceof Double || value instanceof Boolean) {
             return value;
@@ -505,7 +504,7 @@ public final class LogyardConfigLoader {
 
     private static Map<String, String> parseStringMap(
             Map<String, Object> raw,
-            Reader reader,
+            ConfigReader reader,
             String key,
             int maximum) {
         if (raw.size() > maximum) {
@@ -518,8 +517,8 @@ public final class LogyardConfigLoader {
             }
             result.put(entry.getKey(), expandEnvironment(
                     text,
-                    reader.environment,
-                    reader.source,
+                    reader.environment(),
+                    reader.source(),
                     reader.childPath(key + "." + entry.getKey())));
         }
         return Collections.unmodifiableMap(result);
@@ -553,7 +552,7 @@ public final class LogyardConfigLoader {
                 throw new ConfigurationException(
                         source + ": outputs." + name + ": invalid output name");
             }
-            Reader output = Reader.fromValue(
+            ConfigReader output = ConfigReader.fromValue(
                     entry.getValue(), source, "outputs." + name, environment);
             String type = output.requiredString("type").toLowerCase(Locale.ROOT);
             OutputConfig parsed = switch (type) {
@@ -569,7 +568,7 @@ public final class LogyardConfigLoader {
         return Collections.unmodifiableMap(result);
     }
 
-    private static ConsoleOutputConfig parseConsoleOutput(String name, Reader output) {
+    private static ConsoleOutputConfig parseConsoleOutput(String name, ConfigReader output) {
         Level minimum = output.level("min_level", Level.TRACE);
         String stream = output.string("stream", "stderr").toLowerCase(Locale.ROOT);
         if (!Set.of("stdout", "stderr").contains(stream)) {
@@ -584,7 +583,7 @@ public final class LogyardConfigLoader {
                 name, minimum, stream, color, exception, formatter, delivery);
     }
 
-    private static JsonStreamOutputConfig parseStreamOutput(String name, Reader output) {
+    private static JsonStreamOutputConfig parseStreamOutput(String name, ConfigReader output) {
         Level minimum = output.level("min_level", Level.TRACE);
         String stream = output.string("stream", "stdout").toLowerCase(Locale.ROOT);
         if (!Set.of("stdout", "stderr").contains(stream)) {
@@ -599,7 +598,7 @@ public final class LogyardConfigLoader {
 
     private static JsonFileOutputConfig parseFileOutput(
             String name,
-            Reader output,
+            ConfigReader output,
             Path baseDirectory) {
         Level minimum = output.level("min_level", Level.TRACE);
         Path path = baseDirectory.resolve(output.requiredString("path")).normalize();
@@ -617,7 +616,7 @@ public final class LogyardConfigLoader {
                 name, minimum, path, buffer, flush, append, rotation, encoder, delivery);
     }
 
-    private static CustomOutputConfig parseCustomOutput(String name, Reader output) {
+    private static CustomOutputConfig parseCustomOutput(String name, ConfigReader output) {
         Level minimum = output.level("min_level", Level.TRACE);
         ProviderReferenceConfig providerReference = parseProviderReference(output);
         String formatter = output.nullableString("formatter");
@@ -632,7 +631,7 @@ public final class LogyardConfigLoader {
         }
     }
 
-    private static DeliveryOverrideConfig parseDeliveryOverride(Reader reader) {
+    private static DeliveryOverrideConfig parseDeliveryOverride(ConfigReader reader) {
         String mode = reader.nullableString("mode");
         Integer capacity = reader.nullableInteger("capacity");
         reader.finish();
@@ -643,7 +642,7 @@ public final class LogyardConfigLoader {
         }
     }
 
-    private static ColorConfig parseColor(Reader reader) {
+    private static ColorConfig parseColor(ConfigReader reader) {
         String mode = reader.string("mode", "auto").toLowerCase(Locale.ROOT);
         if (!Set.of("auto", "always", "never").contains(mode)) {
             throw reader.failure("mode", "must be auto, always, or never");
@@ -657,7 +656,7 @@ public final class LogyardConfigLoader {
         return new ColorConfig(mode, capability, theme);
     }
 
-    private static ExceptionConfig parseException(Reader reader) {
+    private static ExceptionConfig parseException(ConfigReader reader) {
         String style = reader.string("style", "compact").toLowerCase(Locale.ROOT);
         if (!Set.of("compact", "full").contains(style)) {
             throw reader.failure("style", "must be compact or full");
@@ -670,7 +669,7 @@ public final class LogyardConfigLoader {
         return new ExceptionConfig(style, common);
     }
 
-    private static RotationConfig parseRotation(Reader reader) {
+    private static RotationConfig parseRotation(ConfigReader reader) {
         if (reader.empty()) {
             return null;
         }
@@ -696,7 +695,7 @@ public final class LogyardConfigLoader {
             Map<String, String> environment) {
         Map<String, ThemeConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            Reader theme = Reader.fromValue(
+            ConfigReader theme = ConfigReader.fromValue(
                     entry.getValue(), source, "themes." + entry.getKey(), environment);
             Map<String, TextStyleConfig> roles = new LinkedHashMap<>();
             for (String role : THEME_ROLES) {
@@ -709,7 +708,7 @@ public final class LogyardConfigLoader {
             for (Map.Entry<String, Object> levelEntry : rawLevels.entrySet()) {
                 Level level = parseLevel(
                         levelEntry.getKey(), source, "themes." + entry.getKey() + ".level");
-                levels.put(level, parseTextStyle(Reader.fromValue(
+                levels.put(level, parseTextStyle(ConfigReader.fromValue(
                         levelEntry.getValue(),
                         source,
                         "themes." + entry.getKey() + ".level." + levelEntry.getKey(),
@@ -721,7 +720,7 @@ public final class LogyardConfigLoader {
         return Collections.unmodifiableMap(result);
     }
 
-    private static TextStyleConfig parseTextStyle(Reader reader) {
+    private static TextStyleConfig parseTextStyle(ConfigReader reader) {
         String foreground = reader.nullableString("fg");
         String background = reader.nullableString("bg");
         Boolean bold = reader.nullableBoolean("bold");
@@ -785,7 +784,7 @@ public final class LogyardConfigLoader {
                     root ? List.of() : null,
                     root ? List.of() : null);
         }
-        Reader reader = Reader.fromValue(value, source, path, environment);
+        ConfigReader reader = ConfigReader.fromValue(value, source, path, environment);
         Level level = root ? reader.level("level", Level.INFO) : reader.nullableLevel("level");
         List<String> selectedOutputs = root
                 ? reader.stringList("outputs", List.copyOf(outputs.keySet()))
@@ -807,7 +806,7 @@ public final class LogyardConfigLoader {
         return new LoggerRuleConfig(level, selectedOutputs, enrich, filters);
     }
 
-    private static Level parseLevel(String value, String source, String path) {
+    static Level parseLevel(String value, String source, String path) {
         try {
             return Level.parse(value);
         } catch (IllegalArgumentException exception) {
@@ -816,7 +815,7 @@ public final class LogyardConfigLoader {
         }
     }
 
-    private static String expandEnvironment(
+    static String expandEnvironment(
             String value,
             Map<String, String> environment,
             String source,
@@ -877,305 +876,4 @@ public final class LogyardConfigLoader {
     private record LoggerBundle(LoggerRuleConfig root, Map<String, LoggerRuleConfig> children) {
     }
 
-    private static final class Reader {
-        private final Map<String, Object> values;
-        private final String source;
-        private final String path;
-        private final Map<String, String> environment;
-
-        private Reader(
-                Map<String, Object> values,
-                String source,
-                String path,
-                Map<String, String> environment) {
-            this.values = new LinkedHashMap<>(values);
-            this.source = source;
-            this.path = path;
-            this.environment = environment;
-        }
-
-        static Reader fromValue(
-                Object value,
-                String source,
-                String path,
-                Map<String, String> environment) {
-            if (!(value instanceof Map<?, ?> map)) {
-                throw new ConfigurationException(source + ": " + path + ": expected a table");
-            }
-            Map<String, Object> converted = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (!(entry.getKey() instanceof String key)) {
-                    throw new ConfigurationException(
-                            source + ": " + path + ": table key is not a string");
-                }
-                converted.put(key, entry.getValue());
-            }
-            return new Reader(converted, source, path, environment);
-        }
-
-        boolean has(String key) {
-            return values.containsKey(key);
-        }
-
-        boolean empty() {
-            return values.isEmpty();
-        }
-
-        Reader object(String key) {
-            Object value = values.remove(key);
-            return value == null
-                    ? new Reader(Map.of(), source, childPath(key), environment)
-                    : fromValue(value, source, childPath(key), environment);
-        }
-
-        Map<String, Object> dynamicObject(String key) {
-            Object value = values.remove(key);
-            if (value == null) {
-                return new LinkedHashMap<>();
-            }
-            return new LinkedHashMap<>(
-                    fromValue(value, source, childPath(key), environment).values);
-        }
-
-        String requiredString(String key) {
-            String value = nullableString(key);
-            if (value == null) {
-                throw failure(key, "is required");
-            }
-            return value;
-        }
-
-        String string(String key, String fallback) {
-            String value = nullableString(key);
-            return value == null ? fallback : value;
-        }
-
-        String nullableString(String key) {
-            Object value = values.remove(key);
-            if (value == null) {
-                return null;
-            }
-            if (!(value instanceof String string)) {
-                throw failure(key, "expected a string");
-            }
-            return expandEnvironment(string, environment, source, childPath(key));
-        }
-
-        boolean bool(String key, boolean fallback) {
-            Object value = values.remove(key);
-            if (value == null) {
-                return fallback;
-            }
-            if (!(value instanceof Boolean flag)) {
-                throw failure(key, "expected true or false");
-            }
-            return flag;
-        }
-
-        Boolean nullableBoolean(String key) {
-            Object value = values.remove(key);
-            if (value == null) {
-                return null;
-            }
-            if (!(value instanceof Boolean flag)) {
-                throw failure(key, "expected true or false");
-            }
-            return flag;
-        }
-
-        int integer(String key, int fallback) {
-            Integer value = nullableInteger(key);
-            return value == null ? fallback : value;
-        }
-
-        Integer nullableInteger(String key) {
-            Object value = values.remove(key);
-            if (value == null) {
-                return null;
-            }
-            if (!(value instanceof Long number)) {
-                throw failure(key, "expected an integer");
-            }
-            try {
-                return Math.toIntExact(number);
-            } catch (ArithmeticException exception) {
-                throw failure(key, "integer is outside the supported range");
-            }
-        }
-
-        long longInteger(String key, long fallback) {
-            Object value = values.remove(key);
-            if (value == null) {
-                return fallback;
-            }
-            if (!(value instanceof Long number)) {
-                throw failure(key, "expected an integer");
-            }
-            return number;
-        }
-
-        double number(String key, double fallback) {
-            Object value = values.remove(key);
-            if (value == null) {
-                return fallback;
-            }
-            if (value instanceof Long integer) {
-                return integer.doubleValue();
-            }
-            if (value instanceof Double decimal) {
-                return decimal;
-            }
-            throw failure(key, "expected a number");
-        }
-
-        Level level(String key, Level fallback) {
-            String value = nullableString(key);
-            return value == null ? fallback : parseLevel(value, source, childPath(key));
-        }
-
-        Level nullableLevel(String key) {
-            String value = nullableString(key);
-            return value == null ? null : parseLevel(value, source, childPath(key));
-        }
-
-        Duration duration(String key, Duration fallback) {
-            String value = nullableString(key);
-            if (value == null) {
-                return fallback;
-            }
-            try {
-                return DurationParser.parse(value);
-            } catch (RuntimeException exception) {
-                throw failure(key, exception.getMessage());
-            }
-        }
-
-        long size(String key, long fallback) {
-            String value = nullableString(key);
-            if (value == null) {
-                return fallback;
-            }
-            try {
-                return SizeParser.parse(value);
-            } catch (RuntimeException exception) {
-                throw failure(key, exception.getMessage());
-            }
-        }
-
-        int sizeAsInt(String key, int fallback) {
-            long value = size(key, fallback);
-            if (value > Integer.MAX_VALUE) {
-                throw failure(key, "must be at most " + Integer.MAX_VALUE + " bytes");
-            }
-            return (int) value;
-        }
-
-        List<String> stringList(String key, List<String> fallback) {
-            List<String> value = nullableStringList(key);
-            return value == null ? fallback : value;
-        }
-
-        List<String> nullableStringList(String key) {
-            Object value = values.remove(key);
-            if (value == null) {
-                return null;
-            }
-            if (!(value instanceof List<?> list)) {
-                throw failure(key, "expected an array of strings");
-            }
-            if (list.size() > ContextConfig.MAX_ALLOWLIST_ENTRIES) {
-                throw failure(key, "contains too many values");
-            }
-            List<String> result = new ArrayList<>(list.size());
-            Set<String> seen = new LinkedHashSet<>();
-            for (int index = 0; index < list.size(); index++) {
-                Object item = list.get(index);
-                if (!(item instanceof String text)) {
-                    throw failure(key + "[" + index + "]", "expected a string");
-                }
-                String expanded = expandEnvironment(
-                        text, environment, source, childPath(key + "[" + index + "]"));
-                if (!seen.add(expanded)) {
-                    throw failure(key, "contains duplicate value '" + expanded + "'");
-                }
-                result.add(expanded);
-            }
-            return List.copyOf(result);
-        }
-
-        void finish() {
-            if (values.isEmpty()) {
-                return;
-            }
-            String unknown = values.keySet().iterator().next();
-            String suggestion = nearest(unknown, knownKeys());
-            String message = "unknown key '" + unknown + "'";
-            if (suggestion != null) {
-                message += "; did you mean '" + suggestion + "'?";
-            }
-            throw failure(unknown, message);
-        }
-
-        ConfigurationException failure(String key, String message) {
-            return new ConfigurationException(source + ": " + childPath(key) + ": " + message);
-        }
-
-        String childPath(String child) {
-            return path.isEmpty() ? child : path + "." + child;
-        }
-
-        private static Set<String> knownKeys() {
-            return Set.of(
-                    "schema", "service", "resource", "runtime", "context", "loggers",
-                    "delivery", "outputs", "themes", "formatters", "encoders",
-                    "json_profiles", "enrichers", "filters", "name", "namespace", "version",
-                    "environment", "instance_id", "attributes", "shutdown_timeout",
-                    "internal_status", "watch", "reload_debounce", "trace", "mdc",
-                    "baggage", "redact", "mode", "capacity", "overflow", "action",
-                    "timeout", "type", "stream", "min_level", "formatter", "encoder",
-                    "provider", "implementation", "config", "template", "profile", "preset",
-                    "rename", "drop", "prefix", "include", "exclude", "probability", "key",
-                    "seed", "permits_per_second", "burst", "max_keys", "color", "exception",
-                    "capability", "theme", "style", "common_frames", "path", "buffer",
-                    "flush", "append", "rotate", "size", "keep", "compression",
-                    "endpoint", "headers", "batch", "max_events", "max_bytes", "retry",
-                    "max_attempts", "max_elapsed", "initial_backoff", "max_backoff",
-                    "circuit_breaker", "failure_threshold", "open_duration", "level",
-                    "enrich", "fg", "bg", "bold", "dim", "italic", "underline");
-        }
-
-        private static String nearest(String value, Set<String> candidates) {
-            String best = null;
-            int bestDistance = Integer.MAX_VALUE;
-            for (String candidate : candidates) {
-                int distance = levenshtein(value, candidate);
-                if (distance < bestDistance) {
-                    bestDistance = distance;
-                    best = candidate;
-                }
-            }
-            return bestDistance <= Math.max(2, value.length() / 3) ? best : null;
-        }
-
-        private static int levenshtein(String left, String right) {
-            int[] previous = new int[right.length() + 1];
-            int[] current = new int[right.length() + 1];
-            for (int index = 0; index <= right.length(); index++) {
-                previous[index] = index;
-            }
-            for (int i = 1; i <= left.length(); i++) {
-                current[0] = i;
-                for (int j = 1; j <= right.length(); j++) {
-                    int cost = left.charAt(i - 1) == right.charAt(j - 1) ? 0 : 1;
-                    current[j] = Math.min(
-                            Math.min(current[j - 1] + 1, previous[j] + 1),
-                            previous[j - 1] + cost);
-                }
-                int[] swap = previous;
-                previous = current;
-                current = swap;
-            }
-            return previous[right.length()];
-        }
-    }
 }
