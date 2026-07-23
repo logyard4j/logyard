@@ -56,9 +56,11 @@ required_files=(
   scripts/package-verify
   scripts/package
   scripts/central-publish
+  scripts/examples-verify
   scripts/release-bundle
   scripts/release-verify
   modules/logyard-bom/publication.toml
+  examples/slf4j/pom.xml
   scripts/verify
   scripts/architecture-check
   modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider
@@ -74,6 +76,7 @@ done
 
 if find . -path './.git' -prune -o -path './.zolt' -prune -o \
     -path './target' -prune -o \
+    -path './examples' -prune -o \
     \( -name pom.xml -o -name build.gradle -o -name build.gradle.kts \
        -o -name settings.gradle -o -name settings.gradle.kts \) -print | grep -q .; then
   fail 'Maven or Gradle project files are checked in; Zolt is the project model'

@@ -28,6 +28,10 @@ jobs:
         run: ./scripts/ci
       - name: Package and verify the published Maven surface
         run: ./scripts/release-bundle
+      - name: Build and run published-shaped consumer examples
+        env:
+          LOGYARD_EXAMPLES_SKIP_RELEASE: '1'
+        run: ./scripts/examples-verify
       - name: Smoke the benchmark harness
         run: ./scripts/benchmark-smoke
 

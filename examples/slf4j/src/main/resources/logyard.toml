@@ -1,0 +1,30 @@
+schema = 1
+
+[service]
+name = "logyard-slf4j-example"
+environment = "verification"
+
+[runtime]
+watch = false
+internal_status = "warn"
+
+[delivery]
+mode = "async"
+capacity = 64
+
+[delivery.overflow]
+trace = "drop"
+debug = "drop"
+info = "drop"
+warn = { action = "block", timeout = "2ms" }
+error = "stderr"
+
+[loggers]
+root = { level = "info", outputs = ["json"] }
+
+[outputs.json]
+type = "file"
+path = "${LOGYARD_EXAMPLE_OUTPUT}"
+append = false
+buffer = "4KiB"
+flush = "1s"

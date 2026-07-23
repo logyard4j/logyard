@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RELEASE_REPOSITORY="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
+
+if [[ "${LOGYARD_EXAMPLES_SKIP_RELEASE:-0}" != "1" ]]; then
+  "$ROOT/scripts/release-bundle"
+fi
+"$ROOT/scripts/release-verify"
+version="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli version "$ROOT")"
+PYTHONPATH="$ROOT/scripts" python3 -m example_tools.verify "$ROOT" "$RELEASE_REPOSITORY" "$version"
