@@ -4,16 +4,12 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.LogBuilder;
 import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.LogyardRuntime;
-import com.zsumz.logyard.api.delivery.OverflowAction;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.event.MessageFormatter;
-import com.zsumz.logyard.api.spi.BatchEventSink;
 import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.core.delivery.AsyncSink;
 import com.zsumz.logyard.core.delivery.CompositeSink;
-import com.zsumz.logyard.core.delivery.OverflowPolicy;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.processing.RedactionProcessor;
 import com.zsumz.logyard.core.routing.RouteDefinition;
@@ -22,11 +18,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 public final class CoreBehaviorTest {
@@ -160,99 +154,6 @@ public final class CoreBehaviorTest {
                 Map.of(),
                 nullOutput,
                 Map.of()));
-        expect(IllegalArgumentException.class, () -> new AsyncSink(
-                "too-large",
-                recording,
-                AsyncSink.MAX_CAPACITY + 1,
-                new OverflowPolicy(Map.of()),
-                Duration.ZERO));
-    }
-
-    @Test
-    void boundsAsyncDeliveryAndAccountsForDrops() throws Exception {
-        BlockingSink delegate = new BlockingSink();
-        AsyncSink sink = new AsyncSink(
-                "test",
-                delegate,
-                16,
-                new OverflowPolicy(Map.of(
-                        Level.INFO, new OverflowPolicy.Rule(OverflowAction.DROP, Duration.ZERO))),
-                Duration.ofSeconds(2));
-        try {
-            sink.accept(event(AttributeSet.EMPTY));
-            check(delegate.entered.await(2, TimeUnit.SECONDS), "worker should enter delegate");
-            for (int index = 0; index < 16; index++) {
-                sink.accept(event(AttributeSet.EMPTY));
-            }
-            sink.accept(event(AttributeSet.EMPTY));
-            equal(16, sink.queued());
-            equal(17L, sink.queuedEvents());
-            equal(1L, sink.dropped(Level.INFO));
-        } finally {
-            delegate.release.countDown();
-            sink.close();
-        }
-        equal(17L, sink.deliveredEvents());
-        equal(17, delegate.applicationEvents.get());
-    }
-
-
-    @Test
-    void batchesOnTheOwnedWorkerWithoutCallerThreadDelivery() {
-        RecordingBatchSink delegate = new RecordingBatchSink();
-        AsyncSink sink = new AsyncSink(
-                "batch-test",
-                delegate,
-                16,
-                new OverflowPolicy(Map.of(
-                        Level.INFO, new OverflowPolicy.Rule(OverflowAction.SYNC, Duration.ZERO))),
-                Duration.ofSeconds(2),
-                false);
-        try {
-            for (int index = 0; index < 7; index++) {
-                sink.accept(event(AttributeSet.of("sequence", index)));
-            }
-            sink.flush();
-        } finally {
-            sink.close();
-        }
-        equal(7, delegate.events.get());
-        check(delegate.batchSizes.stream().allMatch(size -> size >= 1 && size <= 4),
-                "batch size exceeded the delegate contract");
-        check(delegate.threads.stream().allMatch(name -> name.startsWith("logyard-output-")),
-                "batch delivery escaped the owned output worker");
-        equal(0L, sink.synchronousFallbacks());
-    }
-
-    @Test
-    void flushWaitsForAClaimedBatchThatIsNoLongerVisibleInTheQueue() throws Exception {
-        DelayedBatchSink delegate = new DelayedBatchSink();
-        AsyncSink sink = new AsyncSink(
-                "flush-barrier",
-                delegate,
-                16,
-                new OverflowPolicy(Map.of(
-                        Level.INFO, new OverflowPolicy.Rule(OverflowAction.DROP, Duration.ZERO))),
-                Duration.ofSeconds(2),
-                false);
-        try {
-            sink.accept(event(AttributeSet.EMPTY));
-            awaitCondition(
-                    () -> sink.queued() == 0
-                            && sink.health("flush-barrier").metrics().get("active_deliveries") == 1L,
-                    Duration.ofSeconds(1),
-                    "worker should claim the event before the batch-delay deadline");
-
-            Thread flusher = new Thread(sink::flush, "flush-barrier-test");
-            flusher.start();
-            Thread.sleep(25);
-            check(flusher.isAlive(), "flush returned while the worker still owned a claimed batch");
-            flusher.join(2_000);
-            check(!flusher.isAlive(), "flush did not complete after the claimed batch was delivered");
-            equal(1, delegate.events.get());
-        } finally {
-            sink.close();
-        }
     }
 
     @Test
@@ -305,22 +206,6 @@ public final class CoreBehaviorTest {
         equal("7", redacted.attributes().get("order.id"));
     }
 
-    public static void main(String[] args) throws Exception {
-        CoreBehaviorTest test = new CoreBehaviorTest();
-        test.formatsEscapesAndCircularArrays();
-        test.boundsAndSanitizesEmergencyText();
-        test.routesByLongestPrefixAndSkipsDisabledSuppliers();
-        test.capturesMutableValuesAndArrays();
-        test.boundsThrowableVarargsAndDiscardedAttributeSuppliers();
-        test.fansOutPastFailingSinksAndRejectsInvalidPlans();
-        test.boundsAsyncDeliveryAndAccountsForDrops();
-        test.batchesOnTheOwnedWorkerWithoutCallerThreadDelivery();
-        test.flushWaitsForAClaimedBatchThatIsNoLongerVisibleInTheQueue();
-        test.reloadRetiresOutputsAfterInflightPublication();
-        test.boundsRetirementSchedulingAndMakesFlushAfterCloseSafe();
-        test.redactsMatchingAttributesCaseInsensitively();
-    }
-
     private static RuntimePlan plan(EventSink sink) {
         return new RuntimePlan(
                 RouteDefinition.root(Level.INFO, List.of("capture"), List.of()),
@@ -356,91 +241,9 @@ public final class CoreBehaviorTest {
         }
     }
 
-    private static void awaitCondition(
-            java.util.function.BooleanSupplier condition,
-            Duration timeout,
-            String failureMessage) throws InterruptedException {
-        long deadline = System.nanoTime() + timeout.toNanos();
-        while (!condition.getAsBoolean()) {
-            if (System.nanoTime() >= deadline) {
-                throw new AssertionError(failureMessage);
-            }
-            Thread.sleep(1);
-        }
-    }
-
     private static final class RecordingSink implements EventSink {
         private final List<LogEvent> events = new ArrayList<>();
         @Override public void accept(LogEvent event) { events.add(event); }
-    }
-
-    private static final class BlockingSink implements EventSink {
-        private final CountDownLatch entered = new CountDownLatch(1);
-        private final CountDownLatch release = new CountDownLatch(1);
-        private final AtomicBoolean first = new AtomicBoolean(true);
-        private final AtomicInteger applicationEvents = new AtomicInteger();
-
-        @Override
-        public void accept(LogEvent event) {
-            if ("logyard.internal.async".equals(event.loggerName())) {
-                return;
-            }
-            applicationEvents.incrementAndGet();
-            if (first.compareAndSet(true, false)) {
-                entered.countDown();
-                try {
-                    if (!release.await(5, TimeUnit.SECONDS)) {
-                        throw new AssertionError("test delegate was not released");
-                    }
-                } catch (InterruptedException interrupted) {
-                    Thread.currentThread().interrupt();
-                    throw new AssertionError(interrupted);
-                }
-            }
-        }
-    }
-
-
-    private static final class RecordingBatchSink implements BatchEventSink {
-        private final AtomicInteger events = new AtomicInteger();
-        private final List<Integer> batchSizes = new CopyOnWriteArrayList<>();
-        private final List<String> threads = new CopyOnWriteArrayList<>();
-
-        @Override
-        public int maximumBatchSize() {
-            return 4;
-        }
-
-        @Override
-        public Duration maximumBatchDelay() {
-            return Duration.ofMillis(10);
-        }
-
-        @Override
-        public void acceptBatch(List<LogEvent> batch) {
-            batchSizes.add(batch.size());
-            threads.add(Thread.currentThread().getName());
-            events.addAndGet(batch.size());
-        }
-    }
-
-    private static final class DelayedBatchSink implements BatchEventSink {
-        private final AtomicInteger events = new AtomicInteger();
-
-        @Override
-        public int maximumBatchSize() {
-            return 4;
-        }
-
-        @Override
-        public Duration maximumBatchDelay() {
-            return Duration.ofMillis(250);
-        }
-
-        @Override
-        public void acceptBatch(List<LogEvent> batch) {
-            events.addAndGet(batch.size());
-        }
     }
 
     private static final class BlockingCloseSink implements EventSink {

@@ -18,7 +18,6 @@ MAX_JAVA_SOURCE_LINES = 300
 # generated Java belongs under ignored build output, not the maintained source tree.
 LINE_LIMIT_DEBT = {
     "modules/logyard-config-toml/src/test/java/com/zsumz/logyard/config/LogyardConfigLoaderTest.java": 409,
-    "modules/logyard-core/src/test/java/com/zsumz/logyard/core/runtime/CoreBehaviorTest.java": 471,
     "tests/logyard-integration-tests/src/main/java/com/zsumz/logyard/tests/CoreVerificationMain.java": 428,
 }
 SOURCE_ROOTS = sorted(

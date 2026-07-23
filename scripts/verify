@@ -362,6 +362,7 @@ JAVA
   fallback_classes=(
     com.zsumz.logyard.config.RuntimeReloadConfigTest
     com.zsumz.logyard.config.LogyardConfigLoaderTest
+    com.zsumz.logyard.core.delivery.AsyncSinkBehaviorTest
     com.zsumz.logyard.core.processing.SamplingAndRateLimitProcessorTest
     com.zsumz.logyard.core.runtime.CoreBehaviorTest
     com.zsumz.logyard.jul.LogyardHandlerTest
