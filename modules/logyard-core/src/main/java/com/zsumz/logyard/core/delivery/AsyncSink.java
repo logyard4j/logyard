@@ -5,7 +5,6 @@ import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.diagnostics.HealthStatus;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.CaptureLimits;
-import com.zsumz.logyard.api.event.ExceptionSnapshot;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.BatchEventSink;
 import com.zsumz.logyard.api.spi.EventSink;
@@ -13,9 +12,7 @@ import com.zsumz.logyard.api.spi.HealthContributor;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,7 +21,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -40,17 +36,13 @@ public final class AsyncSink implements EventSink, HealthContributor {
     private final ArrayBlockingQueue<LogEvent> queue;
     private final OverflowPolicy overflowPolicy;
     private final Duration shutdownTimeout;
+    private final AsyncSinkMetrics metrics = new AsyncSinkMetrics();
+    private final AsyncSinkDiagnostics diagnostics;
     private final Thread worker;
     private final ReentrantLock deliveryLock = new ReentrantLock();
     private final AtomicInteger activeDeliveries = new AtomicInteger();
     private final AtomicInteger outstandingQueuedEvents = new AtomicInteger();
     private final AtomicBoolean delegateCloseStarted = new AtomicBoolean();
-    private final EnumMap<Level, LongAdder> dropped = new EnumMap<>(Level.class);
-    private final EnumMap<Level, LongAdder> pendingDropReports = new EnumMap<>(Level.class);
-    private final LongAdder queuedEvents = new LongAdder();
-    private final LongAdder deliveredEvents = new LongAdder();
-    private final LongAdder synchronousFallbacks = new LongAdder();
-    private final LongAdder emergencyFallbacks = new LongAdder();
     private volatile boolean accepting = true;
     private volatile boolean running = true;
     private volatile boolean closeDelegateOnExit;
@@ -78,6 +70,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
                     "async capacity must be between 16 and " + MAX_CAPACITY);
         }
         this.name = CaptureLimits.name(Objects.requireNonNull(name, "name"));
+        diagnostics = new AsyncSinkDiagnostics(this.name);
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         batchDelegate = delegate instanceof BatchEventSink batch ? batch : null;
         maximumBatchSize = batchDelegate == null ? 1 : batchDelegate.maximumBatchSize();
@@ -97,10 +90,6 @@ public final class AsyncSink implements EventSink, HealthContributor {
         if (shutdownTimeout.isNegative()) {
             throw new IllegalArgumentException("shutdown timeout must not be negative");
         }
-        for (Level level : Level.values()) {
-            dropped.put(level, new LongAdder());
-            pendingDropReports.put(level, new LongAdder());
-        }
         nextDropReportNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
         worker = new Thread(this::drainLoop, "logyard-output-"
                 + EmergencyText.threadComponent(this.name, 64));
@@ -112,8 +101,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
     public void accept(LogEvent event) {
         Objects.requireNonNull(event, "event");
         if (!accepting) {
-            emergencyFallbacks.increment();
-            emergency(event, "output is closing");
+            metrics.recordEmergencyFallback();
+            diagnostics.emergency(event, "output is closing");
             return;
         }
         if (offerImmediately(event)) {
@@ -121,25 +110,25 @@ public final class AsyncSink implements EventSink, HealthContributor {
         }
         OverflowPolicy.Rule rule = overflowPolicy.ruleFor(event.level());
         switch (rule.action()) {
-            case DROP -> recordDrop(event.level());
+            case DROP -> metrics.recordDrop(event.level());
             case SYNC -> {
                 if (!rule.waitDuration().isZero() && offerWithWait(event, rule.waitDuration())) {
                     return;
                 }
                 if (callerThreadDeliveryAllowed) {
-                    synchronousFallbacks.increment();
+                    metrics.recordSynchronousFallback();
                     deliverApplicationEvent(event, false);
                 } else {
-                    emergencyFallbacks.increment();
-                    emergency(event, "caller-thread delivery is forbidden for this output");
+                    metrics.recordEmergencyFallback();
+                    diagnostics.emergency(event, "caller-thread delivery is forbidden for this output");
                 }
             }
             case STDERR -> {
                 if (!rule.waitDuration().isZero() && offerWithWait(event, rule.waitDuration())) {
                     return;
                 }
-                emergencyFallbacks.increment();
-                emergency(event, "async queue full");
+                metrics.recordEmergencyFallback();
+                diagnostics.emergency(event, "async queue full");
             }
             case BLOCK -> block(event, rule.waitDuration());
         }
@@ -148,7 +137,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     @Override
     public void flush() {
         if (!awaitQuiescence(shutdownTimeout)) {
-            internalStatus("flush deadline elapsed with " + queue.size()
+            diagnostics.status("flush deadline elapsed with " + queue.size()
                     + " queued and " + activeDeliveries.get() + " active event(s)");
             return;
         }
@@ -156,7 +145,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
         try {
             delegate.flush();
         } catch (RuntimeException failure) {
-            internalStatus("delegate flush failure: "
+            diagnostics.status("delegate flush failure: "
                     + EmergencyText.failureSummary(failure, 2_048));
         } finally {
             deliveryLock.unlock();
@@ -176,7 +165,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
         }
         if (!awaitWorker(shutdownTimeout)) {
             drainQueueToEmergency("shutdown deadline elapsed");
-            internalStatus("worker did not stop within " + shutdownTimeout
+            diagnostics.status("worker did not stop within " + shutdownTimeout
                     + "; daemon cleanup will close the delegate when delivery exits");
             return;
         }
@@ -185,22 +174,17 @@ public final class AsyncSink implements EventSink, HealthContributor {
 
     public int capacity() { return queue.size() + queue.remainingCapacity(); }
     public int queued() { return queue.size(); }
-    public long dropped(Level level) { return dropped.get(level).sum(); }
-    public long queuedEvents() { return queuedEvents.sum(); }
-    public long deliveredEvents() { return deliveredEvents.sum(); }
-    public long synchronousFallbacks() { return synchronousFallbacks.sum(); }
-    public long emergencyFallbacks() { return emergencyFallbacks.sum(); }
+    public long dropped(Level level) { return metrics.dropped(level); }
+    public long queuedEvents() { return metrics.enqueued(); }
+    public long deliveredEvents() { return metrics.delivered(); }
+    public long synchronousFallbacks() { return metrics.synchronousFallbacks(); }
+    public long emergencyFallbacks() { return metrics.emergencyFallbacks(); }
 
     @Override
     public ComponentHealth health(String componentName) {
         int currentQueued = queued();
         int currentCapacity = capacity();
-        long droppedTotal = 0L;
-        for (Level level : Level.values()) {
-            droppedTotal += dropped(level);
-        }
-        long emergency = emergencyFallbacks();
-        long synchronous = synchronousFallbacks();
+        AsyncSinkMetrics.Snapshot telemetry = metrics.snapshot();
         HealthStatus status;
         if (!worker.isAlive() && running) {
             status = HealthStatus.FAILED;
@@ -208,7 +192,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
             status = worker.isAlive() ? HealthStatus.STOPPING : HealthStatus.STOPPED;
         } else if (!accepting) {
             status = HealthStatus.STOPPING;
-        } else if (droppedTotal > 0L || emergency > 0L
+        } else if (telemetry.dropped() > 0L || telemetry.emergencyFallbacks() > 0L
                 || currentQueued * 5L >= currentCapacity * 4L) {
             status = HealthStatus.DEGRADED;
         } else {
@@ -242,11 +226,11 @@ public final class AsyncSink implements EventSink, HealthContributor {
         metrics.put("active_deliveries", (long) activeDeliveries.get());
         metrics.put("outstanding_queued_events", (long) outstandingQueuedEvents.get());
         metrics.put("maximum_batch_size", (long) maximumBatchSize);
-        metrics.put("enqueued_total", queuedEvents());
-        metrics.put("delivered_total", deliveredEvents());
-        metrics.put("dropped_total", droppedTotal);
-        metrics.put("synchronous_fallback_total", synchronous);
-        metrics.put("emergency_fallback_total", emergency);
+        metrics.put("enqueued_total", telemetry.enqueued());
+        metrics.put("delivered_total", telemetry.delivered());
+        metrics.put("dropped_total", telemetry.dropped());
+        metrics.put("synchronous_fallback_total", telemetry.synchronousFallbacks());
+        metrics.put("emergency_fallback_total", telemetry.emergencyFallbacks());
         return new ComponentHealth(componentName, "output", status, details, metrics);
     }
 
@@ -263,22 +247,17 @@ public final class AsyncSink implements EventSink, HealthContributor {
     private void retainQueuedOffer(LogEvent event) {
         if (!accepting && queue.remove(event)) {
             outstandingQueuedEvents.decrementAndGet();
-            emergencyFallbacks.increment();
-            emergency(event, "output closed while the event was being enqueued");
+            metrics.recordEmergencyFallback();
+            diagnostics.emergency(event, "output closed while the event was being enqueued");
             return;
         }
-        queuedEvents.increment();
-    }
-
-    private void recordDrop(Level level) {
-        dropped.get(level).increment();
-        pendingDropReports.get(level).increment();
+        metrics.recordEnqueued();
     }
 
     private void block(LogEvent event, Duration wait) {
         if (wait.isZero()) {
-            emergencyFallbacks.increment();
-            emergency(event, "async queue full with zero block timeout");
+            metrics.recordEmergencyFallback();
+            diagnostics.emergency(event, "async queue full with zero block timeout");
             return;
         }
         outstandingQueuedEvents.incrementAndGet();
@@ -288,13 +267,13 @@ public final class AsyncSink implements EventSink, HealthContributor {
             if (offered) {
                 retainQueuedOffer(event);
             } else {
-                emergencyFallbacks.increment();
-                emergency(event, "async queue full after block timeout");
+                metrics.recordEmergencyFallback();
+                diagnostics.emergency(event, "async queue full after block timeout");
             }
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            emergencyFallbacks.increment();
-            emergency(event, "interrupted while waiting for logging queue");
+            metrics.recordEmergencyFallback();
+            diagnostics.emergency(event, "interrupted while waiting for logging queue");
         } finally {
             if (!offered) {
                 outstandingQueuedEvents.decrementAndGet();
@@ -343,7 +322,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
                 } catch (InterruptedException ignored) {
                     // close() interrupts only the queue poll to begin draining immediately.
                 } catch (RuntimeException failure) {
-                    internalStatus("output failure: "
+                    diagnostics.status("output failure: "
                             + EmergencyText.failureSummary(failure, 2_048));
                 }
             }
@@ -352,7 +331,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
                 try {
                     closeDelegate();
                 } catch (RuntimeException failure) {
-                    internalStatus("delegate close failure: "
+                    diagnostics.status("delegate close failure: "
                             + EmergencyText.failureSummary(failure, 2_048));
                 }
             }
@@ -406,19 +385,19 @@ public final class AsyncSink implements EventSink, HealthContributor {
         deliveryLock.lock();
         try {
             batchDelegate.acceptBatch(List.copyOf(events));
-            deliveredEvents.add(events.size());
+            metrics.recordDelivered(events.size());
         } catch (RuntimeException failure) {
-            emergencyFallbacks.add(events.size());
+            metrics.recordEmergencyFallbacks(events.size());
             int reported = Math.min(events.size(), 16);
             for (int index = 0; index < reported; index++) {
-                emergency(events.get(index), "batch delegate failure: "
+                diagnostics.emergency(events.get(index), "batch delegate failure: "
                         + failure.getClass().getSimpleName());
             }
             if (events.size() > reported) {
-                internalStatus((events.size() - reported)
+                diagnostics.status((events.size() - reported)
                         + " additional event(s) omitted from emergency output");
             }
-            internalStatus("batch delegate failure: "
+            diagnostics.status("batch delegate failure: "
                     + EmergencyText.failureSummary(failure, 2_048));
         } finally {
             deliveryLock.unlock();
@@ -430,11 +409,11 @@ public final class AsyncSink implements EventSink, HealthContributor {
         deliveryLock.lock();
         try {
             delegate.accept(event);
-            deliveredEvents.increment();
+            metrics.recordDelivered();
         } catch (RuntimeException failure) {
-            emergencyFallbacks.increment();
-            emergency(event, "delegate failure: " + failure.getClass().getSimpleName());
-            internalStatus("delegate accept failure: "
+            metrics.recordEmergencyFallback();
+            diagnostics.emergency(event, "delegate failure: " + failure.getClass().getSimpleName());
+            diagnostics.status("delegate accept failure: "
                     + EmergencyText.failureSummary(failure, 2_048));
         } finally {
             deliveryLock.unlock();
@@ -450,7 +429,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
         try {
             delegate.accept(event);
         } catch (RuntimeException failure) {
-            internalStatus("failed to report dropped events: "
+            diagnostics.status("failed to report dropped events: "
                     + EmergencyText.failureSummary(failure, 2_048));
         } finally {
             deliveryLock.unlock();
@@ -465,12 +444,9 @@ public final class AsyncSink implements EventSink, HealthContributor {
         nextDropReportNanos = now + TimeUnit.SECONDS.toNanos(10);
         AttributeSet.Builder attributes = AttributeSet.builder();
         long total = 0;
-        for (Level level : Level.values()) {
-            long count = pendingDropReports.get(level).sumThenReset();
-            if (count > 0) {
-                attributes.put("logyard.dropped." + level.name().toLowerCase(java.util.Locale.ROOT), count);
-                total += count;
-            }
+        for (Map.Entry<Level, Long> dropped : metrics.drainPendingDropReport().entrySet()) {
+            attributes.put("logyard.dropped." + dropped.getKey().name().toLowerCase(java.util.Locale.ROOT), dropped.getValue());
+            total += dropped.getValue();
         }
         if (total == 0) {
             return;
@@ -525,8 +501,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
         LogEvent remaining;
         while ((remaining = queue.poll()) != null) {
             outstandingQueuedEvents.decrementAndGet();
-            emergencyFallbacks.increment();
-            emergency(remaining, reason);
+            metrics.recordEmergencyFallback();
+            diagnostics.emergency(remaining, reason);
         }
     }
 
@@ -557,45 +533,6 @@ public final class AsyncSink implements EventSink, HealthContributor {
         }
         if (failure != null) {
             throw new IllegalStateException("failed to close Logyard async output '" + name + "'", failure);
-        }
-    }
-
-    private void internalStatus(String message) {
-        System.err.println("Logyard async output '"
-                + EmergencyText.sanitize(name, 256)
-                + "': " + EmergencyText.sanitize(message, 4_096));
-    }
-
-    private static void emergency(LogEvent event, String reason) {
-        String message = EmergencyText.sanitize(event.renderedMessage(), 65_536);
-        System.err.printf(
-                "%s %-5s %s - %s [Logyard emergency path: %s]%n",
-                Instant.ofEpochMilli(event.timestampMillis()),
-                event.level(),
-                EmergencyText.sanitize(event.loggerName(), 1_024),
-                message,
-                EmergencyText.sanitize(reason, 2_048));
-        if (event.exception() != null) {
-            printException(event.exception(), 0);
-        }
-    }
-
-
-    private static void printException(ExceptionSnapshot exception, int depth) {
-        if (depth > ExceptionSnapshot.MAX_CAUSE_DEPTH) {
-            return;
-        }
-        String prefix = depth == 0 ? "" : "Caused by: ";
-        System.err.println(prefix + EmergencyText.sanitize(exception.summary(), 16_384));
-        int frames = Math.min(exception.frames().size(), 32);
-        for (int index = 0; index < frames; index++) {
-            System.err.println("    at " + EmergencyText.sanitize(exception.frames().get(index).toString(), 2_048));
-        }
-        if (exception.frames().size() > frames || exception.truncated()) {
-            System.err.println("    ... exception snapshot bounded");
-        }
-        if (exception.cause() != null) {
-            printException(exception.cause(), depth + 1);
         }
     }
 

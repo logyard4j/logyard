@@ -2,12 +2,6 @@ package com.zsumz.logyard.core.delivery;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.delivery.OverflowAction;
-import com.zsumz.logyard.api.event.AttributeSet;
-import com.zsumz.logyard.api.event.CaptureLimits;
-import com.zsumz.logyard.api.event.ExceptionSnapshot;
-import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.core.diagnostics.EmergencyText;
 
 import java.time.Duration;
 import java.util.EnumMap;
