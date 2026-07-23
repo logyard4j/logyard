@@ -1,9 +1,5 @@
 package com.zsumz.logyard.core.routing;
 
-import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.spi.EventProcessor;
-import com.zsumz.logyard.api.spi.EventSink;
-
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;

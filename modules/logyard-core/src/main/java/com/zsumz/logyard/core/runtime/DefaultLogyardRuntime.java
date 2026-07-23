@@ -6,8 +6,6 @@ import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
 import com.zsumz.logyard.api.event.CaptureLimits;
-import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventProcessor;
 import com.zsumz.logyard.api.spi.EventSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.routing.CompiledRoute;
@@ -32,10 +30,14 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     private final ConcurrentLinkedQueue<CompletableFuture<Void>> retirements = new ConcurrentLinkedQueue<>();
     private final RetirementExecutor retirementExecutor = new RetirementExecutor();
     private final AtomicBoolean closed = new AtomicBoolean();
+    private final RuntimeRouteLeases routeLeases;
+    private final EventPublicationPipeline publicationPipeline;
     private volatile RuntimeState state;
 
     public DefaultLogyardRuntime(RuntimePlan plan) {
         state = new RuntimeState(Objects.requireNonNull(plan, "plan"), new PlanEpoch());
+        routeLeases = new RuntimeRouteLeases(closed::get, this::refreshRoute);
+        publicationPipeline = new EventPublicationPipeline(new EmergencyPublicationFailureHandler());
     }
 
     @Override
@@ -127,41 +129,17 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     }
 
     void publish(LoggerControl control, EventDraft draft) {
-        if (closed.get()) {
+        CompiledRouteLease lease = routeLeases.acquire(control, draft.loggerName());
+        if (lease == null) {
             return;
         }
-        CompiledRoute route;
-        while (true) {
-            route = control.route;
-            if (route.epoch().tryAcquire()) {
-                break;
-            }
-            if (closed.get()) {
-                return;
-            }
-            synchronized (this) {
-                control.update(compileRoute(draft.loggerName(), state));
-            }
+        try (lease) {
+            publicationPipeline.publish(lease.route(), draft);
         }
-        try {
-            if (!route.level().enables(draft.level())) {
-                return;
-            }
-            LogEvent event = draft.capture();
-            try {
-                for (EventProcessor processor : route.processors()) {
-                    event = processor.process(event);
-                    if (event == null) {
-                        return;
-                    }
-                }
-                route.sink().accept(event);
-            } catch (RuntimeException failure) {
-                emergency(event, failure);
-            }
-        } finally {
-            route.epoch().release();
-        }
+    }
+
+    private synchronized void refreshRoute(LoggerControl control, String loggerName) {
+        control.update(compileRoute(loggerName, state));
     }
 
     @Override
@@ -238,13 +216,6 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     private RuntimeHealth stoppedHealth() {
         return RuntimeHealthReporter.stopped(loggers.size());
-    }
-
-    private static void emergency(LogEvent event, RuntimeException failure) {
-        String body = EmergencyText.sanitize(event.renderedMessage(), CaptureLimits.MAX_TEXT_CHARS);
-        System.err.println("Logyard delivery failure for " + event.level() + " "
-                + EmergencyText.sanitize(event.loggerName(), CaptureLimits.MAX_NAME_CHARS)
-                + " - " + body + ": " + EmergencyText.failureSummary(failure, 4_096));
     }
 
     private static long saturatedNanos(Duration duration) {
