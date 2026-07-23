@@ -3,37 +3,22 @@ package com.zsumz.logyard.runtime.assembly;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.spi.ContextProvider;
-import com.zsumz.logyard.api.spi.EventProcessor;
-import com.zsumz.logyard.api.spi.EventProcessorKind;
-import com.zsumz.logyard.api.spi.EventProcessorProvider;
 import com.zsumz.logyard.api.spi.TextFormatter;
-import com.zsumz.logyard.config.EnricherConfig;
-import com.zsumz.logyard.config.FilterConfig;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.LoggerRuleConfig;
-import com.zsumz.logyard.config.ProviderFilterConfig;
-import com.zsumz.logyard.config.RateLimitFilterConfig;
-import com.zsumz.logyard.config.SamplingFilterConfig;
-import com.zsumz.logyard.core.processing.ContextEnrichmentProcessor;
-import com.zsumz.logyard.core.processing.RateLimitProcessor;
-import com.zsumz.logyard.core.processing.RedactionProcessor;
-import com.zsumz.logyard.core.processing.SamplingProcessor;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
 import com.zsumz.logyard.output.console.ConsoleTheme;
 import com.zsumz.logyard.runtime.assembly.output.EncoderResolver;
 import com.zsumz.logyard.runtime.assembly.output.FormatterResolver;
+import com.zsumz.logyard.runtime.assembly.processing.ProcessorAssembler;
 import com.zsumz.logyard.runtime.assembly.routing.ConfiguredLoggerRuleResolver;
 import com.zsumz.logyard.runtime.context.ContextProviderDiscovery;
-import com.zsumz.logyard.runtime.extension.ExtensionGuardrails;
 import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
-import com.zsumz.logyard.runtime.extension.ProviderResolver;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,8 +26,6 @@ import java.util.WeakHashMap;
 
 /** Compiles strict configuration into immutable, resource-owning runtime assemblies. */
 public final class LogyardRuntimeFactory {
-    private static final String CONTEXT_PROCESSOR = "logyard-context";
-    private static final String REDACTION_PROCESSOR = "logyard-redaction";
     private static final Map<LogyardRuntime, RuntimeAssembly> ASSEMBLIES =
             Collections.synchronizedMap(new WeakHashMap<>());
 
@@ -65,20 +48,18 @@ public final class LogyardRuntimeFactory {
         OutputAssembler.AssembledOutputs outputs = null;
         try {
             outputs = OutputAssembler.assemble(config, current, extensions);
-            Map<String, EventProcessor> processors = processors(config, extensions, contextProviders);
-            boolean context = processors.containsKey(CONTEXT_PROCESSOR);
-            boolean redact = processors.containsKey(REDACTION_PROCESSOR);
-            RouteDefinition root = route(config.rootLogger(), context, redact);
+            ProcessorAssembler.Assembly processors = ProcessorAssembler.assemble(config, extensions, contextProviders);
+            RouteDefinition root = route(config.rootLogger(), processors.contextEnabled(), processors.redactionEnabled());
             Map<String, RouteDefinition> loggers = new LinkedHashMap<>();
             for (String logger : config.loggers().keySet()) {
                 LoggerRuleConfig rule = ConfiguredLoggerRuleResolver.resolve(logger, config.rootLogger(), config.loggers()).rule();
-                loggers.put(logger, route(rule, context, redact));
+                loggers.put(logger, route(rule, processors.contextEnabled(), processors.redactionEnabled()));
             }
             RuntimePlan plan = new RuntimePlan(
                     root,
                     loggers,
                     outputs.sinks(),
-                    processors,
+                    processors.processors(),
                     config.runtime().shutdownTimeout());
             return new RuntimeAssembly(config, plan, outputs.bindings());
         } catch (RuntimeException | Error failure) {
@@ -121,22 +102,7 @@ public final class LogyardRuntimeFactory {
         OutputAssembler.validateDefinitions(config, extensions);
         FormatterResolver.validateDefinitions(config, extensions);
         EncoderResolver.validateDefinitions(config, extensions);
-        for (EnricherConfig enricher : config.enrichers().values()) {
-            ProviderResolver.resolveProcessor(
-                    extensions.processors(),
-                    enricher.providerReference(),
-                    EventProcessorKind.ENRICHER,
-                    "enricher '" + enricher.name() + "'");
-        }
-        for (FilterConfig filter : config.filters().values()) {
-            if (filter instanceof ProviderFilterConfig custom) {
-                ProviderResolver.resolveProcessor(
-                        extensions.processors(),
-                        custom.providerReference(),
-                        EventProcessorKind.FILTER,
-                        "filter '" + custom.name() + "'");
-            }
-        }
+        ProcessorAssembler.validateDefinitions(config, extensions);
     }
 
     /** Resolves logger inheritance without constructing outputs or provider instances. */
@@ -147,78 +113,14 @@ public final class LogyardRuntimeFactory {
             throw new IllegalArgumentException("logger name must not be blank");
         }
         ConfiguredLoggerRuleResolver.ResolvedRule effective = ConfiguredLoggerRuleResolver.resolve(loggerName, config.rootLogger(), config.loggers());
-        List<String> processorNames = processorNames(effective.rule(), !contextProviders().isEmpty(), !config.context().redact().isEmpty());
+        List<String> processorNames =
+                ProcessorAssembler.processorNames(effective.rule(), !contextProviders().isEmpty(), !config.context().redact().isEmpty());
         return new EffectiveRoute(
                 loggerName,
                 effective.rule().level(),
                 effective.rule().outputs(),
                 processorNames,
                 effective.matchedRule());
-    }
-
-    private static Map<String, EventProcessor> processors(
-            LogyardConfig config,
-            ExtensionRegistry extensions,
-            List<ContextProvider> contextProviders) {
-        Map<String, EventProcessor> result = new LinkedHashMap<>();
-        LinkedHashSet<String> requiredFilters = new LinkedHashSet<>(safe(config.rootLogger().filters()));
-        LinkedHashSet<String> requiredEnrichers = new LinkedHashSet<>(safe(config.rootLogger().enrich()));
-        for (LoggerRuleConfig rule : config.loggers().values()) {
-            requiredFilters.addAll(safe(rule.filters()));
-            requiredEnrichers.addAll(safe(rule.enrich()));
-        }
-        for (String name : requiredFilters) {
-            FilterConfig configured = config.filters().get(name);
-            EventProcessor processor;
-            if (configured instanceof SamplingFilterConfig sampling) {
-                processor = new SamplingProcessor(
-                        sampling.probability(), sampling.key(), sampling.seed());
-            } else if (configured instanceof RateLimitFilterConfig rateLimit) {
-                processor = new RateLimitProcessor(
-                        rateLimit.permitsPerSecond(),
-                        rateLimit.burst(),
-                        rateLimit.key(),
-                        rateLimit.maxKeys());
-            } else if (configured instanceof ProviderFilterConfig custom) {
-                EventProcessorProvider provider = ProviderResolver.resolveProcessor(
-                        extensions.processors(),
-                        custom.providerReference(),
-                        EventProcessorKind.FILTER,
-                        "filter '" + name + "'");
-                processor = Objects.requireNonNull(
-                        provider.create(custom.providerReference().configuration()),
-                        "filter provider returned null: " + name);
-            } else {
-                throw new IllegalArgumentException("unknown filter definition '" + name + "'");
-            }
-            result.put(name, processor);
-        }
-        for (String name : requiredEnrichers) {
-            EnricherConfig configured = config.enrichers().get(name);
-            EventProcessorProvider provider = ProviderResolver.resolveProcessor(
-                    extensions.processors(),
-                    configured.providerReference(),
-                    EventProcessorKind.ENRICHER,
-                    "enricher '" + name + "'");
-            EventProcessor processor = Objects.requireNonNull(
-                    provider.create(configured.providerReference().configuration()),
-                    "enricher provider returned null: " + name);
-            result.put(name, ExtensionGuardrails.enricher(name, processor));
-        }
-        if (!contextProviders.isEmpty()) {
-            result.put(
-                    CONTEXT_PROCESSOR,
-                    new ContextEnrichmentProcessor(
-                            contextProviders, config.context().providerKeys()));
-        }
-        if (!config.context().redact().isEmpty()) {
-            result.put(REDACTION_PROCESSOR, new RedactionProcessor(config.context().redact()));
-        }
-        return result;
-    }
-
-    private static List<String> safe(List<String> values) {
-        return values == null ? List.of() : values;
     }
 
     private static List<ContextProvider> contextProviders() {
@@ -232,23 +134,7 @@ public final class LogyardRuntimeFactory {
         return RouteDefinition.root(
                 Objects.requireNonNull(rule.level(), "effective logger level"),
                 Objects.requireNonNull(rule.outputs(), "effective logger outputs"),
-                processorNames(rule, context, redact));
-    }
-
-    private static List<String> processorNames(
-            LoggerRuleConfig rule,
-            boolean context,
-            boolean redact) {
-        List<String> result = new ArrayList<>();
-        if (context) {
-            result.add(CONTEXT_PROCESSOR);
-        }
-        result.addAll(safe(rule.filters()));
-        result.addAll(safe(rule.enrich()));
-        if (redact) {
-            result.add(REDACTION_PROCESSOR);
-        }
-        return List.copyOf(result);
+                ProcessorAssembler.processorNames(rule, context, redact));
     }
 
     public static ConsoleTheme consoleTheme(LogyardConfig config, String name) {

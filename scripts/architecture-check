@@ -298,17 +298,20 @@ if not any(
 ):
     errors.append("custom outputs must be wrapped in AsyncSink with caller-thread delivery disabled")
 
+processor_names_declaration = re.compile(
+    r"(?:public|protected|private)?\s+static\s+List<String>\s+processorNames\s*\("
+)
 processor_methods = [
-    (source, text)
+    (source, text, match)
     for source, text in runtime_sources
-    if "private static List<String> processorNames" in text
+    if (match := processor_names_declaration.search(text)) is not None
 ]
 if len(processor_methods) != 1:
     errors.append(f"expected one processorNames method, found {len(processor_methods)}")
     processor_section = ""
 else:
-    processor_source, processor_text = processor_methods[0]
-    processor_start = processor_text.index("private static List<String> processorNames")
+    processor_source, processor_text, processor_match = processor_methods[0]
+    processor_start = processor_match.start()
     processor_open_brace = processor_text.index("{", processor_start)
     processor_depth = 0
     processor_end = None
