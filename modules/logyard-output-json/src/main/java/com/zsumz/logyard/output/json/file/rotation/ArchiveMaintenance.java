@@ -1,6 +1,6 @@
 package com.zsumz.logyard.output.json.file.rotation;
 
-import com.zsumz.logyard.output.json.file.FileLease;
+import com.zsumz.logyard.output.json.file.lease.FileLease;
 
 import java.nio.file.Path;
 import java.time.Duration;

@@ -246,6 +246,89 @@ if delivery_root_types != {"CompositeSink.java", "FilteringSink.java"}:
         + ", ".join(sorted(delivery_root_types))
     )
 
+production_types: dict[str, str] = {}
+for source, _ in main_files:
+    if source.name == "package-info.java":
+        continue
+    text = source.read_text(encoding="utf-8")
+    package_match = PACKAGE.search(text)
+    if package_match is not None:
+        package_name = package_match.group(1)
+        production_types[f"{package_name}.{source.stem}"] = package_name
+
+package_dependencies: dict[str, set[str]] = {}
+for source, _ in main_files:
+    text = source.read_text(encoding="utf-8")
+    package_match = PACKAGE.search(text)
+    if package_match is None:
+        continue
+    source_package = package_match.group(1)
+    for imported in IMPORT.findall(text):
+        candidate = imported.removesuffix(".*")
+        target_package = None
+        while "." in candidate and target_package is None:
+            target_package = production_types.get(candidate)
+            candidate = candidate.rsplit(".", 1)[0]
+        if target_package is not None and target_package != source_package:
+            package_dependencies.setdefault(source_package, set()).add(target_package)
+
+next_package_index = 0
+package_indices: dict[str, int] = {}
+package_low_links: dict[str, int] = {}
+package_stack: list[str] = []
+packages_on_stack: set[str] = set()
+package_components: list[set[str]] = []
+
+def visit_package(package_name: str) -> None:
+    global next_package_index
+    package_indices[package_name] = next_package_index
+    package_low_links[package_name] = next_package_index
+    next_package_index += 1
+    package_stack.append(package_name)
+    packages_on_stack.add(package_name)
+
+    for dependency in package_dependencies.get(package_name, set()):
+        if dependency not in package_indices:
+            visit_package(dependency)
+            package_low_links[package_name] = min(
+                package_low_links[package_name],
+                package_low_links[dependency],
+            )
+        elif dependency in packages_on_stack:
+            package_low_links[package_name] = min(
+                package_low_links[package_name],
+                package_indices[dependency],
+            )
+
+    if package_low_links[package_name] != package_indices[package_name]:
+        return
+    component: set[str] = set()
+    while True:
+        member = package_stack.pop()
+        packages_on_stack.remove(member)
+        component.add(member)
+        if member == package_name:
+            break
+    if len(component) > 1:
+        package_components.append(component)
+
+for package_name in package_names:
+    if package_name not in package_indices:
+        visit_package(package_name)
+
+allowed_api_facade_cycle = {
+    "com.zsumz.logyard.api",
+    "com.zsumz.logyard.api.diagnostics",
+    "com.zsumz.logyard.api.event",
+    "com.zsumz.logyard.api.ingress",
+}
+for component in package_components:
+    if component != allowed_api_facade_cycle:
+        errors.append(
+            "production package dependency cycle: "
+            + " <-> ".join(sorted(component))
+        )
+
 test_file_count = 0
 test_method_count = 0
 for source_root in TEST_ROOTS:

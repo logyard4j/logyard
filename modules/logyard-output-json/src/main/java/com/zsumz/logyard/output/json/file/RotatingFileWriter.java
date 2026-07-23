@@ -1,5 +1,6 @@
 package com.zsumz.logyard.output.json.file;
 
+import com.zsumz.logyard.output.json.file.lease.FileLease;
 import com.zsumz.logyard.output.json.file.rotation.ArchiveMaintenance;
 import com.zsumz.logyard.output.json.file.rotation.ArchiveNaming;
 import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;

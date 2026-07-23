@@ -1,4 +1,4 @@
-package com.zsumz.logyard.output.json.file;
+package com.zsumz.logyard.output.json.file.lease;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
