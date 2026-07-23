@@ -1,5 +1,7 @@
 package com.zsumz.logyard.config.toml;
 
+import java.math.BigInteger;
+
 /** Strict parser for TOML booleans and numeric bare values. */
 final class TomlBareValueParser {
     private TomlBareValueParser() {
@@ -14,13 +16,13 @@ final class TomlBareValueParser {
         }
         try {
             if (token.matches("0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*")) {
-                return Long.parseUnsignedLong(token.substring(2).replace("_", ""), 16);
+                return parseNonDecimalInteger(token, 16);
             }
             if (token.matches("0o[0-7](?:_?[0-7])*")) {
-                return Long.parseUnsignedLong(token.substring(2).replace("_", ""), 8);
+                return parseNonDecimalInteger(token, 8);
             }
             if (token.matches("0b[01](?:_?[01])*")) {
-                return Long.parseUnsignedLong(token.substring(2).replace("_", ""), 2);
+                return parseNonDecimalInteger(token, 2);
             }
             if (token.matches("[+-]?(?:0|[1-9](?:_?[0-9])*)")) {
                 return Long.valueOf(token.replace("_", ""));
@@ -38,7 +40,7 @@ final class TomlBareValueParser {
                 }
                 return Double.NaN;
             }
-        } catch (NumberFormatException exception) {
+        } catch (ArithmeticException | NumberFormatException exception) {
             cursor.fail("numeric value is outside the supported range: '" + token + "'");
         }
         if (looksLikeNumber(token)) {
@@ -49,6 +51,10 @@ final class TomlBareValueParser {
         }
         cursor.fail("unsupported bare value '" + token + "'; strings must be quoted");
         throw new AssertionError("unreachable");
+    }
+
+    private static long parseNonDecimalInteger(String token, int radix) {
+        return new BigInteger(token.substring(2).replace("_", ""), radix).longValueExact();
     }
 
     private static boolean looksLikeNumber(String token) {
