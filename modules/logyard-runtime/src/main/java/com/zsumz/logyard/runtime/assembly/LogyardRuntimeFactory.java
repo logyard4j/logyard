@@ -147,8 +147,7 @@ public final class LogyardRuntimeFactory {
             RouteDefinition root = route(config.rootLogger(), context, redact);
             Map<String, RouteDefinition> loggers = new LinkedHashMap<>();
             for (String logger : config.loggers().keySet()) {
-                LoggerRuleConfig rule =
-                        ConfiguredLoggerRuleResolver.resolve(logger, config.rootLogger(), config.loggers()).rule();
+                LoggerRuleConfig rule = ConfiguredLoggerRuleResolver.resolve(logger, config.rootLogger(), config.loggers()).rule();
                 loggers.put(logger, route(rule, context, redact));
             }
             RuntimePlan plan = new RuntimePlan(
@@ -251,10 +250,8 @@ public final class LogyardRuntimeFactory {
         if (loggerName.isBlank()) {
             throw new IllegalArgumentException("logger name must not be blank");
         }
-        ConfiguredLoggerRuleResolver.ResolvedRule effective =
-                ConfiguredLoggerRuleResolver.resolve(loggerName, config.rootLogger(), config.loggers());
-        List<String> processorNames = processorNames(
-                effective.rule(), !contextProviders().isEmpty(), !config.context().redact().isEmpty());
+        ConfiguredLoggerRuleResolver.ResolvedRule effective = ConfiguredLoggerRuleResolver.resolve(loggerName, config.rootLogger(), config.loggers());
+        List<String> processorNames = processorNames(effective.rule(), !contextProviders().isEmpty(), !config.context().redact().isEmpty());
         return new EffectiveRoute(
                 loggerName,
                 effective.rule().level(),
