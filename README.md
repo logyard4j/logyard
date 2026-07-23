@@ -48,9 +48,29 @@ Configuration discovery is deterministic, in this order:
 
 1. `-Dlogyard.config=/path/to/logyard.toml`
 2. `LOGYARD_CONFIG=/path/to/logyard.toml`
-3. `./logyard.toml`
+3. A framework-selected source
+4. `classpath:logyard.toml`
+5. `./logyard.toml`
+6. Built-in safe defaults
 
-Startup fails with the resolved path when an explicitly selected file is missing or invalid.
+The built-in default is root `INFO` to a color-aware stderr console through bounded, nonblocking asynchronous delivery. It has no file output or watcher. Set `-Dlogyard.config.required=true` when configuration must exist. Explicit locations may be filesystem paths or `classpath:resource/name.toml`; a missing or invalid explicit source always fails.
+
+Native and framework integrations can also supply bounded configuration directly:
+
+```java
+import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
+import com.zsumz.logyard.runtime.bootstrap.LogyardConfigurationSource;
+import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
+
+LogyardConfigurationSource source = LogyardConfigurationSource.classpath(
+        applicationClassLoader,
+        "logging/logyard.toml",
+        applicationDirectory);
+
+try (RuntimeBundle logyard = LogyardBootstrap.start(source)) {
+    // use logyard.runtime()
+}
+```
 
 ## Log
 

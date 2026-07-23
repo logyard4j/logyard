@@ -21,17 +21,38 @@ public final class LogyardBootstrap {
     private LogyardBootstrap() {
     }
 
+    /**
+     * Starts Logyard with deterministic discovery and safe defaults when no configuration exists.
+     *
+     * @return owned runtime bundle
+     */
     public static RuntimeBundle start() {
-        return start(ConfigurationDiscovery.require());
+        return start(ConfigurationDiscovery.resolve());
     }
 
+    /**
+     * Starts Logyard from a filesystem configuration.
+     *
+     * @param source configuration path
+     * @return owned runtime bundle
+     */
     public static RuntimeBundle start(Path source) {
+        return start(LogyardConfigurationSource.file(Objects.requireNonNull(source, "source")));
+    }
+
+    /**
+     * Starts Logyard from a file, classpath, text, framework, or safe-default source.
+     *
+     * @param source configuration source
+     * @return owned runtime bundle
+     */
+    public static RuntimeBundle start(LogyardConfigurationSource source) {
         Objects.requireNonNull(source, "source");
         ConfigurationSnapshot snapshot;
         try {
-            snapshot = ConfigurationSnapshot.read(source);
+            snapshot = source.snapshot();
         } catch (IOException failure) {
-            throw new IllegalStateException("failed to read Logyard configuration " + source, failure);
+            throw new IllegalStateException("failed to read Logyard configuration " + source.description(), failure);
         }
         Map<String, String> environment = System.getenv();
         LogyardConfig config = snapshot.parse(environment);
@@ -46,21 +67,23 @@ public final class LogyardBootstrap {
                     ? ReloadDiagnostics.silent()
                     : new StderrReloadDiagnostics(System.err);
             ReloadCoordinator coordinator = new ReloadCoordinator(
-                    snapshot.source(),
+                    source.description(),
+                    source.watchPath(),
+                    source::snapshot,
                     runtime,
                     snapshot,
                     assembly,
                     diagnostics,
                     environment);
-            ConfigurationWatcher watcher = config.runtime().watch()
+            ConfigurationWatcher watcher = config.runtime().watch() && source.watchPath() != null
                     ? ConfigurationWatcher.start(
-                            snapshot.source(),
+                            source.watchPath(),
                             config.runtime().reloadDebounce(),
                             config.runtime().shutdownTimeout(),
                             coordinator,
                             diagnostics)
                     : null;
-            return new RuntimeBundle(snapshot.source(), runtime, coordinator, watcher);
+            return new RuntimeBundle(source, runtime, coordinator, watcher);
         } catch (RuntimeException | Error failure) {
             if (initialized && Logyard.runtimeOrNull() == runtime) {
                 try {

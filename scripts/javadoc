@@ -8,18 +8,28 @@ JAVADOC="${JAVADOC:-javadoc}"
 # This allowlist is the supported Java contract. Implementation packages stay
 # out of generated documentation even when cross-package assembly requires a
 # public Java declaration.
+documented_roots=(
+  "$ROOT/modules/logyard-api/src/main/java"
+  "$ROOT/modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/bootstrap"
+)
 source_roots=(
   "$ROOT/modules/logyard-api/src/main/java"
+  "$ROOT/modules/logyard-core/src/main/java"
+  "$ROOT/modules/logyard-config-toml/src/main/java"
+  "$ROOT/modules/logyard-output-console/src/main/java"
+  "$ROOT/modules/logyard-output-json/src/main/java"
+  "$ROOT/modules/logyard-runtime/src/main/java"
 )
 
 sources=()
-for source_root in "${source_roots[@]}"; do
+for source_root in "${documented_roots[@]}"; do
   while IFS= read -r source; do
     sources+=("$source")
   done < <(find "$source_root" -type f -name '*.java' -print | LC_ALL=C sort)
 done
 
 mkdir -p "$TARGET"
+SOURCE_PATH="$(IFS=:; printf '%s' "${source_roots[*]}")"
 "$JAVADOC" \
   --release 21 \
   -encoding UTF-8 \
@@ -29,7 +39,8 @@ mkdir -p "$TARGET"
   -quiet \
   -Werror \
   -Xdoclint:all \
+  -sourcepath "$SOURCE_PATH" \
   -d "$TARGET" \
   "${sources[@]}"
 
-printf 'Strict Javadocs generated for %d supported API source files: %s\n' "${#sources[@]}" "$TARGET"
+printf 'Strict Javadocs generated for %d supported source files: %s\n' "${#sources[@]}" "$TARGET"

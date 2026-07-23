@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /** Rate-small, bounded fallback diagnostics written directly to a caller-selected stream. */
 public final class StderrReloadDiagnostics implements ReloadDiagnostics {
-    private static final int MAX_PATH_CHARS = 2_048;
+    private static final int MAX_DESCRIPTION_CHARS = 2_048;
     private static final int MAX_FAILURE_CHARS = 4_096;
 
     private final PrintStream stream;
@@ -19,24 +19,33 @@ public final class StderrReloadDiagnostics implements ReloadDiagnostics {
 
     @Override
     public void applied(Path source, String previousDigest, String nextDigest) {
-        stream.println("Logyard reloaded " + safePath(source) + " "
-                + shortDigest(previousDigest) + " -> " + shortDigest(nextDigest));
+        applied(String.valueOf(source), previousDigest, nextDigest);
+    }
+
+    @Override
+    public void applied(String sourceDescription, String previousDigest, String nextDigest) {
+        stream.println("Logyard reloaded " + safeDescription(sourceDescription) + " " + shortDigest(previousDigest) + " -> " + shortDigest(nextDigest));
     }
 
     @Override
     public void rejected(Path source, Throwable failure) {
-        stream.println("Logyard kept the previous configuration after rejecting " + safePath(source)
-                + ": " + EmergencyText.failureSummary(failure, MAX_FAILURE_CHARS));
+        rejected(String.valueOf(source), failure);
+    }
+
+    @Override
+    public void rejected(String sourceDescription, Throwable failure) {
+        stream.println("Logyard kept the previous configuration after rejecting " + safeDescription(sourceDescription) + ": "
+                + EmergencyText.failureSummary(failure, MAX_FAILURE_CHARS));
     }
 
     @Override
     public void watcherStopped(Path source, Throwable failure) {
-        stream.println("Logyard configuration watcher stopped for " + safePath(source)
-                + ": " + EmergencyText.failureSummary(failure, MAX_FAILURE_CHARS));
+        stream.println("Logyard configuration watcher stopped for " + safeDescription(String.valueOf(source)) + ": "
+                + EmergencyText.failureSummary(failure, MAX_FAILURE_CHARS));
     }
 
-    private static String safePath(Path source) {
-        return EmergencyText.sanitize(String.valueOf(source), MAX_PATH_CHARS);
+    private static String safeDescription(String sourceDescription) {
+        return EmergencyText.sanitize(String.valueOf(sourceDescription), MAX_DESCRIPTION_CHARS);
     }
 
     private static String shortDigest(String digest) {

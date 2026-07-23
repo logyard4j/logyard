@@ -8,6 +8,6 @@ public final class RuntimeBundleFixture {
     }
 
     public static RuntimeBundle create(LogyardRuntime runtime) {
-        return new RuntimeBundle(null, runtime);
+        return new RuntimeBundle(LogyardConfigurationSource.defaults(), runtime, null, null);
     }
 }

@@ -18,12 +18,24 @@ final class ReloadDiagnosticBoundary {
         notify(() -> diagnostics.unchanged(source, digest));
     }
 
+    void unchanged(String sourceDescription, String digest) {
+        notify(() -> diagnostics.unchanged(sourceDescription, digest));
+    }
+
     void applied(Path source, String previousDigest, String nextDigest) {
         notify(() -> diagnostics.applied(source, previousDigest, nextDigest));
     }
 
+    void applied(String sourceDescription, String previousDigest, String nextDigest) {
+        notify(() -> diagnostics.applied(sourceDescription, previousDigest, nextDigest));
+    }
+
     void rejected(Path source, Throwable failure) {
         notify(() -> diagnostics.rejected(source, failure));
+    }
+
+    void rejected(String sourceDescription, Throwable failure) {
+        notify(() -> diagnostics.rejected(sourceDescription, failure));
     }
 
     void watcherStopped(Path source, Throwable failure) {

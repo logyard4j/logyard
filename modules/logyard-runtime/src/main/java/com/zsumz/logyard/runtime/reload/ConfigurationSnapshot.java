@@ -18,12 +18,21 @@ import java.util.Objects;
 
 /** Bounded, strict-UTF-8 source snapshot identified by a SHA-256 content digest. */
 public final class ConfigurationSnapshot {
-    private final Path source;
+    private final String description;
+    private final Path baseDirectory;
+    private final Path watchPath;
     private final String text;
     private final String sha256;
 
-    private ConfigurationSnapshot(Path source, String text, String sha256) {
-        this.source = source;
+    private ConfigurationSnapshot(
+            String description,
+            Path baseDirectory,
+            Path watchPath,
+            String text,
+            String sha256) {
+        this.description = description;
+        this.baseDirectory = baseDirectory;
+        this.watchPath = watchPath;
         this.text = text;
         this.sha256 = sha256;
     }
@@ -35,26 +44,51 @@ public final class ConfigurationSnapshot {
         }
         long declaredSize = Files.size(normalized);
         if (declaredSize > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-            throw new IOException("Logyard configuration exceeds " + LogyardConfigLoader.MAX_CONFIG_BYTES
-                    + " bytes: " + normalized);
+            throw new IOException("Logyard configuration exceeds " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes: " + normalized);
         }
         byte[] bytes = Files.readAllBytes(normalized);
         if (bytes.length > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-            throw new IOException("Logyard configuration grew beyond " + LogyardConfigLoader.MAX_CONFIG_BYTES
-                    + " bytes while reading: " + normalized);
+            throw new IOException("Logyard configuration grew beyond " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes while reading: " + normalized);
         }
-        String text = decodeStrictUtf8(bytes, normalized);
-        return new ConfigurationSnapshot(normalized, text, sha256(bytes));
+        Path parent = normalized.getParent();
+        Path baseDirectory = parent == null ? Path.of(".").toAbsolutePath().normalize() : parent;
+        return capture(normalized.toString(), baseDirectory, normalized, bytes);
+    }
+
+    public static ConfigurationSnapshot capture(
+            String description,
+            Path baseDirectory,
+            Path watchPath,
+            byte[] bytes) throws IOException {
+        Objects.requireNonNull(description, "description");
+        Path base = Objects.requireNonNull(baseDirectory, "baseDirectory").toAbsolutePath().normalize();
+        byte[] content = Objects.requireNonNull(bytes, "bytes");
+        if (content.length > LogyardConfigLoader.MAX_CONFIG_BYTES) {
+            throw new IOException("Logyard configuration exceeds " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes: " + description);
+        }
+        String text = decodeStrictUtf8(content, description);
+        return new ConfigurationSnapshot(
+                description,
+                base,
+                watchPath == null ? null : watchPath.toAbsolutePath().normalize(),
+                text,
+                sha256(content));
     }
 
     public LogyardConfig parse(Map<String, String> environment) {
-        Path parent = source.getParent();
-        Path base = parent == null ? Path.of(".").toAbsolutePath().normalize() : parent;
-        return LogyardConfigLoader.parse(text, source.toString(), base, environment);
+        return LogyardConfigLoader.parse(text, description, baseDirectory, environment);
     }
 
     public Path source() {
-        return source;
+        return watchPath;
+    }
+
+    public String description() {
+        return description;
+    }
+
+    public Path watchPath() {
+        return watchPath;
     }
 
     public String sha256() {
@@ -65,7 +99,7 @@ public final class ConfigurationSnapshot {
         return other != null && sha256.equals(other.sha256);
     }
 
-    private static String decodeStrictUtf8(byte[] bytes, Path source) throws IOException {
+    private static String decodeStrictUtf8(byte[] bytes, String source) throws IOException {
         try {
             return StandardCharsets.UTF_8.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)
