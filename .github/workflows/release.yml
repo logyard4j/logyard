@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify the release tag
+        run: |
+          version="$(awk -F'"' '/^version = / { print $2; exit }' modules/logyard-api/zolt.toml)"
+          [[ "$version" != *-SNAPSHOT ]] || {
+            echo "release versions must not end in -SNAPSHOT" >&2
+            exit 1
+          }
+          [[ "$GITHUB_REF_NAME" == "v$version" ]] || {
+            echo "tag $GITHUB_REF_NAME does not match version $version" >&2
+            exit 1
+          }
+      - name: Bootstrap the pinned Zolt revision
+        run: ./scripts/bootstrap-zolt
+      - name: Put Zolt on PATH
+        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+      - name: Import the release signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          [[ -n "$GPG_PRIVATE_KEY" ]] || {
+            echo "GPG_PRIVATE_KEY is not configured" >&2
+            exit 1
+          }
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
+      - name: Test and assemble the signed release bundle
+        env:
+          LOGYARD_GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          LOGYARD_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          zolt resolve --workspace
+          ./scripts/ci
+          ./scripts/release-bundle --sign
+      - name: Create the Central Portal archive
+        env:
+          LOGYARD_GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          LOGYARD_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          version="$(cat target/release-bundle/VERSION)"
+          archive="$GITHUB_WORKSPACE/target/logyard-$version-central-bundle.zip"
+          (
+            cd target/release-bundle
+            zip -X -q -r "$archive" com
+          )
+          sha256sum "$archive" > "$archive.sha256"
+          if [[ -n "$LOGYARD_GPG_PASSPHRASE" ]]; then
+            printf '%s' "$LOGYARD_GPG_PASSPHRASE" \
+              | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+                  --local-user "$LOGYARD_GPG_KEY_ID" --armor --detach-sign "$archive"
+          else
+            gpg --batch --yes --local-user "$LOGYARD_GPG_KEY_ID" --armor --detach-sign "$archive"
+          fi
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(cat target/release-bundle/VERSION)"
+          archive="target/logyard-$version-central-bundle.zip"
+          gh release create "$GITHUB_REF_NAME" \
+            "$archive" "$archive.sha256" "$archive.asc" \
+            --title "Logyard $version" \
+            --generate-notes \
+            --verify-tag

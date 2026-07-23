@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ZOLT="${ZOLT:-zolt}"
+ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
 
 "$ZOLT" package \
   --workspace \

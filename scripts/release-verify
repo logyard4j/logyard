@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TARGET="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
+REQUIRE_SIGNATURES=false
+
+usage() {
+  printf 'usage: %s [--require-signatures]\n' "$0" >&2
+  exit 2
+}
+
+if [[ $# -gt 1 ]]; then
+  usage
+fi
+if [[ $# -eq 1 ]]; then
+  [[ "$1" == "--require-signatures" ]] || usage
+  REQUIRE_SIGNATURES=true
+fi
+
+python3 - "$ROOT" "$TARGET" "$REQUIRE_SIGNATURES" <<'PY'
+from __future__ import annotations
+
+import hashlib
+import sys
+import tomllib
+from pathlib import Path
+from xml.etree import ElementTree
+
+ROOT = Path(sys.argv[1])
+TARGET = Path(sys.argv[2])
+REQUIRE_SIGNATURES = sys.argv[3] == "true"
+MODULES = (
+    "logyard-api",
+    "logyard-core",
+    "logyard-config-toml",
+    "logyard-output-console",
+    "logyard-output-json",
+    "logyard-runtime",
+    "logyard-slf4j2",
+    "logyard-jul",
+    "logyard-system-logger",
+)
+NAMESPACE = {"m": "http://maven.apache.org/POM/4.0.0"}
+REQUIRED_TEXT = (
+    "m:name",
+    "m:description",
+    "m:url",
+    "m:licenses/m:license/m:name",
+    "m:licenses/m:license/m:url",
+    "m:developers/m:developer/m:id",
+    "m:developers/m:developer/m:name",
+    "m:developers/m:developer/m:email",
+    "m:developers/m:developer/m:url",
+    "m:scm/m:connection",
+    "m:scm/m:developerConnection",
+    "m:scm/m:tag",
+    "m:scm/m:url",
+    "m:issueManagement/m:system",
+    "m:issueManagement/m:url",
+)
+
+
+def fail(message: str) -> None:
+    raise SystemExit(f"release verification failed: {message}")
+
+
+versions: set[str] = set()
+manifests: dict[str, dict[str, object]] = {}
+for module in MODULES:
+    with (ROOT / "modules" / module / "zolt.toml").open("rb") as source:
+        manifest = tomllib.load(source)
+    manifests[module] = manifest
+    versions.add(str(manifest["project"]["version"]))
+if len(versions) != 1:
+    fail(f"workspace versions do not match: {sorted(versions)}")
+version = versions.pop()
+
+version_file = TARGET / "VERSION"
+if not version_file.is_file() or version_file.read_text(encoding="utf-8").strip() != version:
+    fail("VERSION does not match the workspace")
+
+primary_artifacts: list[Path] = []
+for module, manifest in manifests.items():
+    directory = TARGET / "com" / "zsumz" / "logyard" / module / version
+    expected = (
+        directory / f"{module}-{version}.jar",
+        directory / f"{module}-{version}-sources.jar",
+        directory / f"{module}-{version}-javadoc.jar",
+        directory / f"{module}-{version}.pom",
+    )
+    for artifact in expected:
+        if not artifact.is_file() or artifact.stat().st_size == 0:
+            fail(f"missing or empty artifact: {artifact}")
+        primary_artifacts.append(artifact)
+
+    pom = expected[-1]
+    root = ElementTree.parse(pom).getroot()
+    for path in REQUIRED_TEXT:
+        value = root.findtext(path, namespaces=NAMESPACE)
+        if value is None or not value.strip():
+            fail(f"{pom.name} is missing {path}")
+    for path, expected_value in (
+        ("m:modelVersion", "4.0.0"),
+        ("m:groupId", str(manifest["project"]["group"])),
+        ("m:artifactId", module),
+        ("m:version", version),
+        ("m:packaging", "jar"),
+    ):
+        if root.findtext(path, namespaces=NAMESPACE) != expected_value:
+            fail(f"{pom.name} has an invalid {path}")
+
+    actual_dependencies = {
+        (
+            dependency.findtext("m:groupId", namespaces=NAMESPACE),
+            dependency.findtext("m:artifactId", namespaces=NAMESPACE),
+            dependency.findtext("m:version", namespaces=NAMESPACE),
+        )
+        for dependency in root.findall("m:dependencies/m:dependency", namespaces=NAMESPACE)
+    }
+    expected_dependencies = set()
+    for coordinate, declaration in manifest.get("dependencies", {}).items():
+        group_id, artifact_id = coordinate.split(":", 1)
+        dependency_version = version if isinstance(declaration, dict) else str(declaration)
+        expected_dependencies.add((group_id, artifact_id, dependency_version))
+    if actual_dependencies != expected_dependencies:
+        fail(f"{pom.name} dependencies do not match its Zolt manifest")
+
+for artifact in primary_artifacts:
+    signed = artifact.with_name(f"{artifact.name}.asc")
+    if REQUIRE_SIGNATURES and (not signed.is_file() or signed.stat().st_size == 0):
+        fail(f"missing signature: {signed}")
+    checked = [artifact]
+    if signed.is_file():
+        checked.append(signed)
+    for candidate in checked:
+        content = candidate.read_bytes()
+        for algorithm in ("md5", "sha1", "sha256"):
+            checksum = candidate.with_name(f"{candidate.name}.{algorithm}")
+            if not checksum.is_file():
+                fail(f"missing checksum: {checksum}")
+            expected_digest = hashlib.new(algorithm, content).hexdigest()
+            if checksum.read_text(encoding="ascii").strip() != expected_digest:
+                fail(f"checksum mismatch: {checksum}")
+
+expected_file_count = 289 if REQUIRE_SIGNATURES else 145
+actual_file_count = sum(1 for path in TARGET.rglob("*") if path.is_file())
+if actual_file_count != expected_file_count:
+    fail(f"expected {expected_file_count} bundle files, found {actual_file_count}")
+
+print(
+    f"Release bundle verified: 9 modules, 36 primary artifacts, complete POM metadata, "
+    f"dependency contracts, checksums{', and signatures' if REQUIRE_SIGNATURES else ''}."
+)
+PY
+
+if "$REQUIRE_SIGNATURES"; then
+  GPG="${GPG:-gpg}"
+  while IFS= read -r signature; do
+    "$GPG" --batch --verify "$signature" "${signature%.asc}"
+  done < <(find "$TARGET/com" -type f -name '*.asc' -print | LC_ALL=C sort)
+fi
