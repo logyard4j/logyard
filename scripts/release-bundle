@@ -23,135 +23,7 @@ if [[ "${LOGYARD_RELEASE_SKIP_PACKAGE:-0}" != "1" ]]; then
   "$ROOT/scripts/package-verify"
 fi
 
-rm -rf "$TARGET"
-mkdir -p "$TARGET"
-
-python3 - "$ROOT" "$TARGET" <<'PY'
-from __future__ import annotations
-
-import hashlib
-import shutil
-import sys
-import tomllib
-from pathlib import Path
-from xml.etree import ElementTree
-
-ROOT = Path(sys.argv[1])
-TARGET = Path(sys.argv[2])
-GROUP_PATH = Path("com/zsumz/logyard")
-MODULES = (
-    "logyard-api",
-    "logyard-core",
-    "logyard-config-toml",
-    "logyard-output-console",
-    "logyard-output-json",
-    "logyard-runtime",
-    "logyard-slf4j2",
-    "logyard-jul",
-    "logyard-system-logger",
-)
-POM_NAMESPACE = "http://maven.apache.org/POM/4.0.0"
-XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"
-REPOSITORY = "https://github.com/zsumz/logyard"
-
-ElementTree.register_namespace("", POM_NAMESPACE)
-ElementTree.register_namespace("xsi", XSI_NAMESPACE)
-
-
-def element(parent: ElementTree.Element, name: str, value: str | None = None) -> ElementTree.Element:
-    child = ElementTree.SubElement(parent, f"{{{POM_NAMESPACE}}}{name}")
-    child.text = value
-    return child
-
-
-def dependency_version(value: object, workspace_version: str) -> str:
-    if isinstance(value, str):
-        return value
-    if isinstance(value, dict) and "workspace" in value:
-        return workspace_version
-    raise ValueError(f"unsupported dependency declaration: {value!r}")
-
-
-def project_pom(manifest: dict[str, object], workspace_version: str) -> bytes:
-    project = manifest["project"]
-    metadata = manifest["package"]["metadata"]
-    root = ElementTree.Element(
-        f"{{{POM_NAMESPACE}}}project",
-        {f"{{{XSI_NAMESPACE}}}schemaLocation": f"{POM_NAMESPACE} https://maven.apache.org/xsd/maven-4.0.0.xsd"},
-    )
-    element(root, "modelVersion", "4.0.0")
-    element(root, "groupId", str(project["group"]))
-    element(root, "artifactId", str(project["name"]))
-    element(root, "version", str(project["version"]))
-    element(root, "packaging", "jar")
-    element(root, "name", str(metadata["name"]))
-    element(root, "description", str(metadata["description"]))
-    element(root, "url", str(metadata["url"]))
-
-    licenses = element(root, "licenses")
-    license_element = element(licenses, "license")
-    element(license_element, "name", "Apache License, Version 2.0")
-    element(license_element, "url", "https://www.apache.org/licenses/LICENSE-2.0.txt")
-    element(license_element, "distribution", "repo")
-
-    developers = element(root, "developers")
-    developer = element(developers, "developer")
-    element(developer, "id", "zsumz")
-    element(developer, "name", "zsumz")
-    element(developer, "email", "shawn@zsumz.com")
-    element(developer, "url", "https://github.com/zsumz")
-
-    scm = element(root, "scm")
-    element(scm, "connection", "scm:git:https://github.com/zsumz/logyard.git")
-    element(scm, "developerConnection", "scm:git:ssh://git@github.com/zsumz/logyard.git")
-    element(scm, "tag", "HEAD" if str(project["version"]).endswith("-SNAPSHOT") else f"v{project['version']}")
-    element(scm, "url", str(metadata["scm"]))
-
-    issues = element(root, "issueManagement")
-    element(issues, "system", "GitHub")
-    element(issues, "url", str(metadata["issues"]))
-
-    dependencies = manifest.get("dependencies", {})
-    if dependencies:
-        dependency_elements = element(root, "dependencies")
-        for coordinate, declaration in sorted(dependencies.items()):
-            group_id, artifact_id = coordinate.split(":", 1)
-            dependency = element(dependency_elements, "dependency")
-            element(dependency, "groupId", group_id)
-            element(dependency, "artifactId", artifact_id)
-            element(dependency, "version", dependency_version(declaration, workspace_version))
-
-    ElementTree.indent(root, space="  ")
-    return ElementTree.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
-
-
-manifests: dict[str, dict[str, object]] = {}
-versions: set[str] = set()
-for module in MODULES:
-    with (ROOT / "modules" / module / "zolt.toml").open("rb") as source:
-        manifest = tomllib.load(source)
-    manifests[module] = manifest
-    versions.add(str(manifest["project"]["version"]))
-if len(versions) != 1:
-    raise SystemExit(f"workspace versions do not match: {sorted(versions)}")
-workspace_version = versions.pop()
-
-for module, manifest in manifests.items():
-    project = manifest["project"]
-    version = str(project["version"])
-    destination = TARGET / GROUP_PATH / module / version
-    destination.mkdir(parents=True)
-    source_directory = ROOT / "modules" / module / "target"
-    for suffix in (".jar", "-sources.jar", "-javadoc.jar"):
-        filename = f"{module}-{version}{suffix}"
-        source = source_directory / filename
-        if not source.is_file() or source.stat().st_size == 0:
-            raise SystemExit(f"missing packaged artifact: {source}")
-        shutil.copyfile(source, destination / filename)
-    (destination / f"{module}-{version}.pom").write_bytes(project_pom(manifest, workspace_version))
-
-(TARGET / "VERSION").write_text(workspace_version + "\n", encoding="utf-8")
-PY
+PYTHONPATH="$ROOT/scripts" python3 -m release_tools.assemble "$ROOT" "$TARGET"
 
 if "$SIGN"; then
   GPG="${GPG:-gpg}"
@@ -163,33 +35,14 @@ if "$SIGN"; then
   while IFS= read -r artifact; do
     if [[ -n "${LOGYARD_GPG_PASSPHRASE:-}" ]]; then
       printf '%s' "$LOGYARD_GPG_PASSPHRASE" \
-        | "$GPG" --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
-            --local-user "$signing_key" --armor --detach-sign "$artifact"
+        | "$GPG" --batch --yes --pinentry-mode loopback --passphrase-fd 0 --local-user "$signing_key" --armor --detach-sign "$artifact"
     else
       "$GPG" --batch --yes --local-user "$signing_key" --armor --detach-sign "$artifact"
     fi
-  done < <(find "$TARGET/com" -type f \( -name '*.jar' -o -name '*.pom' \) -print | LC_ALL=C sort)
+  done < <(find "$TARGET" -type f \( -name '*.jar' -o -name '*.pom' \) -print | LC_ALL=C sort)
 fi
 
-python3 - "$TARGET" <<'PY'
-from __future__ import annotations
-
-import hashlib
-import sys
-from pathlib import Path
-
-TARGET = Path(sys.argv[1])
-artifacts = sorted(
-    path
-    for path in (TARGET / "com").rglob("*")
-    if path.is_file() and path.suffix in {".jar", ".pom", ".asc"}
-)
-for artifact in artifacts:
-    content = artifact.read_bytes()
-    for algorithm in ("md5", "sha1", "sha256"):
-        digest = hashlib.new(algorithm, content).hexdigest()
-        artifact.with_name(f"{artifact.name}.{algorithm}").write_text(digest + "\n", encoding="ascii")
-PY
+PYTHONPATH="$ROOT/scripts" python3 -m release_tools.checksums "$TARGET"
 
 if "$SIGN"; then
   "$ROOT/scripts/release-verify" --require-signatures

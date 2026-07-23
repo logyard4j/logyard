@@ -26,10 +26,8 @@ jobs:
         run: zolt resolve --workspace
       - name: Repository, Javadoc, build, and test checks
         run: ./scripts/ci
-      - name: Package and verify the published artifacts
-        run: |
-          ./scripts/package
-          ./scripts/package-verify
+      - name: Package and verify the published Maven surface
+        run: ./scripts/release-bundle
       - name: Smoke the benchmark harness
         run: ./scripts/benchmark-smoke
 

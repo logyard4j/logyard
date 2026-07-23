@@ -38,3 +38,6 @@ issues = "https://github.com/zsumz/logyard/issues"
 
 [package.manifest]
 "Automatic-Module-Name" = "com.zsumz.logyard.output.console"
+
+[publish]
+artifacts = ["main", "sources", "javadoc"]

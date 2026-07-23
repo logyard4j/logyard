@@ -6,30 +6,26 @@ TARGET="${LOGYARD_PACKAGE_VERIFY_TARGET:-$ROOT/target/package-verify}"
 JAVAC="${JAVAC:-javac}"
 JAVA="${JAVA:-java}"
 JAR="${JAR:-jar}"
-VERSION="$(awk -F'"' '/^version = / { print $2; exit }' "$ROOT/modules/logyard-api/zolt.toml")"
 
-members=(
-  logyard-api
-  logyard-core
-  logyard-config-toml
-  logyard-output-console
-  logyard-output-json
-  logyard-runtime
-  logyard-slf4j2
-  logyard-jul
-  logyard-system-logger
-)
-module_names=(
-  com.zsumz.logyard.api
-  com.zsumz.logyard.core
-  com.zsumz.logyard.config.toml
-  com.zsumz.logyard.output.console
-  com.zsumz.logyard.output.json
-  com.zsumz.logyard.runtime
-  com.zsumz.logyard.slf4j2
-  com.zsumz.logyard.jul
-  com.zsumz.logyard.system.logger
-)
+members=()
+module_names=()
+artifact_counts=()
+VERSION=
+while IFS=$'\t' read -r member module_name version artifact_count; do
+  members+=("$member")
+  module_names+=("$module_name")
+  artifact_counts+=("$artifact_count")
+  if [[ -z "$VERSION" ]]; then
+    VERSION="$version"
+  elif [[ "$VERSION" != "$version" ]]; then
+    printf 'package verification failed: publication versions do not match\n' >&2
+    exit 1
+  fi
+done < <(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli jar-records "$ROOT")
+[[ ${#members[@]} -gt 0 ]] || {
+  printf 'package verification failed: no publishable JAR modules were discovered\n' >&2
+  exit 1
+}
 
 fail() {
   printf 'package verification failed: %s\n' "$1" >&2
@@ -67,9 +63,11 @@ case "$(uname -s)" in
 esac
 
 main_jars=()
+release_artifact_count=0
 for index in "${!members[@]}"; do
   member="${members[$index]}"
   module_name="${module_names[$index]}"
+  release_artifact_count=$((release_artifact_count + artifact_counts[index]))
   target="$ROOT/modules/$member/target"
   main="$target/$member-$VERSION.jar"
   sources="$target/$member-$VERSION-sources.jar"
@@ -182,4 +180,5 @@ for message in "native packaged canary" "slf4j packaged canary" "system packaged
   grep -Fq "$message" "$output" || fail "packaged façade output is missing: $message"
 done
 
-printf 'Packaged-JAR verification passed: 27 release artifacts, 9 module names, extension SPIs, SLF4J, and System.Logger.\n'
+printf 'Packaged-JAR verification passed: %d release artifacts, %d module names, extension SPIs, SLF4J, and System.Logger.\n' \
+  "$release_artifact_count" "${#members[@]}"

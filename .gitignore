@@ -3,6 +3,10 @@
 **/target/
 zolt.lock.tmp
 
+# Python release-tool outputs
+__pycache__/
+*.py[cod]
+
 # Runtime output
 logs/
 *.log

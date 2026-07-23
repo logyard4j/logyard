@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RELEASE_TARGET="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
+ARCHIVE="${LOGYARD_CENTRAL_BUNDLE:-$ROOT/target/logyard-central-bundle.zip}"
+CENTRAL_BASE_URL="${CENTRAL_BASE_URL:-https://central.sonatype.com}"
+UPLOAD=false
+PUBLISHING_TYPE=USER_MANAGED
+WAIT=false
+
+usage() {
+  printf 'usage: %s [--upload] [--automatic] [--wait]\n' "$0" >&2
+  printf '       default: build and verify a signed Central Portal bundle without uploading it\n' >&2
+  exit 2
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --upload)
+      UPLOAD=true
+      ;;
+    --automatic)
+      PUBLISHING_TYPE=AUTOMATIC
+      ;;
+    --wait)
+      WAIT=true
+      ;;
+    *)
+      usage
+      ;;
+  esac
+  shift
+done
+if [[ "$PUBLISHING_TYPE" == "AUTOMATIC" && "$UPLOAD" != "true" ]]; then
+  usage
+fi
+if "$WAIT" && ! "$UPLOAD"; then
+  usage
+fi
+
+version="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli version "$ROOT")"
+if "$UPLOAD" && [[ "$version" == *-SNAPSHOT ]]; then
+  printf 'Central publication failed: release version %s is a snapshot\n' "$version" >&2
+  exit 1
+fi
+
+if [[ "${LOGYARD_CENTRAL_SKIP_RELEASE:-0}" != "1" ]]; then
+  "$ROOT/scripts/release-bundle" --sign
+fi
+"$ROOT/scripts/release-verify" --require-signatures
+PYTHONPATH="$ROOT/scripts" python3 -m release_tools.central "$RELEASE_TARGET" "$ARCHIVE"
+
+if ! "$UPLOAD"; then
+  printf 'Central Portal upload skipped. Re-run with --upload after setting Central credentials.\n'
+  exit 0
+fi
+
+if [[ -n "${CENTRAL_BEARER_TOKEN:-}" ]]; then
+  bearer_token="$CENTRAL_BEARER_TOKEN"
+elif [[ -n "${CENTRAL_TOKEN_USERNAME:-}" && -n "${CENTRAL_TOKEN_PASSWORD:-}" ]]; then
+  bearer_token="$(printf '%s:%s' "$CENTRAL_TOKEN_USERNAME" "$CENTRAL_TOKEN_PASSWORD" | base64 | tr -d '\n')"
+else
+  printf 'Central publication failed: set CENTRAL_BEARER_TOKEN or CENTRAL_TOKEN_USERNAME and CENTRAL_TOKEN_PASSWORD\n' >&2
+  exit 1
+fi
+
+deployment_id="$(
+  curl --fail-with-body --silent --show-error \
+    --request POST \
+    --header "Authorization: Bearer $bearer_token" \
+    --form "bundle=@$ARCHIVE;type=application/octet-stream" \
+    "$CENTRAL_BASE_URL/api/v1/publisher/upload?publishingType=$PUBLISHING_TYPE"
+)"
+[[ -n "$deployment_id" ]] || {
+  printf 'Central publication failed: the Portal returned no deployment ID\n' >&2
+  exit 1
+}
+
+printf 'Central Portal deployment accepted: %s (%s).\n' "$deployment_id" "$PUBLISHING_TYPE"
+printf 'Track it at %s/publishing/deployments\n' "$CENTRAL_BASE_URL"
+
+if ! "$WAIT"; then
+  exit 0
+fi
+
+wait_timeout="${CENTRAL_WAIT_TIMEOUT_SECONDS:-1200}"
+poll_interval="${CENTRAL_POLL_INTERVAL_SECONDS:-5}"
+started_at="$(date +%s)"
+last_state=
+while true; do
+  status_json="$(
+    curl --fail-with-body --silent --show-error \
+      --request POST \
+      --header "Authorization: Bearer $bearer_token" \
+      "$CENTRAL_BASE_URL/api/v1/publisher/status?id=$deployment_id"
+  )"
+  state="$(python3 -c 'import json, sys; print(json.load(sys.stdin)["deploymentState"])' <<<"$status_json")"
+  if [[ "$state" != "$last_state" ]]; then
+    printf 'Central Portal deployment state: %s\n' "$state"
+    last_state="$state"
+  fi
+  case "$state" in
+    PUBLISHED)
+      exit 0
+      ;;
+    VALIDATED)
+      if [[ "$PUBLISHING_TYPE" == "USER_MANAGED" ]]; then
+        printf 'Deployment validated and awaits manual publication in Central Portal.\n'
+        exit 0
+      fi
+      ;;
+    FAILED)
+      printf 'Central publication failed during Portal validation: %s\n' "$status_json" >&2
+      exit 1
+      ;;
+  esac
+  now="$(date +%s)"
+  if (( now - started_at >= wait_timeout )); then
+    printf 'Central publication timed out after %s seconds in state %s\n' "$wait_timeout" "$state" >&2
+    exit 1
+  fi
+  sleep "$poll_interval"
+done

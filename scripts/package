@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli jar-members "$ROOT")"
 
 "$ZOLT" package \
   --workspace \
-  --members modules/logyard-api,modules/logyard-core,modules/logyard-config-toml,modules/logyard-output-console,modules/logyard-output-json,modules/logyard-runtime,modules/logyard-slf4j2,modules/logyard-jul,modules/logyard-system-logger \
+  --members "$members" \
   --no-progress \
   --color never
