@@ -14,9 +14,6 @@ from pathlib import Path
 ROOT = Path.cwd()
 PREFIX = "com.zsumz.logyard."
 MAX_JAVA_SOURCE_LINES = 300
-# Temporary migration ledger. Checked-in generated sources receive no exemption:
-# generated Java belongs under ignored build output, not the maintained source tree.
-LINE_LIMIT_DEBT = {}
 SOURCE_ROOTS = sorted(
     path
     for group in ("modules", "tests")
@@ -200,20 +197,11 @@ for source_root in TEST_ROOTS:
 for relative in sorted(java_sources):
     source = ROOT / relative
     line_count = len(source.read_text(encoding="utf-8").splitlines())
-    allowed_lines = LINE_LIMIT_DEBT.get(relative, MAX_JAVA_SOURCE_LINES)
-    if line_count > allowed_lines:
+    if line_count > MAX_JAVA_SOURCE_LINES:
         errors.append(
-            f"{relative}: {line_count} lines exceeds its {allowed_lines}-line limit; "
+            f"{relative}: {line_count} lines exceeds its {MAX_JAVA_SOURCE_LINES}-line limit; "
             "extract cohesive collaborators instead of extending the file"
         )
-    if relative in LINE_LIMIT_DEBT and line_count <= MAX_JAVA_SOURCE_LINES:
-        errors.append(
-            f"{relative}: now satisfies the {MAX_JAVA_SOURCE_LINES}-line limit; "
-            "remove its stale LINE_LIMIT_DEBT entry"
-        )
-
-for relative in sorted(LINE_LIMIT_DEBT.keys() - java_sources):
-    errors.append(f"{relative}: stale LINE_LIMIT_DEBT entry does not reference a Java source")
 
 manifest_versions: dict[str, str] = {}
 for project_path, expected_dependencies in EXPECTED_DEPENDENCIES.items():
