@@ -13,7 +13,6 @@ import com.zsumz.logyard.api.spi.EventProcessorProvider;
 import com.zsumz.logyard.api.spi.EventSink;
 import com.zsumz.logyard.api.spi.OutputProvider;
 import com.zsumz.logyard.api.spi.OutputProviderContext;
-import com.zsumz.logyard.api.spi.ProviderConfigurationSpec;
 import com.zsumz.logyard.api.spi.TextFormatter;
 import com.zsumz.logyard.api.spi.TextFormatterProvider;
 import com.zsumz.logyard.config.ConsoleOutputConfig;
@@ -32,7 +31,6 @@ import com.zsumz.logyard.config.OutputConfig;
 import com.zsumz.logyard.config.ProviderEncoderConfig;
 import com.zsumz.logyard.config.ProviderFilterConfig;
 import com.zsumz.logyard.config.ProviderFormatterConfig;
-import com.zsumz.logyard.config.ProviderReferenceConfig;
 import com.zsumz.logyard.config.RateLimitFilterConfig;
 import com.zsumz.logyard.config.SamplingFilterConfig;
 import com.zsumz.logyard.config.TemplateFormatterConfig;
@@ -65,11 +63,9 @@ import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
 import com.zsumz.logyard.output.json.stream.JsonLinesSink;
 import com.zsumz.logyard.runtime.assembly.routing.ConfiguredLoggerRuleResolver;
 import com.zsumz.logyard.runtime.context.ContextProviderDiscovery;
-import com.zsumz.logyard.runtime.encoding.EventEncoderProviderDiscovery;
+import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 import com.zsumz.logyard.runtime.extension.ExtensionGuardrails;
-import com.zsumz.logyard.runtime.format.TextFormatterProviderDiscovery;
-import com.zsumz.logyard.runtime.output.OutputProviderDiscovery;
-import com.zsumz.logyard.runtime.processing.EventProcessorProviderDiscovery;
+import com.zsumz.logyard.runtime.extension.ProviderResolver;
 
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
@@ -88,7 +84,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.function.Function;
 
 /** Compiles strict configuration into immutable, resource-owning runtime assemblies. */
 public final class LogyardRuntimeFactory {
@@ -111,7 +106,7 @@ public final class LogyardRuntimeFactory {
     /** Builds a candidate plan, reusing only outputs with an identical immutable signature. */
     public static RuntimeAssembly assemble(LogyardConfig config, RuntimeAssembly current) {
         Objects.requireNonNull(config, "config");
-        Extensions extensions = Extensions.discover();
+        ExtensionRegistry extensions = ExtensionRegistry.discover();
         validate(config, extensions);
         List<ContextProvider> contextProviders = contextProviders();
         Map<String, EventSink> outputs = new LinkedHashMap<>();
@@ -182,22 +177,22 @@ public final class LogyardRuntimeFactory {
 
     /** Validates every extension definition without opening files or starting output workers. */
     public static void validate(LogyardConfig config) {
-        validate(Objects.requireNonNull(config, "config"), Extensions.discover());
+        validate(Objects.requireNonNull(config, "config"), ExtensionRegistry.discover());
     }
 
     /** Resolves one named formatter for side-effect-free tooling such as render previews. */
     public static TextFormatter textFormatter(LogyardConfig config, String name) {
         Objects.requireNonNull(config, "config");
-        return formatter(config, name, Extensions.discover());
+        return formatter(config, name, ExtensionRegistry.discover());
     }
 
-    private static void validate(LogyardConfig config, Extensions extensions) {
+    private static void validate(LogyardConfig config, ExtensionRegistry extensions) {
         for (OutputConfig output : config.outputs().values()) {
             if (output instanceof ConsoleOutputConfig console) {
                 consoleTheme(config, console.color().theme());
                 TerminalSupport.colorCapability(console.color().capability());
             } else if (output instanceof CustomOutputConfig custom) {
-                resolveProvider(
+                ProviderResolver.resolve(
                         extensions.outputs(),
                         custom.providerReference(),
                         "custom output '" + custom.name() + "'",
@@ -209,7 +204,7 @@ public final class LogyardRuntimeFactory {
         }
         for (FormatterConfig formatter : config.formatters().values()) {
             if (formatter instanceof ProviderFormatterConfig custom) {
-                resolveProvider(
+                ProviderResolver.resolve(
                         extensions.formatters(),
                         custom.providerReference(),
                         "formatter '" + custom.name() + "'",
@@ -218,7 +213,7 @@ public final class LogyardRuntimeFactory {
         }
         for (EncoderConfig encoder : config.encoders().values()) {
             if (encoder instanceof ProviderEncoderConfig custom) {
-                resolveProvider(
+                ProviderResolver.resolve(
                         extensions.encoders(),
                         custom.providerReference(),
                         "encoder '" + custom.name() + "'",
@@ -226,7 +221,7 @@ public final class LogyardRuntimeFactory {
             }
         }
         for (EnricherConfig enricher : config.enrichers().values()) {
-            resolveProcessorProvider(
+            ProviderResolver.resolveProcessor(
                     extensions.processors(),
                     enricher.providerReference(),
                     EventProcessorKind.ENRICHER,
@@ -234,7 +229,7 @@ public final class LogyardRuntimeFactory {
         }
         for (FilterConfig filter : config.filters().values()) {
             if (filter instanceof ProviderFilterConfig custom) {
-                resolveProcessorProvider(
+                ProviderResolver.resolveProcessor(
                         extensions.processors(),
                         custom.providerReference(),
                         EventProcessorKind.FILTER,
@@ -317,7 +312,7 @@ public final class LogyardRuntimeFactory {
     private static EventSink createOutput(
             LogyardConfig config,
             OutputConfig output,
-            Extensions extensions) {
+            ExtensionRegistry extensions) {
         ResourceAttributes resource = resource(config);
         EventSink raw;
         if (output instanceof ConsoleOutputConfig console) {
@@ -358,7 +353,7 @@ public final class LogyardRuntimeFactory {
                     json.append(),
                     rotation);
         } else if (output instanceof CustomOutputConfig custom) {
-            OutputProvider provider = resolveProvider(
+            OutputProvider provider = ProviderResolver.resolve(
                     extensions.outputs(),
                     custom.providerReference(),
                     "custom output '" + custom.name() + "'",
@@ -405,7 +400,7 @@ public final class LogyardRuntimeFactory {
     private static TextFormatter formatter(
             LogyardConfig config,
             String name,
-            Extensions extensions) {
+            ExtensionRegistry extensions) {
         if (name == null) {
             return null;
         }
@@ -414,7 +409,7 @@ public final class LogyardRuntimeFactory {
         if (configured instanceof TemplateFormatterConfig template) {
             created = new TemplateTextFormatter(template.template(), ZoneId.systemDefault());
         } else if (configured instanceof ProviderFormatterConfig custom) {
-            TextFormatterProvider provider = resolveProvider(
+            TextFormatterProvider provider = ProviderResolver.resolve(
                     extensions.formatters(),
                     custom.providerReference(),
                     "formatter '" + name + "'",
@@ -432,7 +427,7 @@ public final class LogyardRuntimeFactory {
             LogyardConfig config,
             String name,
             ResourceAttributes resource,
-            Extensions extensions) {
+            ExtensionRegistry extensions) {
         EventEncoder created;
         if (name == null) {
             created = new JsonEncoder(resource, JsonProfile.named("logyard"));
@@ -441,7 +436,7 @@ public final class LogyardRuntimeFactory {
             if (configured instanceof JsonEncoderConfig json) {
                 created = new JsonEncoder(resource, jsonProfile(config, json.profile()));
             } else if (configured instanceof ProviderEncoderConfig custom) {
-                EventEncoderProvider provider = resolveProvider(
+                EventEncoderProvider provider = ProviderResolver.resolve(
                         extensions.encoders(),
                         custom.providerReference(),
                         "encoder '" + name + "'",
@@ -488,7 +483,7 @@ public final class LogyardRuntimeFactory {
 
     private static Map<String, EventProcessor> processors(
             LogyardConfig config,
-            Extensions extensions,
+            ExtensionRegistry extensions,
             List<ContextProvider> contextProviders) {
         Map<String, EventProcessor> result = new LinkedHashMap<>();
         LinkedHashSet<String> requiredFilters = new LinkedHashSet<>(safe(config.rootLogger().filters()));
@@ -510,7 +505,7 @@ public final class LogyardRuntimeFactory {
                         rateLimit.key(),
                         rateLimit.maxKeys());
             } else if (configured instanceof ProviderFilterConfig custom) {
-                EventProcessorProvider provider = resolveProcessorProvider(
+                EventProcessorProvider provider = ProviderResolver.resolveProcessor(
                         extensions.processors(),
                         custom.providerReference(),
                         EventProcessorKind.FILTER,
@@ -525,7 +520,7 @@ public final class LogyardRuntimeFactory {
         }
         for (String name : requiredEnrichers) {
             EnricherConfig configured = config.enrichers().get(name);
-            EventProcessorProvider provider = resolveProcessorProvider(
+            EventProcessorProvider provider = ProviderResolver.resolveProcessor(
                     extensions.processors(),
                     configured.providerReference(),
                     EventProcessorKind.ENRICHER,
@@ -581,49 +576,6 @@ public final class LogyardRuntimeFactory {
         return List.copyOf(result);
     }
 
-    private static EventProcessorProvider resolveProcessorProvider(
-            Map<String, EventProcessorProvider> providers,
-            ProviderReferenceConfig reference,
-            EventProcessorKind expectedKind,
-            String label) {
-        EventProcessorProvider provider = resolveProvider(
-                providers, reference, label, EventProcessorProvider::configurationSpec);
-        EventProcessorKind actual = Objects.requireNonNull(
-                provider.kind(), label + " provider kind");
-        if (actual != expectedKind) {
-            throw new IllegalArgumentException(
-                    label + " uses provider '" + reference.provider() + "' declared as "
-                            + actual.name().toLowerCase(Locale.ROOT));
-        }
-        return provider;
-    }
-
-    private static <T> T resolveProvider(
-            Map<String, T> providers,
-            ProviderReferenceConfig reference,
-            String label,
-            Function<T, ProviderConfigurationSpec> configurationSpec) {
-        T provider = providers.get(reference.provider());
-        if (provider == null) {
-            throw new IllegalArgumentException(
-                    label + " references unavailable provider '" + reference.provider() + "'");
-        }
-        if (reference.implementation() != null
-                && !reference.implementation().equals(provider.getClass().getName())) {
-            throw new IllegalArgumentException(
-                    label + " pins implementation '" + reference.implementation()
-                            + "' but discovered '" + provider.getClass().getName() + "'");
-        }
-        try {
-            Objects.requireNonNull(
-                    configurationSpec.apply(provider), label + " provider configuration spec")
-                    .validate(reference.configuration());
-        } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException(label + ": " + exception.getMessage(), exception);
-        }
-        return provider;
-    }
-
     private static OverflowPolicy overflowPolicy(DeliveryConfig delivery) {
         EnumMap<Level, OverflowPolicy.Rule> rules = new EnumMap<>(Level.class);
         delivery.overflow().forEach((level, configured) -> rules.put(
@@ -672,17 +624,4 @@ public final class LogyardRuntimeFactory {
         }
     }
 
-    private record Extensions(
-            Map<String, TextFormatterProvider> formatters,
-            Map<String, EventEncoderProvider> encoders,
-            Map<String, OutputProvider> outputs,
-            Map<String, EventProcessorProvider> processors) {
-        private static Extensions discover() {
-            return new Extensions(
-                    TextFormatterProviderDiscovery.discover(),
-                    EventEncoderProviderDiscovery.discover(),
-                    OutputProviderDiscovery.discover(),
-                    EventProcessorProviderDiscovery.discover());
-        }
-    }
 }

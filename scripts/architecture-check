@@ -284,19 +284,47 @@ for relative, expected in SERVICE_CONTRACTS.items():
     if actual != expected:
         errors.append(f"{relative}: expected {expected}, found {actual}")
 
-runtime_factory = (
-    ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/LogyardRuntimeFactory.java"
-).read_text(encoding="utf-8")
-if not re.search(
-        r"output\s+instanceof\s+CustomOutputConfig.*?new\s+AsyncSink\(.*?false\s*\)",
-        runtime_factory,
-        re.DOTALL):
+runtime_sources = [
+    (source, source.read_text(encoding="utf-8"))
+    for source in sorted((ROOT / "modules/logyard-runtime/src/main/java").rglob("*.java"))
+]
+if not any(
+        re.search(
+            r"output\s+instanceof\s+CustomOutputConfig.*?new\s+AsyncSink\(.*?false\s*\)",
+            text,
+            re.DOTALL,
+        )
+        for _, text in runtime_sources
+):
     errors.append("custom outputs must be wrapped in AsyncSink with caller-thread delivery disabled")
 
-processor_section = runtime_factory[
-    runtime_factory.index("private static List<String> processorNames"):
-    runtime_factory.index("private static EventProcessorProvider resolveProcessorProvider")
+processor_methods = [
+    (source, text)
+    for source, text in runtime_sources
+    if "private static List<String> processorNames" in text
 ]
+if len(processor_methods) != 1:
+    errors.append(f"expected one processorNames method, found {len(processor_methods)}")
+    processor_section = ""
+else:
+    processor_source, processor_text = processor_methods[0]
+    processor_start = processor_text.index("private static List<String> processorNames")
+    processor_open_brace = processor_text.index("{", processor_start)
+    processor_depth = 0
+    processor_end = None
+    for index in range(processor_open_brace, len(processor_text)):
+        if processor_text[index] == "{":
+            processor_depth += 1
+        elif processor_text[index] == "}":
+            processor_depth -= 1
+            if processor_depth == 0:
+                processor_end = index + 1
+                break
+    if processor_end is None:
+        errors.append(f"{processor_source.relative_to(ROOT)}: processorNames method has no balanced closing brace")
+        processor_section = ""
+    else:
+        processor_section = processor_text[processor_start:processor_end]
 processor_order = (
     processor_section.find("result.add(CONTEXT_PROCESSOR)"),
     processor_section.find("result.addAll(safe(rule.filters()))"),
