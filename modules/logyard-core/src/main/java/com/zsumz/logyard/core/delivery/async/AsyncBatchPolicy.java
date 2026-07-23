@@ -1,4 +1,4 @@
-package com.zsumz.logyard.core.delivery;
+package com.zsumz.logyard.core.delivery.async;
 
 import com.zsumz.logyard.api.spi.output.BatchEventSink;
 

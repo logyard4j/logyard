@@ -233,6 +233,18 @@ if discovery_types != expected_discovery_types:
         + ", ".join(sorted(discovery_types))
     )
 
+delivery_root = ROOT / "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery"
+delivery_root_types = {
+    source.name
+    for source in delivery_root.glob("*.java")
+    if source.name != "package-info.java"
+}
+if delivery_root_types != {"CompositeSink.java", "FilteringSink.java"}:
+    errors.append(
+        "core delivery root must contain only general sink decorators; found "
+        + ", ".join(sorted(delivery_root_types))
+    )
+
 test_file_count = 0
 test_method_count = 0
 for source_root in TEST_ROOTS:
