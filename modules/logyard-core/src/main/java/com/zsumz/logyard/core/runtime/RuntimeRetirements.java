@@ -17,6 +17,7 @@ final class RuntimeRetirements {
     private final ConcurrentLinkedQueue<CompletableFuture<Void>> pending = new ConcurrentLinkedQueue<>();
     private final RetirementExecutor executor;
     private final RuntimeRetirementDiagnostics diagnostics;
+    private final RetirementSequence sequence = new RetirementSequence();
 
     RuntimeRetirements() {
         this(new RetirementExecutor(), new StderrRuntimeRetirementDiagnostics());
@@ -44,7 +45,10 @@ final class RuntimeRetirements {
         boolean retirementScheduled = false;
         try {
             activation.run();
-            observe(previousEpoch.retire(() -> RuntimeOutputs.closeNotReused(previousPlan, nextPlan), executor::scheduleReload));
+            observe(sequence.retire(
+                    previousEpoch,
+                    () -> RuntimeOutputs.closeNotReused(previousPlan, nextPlan),
+                    executor::scheduleReload));
             retirementScheduled = true;
         } finally {
             if (!retirementScheduled) {
@@ -56,7 +60,7 @@ final class RuntimeRetirements {
     void finishPlan(RuntimePlan plan, PlanEpoch epoch) {
         Objects.requireNonNull(plan, "plan");
         Objects.requireNonNull(epoch, "epoch");
-        observe(epoch.retire(() -> RuntimeOutputs.closeAll(plan), executor::scheduleFinal));
+        observe(sequence.retire(epoch, () -> RuntimeOutputs.closeAll(plan), executor::scheduleFinal));
     }
 
     void await(Duration timeout) {
