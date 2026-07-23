@@ -3,33 +3,22 @@ package com.zsumz.logyard.core.runtime;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.LogyardRuntime;
-import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
-import com.zsumz.logyard.api.diagnostics.HealthStatus;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.EventProcessor;
 import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.api.spi.HealthContributor;
-import com.zsumz.logyard.core.delivery.CompositeSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.routing.RouteDefinition;
-import com.zsumz.logyard.core.routing.ResolvedRoute;
-import com.zsumz.logyard.core.routing.RouteResolver;
 
 import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -102,23 +91,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             }
         }
         try {
-            List<ComponentHealth> components = new ArrayList<>();
-            Map<String, String> runtimeDetails = new LinkedHashMap<>();
-            runtimeDetails.put("closed", "false");
-            runtimeDetails.put("plan_retiring", Boolean.toString(snapshot.epoch().retiring()));
-            Map<String, Long> runtimeMetrics = new LinkedHashMap<>();
-            runtimeMetrics.put("logger_count", (long) loggers.size());
-            runtimeMetrics.put("output_count", (long) snapshot.plan().outputs().size());
-            runtimeMetrics.put("pending_retirements", (long) retirements.size());
-            components.add(new ComponentHealth(
-                    "runtime",
-                    "runtime",
-                    snapshot.epoch().retiring() ? HealthStatus.DEGRADED : HealthStatus.HEALTHY,
-                    runtimeDetails,
-                    runtimeMetrics));
-
-            snapshot.plan().outputs().forEach((name, sink) -> components.add(outputHealth(name, sink)));
-            return RuntimeHealth.from(components);
+            return RuntimeHealthReporter.running(loggers.size(), retirements.size(), snapshot.plan(), snapshot.epoch());
         } finally {
             snapshot.epoch().release();
         }
@@ -142,7 +115,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             state = next;
             compiled.forEach((name, route) -> controls.get(name).update(route));
             CompletableFuture<Void> retirement = previous.epoch().retire(
-                    () -> closeOutputsNotReused(previous.plan(), next.plan()),
+                    () -> RuntimeOutputs.closeNotReused(previous.plan(), next.plan()),
                     retirementExecutor::scheduleReload);
             retired = true;
             observeRetirement(retirement);
@@ -204,9 +177,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             }
         }
         try {
-            for (EventSink sink : uniqueOutputs(snapshot.plan())) {
-                sink.flush();
-            }
+            RuntimeOutputs.flush(snapshot.plan());
         } finally {
             snapshot.epoch().release();
         }
@@ -219,35 +190,14 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         }
         RuntimeState current = state;
         CompletableFuture<Void> finalRetirement = current.epoch().retire(
-                () -> closeAllOutputs(current.plan()),
+                () -> RuntimeOutputs.closeAll(current.plan()),
                 retirementExecutor::scheduleFinal);
         observeRetirement(finalRetirement);
         awaitRetirements(current.plan().shutdownTimeout());
     }
 
     private static CompiledRoute compileRoute(String loggerName, RuntimeState state) {
-        RuntimePlan plan = state.plan();
-        ResolvedRoute resolved = RouteResolver.resolve(loggerName, plan.root(), plan.loggers());
-        RouteDefinition effective = resolved.definition();
-
-        List<String> outputNames = Objects.requireNonNull(effective.outputs(), "effective outputs");
-        List<EventSink> sinks = new ArrayList<>(outputNames.size());
-        for (String output : outputNames) {
-            sinks.add(plan.outputs().get(output));
-        }
-        List<String> processorNames = Objects.requireNonNull(effective.processors(), "effective processors");
-        EventProcessor[] processors = new EventProcessor[processorNames.size()];
-        for (int index = 0; index < processorNames.size(); index++) {
-            processors[index] = plan.processors().get(processorNames.get(index));
-        }
-        return new CompiledRoute(
-                Objects.requireNonNull(effective.level(), "effective level"),
-                new CompositeSink(sinks),
-                processors,
-                List.copyOf(outputNames),
-                List.copyOf(processorNames),
-                resolved.matchedRule(),
-                state.epoch());
+        return RuntimeRouteCompiler.compile(loggerName, state.plan(), state.epoch());
     }
 
     private void observeRetirement(CompletableFuture<Void> retirement) {
@@ -287,68 +237,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
 
     private RuntimeHealth stoppedHealth() {
-        return new RuntimeHealth(
-                Instant.now(),
-                HealthStatus.STOPPED,
-                false,
-                List.of(new ComponentHealth(
-                        "runtime",
-                        "runtime",
-                        HealthStatus.STOPPED,
-                        Map.of("closed", "true"),
-                        Map.of("logger_count", (long) loggers.size()))));
-    }
-
-    private static ComponentHealth outputHealth(String name, EventSink sink) {
-        if (sink instanceof HealthContributor contributor) {
-            try {
-                return contributor.health(name);
-            } catch (RuntimeException failure) {
-                return new ComponentHealth(
-                        name,
-                        "output",
-                        HealthStatus.FAILED,
-                        Map.of("health_failure", failure.getClass().getName()),
-                        Map.of());
-            }
-        }
-        return ComponentHealth.healthy(name, "output");
-    }
-
-    private static List<EventSink> uniqueOutputs(RuntimePlan plan) {
-        Set<EventSink> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        List<EventSink> result = new ArrayList<>();
-        for (EventSink sink : plan.outputs().values()) {
-            if (seen.add(sink)) {
-                result.add(sink);
-            }
-        }
-        return result;
-    }
-
-    private static void closeOutputsNotReused(RuntimePlan previous, RuntimePlan next) {
-        Set<EventSink> reused = Collections.newSetFromMap(new IdentityHashMap<>());
-        reused.addAll(next.outputs().values());
-        for (EventSink sink : uniqueOutputs(previous)) {
-            if (!reused.contains(sink)) {
-                closeQuietly(sink);
-            }
-        }
-    }
-
-    private static void closeAllOutputs(RuntimePlan plan) {
-        for (EventSink sink : uniqueOutputs(plan)) {
-            closeQuietly(sink);
-        }
-    }
-
-    private static void closeQuietly(EventSink sink) {
-        try {
-            sink.close();
-        } catch (RuntimeException failure) {
-            System.err.println("Logyard failed to close output: "
-                    + EmergencyText.failureSummary(failure, 4_096));
-        }
+        return RuntimeHealthReporter.stopped(loggers.size());
     }
 
     private static void emergency(LogEvent event, RuntimeException failure) {
