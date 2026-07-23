@@ -70,18 +70,19 @@ final class RotatingFileWriter implements AutoCloseable {
 
     private final FileLease directLease;
 
-    void writeRecord(byte[] record) {
+    void writeRecord(byte[] record, byte terminator) {
         Objects.requireNonNull(record, "record");
         ensureOpen();
         if (maintenance != null) {
             maintenance.throwIfFailed();
         }
+        long recordBytes = (long) record.length + 1L;
         if (policy != null
                 && active.logicalBytes() > 0
-                && wouldExceed(active.logicalBytes(), record.length, policy.maximumBytes())) {
+                && wouldExceed(active.logicalBytes(), recordBytes, policy.maximumBytes())) {
             rotate();
         }
-        active.write(record);
+        active.write(record, terminator);
     }
 
     void flush() {
@@ -181,7 +182,7 @@ final class RotatingFileWriter implements AutoCloseable {
         }
     }
 
-    private static boolean wouldExceed(long current, int recordBytes, long maximum) {
+    private static boolean wouldExceed(long current, long recordBytes, long maximum) {
         return recordBytes > maximum - current;
     }
 

@@ -56,7 +56,7 @@ public final class MessageFormatter {
      */
     public static String safeToString(Object value) {
         StringBuilder result = new StringBuilder();
-        appendValue(result, value, new IdentityHashMap<>());
+        appendValue(result, value, null);
         return CaptureLimits.text(result.toString());
     }
 
@@ -80,7 +80,8 @@ public final class MessageFormatter {
             }
             return;
         }
-        if (visiting.put(value, Boolean.TRUE) != null) {
+        IdentityHashMap<Object, Boolean> graph = visiting == null ? new IdentityHashMap<>() : visiting;
+        if (graph.put(value, Boolean.TRUE) != null) {
             result.append("[...]");
             return;
         }
@@ -92,14 +93,14 @@ public final class MessageFormatter {
                 if (index > 0) {
                     result.append(", ");
                 }
-                appendValue(result, Array.get(value, index), visiting);
+                appendValue(result, Array.get(value, index), graph);
             }
             if (sourceLength > length) {
                 result.append(", ... ").append(sourceLength - length).append(" element(s) omitted");
             }
             result.append(']');
         } finally {
-            visiting.remove(value);
+            graph.remove(value);
         }
     }
 }

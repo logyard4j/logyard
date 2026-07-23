@@ -81,7 +81,7 @@ public final class JsonEncoder implements EventEncoder {
             first = beginField(first, profile.outputName("attributes"));
             json.beginObject();
             boolean firstAttribute = true;
-            Set<String> names = new HashSet<>();
+            Set<String> names = collisionNames(transform);
             for (int index = 0; index < event.attributes().size(); index++) {
                 String source = event.attributes().keyAt(index);
                 if (!transform.includes(source)) {
@@ -99,7 +99,7 @@ public final class JsonEncoder implements EventEncoder {
             json.endObject();
             return first;
         }
-        Set<String> names = new HashSet<>();
+        Set<String> names = collisionNames(transform);
         for (int index = 0; index < event.attributes().size(); index++) {
             String source = event.attributes().keyAt(index);
             if (!transform.includes(source)) {
@@ -113,8 +113,12 @@ public final class JsonEncoder implements EventEncoder {
         return first;
     }
 
+    private static Set<String> collisionNames(JsonAttributeTransform transform) {
+        return transform.requiresCollisionCheck() ? new HashSet<>() : null;
+    }
+
     private static void requireUniqueAttribute(Set<String> names, String output) {
-        if (!names.add(output)) {
+        if (names != null && !names.add(output)) {
             throw new IllegalArgumentException(
                     "JSON attribute transforms produce duplicate field '" + output + "'");
         }

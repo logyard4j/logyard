@@ -10,6 +10,7 @@ import java.util.Locale;
 
 /** Case-insensitive glob redaction over attribute keys. */
 public final class RedactionProcessor implements EventProcessor {
+    private static final String REDACTED = "[REDACTED]";
     private final List<String> patterns;
 
     public RedactionProcessor(List<String> patterns) {
@@ -27,19 +28,18 @@ public final class RedactionProcessor implements EventProcessor {
         if (patterns.isEmpty() || event.attributes().isEmpty()) {
             return event;
         }
-        AttributeSet.Builder result = AttributeSet.builder(event.attributes().size());
-        boolean changed = false;
-        for (int index = 0; index < event.attributes().size(); index++) {
-            String key = event.attributes().keyAt(index);
-            Object value = event.attributes().valueAt(index);
-            if (matches(key.toLowerCase(Locale.ROOT))) {
-                result.put(key, "[REDACTED]");
-                changed = true;
-            } else {
-                result.putAll(AttributeSet.of(key, value));
+        AttributeSet attributes = event.attributes();
+        AttributeSet.Builder redacted = null;
+        for (int index = 0; index < attributes.size(); index++) {
+            String key = attributes.keyAt(index);
+            if (matches(key)) {
+                if (redacted == null) {
+                    redacted = AttributeSet.builder(attributes.size()).putAll(attributes);
+                }
+                redacted.put(key, REDACTED);
             }
         }
-        return changed ? event.withAttributes(result.build()) : event;
+        return redacted == null ? event : event.withAttributes(redacted.build());
     }
 
     private boolean matches(String key) {
@@ -57,7 +57,7 @@ public final class RedactionProcessor implements EventProcessor {
         int star = -1;
         int checkpoint = -1;
         while (v < value.length()) {
-            if (p < pattern.length() && pattern.charAt(p) == value.charAt(v)) {
+            if (p < pattern.length() && equalsIgnoreCase(pattern.charAt(p), value.charAt(v))) {
                 p++;
                 v++;
             } else if (p < pattern.length() && pattern.charAt(p) == '*') {
@@ -74,5 +74,11 @@ public final class RedactionProcessor implements EventProcessor {
             p++;
         }
         return p == pattern.length();
+    }
+
+    private static boolean equalsIgnoreCase(char left, char right) {
+        return left == right
+                || Character.toLowerCase(left) == Character.toLowerCase(right)
+                || Character.toUpperCase(left) == Character.toUpperCase(right);
     }
 }

@@ -13,7 +13,6 @@ import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -90,9 +89,7 @@ public final class JsonFileSink implements EventSink, HealthContributor {
     public synchronized void accept(LogEvent event) {
         ensureOpen();
         byte[] json = encoder.encode(Objects.requireNonNull(event, "event")).getBytes(StandardCharsets.UTF_8);
-        byte[] record = Arrays.copyOf(json, json.length + 1);
-        record[record.length - 1] = (byte) '\n';
-        writer.writeRecord(record);
+        writer.writeRecord(json, (byte) '\n');
         long now = System.nanoTime();
         if (flushIntervalNanos == 0 || now >= nextFlushNanos) {
             writer.flush();

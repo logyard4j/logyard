@@ -82,6 +82,10 @@ public final class JsonAttributeTransform {
         return rename.getOrDefault(name, name);
     }
 
+    boolean requiresCollisionCheck() {
+        return !rename.isEmpty();
+    }
+
     private static Set<String> names(List<String> values, String label) {
         List<String> supplied = Objects.requireNonNullElse(values, List.of());
         if (supplied.size() > 128) {

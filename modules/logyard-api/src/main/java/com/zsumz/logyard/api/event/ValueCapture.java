@@ -18,24 +18,25 @@ import java.util.UUID;
 
 /** Captures caller-owned values before asynchronous delivery can observe later mutation. */
 final class ValueCapture {
+    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
+
     private ValueCapture() {
     }
 
     static Object[] arguments(Object[] values) {
         if (values == null || values.length == 0) {
-            return new Object[0];
+            return EMPTY_ARGUMENTS;
         }
         int length = Math.min(values.length, CaptureLimits.MAX_ARGUMENTS);
         Object[] captured = new Object[length];
-        IdentityHashMap<Object, Boolean> visiting = new IdentityHashMap<>();
         for (int index = 0; index < length; index++) {
-            captured[index] = capture(values[index], visiting, 0);
+            captured[index] = capture(values[index], null, 0);
         }
         return captured;
     }
 
     static Object capture(Object value) {
-        return capture(value, new IdentityHashMap<>(), 0);
+        return capture(value, null, 0);
     }
 
     private static Object capture(
@@ -58,10 +59,14 @@ final class ValueCapture {
                 || value instanceof UUID || value instanceof Class<?>) {
             return CaptureLimits.text(MessageFormatter.safeToString(value));
         }
+        if (!requiresGraphTracking(value)) {
+            return CaptureLimits.text(MessageFormatter.safeToString(value));
+        }
         if (depth >= CaptureLimits.MAX_NESTING_DEPTH) {
             return "[maximum nesting depth reached]";
         }
-        if (visiting.put(value, Boolean.TRUE) != null) {
+        IdentityHashMap<Object, Boolean> graph = visiting == null ? new IdentityHashMap<>() : visiting;
+        if (graph.put(value, Boolean.TRUE) != null) {
             return "[circular reference]";
         }
         try {
@@ -79,7 +84,7 @@ final class ValueCapture {
                 int length = Math.min(array.length, CaptureLimits.MAX_COLLECTION_ELEMENTS);
                 List<Object> result = new ArrayList<>(length + (array.length > length ? 1 : 0));
                 for (int index = 0; index < length; index++) {
-                    result.add(capture(array[index], visiting, depth + 1));
+                    result.add(capture(array[index], graph, depth + 1));
                 }
                 appendOmission(result, array.length - length, "element");
                 return Collections.unmodifiableList(result);
@@ -93,7 +98,7 @@ final class ValueCapture {
                     }
                     result.put(
                             CaptureLimits.attributeKey(MessageFormatter.safeToString(entry.getKey())),
-                            capture(entry.getValue(), visiting, depth + 1));
+                            capture(entry.getValue(), graph, depth + 1));
                     index++;
                 }
                 int omitted = Math.max(0, map.size() - index);
@@ -111,16 +116,20 @@ final class ValueCapture {
                     if (index >= CaptureLimits.MAX_COLLECTION_ELEMENTS) {
                         break;
                     }
-                    result.add(capture(item, visiting, depth + 1));
+                    result.add(capture(item, graph, depth + 1));
                     index++;
                 }
                 appendOmission(result, Math.max(0, collection.size() - index), "item");
                 return Collections.unmodifiableList(result);
             }
-            return CaptureLimits.text(MessageFormatter.safeToString(value));
         } finally {
-            visiting.remove(value);
+            graph.remove(value);
         }
+        throw new AssertionError("unreachable graph value");
+    }
+
+    private static boolean requiresGraphTracking(Object value) {
+        return value.getClass().isArray() || value instanceof Map<?, ?> || value instanceof Collection<?>;
     }
 
     private static void appendOmission(List<Object> values, int omitted, String noun) {

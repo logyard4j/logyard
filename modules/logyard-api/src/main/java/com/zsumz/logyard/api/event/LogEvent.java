@@ -16,6 +16,7 @@ public final class LogEvent {
     private final ExceptionSnapshot exception;
     private final long threadId;
     private final String threadName;
+    private volatile String renderedMessage;
 
     /**
      * Captures one detached, bounded event.
@@ -75,6 +76,9 @@ public final class LogEvent {
         exception = source.exception;
         threadId = source.threadId;
         threadName = source.threadName;
+        if (Objects.equals(source.messageTemplate, messageTemplate)) {
+            renderedMessage = source.renderedMessage;
+        }
     }
 
     /**
@@ -212,7 +216,12 @@ public final class LogEvent {
      * @return bounded rendered message
      */
     public String renderedMessage() {
-        return MessageFormatter.format(messageTemplate, arguments);
+        String current = renderedMessage;
+        if (current == null) {
+            current = MessageFormatter.format(messageTemplate, arguments);
+            renderedMessage = current;
+        }
+        return current;
     }
 
     /**

@@ -85,7 +85,10 @@ public final class CoreBehaviorTest {
         items.add("after");
         ((StringBuilder) metadata.get("state")).append("-after");
         numbers[0] = 99;
-        equal("before [1, 2]", event.renderedMessage());
+        String rendered = event.renderedMessage();
+        equal("before [1, 2]", rendered);
+        check(rendered == event.renderedMessage(), "rendered message should be cached for fanout");
+        check(rendered == event.withAttributes(AttributeSet.EMPTY).renderedMessage(), "attribute copies should retain the rendered message");
         equal(List.of("one"), event.attributes().get("items"));
         equal(Map.of("state", "ready"), event.attributes().get("metadata"));
         equal(List.of(1, 2), event.attributes().get("numbers"));
@@ -195,7 +198,8 @@ public final class CoreBehaviorTest {
 
     @Test
     void redactsMatchingAttributesCaseInsensitively() {
-        LogEvent redacted = new RedactionProcessor(List.of("*.token", "authorization")).process(event(
+        RedactionProcessor processor = new RedactionProcessor(List.of("*.token", "authorization"));
+        LogEvent redacted = processor.process(event(
                 AttributeSet.builder()
                         .put("payment.token", "secret")
                         .put("Authorization", "bearer")
@@ -204,6 +208,9 @@ public final class CoreBehaviorTest {
         equal("[REDACTED]", redacted.attributes().get("payment.token"));
         equal("[REDACTED]", redacted.attributes().get("Authorization"));
         equal("7", redacted.attributes().get("order.id"));
+
+        LogEvent unchanged = event(AttributeSet.builder().put("order.id", "8").build());
+        check(unchanged == processor.process(unchanged), "non-matching redaction must preserve the event instance");
     }
 
     private static RuntimePlan plan(EventSink sink) {

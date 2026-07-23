@@ -1,6 +1,7 @@
 package com.zsumz.logyard.output.json.encoding;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zsumz.logyard.api.event.AttributeSet;
@@ -59,6 +60,36 @@ final class JsonEncoderTest {
         assertEquals(List.of("before"), captured);
         assertTrue(resource.values().size() <= 128);
         assertEquals(true, resource.values().get("logyard.attributes.truncated"));
+    }
+
+    @Test
+    void rejectsRenamedAttributesThatCollideWithAnUnchangedAttribute() {
+        JsonProfile profile = JsonProfile.custom(
+                "collision",
+                "logyard",
+                Map.of(),
+                List.of(),
+                new JsonAttributeTransform(
+                        JsonAttributeTransform.Mode.NESTED,
+                        null,
+                        List.of(),
+                        List.of(),
+                        Map.of("first", "second")));
+        JsonEncoder encoder = new JsonEncoder(ResourceAttributes.service("orders", "test", "1"), profile);
+        LogEvent event = new LogEvent(
+                0,
+                1,
+                Level.INFO,
+                "orders.Service",
+                null,
+                "collision",
+                null,
+                AttributeSet.builder().put("first", 1).put("second", 2).build(),
+                null,
+                1,
+                "main");
+
+        assertThrows(IllegalArgumentException.class, () -> encoder.encode(event));
     }
 
 }

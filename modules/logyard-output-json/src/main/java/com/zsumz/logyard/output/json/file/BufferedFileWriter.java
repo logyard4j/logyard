@@ -42,19 +42,21 @@ final class BufferedFileWriter implements AutoCloseable {
         return logicalBytes;
     }
 
-    void write(byte[] record) {
+    void write(byte[] record, byte terminator) {
         ensureOpen();
         try {
-            if (record.length > buffer.capacity()) {
+            int recordBytes = Math.addExact(record.length, 1);
+            if (recordBytes > buffer.capacity()) {
                 flushBuffer();
                 writeFully(ByteBuffer.wrap(record));
+                buffer.put(terminator);
             } else {
-                if (buffer.remaining() < record.length) {
+                if (buffer.remaining() < recordBytes) {
                     flushBuffer();
                 }
-                buffer.put(record);
+                buffer.put(record).put(terminator);
             }
-            logicalBytes = Math.addExact(logicalBytes, record.length);
+            logicalBytes = Math.addExact(logicalBytes, recordBytes);
         } catch (IOException failure) {
             throw new UncheckedIOException("failed to write Logyard JSON output " + path, failure);
         }
