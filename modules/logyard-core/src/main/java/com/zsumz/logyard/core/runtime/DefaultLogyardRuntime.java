@@ -7,28 +7,22 @@ import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Thread-safe runtime with compiled routes and lease-protected atomic plan replacement. */
 public final class DefaultLogyardRuntime implements LogyardRuntime {
     private final ConcurrentHashMap<String, DefaultLogyardLogger> loggers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, LoggerControl> controls = new ConcurrentHashMap<>();
-    private final ConcurrentLinkedQueue<CompletableFuture<Void>> retirements = new ConcurrentLinkedQueue<>();
-    private final RetirementExecutor retirementExecutor = new RetirementExecutor();
+    private final RuntimeRetirements retirements = new RuntimeRetirements();
     private final AtomicBoolean closed = new AtomicBoolean();
     private final RuntimeRouteLeases routeLeases;
     private final EventPublicationPipeline publicationPipeline;
@@ -93,7 +87,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             }
         }
         try {
-            return RuntimeHealthReporter.running(loggers.size(), retirements.size(), snapshot.plan(), snapshot.epoch());
+            return RuntimeHealthReporter.running(loggers.size(), retirements.pendingCount(), snapshot.plan(), snapshot.epoch());
         } finally {
             snapshot.epoch().release();
         }
@@ -108,24 +102,10 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         RuntimeState next = new RuntimeState(nextPlan, new PlanEpoch());
         Map<String, CompiledRoute> compiled = new LinkedHashMap<>();
         controls.forEach((name, control) -> compiled.put(name, compileRoute(name, next)));
-        if (!retirementExecutor.reserveReload()) {
-            throw new IllegalStateException("Logyard has " + RetirementExecutor.MAX_PENDING_RELOADS
-                    + " pending plan retirements; wait for output closure before reloading again");
-        }
-        boolean retired = false;
-        try {
+        retirements.replacePlan(previous.plan(), previous.epoch(), next.plan(), () -> {
             state = next;
             compiled.forEach((name, route) -> controls.get(name).update(route));
-            CompletableFuture<Void> retirement = previous.epoch().retire(
-                    () -> RuntimeOutputs.closeNotReused(previous.plan(), next.plan()),
-                    retirementExecutor::scheduleReload);
-            retired = true;
-            observeRetirement(retirement);
-        } finally {
-            if (!retired) {
-                retirementExecutor.cancelReloadReservation();
-            }
-        }
+        });
     }
 
     void publish(LoggerControl control, EventDraft draft) {
@@ -167,63 +147,16 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             return;
         }
         RuntimeState current = state;
-        CompletableFuture<Void> finalRetirement = current.epoch().retire(
-                () -> RuntimeOutputs.closeAll(current.plan()),
-                retirementExecutor::scheduleFinal);
-        observeRetirement(finalRetirement);
-        awaitRetirements(current.plan().shutdownTimeout());
+        retirements.finishPlan(current.plan(), current.epoch());
+        retirements.await(current.plan().shutdownTimeout());
     }
 
     private static CompiledRoute compileRoute(String loggerName, RuntimeState state) {
         return RuntimeRouteCompiler.compile(loggerName, state.plan(), state.epoch());
     }
 
-    private void observeRetirement(CompletableFuture<Void> retirement) {
-        retirements.add(retirement);
-        retirement.whenComplete((ignored, failure) -> {
-            retirements.remove(retirement);
-            if (failure != null) {
-                System.err.println("Logyard output retirement failed: "
-                        + EmergencyText.failureSummary(failure, 4_096));
-            }
-        });
-    }
-
-    private void awaitRetirements(Duration timeout) {
-        long timeoutNanos = saturatedNanos(timeout);
-        long deadline = System.nanoTime() + timeoutNanos;
-        for (CompletableFuture<Void> retirement : retirements) {
-            long remaining = deadline - System.nanoTime();
-            if (remaining <= 0) {
-                System.err.println("Logyard shutdown deadline elapsed before all outputs retired");
-                return;
-            }
-            try {
-                retirement.get(remaining, TimeUnit.NANOSECONDS);
-            } catch (java.util.concurrent.TimeoutException timeoutFailure) {
-                System.err.println("Logyard shutdown deadline elapsed before all outputs retired");
-                return;
-            } catch (InterruptedException interrupted) {
-                Thread.currentThread().interrupt();
-                return;
-            } catch (java.util.concurrent.ExecutionException failure) {
-                System.err.println("Logyard output retirement failed: "
-                        + EmergencyText.failureSummary(failure.getCause(), 4_096));
-            }
-        }
-    }
-
-
     private RuntimeHealth stoppedHealth() {
         return RuntimeHealthReporter.stopped(loggers.size());
-    }
-
-    private static long saturatedNanos(Duration duration) {
-        try {
-            return duration.toNanos();
-        } catch (ArithmeticException overflow) {
-            return Long.MAX_VALUE;
-        }
     }
 
     public static DefaultLogyardRuntime consoleOnly(EventSink sink) {
