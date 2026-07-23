@@ -1,7 +1,6 @@
 package com.zsumz.logyard.slf4j.internal.event;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
 import com.zsumz.logyard.api.ingress.LogEventIngress;
 import com.zsumz.logyard.slf4j.internal.context.ContextSnapshotPolicy;
@@ -44,7 +43,7 @@ public final class Slf4jEventMapper {
             if (!delegate.isEnabled(level)) {
                 return;
             }
-            AttributeSet.Builder attributes = attributeMapper.contextAttributes();
+            DeferredAttributes attributes = attributeMapper.contextAttributes();
             MarkerCollector.Result markers = attributeMapper.addMarkers(attributes, marker);
             delegate.log(
                     level,
@@ -75,7 +74,7 @@ public final class Slf4jEventMapper {
                 return;
             }
 
-            AttributeSet.Builder attributes = attributeMapper.contextAttributes();
+            DeferredAttributes attributes = attributeMapper.contextAttributes();
             String eventName = attributeMapper.addKeyValues(
                     attributes,
                     capture.read(event::getKeyValuePairs, null),

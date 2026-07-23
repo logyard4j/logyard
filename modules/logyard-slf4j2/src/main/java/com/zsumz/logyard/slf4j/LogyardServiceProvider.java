@@ -64,7 +64,7 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider {
         try {
             resolved = AdapterRuntimeResolver.resolve("slf4j2");
             ContextSnapshotPolicy contextPolicy = new ContextSnapshotPolicy(
-                    resolved::contextInclude);
+                    resolved.contextPolicySource());
             Slf4jEventMapper mapper = new Slf4jEventMapper(mdcAdapter, contextPolicy);
             loggerFactory.install(new LogyardLoggerFactory(resolved.runtime(), mapper));
             runtimeHandle = resolved;

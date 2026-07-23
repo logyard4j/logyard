@@ -1,6 +1,5 @@
 package com.zsumz.logyard.slf4j.internal.event;
 
-import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.slf4j.internal.diagnostics.ProviderDiagnostics;
 
 import java.util.function.Supplier;
@@ -33,7 +32,7 @@ final class Slf4jCaptureFailures {
         }
     }
 
-    void annotate(AttributeSet.Builder attributes) {
+    void annotate(DeferredAttributes attributes) {
         if (count > 0) {
             attributes.put("logyard.slf4j.capture_failures", count);
         }

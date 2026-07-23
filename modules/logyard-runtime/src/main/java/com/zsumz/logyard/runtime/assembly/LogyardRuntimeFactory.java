@@ -16,6 +16,7 @@ import com.zsumz.logyard.runtime.assembly.processing.ProcessorAssembler;
 import com.zsumz.logyard.runtime.assembly.routing.ConfiguredLoggerRuleResolver;
 import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 import com.zsumz.logyard.runtime.extension.discovery.ContextProviderDiscovery;
+import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -72,9 +73,10 @@ public final class LogyardRuntimeFactory {
 
     /** Attaches the current assembly so adapters can observe live context policy changes. */
     public static void attach(LogyardRuntime runtime, RuntimeAssembly assembly) {
-        ASSEMBLIES.put(
-                Objects.requireNonNull(runtime, "runtime"),
-                Objects.requireNonNull(assembly, "assembly"));
+        Objects.requireNonNull(runtime, "runtime");
+        Objects.requireNonNull(assembly, "assembly");
+        ASSEMBLIES.put(runtime, assembly);
+        ContextPolicyRegistry.publish(runtime, assembly.contextPolicy());
     }
 
     public static RuntimeAssembly assemblyFor(LogyardRuntime runtime) {

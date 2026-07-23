@@ -1,6 +1,5 @@
 package com.zsumz.logyard.slf4j.internal.event;
 
-import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.slf4j.internal.context.ContextSnapshotPolicy;
 import com.zsumz.logyard.slf4j.internal.context.LogyardMdcAdapter;
 import com.zsumz.logyard.slf4j.internal.diagnostics.ProviderDiagnostics;
@@ -26,19 +25,19 @@ final class Slf4jAttributeMapper {
         keyValueCollector = new Slf4jKeyValueCollector();
     }
 
-    AttributeSet.Builder contextAttributes() {
-        return AttributeSet.builder().putAll(contextPolicy.capture(mdcAdapter));
+    DeferredAttributes contextAttributes() {
+        return new DeferredAttributes(contextPolicy.capture(mdcAdapter));
     }
 
-    String addKeyValues(AttributeSet.Builder attributes, List<KeyValuePair> pairs, Slf4jCaptureFailures failures) {
+    String addKeyValues(DeferredAttributes attributes, List<KeyValuePair> pairs, Slf4jCaptureFailures failures) {
         return keyValueCollector.collect(attributes, pairs, failures);
     }
 
-    MarkerCollector.Result addMarkers(AttributeSet.Builder attributes, Marker marker) {
+    MarkerCollector.Result addMarkers(DeferredAttributes attributes, Marker marker) {
         return addMarkers(attributes, markerCollector.collect(marker));
     }
 
-    MarkerCollector.Result addMarkers(AttributeSet.Builder attributes, List<Marker> markers) {
+    MarkerCollector.Result addMarkers(DeferredAttributes attributes, List<Marker> markers) {
         return addMarkers(attributes, markerCollector.collect(markers));
     }
 
@@ -48,7 +47,7 @@ final class Slf4jAttributeMapper {
         }
     }
 
-    private static MarkerCollector.Result addMarkers(AttributeSet.Builder attributes, MarkerCollector.Result markers) {
+    private static MarkerCollector.Result addMarkers(DeferredAttributes attributes, MarkerCollector.Result markers) {
         List<String> names = markers.names();
         if (names.size() == 1) {
             attributes.put("slf4j.marker", names.getFirst());

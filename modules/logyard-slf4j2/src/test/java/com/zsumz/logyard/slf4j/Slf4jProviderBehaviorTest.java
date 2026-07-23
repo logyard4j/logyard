@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.routing.RouteDefinition;
@@ -138,6 +139,23 @@ final class Slf4jProviderBehaviorTest {
                     .log("disabled {} event");
             assertFalse(evaluated.get());
             assertTrue(sink.events.isEmpty());
+        }
+    }
+
+    @Test
+    void enabledEventWithoutMetadataReusesTheSharedEmptyAttributeSet() {
+        RecordingSink sink = new RecordingSink();
+        try (LogyardRuntime runtime = runtime(sink)) {
+            Logger logger = new LogyardLoggerFactory(
+                    runtime,
+                    new Slf4jEventMapper(
+                            new LogyardMdcAdapter(),
+                            new ContextSnapshotPolicy(List.of())))
+                    .getLogger("test.EmptyAttributes");
+
+            logger.info("plain event");
+
+            assertSame(AttributeSet.EMPTY, sink.events.getFirst().attributes());
         }
     }
 

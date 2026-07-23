@@ -1,6 +1,5 @@
 package com.zsumz.logyard.slf4j.internal.event;
 
-import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.MessageFormatter;
 import org.slf4j.event.KeyValuePair;
 
@@ -11,7 +10,7 @@ final class Slf4jKeyValueCollector {
     static final int MAX_PAIRS = 256;
     private static final String EVENT_NAME_KEY = "event.name";
 
-    String collect(AttributeSet.Builder attributes, List<KeyValuePair> pairs, Slf4jCaptureFailures failures) {
+    String collect(DeferredAttributes attributes, List<KeyValuePair> pairs, Slf4jCaptureFailures failures) {
         if (pairs == null) {
             return null;
         }

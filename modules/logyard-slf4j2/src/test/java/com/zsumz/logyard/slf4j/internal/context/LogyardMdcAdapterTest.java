@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.zsumz.logyard.api.event.CaptureLimits;
+import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
@@ -12,6 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -129,6 +131,27 @@ final class LogyardMdcAdapterTest {
     void preservesConfiguredAllowlistOrder() {
         ContextSnapshotPolicy policy = new ContextSnapshotPolicy(List.of("trace.id", "request.id"));
         assertEquals(List.of("trace.id", "request.id"), List.copyOf(policy.includedKeys()));
+    }
+
+    @Test
+    void readsOnePublishedPolicySnapshotPerCaptureAndObservesUpdates() {
+        LogyardMdcAdapter mdc = new LogyardMdcAdapter();
+        mdc.put("request.id", "request-1");
+        mdc.put("tenant.id", "tenant-7");
+        AtomicReference<ContextPolicySnapshot> current =
+                new AtomicReference<>(ContextPolicySnapshot.of(List.of("request.id")));
+        AtomicInteger reads = new AtomicInteger();
+        ContextSnapshotPolicy policy = new ContextSnapshotPolicy(() -> {
+            reads.incrementAndGet();
+            return current.get();
+        });
+
+        assertEquals("request-1", policy.capture(mdc).get("request.id"));
+        assertEquals(1, reads.get());
+
+        current.set(ContextPolicySnapshot.of(List.of("tenant.id")));
+        assertEquals("tenant-7", policy.capture(mdc).get("tenant.id"));
+        assertEquals(2, reads.get());
     }
 
 }

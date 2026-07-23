@@ -20,7 +20,7 @@ final class Slf4jKeyValueCollectorTest {
                 new KeyValuePair("event.name", "order.accepted"),
                 new KeyValuePair("", "invalid"),
                 new KeyValuePair("answer", 42));
-        AttributeSet.Builder attributes = AttributeSet.builder();
+        DeferredAttributes attributes = new DeferredAttributes(AttributeSet.EMPTY);
 
         String eventName = new Slf4jKeyValueCollector().collect(attributes, pairs, new Slf4jCaptureFailures());
         AttributeSet captured = attributes.build();
@@ -36,7 +36,7 @@ final class Slf4jKeyValueCollectorTest {
         for (int index = 0; index <= Slf4jKeyValueCollector.MAX_PAIRS; index++) {
             pairs.add(new KeyValuePair("event.name", "event-" + index));
         }
-        AttributeSet.Builder attributes = AttributeSet.builder();
+        DeferredAttributes attributes = new DeferredAttributes(AttributeSet.EMPTY);
 
         String eventName = new Slf4jKeyValueCollector().collect(attributes, pairs, new Slf4jCaptureFailures());
         AttributeSet captured = attributes.build();
@@ -63,7 +63,7 @@ final class Slf4jKeyValueCollectorTest {
                 throw new IllegalStateException("broken iterator");
             }
         };
-        AttributeSet.Builder attributes = AttributeSet.builder();
+        DeferredAttributes attributes = new DeferredAttributes(AttributeSet.EMPTY);
         Slf4jCaptureFailures failures = new Slf4jCaptureFailures();
 
         assertNull(new Slf4jKeyValueCollector().collect(attributes, hostile, failures));

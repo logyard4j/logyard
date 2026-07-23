@@ -1,10 +1,13 @@
 package com.zsumz.logyard.runtime.adapter;
 
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
+import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /** One ownership-aware lease on the runtime selected for a compatibility adapter. */
 public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
@@ -34,6 +37,11 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
 
     public boolean ownsRuntime() {
         return lease.ownsRuntime();
+    }
+
+    /** Stable context-policy source for event adapters; obtaining it is a control-plane operation. */
+    public Supplier<ContextPolicySnapshot> contextPolicySource() {
+        return ContextPolicyRegistry.sourceFor(runtime());
     }
 
     @Override

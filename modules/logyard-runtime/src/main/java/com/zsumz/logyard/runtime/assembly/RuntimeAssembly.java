@@ -3,6 +3,7 @@ package com.zsumz.logyard.runtime.assembly;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
+import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
 import java.nio.file.Path;
 import java.util.Collections;
@@ -17,11 +18,13 @@ import java.util.Set;
 public final class RuntimeAssembly {
     private final LogyardConfig config;
     private final RuntimePlan plan;
+    private final ContextPolicySnapshot contextPolicy;
     private final Map<String, OutputBinding> bindings;
 
     RuntimeAssembly(LogyardConfig config, RuntimePlan plan, Map<String, OutputBinding> bindings) {
         this.config = Objects.requireNonNull(config, "config");
         this.plan = Objects.requireNonNull(plan, "plan");
+        contextPolicy = ContextPolicySnapshot.of(config.context().mdc());
         this.bindings = Collections.unmodifiableMap(new LinkedHashMap<>(bindings));
     }
 
@@ -35,6 +38,10 @@ public final class RuntimeAssembly {
 
     public List<String> contextInclude() {
         return config.context().mdc();
+    }
+
+    public ContextPolicySnapshot contextPolicy() {
+        return contextPolicy;
     }
 
     OutputBinding binding(String outputName) {
