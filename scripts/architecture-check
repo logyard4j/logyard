@@ -20,7 +20,6 @@ LINE_LIMIT_DEBT = {
     "modules/logyard-config-toml/src/main/java/com/zsumz/logyard/config/toml/TomlParser.java": 491,
     "modules/logyard-config-toml/src/test/java/com/zsumz/logyard/config/LogyardConfigLoaderTest.java": 409,
     "modules/logyard-core/src/test/java/com/zsumz/logyard/core/runtime/CoreBehaviorTest.java": 471,
-    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/encoding/JsonEncoder.java": 316,
     "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/file/rotation/ArchiveMaintenance.java": 331,
     "tests/logyard-integration-tests/src/main/java/com/zsumz/logyard/tests/CoreVerificationMain.java": 428,
 }
