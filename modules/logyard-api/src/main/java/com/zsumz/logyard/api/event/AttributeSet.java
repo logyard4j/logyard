@@ -15,7 +15,7 @@ public final class AttributeSet {
     private final String[] keys;
     private final Object[] values;
 
-    private AttributeSet(String[] keys, Object[] values) {
+    AttributeSet(String[] keys, Object[] values) {
         this.keys = keys;
         this.values = values;
     }
@@ -177,17 +177,10 @@ public final class AttributeSet {
 
     /** Mutable, bounded assembler for an immutable {@link AttributeSet}. */
     public static final class Builder {
-        private String[] keys;
-        private Object[] values;
-        private boolean[] captured;
-        private int size;
-        private boolean truncated;
+        private final AttributeAccumulator attributes;
 
         private Builder(int expectedSize) {
-            int capacity = Math.max(1, Math.min(expectedSize, CaptureLimits.MAX_ATTRIBUTES));
-            keys = new String[capacity];
-            values = new Object[capacity];
-            captured = new boolean[capacity];
+            attributes = new AttributeAccumulator(expectedSize);
         }
 
         /**
@@ -198,7 +191,8 @@ public final class AttributeSet {
          * @return this builder
          */
         public Builder put(String key, Object value) {
-            return putValue(normalizeKey(key), value, false);
+            attributes.put(normalizeKey(key), value, false);
+            return this;
         }
 
         /**
@@ -212,18 +206,8 @@ public final class AttributeSet {
         public Builder putSupplied(String key, Supplier<?> supplier) {
             String normalized = normalizeKey(key);
             Objects.requireNonNull(supplier, "valueSupplier");
-            for (int index = 0; index < size; index++) {
-                if (keys[index].equals(normalized)) {
-                    values[index] = supplier.get();
-                    captured[index] = false;
-                    return this;
-                }
-            }
-            if (size >= CaptureLimits.MAX_ATTRIBUTES - 1) {
-                truncated = true;
-                return this;
-            }
-            return putValue(normalized, supplier.get(), false);
+            attributes.putSupplied(normalized, supplier);
+            return this;
         }
 
         /**
@@ -232,7 +216,7 @@ public final class AttributeSet {
          * @return attribute count
          */
         public int size() {
-            return size;
+            return attributes.size();
         }
 
         /**
@@ -241,7 +225,7 @@ public final class AttributeSet {
          * @return {@code true} when full
          */
         public boolean isFull() {
-            return size >= CaptureLimits.MAX_ATTRIBUTES - 1;
+            return attributes.isFull();
         }
 
         /**
@@ -253,7 +237,7 @@ public final class AttributeSet {
         public Builder putAll(AttributeSet attributes) {
             Objects.requireNonNull(attributes, "attributes");
             for (int index = 0; index < attributes.size(); index++) {
-                putValue(attributes.keyAt(index), attributes.valueAt(index), true);
+                this.attributes.put(attributes.keyAt(index), attributes.valueAt(index), true);
             }
             return this;
         }
@@ -268,7 +252,7 @@ public final class AttributeSet {
             Objects.requireNonNull(attributes, "attributes");
             for (Map.Entry<String, ?> entry : attributes.entrySet()) {
                 put(entry.getKey(), entry.getValue());
-                if (truncated && isFull()) {
+                if (this.attributes.truncated() && isFull()) {
                     break;
                 }
             }
@@ -281,19 +265,8 @@ public final class AttributeSet {
          * @return immutable captured attributes
          */
         public AttributeSet build() {
-            if (truncated) {
-                putTruncationMarker();
-            }
-            if (size == 0) {
-                return EMPTY;
-            }
-            Object[] snapshot = new Object[size];
-            for (int index = 0; index < size; index++) {
-                snapshot[index] = captured[index] ? values[index] : ValueCapture.capture(values[index]);
-            }
-            return new AttributeSet(Arrays.copyOf(keys, size), snapshot);
+            return attributes.build();
         }
-
 
         private static String normalizeKey(String key) {
             Objects.requireNonNull(key, "attribute key");
@@ -301,56 +274,6 @@ public final class AttributeSet {
                 throw new IllegalArgumentException("attribute key must not be blank");
             }
             return CaptureLimits.attributeKey(key);
-        }
-
-        private Builder putValue(String key, Object value, boolean alreadyCaptured) {
-            for (int index = 0; index < size; index++) {
-                if (keys[index].equals(key)) {
-                    values[index] = value;
-                    captured[index] = alreadyCaptured;
-                    return this;
-                }
-            }
-            if (size >= CaptureLimits.MAX_ATTRIBUTES - 1) {
-                truncated = true;
-                return this;
-            }
-            ensureCapacity(size + 1);
-            keys[size] = key;
-            values[size] = value;
-            captured[size] = alreadyCaptured;
-            size++;
-            return this;
-        }
-
-        private void ensureCapacity(int needed) {
-            if (needed <= keys.length) {
-                return;
-            }
-            int next = Math.min(
-                    CaptureLimits.MAX_ATTRIBUTES,
-                    Math.max(needed, keys.length << 1));
-            keys = Arrays.copyOf(keys, next);
-            values = Arrays.copyOf(values, next);
-            captured = Arrays.copyOf(captured, next);
-        }
-
-        private void putTruncationMarker() {
-            String key = "logyard.attributes.truncated";
-            for (int index = 0; index < size; index++) {
-                if (keys[index].equals(key)) {
-                    values[index] = true;
-                    captured[index] = true;
-                    return;
-                }
-            }
-            if (size < CaptureLimits.MAX_ATTRIBUTES) {
-                ensureCapacity(size + 1);
-                keys[size] = key;
-                values[size] = true;
-                captured[size] = true;
-                size++;
-            }
         }
     }
 }
