@@ -161,6 +161,20 @@ import java.lang.annotation.Target;
 public @interface Test {
 }
 JAVA
+  mkdir -p "$TARGET/junit-stub-src/org/junit/jupiter/api/io"
+  cat > "$TARGET/junit-stub-src/org/junit/jupiter/api/io/TempDir.java" <<'JAVA'
+package org.junit.jupiter.api.io;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+public @interface TempDir {
+}
+JAVA
   mkdir -p "$TARGET/junit-stub-src/org/junit/jupiter/api/function"
   cat > "$TARGET/junit-stub-src/org/junit/jupiter/api/function/Executable.java" <<'JAVA'
 package org.junit.jupiter.api.function;
@@ -182,6 +196,7 @@ JAVA
 package org.junit.jupiter.api;
 
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 
@@ -192,6 +207,12 @@ public final class Assertions {
     public static void assertTrue(boolean condition) {
         if (!condition) {
             throw new AssertionError("expected true");
+        }
+    }
+
+    public static void assertTrue(boolean condition, Supplier<String> messageSupplier) {
+        if (!condition) {
+            throw new AssertionError(messageSupplier.get());
         }
     }
 
@@ -221,36 +242,6 @@ public final class Assertions {
 
     public static void assertEquals(Object expected, Object actual) {
         if (!Objects.equals(expected, actual)) {
-            throw unequal(expected, actual);
-        }
-    }
-
-    public static void assertEquals(int expected, int actual) {
-        if (expected != actual) {
-            throw unequal(expected, actual);
-        }
-    }
-
-    public static void assertEquals(long expected, long actual) {
-        if (expected != actual) {
-            throw unequal(expected, actual);
-        }
-    }
-
-    public static void assertEquals(boolean expected, boolean actual) {
-        if (expected != actual) {
-            throw unequal(expected, actual);
-        }
-    }
-
-    public static void assertEquals(char expected, char actual) {
-        if (expected != actual) {
-            throw unequal(expected, actual);
-        }
-    }
-
-    public static void assertEquals(double expected, double actual) {
-        if (Double.compare(expected, actual) != 0) {
             throw unequal(expected, actual);
         }
     }
@@ -321,12 +312,18 @@ public final class FallbackTestRunner {
     public static void main(String[] classNames) throws Exception {
         int passed = 0;
         int failed = 0;
+        int skipped = 0;
         for (String className : classNames) {
             Class<?> testClass = Class.forName(className);
             Method[] methods = testClass.getDeclaredMethods();
             Arrays.sort(methods, Comparator.comparing(Method::getName));
             for (Method method : methods) {
                 if (!method.isAnnotationPresent(Test.class)) {
+                    continue;
+                }
+                if (method.getParameterCount() != 0) {
+                    skipped++;
+                    System.out.printf("SKIP  %s#%s requires parameter injection%n", className, method.getName());
                     continue;
                 }
                 Object instance = null;
@@ -348,7 +345,10 @@ public final class FallbackTestRunner {
                 }
             }
         }
-        System.out.printf("Fallback JUnit verification passed: %d test method(s)%n", passed);
+        System.out.printf(
+                "Fallback JUnit verification passed: %d test method(s), %d parameterized method(s) skipped%n",
+                passed,
+                skipped);
         if (failed != 0) {
             throw new AssertionError(failed + " fallback test method(s) failed");
         }
@@ -359,27 +359,14 @@ JAVA
   compile_sources "$TARGET/fallback-tests" \
     "$PRODUCT_CP:$ADAPTER_CP:$TARGET/junit-stub" \
     "$TARGET/fallback-runner-src" "${base_test_roots[@]}"
-  fallback_classes=(
-    com.zsumz.logyard.config.RuntimeReloadConfigTest
-    com.zsumz.logyard.config.ExtensionConfigurationTest
-    com.zsumz.logyard.config.LogyardConfigLoaderTest
-    com.zsumz.logyard.api.spi.ProviderConfigurationTest
-    com.zsumz.logyard.core.delivery.AsyncSinkBehaviorTest
-    com.zsumz.logyard.core.processing.SamplingAndRateLimitProcessorTest
-    com.zsumz.logyard.core.runtime.CoreBehaviorTest
-    com.zsumz.logyard.jul.LogyardHandlerTest
-    com.zsumz.logyard.output.console.ConsoleSinkTest
-    com.zsumz.logyard.output.console.TemplateTextFormatterTest
-    com.zsumz.logyard.output.json.encoding.JsonEncoderTest
-    com.zsumz.logyard.output.json.encoding.JsonProfileTest
-    com.zsumz.logyard.output.json.file.JsonFileSinkTest
-    com.zsumz.logyard.runtime.adapter.AdapterReentryGuardTest
-    com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactoryTest
-    com.zsumz.logyard.runtime.extension.ExtensionGuardrailsTest
-    com.zsumz.logyard.runtime.reload.ConfigurationSnapshotTest
-    com.zsumz.logyard.runtime.reload.ReloadCoordinatorTest
-    com.zsumz.logyard.systemlogger.SystemLoggerMappingTest
-  )
+  fallback_classes=()
+  for root in "${base_test_roots[@]}"; do
+    while IFS= read -r source; do
+      relative="${source#"$root/"}"
+      class_name="${relative%.java}"
+      fallback_classes+=("${class_name//\//.}")
+    done < <(find "$root" -type f -name '*.java' -print | LC_ALL=C sort)
+  done
   run_bounded "$JAVA" -cp \
     "$PRODUCT_CP:$ADAPTER_CP:$TARGET/junit-stub:$TARGET/fallback-tests" \
     com.zsumz.logyard.tests.FallbackTestRunner "${fallback_classes[@]}"
