@@ -13,11 +13,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** Bounded asynchronous delivery with explicit per-severity overload behavior. */
@@ -29,7 +27,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     private final int maximumBatchSize;
     private final long maximumBatchDelayNanos;
     private final boolean callerThreadDeliveryAllowed;
-    private final ArrayBlockingQueue<LogEvent> queue;
+    private final AsyncEventQueue eventQueue;
     private final OverflowPolicy overflowPolicy;
     private final Duration shutdownTimeout;
     private final AsyncSinkMetrics metrics = new AsyncSinkMetrics();
@@ -38,7 +36,6 @@ public final class AsyncSink implements EventSink, HealthContributor {
     private final Thread worker;
     private final ReentrantLock deliveryLock = new ReentrantLock();
     private final AtomicInteger activeDeliveries = new AtomicInteger();
-    private final AtomicInteger outstandingQueuedEvents = new AtomicInteger();
     private final AtomicBoolean delegateCloseStarted = new AtomicBoolean();
     private volatile boolean accepting = true;
     private volatile boolean running = true;
@@ -80,7 +77,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
         }
         maximumBatchDelayNanos = saturatedNanos(batchDelay);
         this.callerThreadDeliveryAllowed = callerThreadDeliveryAllowed;
-        queue = new ArrayBlockingQueue<>(capacity);
+        eventQueue = new AsyncEventQueue(capacity);
         this.overflowPolicy = Objects.requireNonNull(overflowPolicy, "overflowPolicy");
         this.shutdownTimeout = Objects.requireNonNull(shutdownTimeout, "shutdownTimeout");
         if (shutdownTimeout.isNegative()) {
@@ -131,8 +128,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
 
     @Override
     public void flush() {
-        if (!awaitQuiescence(shutdownTimeout)) {
-            diagnostics.status("flush deadline elapsed with " + queue.size()
+        if (!eventQueue.awaitQuiescence(shutdownTimeout)) {
+            diagnostics.status("flush deadline elapsed with " + eventQueue.queued()
                     + " queued and " + activeDeliveries.get() + " active event(s)");
             return;
         }
@@ -167,8 +164,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
         closeDelegate();
     }
 
-    public int capacity() { return queue.size() + queue.remainingCapacity(); }
-    public int queued() { return queue.size(); }
+    public int capacity() { return eventQueue.capacity(); }
+    public int queued() { return eventQueue.queued(); }
     public long dropped(Level level) { return metrics.dropped(level); }
     public long queuedEvents() { return metrics.enqueued(); }
     public long deliveredEvents() { return metrics.delivered(); }
@@ -187,29 +184,13 @@ public final class AsyncSink implements EventSink, HealthContributor {
                 capacity(),
                 queued(),
                 activeDeliveries.get(),
-                outstandingQueuedEvents.get(),
+                eventQueue.outstanding(),
                 maximumBatchSize,
                 metrics.snapshot()));
     }
 
     private boolean offerImmediately(LogEvent event) {
-        outstandingQueuedEvents.incrementAndGet();
-        if (!queue.offer(event)) {
-            outstandingQueuedEvents.decrementAndGet();
-            return false;
-        }
-        retainQueuedOffer(event);
-        return true;
-    }
-
-    private void retainQueuedOffer(LogEvent event) {
-        if (!accepting && queue.remove(event)) {
-            outstandingQueuedEvents.decrementAndGet();
-            metrics.recordEmergencyFallback();
-            diagnostics.emergency(event, "output closed while the event was being enqueued");
-            return;
-        }
-        metrics.recordEnqueued();
+        return handleOffer(event, eventQueue.offerImmediately(event, () -> accepting));
     }
 
     private void block(LogEvent event, Duration wait) {
@@ -218,13 +199,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
             diagnostics.emergency(event, "async queue full with zero block timeout");
             return;
         }
-        outstandingQueuedEvents.incrementAndGet();
-        boolean offered = false;
         try {
-            offered = queue.offer(event, saturatedNanos(wait), TimeUnit.NANOSECONDS);
-            if (offered) {
-                retainQueuedOffer(event);
-            } else {
+            if (!handleOffer(event, eventQueue.offerWithin(event, wait, () -> accepting))) {
                 metrics.recordEmergencyFallback();
                 diagnostics.emergency(event, "async queue full after block timeout");
             }
@@ -232,40 +208,39 @@ public final class AsyncSink implements EventSink, HealthContributor {
             Thread.currentThread().interrupt();
             metrics.recordEmergencyFallback();
             diagnostics.emergency(event, "interrupted while waiting for logging queue");
-        } finally {
-            if (!offered) {
-                outstandingQueuedEvents.decrementAndGet();
-            }
         }
     }
 
     private boolean offerWithWait(LogEvent event, Duration wait) {
-        outstandingQueuedEvents.incrementAndGet();
-        boolean offered = false;
         try {
-            offered = queue.offer(event, saturatedNanos(wait), TimeUnit.NANOSECONDS);
-            if (offered) {
-                retainQueuedOffer(event);
-            }
-            return offered;
+            return handleOffer(event, eventQueue.offerWithin(event, wait, () -> accepting));
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             return false;
-        } finally {
-            if (!offered) {
-                outstandingQueuedEvents.decrementAndGet();
-            }
         }
+    }
+
+    private boolean handleOffer(LogEvent event, AsyncEventQueue.OfferResult result) {
+        if (result == AsyncEventQueue.OfferResult.FULL) {
+            return false;
+        }
+        if (result == AsyncEventQueue.OfferResult.CLOSED) {
+            metrics.recordEmergencyFallback();
+            diagnostics.emergency(event, "output closed while the event was being enqueued");
+        } else {
+            metrics.recordEnqueued();
+        }
+        return true;
     }
 
     private void drainLoop() {
         try {
-            while (running || !queue.isEmpty()) {
+            while (running || !eventQueue.isEmpty()) {
                 try {
                     workerPolling = true;
                     LogEvent event;
                     try {
-                        event = queue.poll(100, TimeUnit.MILLISECONDS);
+                        event = eventQueue.claimWithin(100, TimeUnit.MILLISECONDS);
                     } finally {
                         workerPolling = false;
                     }
@@ -308,7 +283,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
             while (events.size() < maximumBatchSize) {
                 LogEvent next;
                 if (maximumBatchDelayNanos == 0L) {
-                    next = queue.poll();
+                    next = eventQueue.claimNow();
                 } else {
                     long remaining = deadline - System.nanoTime();
                     if (remaining <= 0L) {
@@ -316,7 +291,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
                     }
                     workerPolling = true;
                     try {
-                        next = queue.poll(remaining, TimeUnit.NANOSECONDS);
+                        next = eventQueue.claimWithin(remaining, TimeUnit.NANOSECONDS);
                     } catch (InterruptedException interruption) {
                         interrupted = true;
                         break;
@@ -331,7 +306,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
             }
             deliverApplicationBatch(events);
         } finally {
-            outstandingQueuedEvents.addAndGet(-events.size());
+            eventQueue.completeClaims(events.size());
             activeDeliveries.decrementAndGet();
             if (interrupted && running) {
                 Thread.currentThread().interrupt();
@@ -376,7 +351,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
         } finally {
             deliveryLock.unlock();
             if (queuedDelivery) {
-                outstandingQueuedEvents.decrementAndGet();
+                eventQueue.completeClaims(1);
             }
             activeDeliveries.decrementAndGet();
         }
@@ -401,19 +376,6 @@ public final class AsyncSink implements EventSink, HealthContributor {
         }
     }
 
-    private boolean awaitQuiescence(Duration timeout) {
-        long timeoutNanos = saturatedNanos(timeout);
-        long started = System.nanoTime();
-        while (outstandingQueuedEvents.get() != 0) {
-            long elapsed = System.nanoTime() - started;
-            if (elapsed >= timeoutNanos) {
-                return false;
-            }
-            LockSupport.parkNanos(Math.min(100_000L, timeoutNanos - elapsed));
-        }
-        return true;
-    }
-
     private boolean awaitWorker(Duration timeout) {
         if (!worker.isAlive()) {
             return true;
@@ -433,8 +395,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
 
     private void drainQueueToEmergency(String reason) {
         LogEvent remaining;
-        while ((remaining = queue.poll()) != null) {
-            outstandingQueuedEvents.decrementAndGet();
+        while ((remaining = eventQueue.claimNow()) != null) {
+            eventQueue.completeClaims(1);
             metrics.recordEmergencyFallback();
             diagnostics.emergency(remaining, reason);
         }
