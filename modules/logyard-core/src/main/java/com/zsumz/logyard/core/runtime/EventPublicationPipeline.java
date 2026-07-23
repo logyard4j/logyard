@@ -1,6 +1,7 @@
 package com.zsumz.logyard.core.runtime;
 
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.api.spi.processing.EventProcessor;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 
@@ -19,8 +20,9 @@ final class EventPublicationPipeline {
             return;
         }
 
-        LogEvent event = draft.capture();
+        LogEvent event = null;
         try {
+            event = draft.capture();
             for (EventProcessor processor : route.processors()) {
                 event = processor.process(event);
                 if (event == null) {
@@ -28,8 +30,17 @@ final class EventPublicationPipeline {
                 }
             }
             route.sink().accept(event);
-        } catch (RuntimeException failure) {
-            failureHandler.handle(event, failure);
+        } catch (Throwable failure) {
+            FailureIsolation.prepareForRecovery(failure);
+            reportFailure(draft, event, failure);
+        }
+    }
+
+    private void reportFailure(EventDraft draft, LogEvent event, Throwable failure) {
+        try {
+            failureHandler.handle(draft, event, failure);
+        } catch (Throwable diagnosticFailure) {
+            FailureIsolation.prepareForRecovery(diagnosticFailure);
         }
     }
 }

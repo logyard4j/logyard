@@ -1,5 +1,6 @@
 package com.zsumz.logyard.runtime.diagnostics;
 
+import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 
 import java.util.concurrent.TimeUnit;
@@ -15,29 +16,18 @@ public final class AdapterDiagnostics {
     }
 
     public static void shutdownHookFailure(Throwable failure) {
-        rethrowIfFatal(failure);
+        FailureIsolation.prepareForRecovery(failure);
         report("could not install adapter shutdown hook", failure, true);
     }
 
     public static void adapterFailure(String adapterName, String operation, Throwable failure) {
-        rethrowIfFatal(failure);
+        FailureIsolation.prepareForRecovery(failure);
         report("adapter " + adapterName + " " + operation + " failed", failure, false);
     }
 
-    @SuppressWarnings("removal")
+    /** Retained for callers compiled against the early adapter diagnostics surface. */
     public static void rethrowIfFatal(Throwable failure) {
-        if (failure instanceof InterruptedException) {
-            Thread.currentThread().interrupt();
-        }
-        if (failure instanceof VirtualMachineError fatal) {
-            throw fatal;
-        }
-        if (failure instanceof ThreadDeath fatal) {
-            throw fatal;
-        }
-        if (failure instanceof LinkageError fatal) {
-            throw fatal;
-        }
+        FailureIsolation.prepareForRecovery(failure);
     }
 
     private static void report(String stage, Throwable failure, boolean force) {

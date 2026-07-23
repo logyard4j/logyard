@@ -1,5 +1,7 @@
 package com.zsumz.logyard.slf4j.internal.diagnostics;
 
+import com.zsumz.logyard.api.failure.FailureIsolation;
+
 import java.io.PrintStream;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -15,41 +17,30 @@ public final class ProviderDiagnostics {
     }
 
     public static void initializationFailure(Throwable failure) {
-        rethrowIfFatal(failure);
+        FailureIsolation.prepareForRecovery(failure);
         write(System.err, "provider initialization failed", failure, true);
     }
 
     public static void shutdownHookFailure(Throwable failure) {
-        rethrowIfFatal(failure);
+        FailureIsolation.prepareForRecovery(failure);
         write(System.err, "could not install shutdown hook", failure, true);
     }
 
     public static void eventMappingFailure(String loggerName, Throwable failure) {
-        rethrowIfFatal(failure);
+        FailureIsolation.prepareForRecovery(failure);
         String stage = "event mapping failed for logger " + sanitize(loggerName);
         write(System.err, stage, failure, false);
     }
 
     public static void captureFailure(String loggerName, Throwable failure) {
-        rethrowIfFatal(failure);
+        FailureIsolation.prepareForRecovery(failure);
         String stage = "event metadata was partially unavailable for logger " + sanitize(loggerName);
         write(System.err, stage, failure, false);
     }
 
-    @SuppressWarnings("removal")
+    /** Retained for internal façade call sites that classify before reporting. */
     public static void rethrowIfFatal(Throwable failure) {
-        if (failure instanceof InterruptedException) {
-            Thread.currentThread().interrupt();
-        }
-        if (failure instanceof VirtualMachineError fatal) {
-            throw fatal;
-        }
-        if (failure instanceof ThreadDeath fatal) {
-            throw fatal;
-        }
-        if (failure instanceof LinkageError fatal) {
-            throw fatal;
-        }
+        FailureIsolation.prepareForRecovery(failure);
     }
 
     private static void write(PrintStream stream, String stage, Throwable failure, boolean force) {
@@ -92,7 +83,7 @@ public final class ProviderDiagnostics {
         try {
             return failure.getMessage();
         } catch (Throwable messageFailure) {
-            rethrowIfFatal(messageFailure);
+            FailureIsolation.prepareForRecovery(messageFailure);
             return "<message unavailable>";
         }
     }

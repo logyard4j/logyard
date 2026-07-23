@@ -1,5 +1,7 @@
 package com.zsumz.logyard.api.event;
 
+import com.zsumz.logyard.api.failure.FailureIsolation;
+
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -143,7 +145,7 @@ public final class ExceptionSnapshot {
                     truncated = true;
                 }
             } catch (Throwable failure) {
-                rethrowIfFatal(failure);
+                FailureIsolation.prepareForRecovery(failure);
                 message = "[message accessor failed: " + failure.getClass().getName() + ']';
                 truncated = true;
             }
@@ -155,7 +157,7 @@ public final class ExceptionSnapshot {
                     sourceFrames = new StackTraceElement[0];
                 }
             } catch (Throwable failure) {
-                rethrowIfFatal(failure);
+                FailureIsolation.prepareForRecovery(failure);
                 sourceFrames = new StackTraceElement[] {
                         new StackTraceElement(
                                 "logyard.exception",
@@ -184,7 +186,7 @@ public final class ExceptionSnapshot {
                     sourceSuppressed = new Throwable[0];
                 }
             } catch (Throwable failure) {
-                rethrowIfFatal(failure);
+                FailureIsolation.prepareForRecovery(failure);
                 sourceSuppressed = new Throwable[0];
                 truncated = true;
             }
@@ -204,7 +206,7 @@ public final class ExceptionSnapshot {
             try {
                 sourceCause = throwable.getCause();
             } catch (Throwable failure) {
-                rethrowIfFatal(failure);
+                FailureIsolation.prepareForRecovery(failure);
                 sourceCause = null;
                 truncated = true;
             }
@@ -254,9 +256,4 @@ public final class ExceptionSnapshot {
         return value == null ? 0 : value.length();
     }
 
-    private static void rethrowIfFatal(Throwable failure) {
-        if (failure instanceof Error error) {
-            throw error;
-        }
-    }
 }

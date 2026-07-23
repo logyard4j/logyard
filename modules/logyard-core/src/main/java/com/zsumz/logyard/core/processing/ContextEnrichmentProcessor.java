@@ -4,7 +4,7 @@ import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.context.ContextProvider;
 import com.zsumz.logyard.api.spi.processing.EventProcessor;
-import com.zsumz.logyard.core.diagnostics.FailureIsolation;
+import com.zsumz.logyard.api.failure.FailureIsolation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,8 +40,7 @@ public final class ContextEnrichmentProcessor implements EventProcessor {
                     captured.putAll(values);
                 }
             } catch (Throwable failure) {
-                FailureIsolation.rethrowIfFatal(failure);
-                FailureIsolation.restoreInterrupt(failure);
+                FailureIsolation.prepareForRecovery(failure);
                 failures++;
                 captured.put(
                         "logyard.context.failure." + binding.name(),
@@ -64,8 +63,7 @@ public final class ContextEnrichmentProcessor implements EventProcessor {
                 return name;
             }
         } catch (Throwable failure) {
-            FailureIsolation.rethrowIfFatal(failure);
-            FailureIsolation.restoreInterrupt(failure);
+            FailureIsolation.prepareForRecovery(failure);
             // The stable class name below is enough to identify a hostile provider.
         }
         String className = provider.getClass().getName();

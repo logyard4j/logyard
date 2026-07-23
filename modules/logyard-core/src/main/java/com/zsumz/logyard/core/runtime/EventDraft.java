@@ -50,6 +50,10 @@ final class EventDraft {
         return level;
     }
 
+    String messageTemplate() {
+        return messageTemplate;
+    }
+
     LogEvent capture() {
         Thread currentThread = Thread.currentThread();
         Instant observedAt = Instant.now();

@@ -1,5 +1,7 @@
 package com.zsumz.logyard.core.diagnostics;
 
+import com.zsumz.logyard.api.failure.FailureIsolation;
+
 /** Bounded, terminal-safe text for diagnostics that bypass the normal logging pipeline. */
 public final class EmergencyText {
     private static final char[] HEX = "0123456789abcdef".toCharArray();
@@ -73,7 +75,8 @@ public final class EmergencyText {
         String message;
         try {
             message = failure.getMessage();
-        } catch (RuntimeException accessorFailure) {
+        } catch (Throwable accessorFailure) {
+            FailureIsolation.prepareForRecovery(accessorFailure);
             message = "[message accessor failed: " + accessorFailure.getClass().getName() + ']';
         }
         String summary = message == null || message.isBlank() ? type : type + ": " + message;

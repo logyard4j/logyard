@@ -49,7 +49,7 @@ final class ValueCapture {
             return CaptureLimits.text(string);
         }
         if (value instanceof CharSequence sequence) {
-            return CaptureLimits.text(sequence.toString());
+            return MessageFormatter.safeToString(sequence);
         }
         if (isImmutableScalar(value)) {
             return value;

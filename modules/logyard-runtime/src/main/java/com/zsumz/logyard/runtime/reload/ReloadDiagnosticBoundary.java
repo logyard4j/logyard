@@ -1,6 +1,6 @@
 package com.zsumz.logyard.runtime.reload;
 
-import com.zsumz.logyard.core.diagnostics.FailureIsolation;
+import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 
 import java.nio.file.Path;
@@ -30,8 +30,7 @@ final class ReloadDiagnosticBoundary {
         try {
             notification.run();
         } catch (Throwable diagnosticFailure) {
-            FailureIsolation.rethrowIfFatal(diagnosticFailure);
-            FailureIsolation.restoreInterrupt(diagnosticFailure);
+            FailureIsolation.prepareForRecovery(diagnosticFailure);
         }
     }
 }

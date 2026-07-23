@@ -1,5 +1,7 @@
 package com.zsumz.logyard.api.event;
 
+import com.zsumz.logyard.api.failure.FailureIsolation;
+
 import java.lang.reflect.Array;
 import java.util.IdentityHashMap;
 
@@ -71,9 +73,7 @@ public final class MessageFormatter {
             try {
                 result.append(value);
             } catch (Throwable failure) {
-                if (failure instanceof Error error) {
-                    throw error;
-                }
+                FailureIsolation.prepareForRecovery(failure);
                 result.append("[FAILED toString(): ")
                         .append(failure.getClass().getSimpleName())
                         .append(']');
