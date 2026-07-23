@@ -1,8 +1,6 @@
 package com.zsumz.logyard.config;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.delivery.OverflowAction;
-import com.zsumz.logyard.api.spi.ProviderConfiguration;
 import com.zsumz.logyard.config.toml.TomlDocument;
 import com.zsumz.logyard.config.toml.TomlParseException;
 import com.zsumz.logyard.config.toml.TomlParser;
@@ -11,7 +9,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -71,20 +68,20 @@ public final class LogyardConfigLoader {
         if (schema != 1) {
             throw root.failure("schema", "must be 1");
         }
-        ServiceConfig service = parseService(root.object("service"));
-        ResourceConfig resource = parseResource(root.object("resource"));
-        RuntimeConfig runtime = parseRuntime(root.object("runtime"));
-        ContextConfig context = parseContext(root.object("context"));
-        DeliveryConfig delivery = parseDelivery(root.object("delivery"));
-        Map<String, FormatterConfig> formatters = parseFormatters(
+        ServiceConfig service = CoreSectionDecoder.service(root.object("service"));
+        ResourceConfig resource = CoreSectionDecoder.resource(root.object("resource"));
+        RuntimeConfig runtime = CoreSectionDecoder.runtime(root.object("runtime"));
+        ContextConfig context = CoreSectionDecoder.context(root.object("context"));
+        DeliveryConfig delivery = CoreSectionDecoder.delivery(root.object("delivery"));
+        Map<String, FormatterConfig> formatters = ExtensionSectionDecoder.formatters(
                 root.dynamicObject("formatters"), source, environment);
-        Map<String, JsonProfileConfig> jsonProfiles = parseJsonProfiles(
+        Map<String, JsonProfileConfig> jsonProfiles = ExtensionSectionDecoder.jsonProfiles(
                 root.dynamicObject("json_profiles"), source, environment);
-        Map<String, EncoderConfig> encoders = parseEncoders(
+        Map<String, EncoderConfig> encoders = ExtensionSectionDecoder.encoders(
                 root.dynamicObject("encoders"), source, environment);
-        Map<String, EnricherConfig> enrichers = parseEnrichers(
+        Map<String, EnricherConfig> enrichers = ExtensionSectionDecoder.enrichers(
                 root.dynamicObject("enrichers"), source, environment);
-        Map<String, FilterConfig> filters = parseFilters(
+        Map<String, FilterConfig> filters = ExtensionSectionDecoder.filters(
                 root.dynamicObject("filters"), source, environment);
         Map<String, OutputConfig> outputs = parseOutputs(
                 root.dynamicObject("outputs"), baseDirectory, source, environment);
@@ -140,398 +137,6 @@ public final class LogyardConfigLoader {
     private static ConfigurationException tooLarge(String source) {
         return new ConfigurationException(source + ": configuration exceeds "
                 + MAX_CONFIG_BYTES + " UTF-8 bytes");
-    }
-
-    private static ServiceConfig parseService(ConfigReader reader) {
-        String name = reader.string("name", "unknown-service");
-        String namespace = reader.string("namespace", "");
-        String version = reader.string("version", "unknown");
-        String environment = reader.string("environment", "unknown");
-        String instanceId = reader.string("instance_id", "unknown");
-        reader.finish();
-        try {
-            return new ServiceConfig(name, namespace, version, environment, instanceId);
-        } catch (IllegalArgumentException exception) {
-            throw reader.failure("name", exception.getMessage());
-        }
-    }
-
-    private static ResourceConfig parseResource(ConfigReader reader) {
-        Map<String, Object> raw = reader.dynamicObject("attributes");
-        Map<String, String> attributes = new LinkedHashMap<>();
-        raw.forEach((key, value) -> {
-            if (!(value instanceof String text)) {
-                throw reader.failure("attributes." + key, "expected a string");
-            }
-            attributes.put(key, expandEnvironment(
-                    text, reader.environment(), reader.source(), reader.childPath("attributes." + key)));
-        });
-        reader.finish();
-        try {
-            return new ResourceConfig(attributes);
-        } catch (IllegalArgumentException exception) {
-            throw reader.failure("attributes", exception.getMessage());
-        }
-    }
-
-    private static RuntimeConfig parseRuntime(ConfigReader reader) {
-        Duration shutdown = reader.duration("shutdown_timeout", Duration.ofSeconds(3));
-        String status = reader.string("internal_status", "warn").toLowerCase(Locale.ROOT);
-        if (!Set.of("off", "error", "warn", "info", "debug").contains(status)) {
-            throw reader.failure("internal_status", "must be off, error, warn, info, or debug");
-        }
-        boolean watch = reader.bool("watch", false);
-        Duration debounce = reader.duration("reload_debounce", Duration.ofMillis(250));
-        if (debounce.compareTo(Duration.ofSeconds(30)) > 0) {
-            throw reader.failure("reload_debounce", "must be between 0s and 30s");
-        }
-        reader.finish();
-        return new RuntimeConfig(shutdown, status, watch, debounce);
-    }
-
-    private static ContextConfig parseContext(ConfigReader reader) {
-        boolean trace = reader.bool("trace", true);
-        List<String> mdc = reader.stringList("mdc", List.of());
-        List<String> baggage = reader.stringList("baggage", List.of());
-        List<String> redact = reader.stringList("redact", List.of());
-        reader.finish();
-        try {
-            return new ContextConfig(trace, mdc, baggage, redact);
-        } catch (IllegalArgumentException exception) {
-            throw reader.failure("context", exception.getMessage());
-        }
-    }
-
-    private static DeliveryConfig parseDelivery(ConfigReader reader) {
-        String mode = reader.string("mode", "async");
-        int capacity = reader.integer("capacity", 65_536);
-        Map<String, Object> rawOverflow = reader.dynamicObject("overflow");
-        EnumMap<Level, OverflowRuleConfig> rules = defaultOverflow();
-        for (Map.Entry<String, Object> entry : rawOverflow.entrySet()) {
-            Level level = parseLevel(
-                    entry.getKey(), reader.source(), reader.childPath("overflow." + entry.getKey()));
-            rules.put(level, parseOverflowRule(
-                    entry.getValue(), reader, "overflow." + entry.getKey()));
-        }
-        reader.finish();
-        try {
-            return new DeliveryConfig(mode, capacity, rules);
-        } catch (IllegalArgumentException exception) {
-            throw reader.failure("delivery", exception.getMessage());
-        }
-    }
-
-    private static OverflowRuleConfig parseOverflowRule(
-            Object value,
-            ConfigReader parent,
-            String path) {
-        if (value instanceof String actionText) {
-            return new OverflowRuleConfig(parseOverflowAction(actionText, parent, path), Duration.ZERO);
-        }
-        ConfigReader rule = ConfigReader.fromValue(
-                value, parent.source(), parent.childPath(path), parent.environment());
-        OverflowAction action = parseOverflowAction(
-                rule.string("action", "drop"), rule, "action");
-        Duration timeout = rule.duration("timeout", Duration.ZERO);
-        rule.finish();
-        return new OverflowRuleConfig(action, timeout);
-    }
-
-    private static OverflowAction parseOverflowAction(
-            String text,
-            ConfigReader reader,
-            String key) {
-        try {
-            return OverflowAction.valueOf(text.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException exception) {
-            throw reader.failure(key, "must be drop, block, sync, or stderr");
-        }
-    }
-
-    private static EnumMap<Level, OverflowRuleConfig> defaultOverflow() {
-        EnumMap<Level, OverflowRuleConfig> rules = new EnumMap<>(Level.class);
-        rules.put(Level.TRACE, new OverflowRuleConfig(OverflowAction.DROP, Duration.ZERO));
-        rules.put(Level.DEBUG, new OverflowRuleConfig(OverflowAction.DROP, Duration.ZERO));
-        rules.put(Level.INFO, new OverflowRuleConfig(OverflowAction.DROP, Duration.ZERO));
-        rules.put(Level.WARN, new OverflowRuleConfig(OverflowAction.STDERR, Duration.ofMillis(2)));
-        rules.put(Level.ERROR, new OverflowRuleConfig(OverflowAction.STDERR, Duration.ZERO));
-        return rules;
-    }
-
-    private static Map<String, FormatterConfig> parseFormatters(
-            Map<String, Object> raw,
-            String source,
-            Map<String, String> environment) {
-        requireComponentCount(raw, source, "formatters");
-        Map<String, FormatterConfig> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(
-                    entry.getValue(), source, "formatters." + name, environment);
-            String type = reader.requiredString("type").toLowerCase(Locale.ROOT);
-            FormatterConfig formatter;
-            try {
-                formatter = switch (type) {
-                    case "template" -> new TemplateFormatterConfig(
-                            name, reader.requiredString("template"));
-                    case "custom" -> new ProviderFormatterConfig(
-                            name, parseProviderReference(reader));
-                    default -> throw reader.failure("type", "must be template or custom");
-                };
-            } catch (IllegalArgumentException exception) {
-                throw reader.failure(type.equals("template") ? "template" : "provider",
-                        exception.getMessage());
-            }
-            reader.finish();
-            result.put(name, formatter);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, JsonProfileConfig> parseJsonProfiles(
-            Map<String, Object> raw,
-            String source,
-            Map<String, String> environment) {
-        requireComponentCount(raw, source, "json_profiles");
-        Map<String, JsonProfileConfig> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(
-                    entry.getValue(), source, "json_profiles." + name, environment);
-            String preset = reader.string("preset", "logyard");
-            Map<String, String> rename = parseStringMap(
-                    reader.dynamicObject("rename"), reader, "rename", 32);
-            List<String> drop = reader.stringList("drop", List.of());
-            ConfigReader attributes = reader.object("attributes");
-            String mode = attributes.string("mode", "nested");
-            String prefix = attributes.string("prefix", "attributes.");
-            List<String> include = attributes.stringList("include", List.of());
-            List<String> exclude = attributes.stringList("exclude", List.of());
-            Map<String, String> attributeRename = parseStringMap(
-                    attributes.dynamicObject("rename"), attributes, "rename", 128);
-            attributes.finish();
-            reader.finish();
-            try {
-                JsonAttributeTransformConfig transform = new JsonAttributeTransformConfig(
-                        mode, prefix, include, exclude, attributeRename);
-                result.put(name, new JsonProfileConfig(name, preset, rename, drop, transform));
-            } catch (IllegalArgumentException exception) {
-                throw new ConfigurationException(
-                        source + ": json_profiles." + name + ": " + exception.getMessage(),
-                        exception);
-            }
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, EncoderConfig> parseEncoders(
-            Map<String, Object> raw,
-            String source,
-            Map<String, String> environment) {
-        requireComponentCount(raw, source, "encoders");
-        Map<String, EncoderConfig> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(
-                    entry.getValue(), source, "encoders." + name, environment);
-            String type = reader.requiredString("type").toLowerCase(Locale.ROOT);
-            EncoderConfig encoder;
-            try {
-                encoder = switch (type) {
-                    case "json" -> new JsonEncoderConfig(name, reader.string("profile", "logyard"));
-                    case "custom" -> new ProviderEncoderConfig(
-                            name, parseProviderReference(reader));
-                    default -> throw reader.failure("type", "must be json or custom");
-                };
-            } catch (IllegalArgumentException exception) {
-                throw reader.failure(type.equals("json") ? "profile" : "provider",
-                        exception.getMessage());
-            }
-            reader.finish();
-            result.put(name, encoder);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, EnricherConfig> parseEnrichers(
-            Map<String, Object> raw,
-            String source,
-            Map<String, String> environment) {
-        requireComponentCount(raw, source, "enrichers");
-        Map<String, EnricherConfig> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(
-                    entry.getValue(), source, "enrichers." + name, environment);
-            try {
-                result.put(name, new EnricherConfig(name, parseProviderReference(reader)));
-            } catch (IllegalArgumentException exception) {
-                throw reader.failure("provider", exception.getMessage());
-            }
-            reader.finish();
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static Map<String, FilterConfig> parseFilters(
-            Map<String, Object> raw,
-            String source,
-            Map<String, String> environment) {
-        requireComponentCount(raw, source, "filters");
-        Map<String, FilterConfig> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(
-                    entry.getValue(), source, "filters." + name, environment);
-            String type = reader.requiredString("type").toLowerCase(Locale.ROOT);
-            FilterConfig filter;
-            try {
-                filter = switch (type) {
-                    case "sampling" -> new SamplingFilterConfig(
-                            name,
-                            reader.number("probability", 1.0d),
-                            reader.string("key", "event-instance"),
-                            reader.longInteger("seed", 0L));
-                    case "rate_limit" -> new RateLimitFilterConfig(
-                            name,
-                            reader.number("permits_per_second", 100.0d),
-                            reader.integer("burst", 100),
-                            reader.string("key", "logger"),
-                            reader.integer("max_keys", 1_024));
-                    case "custom" -> new ProviderFilterConfig(
-                            name, parseProviderReference(reader));
-                    default -> throw reader.failure(
-                            "type", "must be sampling, rate_limit, or custom");
-                };
-            } catch (IllegalArgumentException exception) {
-                throw reader.failure("type", exception.getMessage());
-            }
-            reader.finish();
-            result.put(name, filter);
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static ProviderReferenceConfig parseProviderReference(ConfigReader reader) {
-        String provider = reader.requiredString("provider");
-        String implementation = reader.nullableString("implementation");
-        ProviderConfiguration configuration = parseProviderConfiguration(
-                reader.dynamicObject("config"), reader);
-        try {
-            return new ProviderReferenceConfig(provider, implementation, configuration);
-        } catch (IllegalArgumentException exception) {
-            throw reader.failure("provider", exception.getMessage());
-        }
-    }
-
-    private static ProviderConfiguration parseProviderConfiguration(
-            Map<String, Object> raw,
-            ConfigReader reader) {
-        LinkedHashMap<String, Object> flattened = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            flattenProviderValue(
-                    entry.getKey(), entry.getValue(), flattened, reader, "config." + entry.getKey(), 1);
-        }
-        try {
-            return flattened.isEmpty()
-                    ? ProviderConfiguration.EMPTY
-                    : new ProviderConfiguration(flattened);
-        } catch (IllegalArgumentException exception) {
-            throw reader.failure("config", exception.getMessage());
-        }
-    }
-
-    private static void flattenProviderValue(
-            String key,
-            Object value,
-            Map<String, Object> flattened,
-            ConfigReader reader,
-            String path,
-            int depth) {
-        if (depth > 4) {
-            throw reader.failure(path, "provider configuration nesting exceeds four levels");
-        }
-        if (value instanceof Map<?, ?> map) {
-            if (map.isEmpty()) {
-                throw reader.failure(path, "provider configuration table must not be empty");
-            }
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (!(entry.getKey() instanceof String child)) {
-                    throw reader.failure(path, "provider configuration key is not a string");
-                }
-                flattenProviderValue(
-                        key + "." + child,
-                        entry.getValue(),
-                        flattened,
-                        reader,
-                        path + "." + child,
-                        depth + 1);
-            }
-            return;
-        }
-        Object normalized = normalizeProviderValue(value, reader, path);
-        if (flattened.putIfAbsent(key, normalized) != null) {
-            throw reader.failure(path, "duplicate flattened provider configuration key '" + key + "'");
-        }
-        if (flattened.size() > ProviderConfiguration.MAX_ENTRIES) {
-            throw reader.failure("config", "provider configuration exceeds "
-                    + ProviderConfiguration.MAX_ENTRIES + " entries");
-        }
-    }
-
-    private static Object normalizeProviderValue(Object value, ConfigReader reader, String path) {
-        if (value instanceof String text) {
-            return expandEnvironment(
-                    text, reader.environment(), reader.source(), reader.childPath(path));
-        }
-        if (value instanceof Long || value instanceof Double || value instanceof Boolean) {
-            return value;
-        }
-        if (value instanceof List<?> list) {
-            List<Object> copy = new ArrayList<>(list.size());
-            for (int index = 0; index < list.size(); index++) {
-                Object item = list.get(index);
-                if (item instanceof Map<?, ?> || item instanceof List<?>) {
-                    throw reader.failure(path + "[" + index + "]",
-                            "provider configuration arrays must contain scalar values");
-                }
-                copy.add(normalizeProviderValue(item, reader, path + "[" + index + "]"));
-            }
-            return List.copyOf(copy);
-        }
-        throw reader.failure(path, "provider configuration values must be scalar or scalar arrays");
-    }
-
-    private static Map<String, String> parseStringMap(
-            Map<String, Object> raw,
-            ConfigReader reader,
-            String key,
-            int maximum) {
-        if (raw.size() > maximum) {
-            throw reader.failure(key, "must contain at most " + maximum + " entries");
-        }
-        LinkedHashMap<String, String> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            if (!(entry.getValue() instanceof String text)) {
-                throw reader.failure(key + "." + entry.getKey(), "expected a string");
-            }
-            result.put(entry.getKey(), expandEnvironment(
-                    text,
-                    reader.environment(),
-                    reader.source(),
-                    reader.childPath(key + "." + entry.getKey())));
-        }
-        return Collections.unmodifiableMap(result);
-    }
-
-    private static void requireComponentCount(
-            Map<String, Object> raw,
-            String source,
-            String section) {
-        if (raw.size() > 128) {
-            throw new ConfigurationException(
-                    source + ": " + section + ": at most 128 entries are supported");
-        }
     }
 
     private static Map<String, OutputConfig> parseOutputs(
@@ -618,7 +223,7 @@ public final class LogyardConfigLoader {
 
     private static CustomOutputConfig parseCustomOutput(String name, ConfigReader output) {
         Level minimum = output.level("min_level", Level.TRACE);
-        ProviderReferenceConfig providerReference = parseProviderReference(output);
+        ProviderReferenceConfig providerReference = ProviderReferenceDecoder.decode(output);
         String formatter = output.nullableString("formatter");
         String encoder = output.nullableString("encoder");
         DeliveryOverrideConfig delivery = parseDeliveryOverride(output.object("delivery"));
