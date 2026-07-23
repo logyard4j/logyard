@@ -1,7 +1,6 @@
 package com.zsumz.logyard.api;
 
-import com.zsumz.logyard.api.event.AttributeSet;
-import com.zsumz.logyard.api.ingress.IngressMetadata;
+import com.zsumz.logyard.api.ingress.LogEventIngress;
 
 /**
  * Stable native logger contract.
@@ -9,22 +8,7 @@ import com.zsumz.logyard.api.ingress.IngressMetadata;
  * <p>Implementations must perform level checks before inspecting arguments, suppliers, context,
  * clocks, or thread metadata.</p>
  */
-public interface LogyardLogger {
-    /**
-     * Returns this logger's stable hierarchical name.
-     *
-     * @return logger name
-     */
-    String name();
-
-    /**
-     * Returns whether events at a level can reach at least one configured route.
-     *
-     * @param level level to test
-     * @return {@code true} when the level is enabled
-     */
-    boolean isEnabled(Level level);
-
+public interface LogyardLogger extends LogEventIngress {
     /**
      * Returns whether trace events are enabled.
      *
@@ -303,41 +287,4 @@ public interface LogyardLogger {
      */
     void error(String message, Throwable error);
 
-    /**
-     * Adapter ingress preserving the caller's template, arguments, fields, and throwable.
-     *
-     * @param level event level
-     * @param eventName stable event name, or {@code null}
-     * @param messageTemplate message template, or {@code null}
-     * @param arguments positional arguments
-     * @param attributes structured attributes
-     * @param throwable throwable to capture, or {@code null}
-     */
-    void log(
-            Level level,
-            String eventName,
-            String messageTemplate,
-            Object[] arguments,
-            AttributeSet attributes,
-            Throwable throwable);
-
-    /**
-     * Adapter ingress that also preserves source timestamp and logical thread metadata.
-     *
-     * @param level event level
-     * @param eventName stable event name, or {@code null}
-     * @param messageTemplate message template, or {@code null}
-     * @param arguments positional arguments
-     * @param attributes structured attributes
-     * @param throwable throwable to capture, or {@code null}
-     * @param metadata source metadata supplied by the adapter
-     */
-    void log(
-            Level level,
-            String eventName,
-            String messageTemplate,
-            Object[] arguments,
-            AttributeSet attributes,
-            Throwable throwable,
-            IngressMetadata metadata);
 }

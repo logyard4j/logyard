@@ -17,7 +17,6 @@ MAX_JAVA_SOURCE_LINES = 300
 # Temporary migration ledger. Checked-in generated sources receive no exemption:
 # generated Java belongs under ignored build output, not the maintained source tree.
 LINE_LIMIT_DEBT = {
-    "modules/logyard-api/src/main/java/com/zsumz/logyard/api/LogyardLogger.java": 343,
     "modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/AttributeSet.java": 356,
     "modules/logyard-config-toml/src/main/java/com/zsumz/logyard/config/toml/TomlParser.java": 491,
     "modules/logyard-config-toml/src/test/java/com/zsumz/logyard/config/LogyardConfigLoaderTest.java": 409,

@@ -1,10 +1,10 @@
 package com.zsumz.logyard.slf4j.internal.event;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.MessageFormatter;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
+import com.zsumz.logyard.api.ingress.LogEventIngress;
 import com.zsumz.logyard.slf4j.internal.context.ContextSnapshotPolicy;
 import com.zsumz.logyard.slf4j.internal.context.LogyardMdcAdapter;
 import com.zsumz.logyard.slf4j.internal.diagnostics.ProviderDiagnostics;
@@ -42,7 +42,7 @@ public final class Slf4jEventMapper {
     }
 
     public void publishNormalized(
-            LogyardLogger delegate,
+            LogEventIngress delegate,
             org.slf4j.event.Level sourceLevel,
             Marker marker,
             String messagePattern,
@@ -72,7 +72,7 @@ public final class Slf4jEventMapper {
         }
     }
 
-    public void publish(LogyardLogger delegate, LoggingEvent event) {
+    public void publish(LogEventIngress delegate, LoggingEvent event) {
         Objects.requireNonNull(delegate, "delegate");
         Objects.requireNonNull(event, "event");
         Capture capture = new Capture();

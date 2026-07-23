@@ -1,10 +1,10 @@
 package com.zsumz.logyard.jul.internal.event;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
+import com.zsumz.logyard.api.ingress.LogEventIngress;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -20,7 +20,7 @@ public final class JulEventMapper {
             return;
         }
         Level level = JulLevelMapper.toLogyard(sourceLevel);
-        LogyardLogger logger = runtime.logger(loggerName(record));
+        LogEventIngress logger = runtime.logger(loggerName(record));
         if (!logger.isEnabled(level)) {
             return;
         }

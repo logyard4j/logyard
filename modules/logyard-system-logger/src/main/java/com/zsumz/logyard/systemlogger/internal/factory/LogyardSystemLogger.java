@@ -1,7 +1,7 @@
 package com.zsumz.logyard.systemlogger.internal.factory;
 
-import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.ingress.LogEventIngress;
 import com.zsumz.logyard.runtime.adapter.AdapterReentryGuard;
 import com.zsumz.logyard.runtime.adapter.AdapterRuntimeAccess;
 import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
@@ -39,7 +39,7 @@ public final class LogyardSystemLogger implements System.Logger {
             return false;
         }
         try {
-            LogyardLogger logger = runtime.runtime().logger(name);
+            LogEventIngress logger = runtime.runtime().logger(name);
             return logger.isEnabled(SystemLevelMapper.toLogyard(sourceLevel));
         } catch (Throwable failure) {
             AdapterDiagnostics.rethrowIfFatal(failure);
@@ -80,7 +80,7 @@ public final class LogyardSystemLogger implements System.Logger {
         }
         try {
             com.zsumz.logyard.api.Level logyardLevel = SystemLevelMapper.toLogyard(sourceLevel);
-            LogyardLogger logger = runtime.runtime().logger(name);
+            LogEventIngress logger = runtime.runtime().logger(name);
             if (!logger.isEnabled(logyardLevel)) {
                 return;
             }
