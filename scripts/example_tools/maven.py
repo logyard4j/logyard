@@ -14,6 +14,12 @@ class MavenExample:
     main_class: str
 
 
+@dataclass(frozen=True)
+class BuiltMavenExample:
+    example: MavenExample
+    runtime_classpath: str
+
+
 class MavenExampleRunner:
     def __init__(self, release_repository: Path, version: str, target: Path) -> None:
         self._release_repository = release_repository
@@ -30,6 +36,13 @@ class MavenExampleRunner:
             output.unlink()
 
     def build_and_run(self, example: MavenExample) -> Path:
+        built = self.build(example)
+        output = self.output_path(example)
+        environment = self.environment(output)
+        self._run(self.java_command(built), example.project_directory, environment)
+        return output
+
+    def build(self, example: MavenExample) -> BuiltMavenExample:
         project = example.project_directory
         classpath_file = project / "target" / "runtime-classpath.txt"
         self._run(
@@ -47,22 +60,32 @@ class MavenExampleRunner:
             ),
             project,
         )
-        output = self._target / f"{example.name}.jsonl"
+        return BuiltMavenExample(example, classpath_file.read_text(encoding="utf-8").strip())
+
+    def output_path(self, example: MavenExample) -> Path:
+        return self._target / f"{example.name}.jsonl"
+
+    @staticmethod
+    def environment(output: Path, additional: dict[str, str] | None = None) -> dict[str, str]:
         environment = os.environ.copy()
         environment["LOGYARD_EXAMPLE_OUTPUT"] = str(output)
-        runtime_classpath = classpath_file.read_text(encoding="utf-8").strip()
-        self._run(
-            (
-                "java",
-                "-Dlogyard.config=classpath:logyard.toml",
-                "-cp",
-                os.pathsep.join((str(project / "target" / "classes"), runtime_classpath)),
-                example.main_class,
+        environment.update(additional or {})
+        return environment
+
+    @staticmethod
+    def java_command(built: BuiltMavenExample) -> tuple[str, ...]:
+        return (
+            "java",
+            "-Dlogyard.config=classpath:logyard.toml",
+            "-cp",
+            os.pathsep.join(
+                (
+                    str(built.example.project_directory / "target" / "classes"),
+                    built.runtime_classpath,
+                )
             ),
-            project,
-            environment,
+            built.example.main_class,
         )
-        return output
 
     @staticmethod
     def _run(command: tuple[str, ...], directory: Path, environment: dict[str, str] | None = None) -> None:

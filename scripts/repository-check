@@ -61,6 +61,7 @@ required_files=(
   scripts/release-verify
   modules/logyard-bom/publication.toml
   examples/slf4j/pom.xml
+  examples/vertx/pom.xml
   scripts/verify
   scripts/architecture-check
   modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider

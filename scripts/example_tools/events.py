@@ -54,6 +54,10 @@ class EventLog:
             if parsed.year < 2000:
                 raise AssertionError(f"event {event.get('body')!r} has an invalid source timestamp: {timestamp}")
 
+    def require_logger_prefix(self, prefix: str) -> None:
+        if not any(str(event.get("logger", "")).startswith(prefix) for event in self._events):
+            raise AssertionError(f"no structured event was emitted by a logger under {prefix}")
+
     @staticmethod
     def _equal(expected: Any, actual: Any, body: str, field: str) -> None:
         if actual != expected:
