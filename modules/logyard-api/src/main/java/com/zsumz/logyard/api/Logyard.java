@@ -82,4 +82,19 @@ public final class Logyard {
             runtime.close();
         }
     }
+
+    /**
+     * Removes and closes the expected process-global runtime without affecting a replacement.
+     *
+     * @param expected runtime expected to be installed
+     * @return {@code true} when the expected runtime was removed and closed
+     */
+    public static boolean shutdownIfCurrent(LogyardRuntime expected) {
+        Objects.requireNonNull(expected, "expected");
+        if (!RUNTIME.compareAndSet(expected, null)) {
+            return false;
+        }
+        expected.close();
+        return true;
+    }
 }

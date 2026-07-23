@@ -61,13 +61,14 @@ Native and framework integrations can also supply bounded configuration directly
 import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
 import com.zsumz.logyard.runtime.bootstrap.LogyardConfigurationSource;
 import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
+import com.zsumz.logyard.runtime.bootstrap.RuntimeOwner;
 
 LogyardConfigurationSource source = LogyardConfigurationSource.classpath(
         applicationClassLoader,
         "logging/logyard.toml",
         applicationDirectory);
 
-try (RuntimeBundle logyard = LogyardBootstrap.start(source)) {
+try (RuntimeBundle logyard = LogyardBootstrap.acquire(RuntimeOwner.FRAMEWORK, source)) {
     // use logyard.runtime()
 }
 ```
@@ -85,7 +86,7 @@ LOG.atInfo()
         .log("order accepted");
 ```
 
-The provider starts Logyard lazily from the discovered configuration. If the application has already started a global Logyard runtime, the provider borrows it instead of creating a second one.
+The provider acquires an adapter lease lazily. Applications, frameworks, and adapters all converge on one process-wide runtime: an early adapter can be reconfigured in place by a later application or framework without invalidating loggers already returned to libraries, while a late adapter cannot overwrite a framework-selected source.
 
 Native applications own the runtime explicitly:
 
@@ -105,7 +106,7 @@ try (RuntimeBundle logyard = LogyardBootstrap.start()) {
 }
 ```
 
-Closing `RuntimeBundle` stops configuration watching, flushes buffered events, closes outputs, and removes the runtime from the process-global `Logyard` facade.
+Closing `RuntimeBundle` releases that owner’s lease. Configuration watching, buffered delivery, outputs, and the process-global `Logyard` reference are closed only when the final ownership lease is released.
 
 ## Event model
 

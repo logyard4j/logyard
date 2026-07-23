@@ -1,2 +1,2 @@
-/** Deterministic configuration discovery, process bootstrap, reload outcomes, and owned runtime lifecycle. */
+/** Configuration discovery, source selection, typed ownership leases, and shared runtime bootstrap. */
 package com.zsumz.logyard.runtime.bootstrap;

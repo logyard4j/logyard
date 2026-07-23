@@ -67,14 +67,37 @@ final class LogyardConfigurationSourceTest {
     @Test
     void textSourceIsDigestStableAndExplicitlyReloadable() throws Exception {
         LogyardConfigurationSource source = LogyardConfigurationSource.text("framework:test", consoleConfig("debug"), Path.of("."));
+        LogyardConfigurationSource equivalent = LogyardConfigurationSource.text("framework:test", consoleConfig("debug"), Path.of("."));
 
         assertTrue(source.snapshot().sameContent(source.snapshot()));
+        assertEquals(source.identity(), equivalent.identity());
         try (RuntimeBundle bundle = LogyardBootstrap.start(source)) {
             assertEquals(source, bundle.configurationSource());
             assertNull(bundle.source());
             assertFalse(bundle.watchesConfiguration());
             assertTrue(bundle.runtime().logger("example.Logger").isDebugEnabled());
             assertEquals(ReloadResult.UNCHANGED, bundle.reloadNow());
+        }
+    }
+
+    @Test
+    void frameworkAcquisitionReconfiguresTheApplicationRuntimeWithoutReplacingIt() {
+        LogyardConfigurationSource applicationSource = LogyardConfigurationSource.text("application:test", consoleConfig("info"), Path.of("."));
+        LogyardConfigurationSource frameworkSource = LogyardConfigurationSource.text("framework:test", consoleConfig("debug"), Path.of("."));
+
+        RuntimeBundle application = LogyardBootstrap.start(applicationSource);
+        try {
+            var logger = application.runtime().logger("example.Service");
+            assertFalse(logger.isDebugEnabled());
+            try (RuntimeBundle framework = LogyardBootstrap.acquire(RuntimeOwner.FRAMEWORK, frameworkSource)) {
+                assertEquals(application.runtime(), framework.runtime());
+                assertEquals(logger, framework.runtime().logger("example.Service"));
+                assertTrue(logger.isDebugEnabled());
+                application.close();
+                assertTrue(framework.active());
+            }
+        } finally {
+            application.close();
         }
     }
 

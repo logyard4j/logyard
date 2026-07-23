@@ -47,16 +47,19 @@ public final class LogyardConfigurationSource {
     private final String description;
     private final Path baseDirectory;
     private final Path watchPath;
+    private final Object identity;
     private final ContentReader reader;
 
     private LogyardConfigurationSource(
             String description,
             Path baseDirectory,
             Path watchPath,
+            Object identity,
             ContentReader reader) {
         this.description = description(description);
         this.baseDirectory = normalizeDirectory(baseDirectory);
         this.watchPath = watchPath == null ? null : watchPath.toAbsolutePath().normalize();
+        this.identity = Objects.requireNonNull(identity, "identity");
         this.reader = Objects.requireNonNull(reader, "reader");
     }
 
@@ -74,6 +77,7 @@ public final class LogyardConfigurationSource {
                 normalized.toString(),
                 base,
                 normalized,
+                new FileSourceIdentity(normalized),
                 () -> readFile(normalized));
     }
 
@@ -91,10 +95,12 @@ public final class LogyardConfigurationSource {
             Path baseDirectory) {
         Objects.requireNonNull(loader, "loader");
         String normalized = resource(resource);
+        Path base = normalizeDirectory(baseDirectory);
         return new LogyardConfigurationSource(
                 "classpath:" + normalized,
-                baseDirectory,
+                base,
                 null,
+                new ClasspathSourceIdentity(loader, normalized, base),
                 () -> readClasspath(loader, normalized));
     }
 
@@ -111,10 +117,13 @@ public final class LogyardConfigurationSource {
             String toml,
             Path baseDirectory) {
         byte[] content = boundedUtf8(toml);
+        String normalizedDescription = description(description);
+        Path base = normalizeDirectory(baseDirectory);
         return new LogyardConfigurationSource(
-                description,
-                baseDirectory,
+                normalizedDescription,
+                base,
                 null,
+                new TextSourceIdentity(normalizedDescription, base),
                 () -> content.clone());
     }
 
@@ -157,6 +166,10 @@ public final class LogyardConfigurationSource {
 
     Path watchPath() {
         return watchPath;
+    }
+
+    Object identity() {
+        return identity;
     }
 
     private static byte[] readFile(Path path) throws IOException {
@@ -233,5 +246,36 @@ public final class LogyardConfigurationSource {
     @FunctionalInterface
     private interface ContentReader {
         byte[] read() throws IOException;
+    }
+
+    private record FileSourceIdentity(Path path) {
+    }
+
+    private record TextSourceIdentity(String description, Path baseDirectory) {
+    }
+
+    private static final class ClasspathSourceIdentity {
+        private final ClassLoader loader;
+        private final String resource;
+        private final Path baseDirectory;
+
+        private ClasspathSourceIdentity(ClassLoader loader, String resource, Path baseDirectory) {
+            this.loader = loader;
+            this.resource = resource;
+            this.baseDirectory = baseDirectory;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof ClasspathSourceIdentity identity
+                    && loader == identity.loader
+                    && resource.equals(identity.resource)
+                    && baseDirectory.equals(identity.baseDirectory);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * (31 * System.identityHashCode(loader) + resource.hashCode()) + baseDirectory.hashCode();
+        }
     }
 }

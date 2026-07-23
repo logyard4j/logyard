@@ -1,104 +1,70 @@
 package com.zsumz.logyard.runtime.bootstrap;
 
-import com.zsumz.logyard.api.Logyard;
-import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
-import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
-import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
-import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
-import com.zsumz.logyard.runtime.diagnostics.StderrReloadDiagnostics;
-import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
-import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
-import com.zsumz.logyard.runtime.reload.ReloadCoordinator;
+import com.zsumz.logyard.runtime.installation.ConfigurationInstallationRequest;
+import com.zsumz.logyard.runtime.installation.RuntimeInstallationLease;
+import com.zsumz.logyard.runtime.installation.RuntimeInstallationManager;
 
-import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.Objects;
 
-/** Explicit process bootstrap used by applications and the SLF4J provider. */
+/** Entry point for acquiring ownership leases on the process-wide Logyard runtime. */
 public final class LogyardBootstrap {
     private LogyardBootstrap() {
     }
 
     /**
-     * Starts Logyard with deterministic discovery and safe defaults when no configuration exists.
+     * Acquires an application lease using deterministic discovery and safe defaults.
      *
-     * @return owned runtime bundle
+     * @return application-owned runtime bundle
      */
     public static RuntimeBundle start() {
-        return start(ConfigurationDiscovery.resolve());
+        return acquire(RuntimeOwner.APPLICATION, ConfigurationDiscovery.resolve());
     }
 
     /**
-     * Starts Logyard from a filesystem configuration.
+     * Acquires an application lease using a filesystem configuration.
      *
      * @param source configuration path
-     * @return owned runtime bundle
+     * @return application-owned runtime bundle
      */
     public static RuntimeBundle start(Path source) {
         return start(LogyardConfigurationSource.file(Objects.requireNonNull(source, "source")));
     }
 
     /**
-     * Starts Logyard from a file, classpath, text, framework, or safe-default source.
+     * Acquires an application lease using a file, classpath, text, framework, or default source.
      *
      * @param source configuration source
-     * @return owned runtime bundle
+     * @return application-owned runtime bundle
      */
     public static RuntimeBundle start(LogyardConfigurationSource source) {
+        return acquire(RuntimeOwner.APPLICATION, source);
+    }
+
+    /**
+     * Acquires a typed ownership lease, installing or reconfiguring the same process-wide runtime.
+     *
+     * <p>Framework acquisition applies the supplied source in place. Adapter acquisition borrows
+     * an externally installed application runtime when one predates the installation manager.</p>
+     *
+     * @param owner lifecycle participant
+     * @param source configuration source
+     * @return ownership-aware runtime bundle
+     */
+    public static RuntimeBundle acquire(RuntimeOwner owner, LogyardConfigurationSource source) {
+        Objects.requireNonNull(owner, "owner");
         Objects.requireNonNull(source, "source");
-        ConfigurationSnapshot snapshot;
-        try {
-            snapshot = source.snapshot();
-        } catch (IOException failure) {
-            throw new IllegalStateException("failed to read Logyard configuration " + source.description(), failure);
-        }
-        Map<String, String> environment = System.getenv();
-        LogyardConfig config = snapshot.parse(environment);
-        RuntimeAssembly assembly = LogyardRuntimeFactory.assemble(config, null);
-        DefaultLogyardRuntime runtime = new DefaultLogyardRuntime(assembly.plan());
-        LogyardRuntimeFactory.attach(runtime, assembly);
-        boolean initialized = false;
-        try {
-            Logyard.initialize(runtime);
-            initialized = true;
-            ReloadDiagnostics diagnostics = "off".equals(config.runtime().internalStatus())
-                    ? ReloadDiagnostics.silent()
-                    : new StderrReloadDiagnostics(System.err);
-            ReloadCoordinator coordinator = new ReloadCoordinator(
-                    source.description(),
-                    source.watchPath(),
-                    source::snapshot,
-                    runtime,
-                    snapshot,
-                    assembly,
-                    diagnostics,
-                    environment);
-            ConfigurationWatcher watcher = config.runtime().watch() && source.watchPath() != null
-                    ? ConfigurationWatcher.start(
-                            source.watchPath(),
-                            config.runtime().reloadDebounce(),
-                            config.runtime().shutdownTimeout(),
-                            coordinator,
-                            diagnostics)
-                    : null;
-            return new RuntimeBundle(source, runtime, coordinator, watcher);
-        } catch (RuntimeException | Error failure) {
-            if (initialized && Logyard.runtimeOrNull() == runtime) {
-                try {
-                    Logyard.shutdown();
-                } catch (RuntimeException closeFailure) {
-                    failure.addSuppressed(closeFailure);
-                }
-            } else {
-                try {
-                    runtime.close();
-                } catch (RuntimeException closeFailure) {
-                    failure.addSuppressed(closeFailure);
-                }
-            }
-            throw failure;
-        }
+        ConfigurationInstallationRequest request = new ConfigurationInstallationRequest(
+                source.description(),
+                source.watchPath(),
+                source.identity(),
+                source::snapshot);
+        RuntimeInstallationManager manager = RuntimeInstallationManager.process();
+        RuntimeInstallationLease lease = switch (owner) {
+            case APPLICATION -> manager.acquireApplication(request);
+            case FRAMEWORK -> manager.acquireFramework(request);
+            case ADAPTER -> manager.acquireAdapter(request);
+        };
+        return new RuntimeBundle(source, lease);
     }
 }

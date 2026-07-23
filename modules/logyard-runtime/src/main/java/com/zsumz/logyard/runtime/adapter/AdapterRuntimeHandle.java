@@ -1,6 +1,7 @@
 package com.zsumz.logyard.runtime.adapter;
 
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
 import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
@@ -10,11 +11,11 @@ import java.util.function.Supplier;
 
 /** One ownership-aware lease on the runtime selected for a compatibility adapter. */
 public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
-    private final AdapterRuntimeLease lease;
+    private final RuntimeBundle bundle;
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    AdapterRuntimeHandle(AdapterRuntimeLease lease) {
-        this.lease = Objects.requireNonNull(lease, "lease");
+    AdapterRuntimeHandle(RuntimeBundle bundle) {
+        this.bundle = Objects.requireNonNull(bundle, "bundle");
     }
 
     @Override
@@ -22,11 +23,11 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
         if (!initialized()) {
             throw new IllegalStateException("Logyard adapter runtime lease is closed or stale");
         }
-        return lease.runtime();
+        return bundle.runtime();
     }
 
     public boolean ownsRuntime() {
-        return lease.ownsRuntime();
+        return bundle.ownsRuntime();
     }
 
     /** Stable context-policy source for event adapters; obtaining it is a control-plane operation. */
@@ -36,7 +37,7 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
 
     @Override
     public boolean initialized() {
-        return !closed.get() && lease.active();
+        return !closed.get() && bundle.active();
     }
 
     @Override
@@ -44,6 +45,6 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
         if (!closed.compareAndSet(false, true)) {
             return;
         }
-        lease.release();
+        bundle.close();
     }
 }

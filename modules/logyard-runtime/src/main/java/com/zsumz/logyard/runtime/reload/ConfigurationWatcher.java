@@ -7,6 +7,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Lifecycle façade for a parent-directory configuration watch. */
 public final class ConfigurationWatcher implements AutoCloseable {
@@ -16,6 +17,7 @@ public final class ConfigurationWatcher implements AutoCloseable {
     private final Duration closeTimeout;
     private final ConfigurationWatchLoop watchLoop;
     private final Thread worker;
+    private final AtomicBoolean activated = new AtomicBoolean();
 
     private ConfigurationWatcher(
             ConfigurationWatchRegistration registration,
@@ -50,6 +52,17 @@ public final class ConfigurationWatcher implements AutoCloseable {
             Duration closeTimeout,
             Runnable reload,
             ReloadDiagnostics diagnostics) {
+        ConfigurationWatcher watcher = prepare(source, debounce, closeTimeout, reload, diagnostics);
+        watcher.activate();
+        return watcher;
+    }
+
+    public static ConfigurationWatcher prepare(
+            Path source,
+            Duration debounce,
+            Duration closeTimeout,
+            Runnable reload,
+            ReloadDiagnostics diagnostics) {
         ConfigurationWatcher watcher;
         try {
             watcher = new ConfigurationWatcher(
@@ -61,12 +74,18 @@ public final class ConfigurationWatcher implements AutoCloseable {
         } catch (IOException failure) {
             throw new UncheckedIOException("failed to watch Logyard configuration " + source, failure);
         }
+        return watcher;
+    }
+
+    public void activate() {
+        if (!activated.compareAndSet(false, true)) {
+            throw new IllegalStateException("configuration watcher is already active");
+        }
         try {
-            watcher.worker.start();
-            return watcher;
+            worker.start();
         } catch (RuntimeException | Error failure) {
             try {
-                watcher.watchLoop.stop();
+                watchLoop.stop();
             } catch (RuntimeException closeFailure) {
                 failure.addSuppressed(closeFailure);
             }

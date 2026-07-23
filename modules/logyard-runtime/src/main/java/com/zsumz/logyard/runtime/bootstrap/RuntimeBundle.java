@@ -1,46 +1,36 @@
 package com.zsumz.logyard.runtime.bootstrap;
 
-import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.reload.ReloadResult;
-import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
-import com.zsumz.logyard.runtime.reload.ReloadCoordinator;
+import com.zsumz.logyard.runtime.installation.RuntimeInstallationLease;
 
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Owns one runtime, its current configuration, and optional reload infrastructure. */
+/** One ownership lease on the process-wide runtime and its active configuration lifecycle. */
 public final class RuntimeBundle implements AutoCloseable {
     private final LogyardConfigurationSource configurationSource;
-    private final LogyardRuntime runtime;
-    private final ReloadCoordinator reloadCoordinator;
-    private final ConfigurationWatcher watcher;
-    private final AtomicBoolean closed = new AtomicBoolean();
+    private final RuntimeInstallationLease lease;
 
     RuntimeBundle(
             LogyardConfigurationSource configurationSource,
-            LogyardRuntime runtime,
-            ReloadCoordinator reloadCoordinator,
-            ConfigurationWatcher watcher) {
+            RuntimeInstallationLease lease) {
         this.configurationSource = Objects.requireNonNull(configurationSource, "configurationSource");
-        this.runtime = Objects.requireNonNull(runtime, "runtime");
-        this.reloadCoordinator = reloadCoordinator;
-        this.watcher = watcher;
+        this.lease = Objects.requireNonNull(lease, "lease");
     }
 
     /**
-     * Returns the watched filesystem path used by the legacy path bootstrap, or {@code null} for
-     * classpath, text, default, and source-less bundles.
+     * Returns the filesystem path selected by this acquisition, or {@code null} for classpath,
+     * text, and default sources.
      *
-     * @return watched filesystem configuration path, if any
+     * @return selected filesystem configuration path, if any
      */
     public Path source() {
-        return configurationSource == null ? null : configurationSource.watchPath();
+        return configurationSource.watchPath();
     }
 
     /**
-     * Returns the configuration source that owns this bundle.
+     * Returns the configuration source selected by this acquisition.
      *
      * @return configuration source
      */
@@ -49,63 +39,53 @@ public final class RuntimeBundle implements AutoCloseable {
     }
 
     /**
-     * Returns the owned runtime.
+     * Returns the shared runtime. After the final lease closes, the returned runtime is stopped.
      *
-     * @return Logyard runtime
+     * @return shared Logyard runtime
      */
     public LogyardRuntime runtime() {
-        return runtime;
+        return lease.runtime();
     }
 
     /**
-     * Reports whether a filesystem watcher is active.
+     * Reports whether this lease still refers to the installed runtime.
+     *
+     * @return {@code true} while active
+     */
+    public boolean active() {
+        return lease.active();
+    }
+
+    /**
+     * Reports whether this lease participates in managed runtime ownership.
+     *
+     * @return {@code true} for manager-owned runtimes, or {@code false} for a borrowed external runtime
+     */
+    public boolean ownsRuntime() {
+        return lease.ownsRuntime();
+    }
+
+    /**
+     * Reports whether the shared runtime currently has an active filesystem watcher.
      *
      * @return {@code true} when changes are watched
      */
     public boolean watchesConfiguration() {
-        return watcher != null;
+        return lease.watchesConfiguration();
     }
 
     /**
-     * Re-reads the source and applies changed content atomically.
+     * Re-reads the active process-wide source and applies changed content atomically.
      *
      * @return reload outcome
      */
     public ReloadResult reloadNow() {
-        if (reloadCoordinator == null) {
-            throw new IllegalStateException("this runtime bundle has no configuration source");
-        }
-        return reloadCoordinator.reloadIfChanged();
+        return lease.reloadNow();
     }
 
+    /** Releases this ownership lease and closes the runtime only when it is the final lease. */
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true)) {
-            return;
-        }
-        RuntimeException failure = null;
-        if (watcher != null) {
-            try {
-                watcher.close();
-            } catch (RuntimeException watcherFailure) {
-                failure = watcherFailure;
-            }
-        }
-        try {
-            if (Logyard.runtimeOrNull() == runtime) {
-                Logyard.shutdown();
-            } else {
-                runtime.close();
-            }
-        } catch (RuntimeException runtimeFailure) {
-            if (failure == null) {
-                failure = runtimeFailure;
-            } else {
-                failure.addSuppressed(runtimeFailure);
-            }
-        }
-        if (failure != null) {
-            throw failure;
-        }
+        lease.close();
     }
 }
