@@ -16,13 +16,11 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 
 /** Bounded asynchronous delivery with explicit per-severity overload behavior. */
 public final class AsyncSink implements EventSink, HealthContributor {
     public static final int MAX_CAPACITY = 16_777_216;
     private final String name;
-    private final EventSink delegate;
     private final BatchEventSink batchDelegate;
     private final int maximumBatchSize;
     private final long maximumBatchDelayNanos;
@@ -33,8 +31,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
     private final AsyncSinkMetrics metrics = new AsyncSinkMetrics();
     private final AsyncDropReporter dropReporter = new AsyncDropReporter(metrics);
     private final AsyncSinkDiagnostics diagnostics;
+    private final AsyncDelegateDelivery delivery;
     private final Thread worker;
-    private final ReentrantLock deliveryLock = new ReentrantLock();
     private final AtomicInteger activeDeliveries = new AtomicInteger();
     private final AtomicBoolean delegateCloseStarted = new AtomicBoolean();
     private volatile boolean accepting = true;
@@ -64,8 +62,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
         }
         this.name = CaptureLimits.name(Objects.requireNonNull(name, "name"));
         diagnostics = new AsyncSinkDiagnostics(this.name);
-        this.delegate = Objects.requireNonNull(delegate, "delegate");
-        batchDelegate = delegate instanceof BatchEventSink batch ? batch : null;
+        delivery = new AsyncDelegateDelivery(Objects.requireNonNull(delegate, "delegate"), metrics, diagnostics);
+        batchDelegate = delivery.batchDelegate();
         maximumBatchSize = batchDelegate == null ? 1 : batchDelegate.maximumBatchSize();
         if (maximumBatchSize < 1 || maximumBatchSize > 4_096) {
             throw new IllegalArgumentException("batch size must be between 1 and 4096");
@@ -133,15 +131,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
                     + " queued and " + activeDeliveries.get() + " active event(s)");
             return;
         }
-        deliveryLock.lock();
-        try {
-            delegate.flush();
-        } catch (RuntimeException failure) {
-            diagnostics.status("delegate flush failure: "
-                    + EmergencyText.failureSummary(failure, 2_048));
-        } finally {
-            deliveryLock.unlock();
-        }
+        delivery.flush();
     }
 
     @Override
@@ -174,7 +164,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
 
     @Override
     public ComponentHealth health(String componentName) {
-        return AsyncSinkHealth.snapshot(componentName, delegate, new AsyncSinkHealth.State(
+        return AsyncSinkHealth.snapshot(componentName, delivery.delegate(), new AsyncSinkHealth.State(
                 running,
                 accepting,
                 worker.isAlive(),
@@ -304,7 +294,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
                 }
                 events.add(next);
             }
-            deliverApplicationBatch(events);
+            delivery.deliverBatch(events);
         } finally {
             eventQueue.completeClaims(events.size());
             activeDeliveries.decrementAndGet();
@@ -314,42 +304,11 @@ public final class AsyncSink implements EventSink, HealthContributor {
         }
     }
 
-    private void deliverApplicationBatch(List<LogEvent> events) {
-        deliveryLock.lock();
-        try {
-            batchDelegate.acceptBatch(List.copyOf(events));
-            metrics.recordDelivered(events.size());
-        } catch (RuntimeException failure) {
-            metrics.recordEmergencyFallbacks(events.size());
-            int reported = Math.min(events.size(), 16);
-            for (int index = 0; index < reported; index++) {
-                diagnostics.emergency(events.get(index), "batch delegate failure: "
-                        + failure.getClass().getSimpleName());
-            }
-            if (events.size() > reported) {
-                diagnostics.status((events.size() - reported)
-                        + " additional event(s) omitted from emergency output");
-            }
-            diagnostics.status("batch delegate failure: "
-                    + EmergencyText.failureSummary(failure, 2_048));
-        } finally {
-            deliveryLock.unlock();
-        }
-    }
-
     private void deliverApplicationEvent(LogEvent event, boolean queuedDelivery) {
         activeDeliveries.incrementAndGet();
-        deliveryLock.lock();
         try {
-            delegate.accept(event);
-            metrics.recordDelivered();
-        } catch (RuntimeException failure) {
-            metrics.recordEmergencyFallback();
-            diagnostics.emergency(event, "delegate failure: " + failure.getClass().getSimpleName());
-            diagnostics.status("delegate accept failure: "
-                    + EmergencyText.failureSummary(failure, 2_048));
+            delivery.deliverEvent(event);
         } finally {
-            deliveryLock.unlock();
             if (queuedDelivery) {
                 eventQueue.completeClaims(1);
             }
@@ -358,15 +317,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     }
 
     private void deliverInternalEvent(LogEvent event) {
-        deliveryLock.lock();
-        try {
-            delegate.accept(event);
-        } catch (RuntimeException failure) {
-            diagnostics.status("failed to report dropped events: "
-                    + EmergencyText.failureSummary(failure, 2_048));
-        } finally {
-            deliveryLock.unlock();
-        }
+        delivery.deliverInternalEvent(event);
     }
 
     private void emitDropSummary(boolean force) {
@@ -406,30 +357,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
         if (!delegateCloseStarted.compareAndSet(false, true)) {
             return;
         }
-        RuntimeException failure = null;
         emitDropSummary(true);
-        deliveryLock.lock();
-        try {
-            try {
-                delegate.flush();
-            } catch (RuntimeException current) {
-                failure = current;
-            }
-            try {
-                delegate.close();
-            } catch (RuntimeException current) {
-                if (failure == null) {
-                    failure = current;
-                } else {
-                    failure.addSuppressed(current);
-                }
-            }
-        } finally {
-            deliveryLock.unlock();
-        }
-        if (failure != null) {
-            throw new IllegalStateException("failed to close Logyard async output '" + name + "'", failure);
-        }
+        delivery.close(name);
     }
 
     private static long saturatedAdd(long left, long right) {
