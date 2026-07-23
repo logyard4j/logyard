@@ -201,6 +201,18 @@ if config_root_types != {"ConfigurationException.java", "LogyardConfig.java"}:
         + ", ".join(sorted(config_root_types))
     )
 
+console_root = ROOT / "modules/logyard-output-console/src/main/java/com/zsumz/logyard/output/console"
+console_root_types = {
+    source.name
+    for source in console_root.glob("*.java")
+    if source.name != "package-info.java"
+}
+if console_root_types != {"ConsoleSink.java"}:
+    errors.append(
+        "console output root must contain only its delivery facade; found "
+        + ", ".join(sorted(console_root_types))
+    )
+
 test_file_count = 0
 test_method_count = 0
 for source_root in TEST_ROOTS:

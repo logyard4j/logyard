@@ -1,6 +1,8 @@
-package com.zsumz.logyard.output.console;
+package com.zsumz.logyard.output.console.rendering;
 
 import com.zsumz.logyard.api.event.ExceptionSnapshot;
+import com.zsumz.logyard.output.console.style.ConsoleTheme;
+import com.zsumz.logyard.output.console.terminal.ColorCapability;
 
 import java.util.List;
 import java.util.Objects;

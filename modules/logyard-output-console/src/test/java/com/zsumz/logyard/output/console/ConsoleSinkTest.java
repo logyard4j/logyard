@@ -1,18 +1,22 @@
 package com.zsumz.logyard.output.console;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.Level;
+import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.formatting.TextFormatter;
+import com.zsumz.logyard.output.console.style.BuiltInThemes;
+import com.zsumz.logyard.output.console.terminal.ColorCapability;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
+
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ConsoleSinkTest {
     @Test

@@ -9,7 +9,7 @@ import com.zsumz.logyard.config.logging.LoggerRuleConfig;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
-import com.zsumz.logyard.output.console.ConsoleTheme;
+import com.zsumz.logyard.output.console.style.ConsoleTheme;
 import com.zsumz.logyard.runtime.assembly.output.EncoderResolver;
 import com.zsumz.logyard.runtime.assembly.output.FormatterResolver;
 import com.zsumz.logyard.runtime.assembly.processing.ProcessorAssembler;

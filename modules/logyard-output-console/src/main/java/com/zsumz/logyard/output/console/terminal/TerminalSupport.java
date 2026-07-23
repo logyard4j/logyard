@@ -1,4 +1,4 @@
-package com.zsumz.logyard.output.console;
+package com.zsumz.logyard.output.console.terminal;
 
 import java.util.Locale;
 import java.util.Map;

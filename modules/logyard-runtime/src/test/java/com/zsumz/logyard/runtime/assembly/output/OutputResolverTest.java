@@ -10,7 +10,7 @@ import com.zsumz.logyard.api.spi.encoding.EventEncoder;
 import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.loading.LogyardConfigLoader;
-import com.zsumz.logyard.output.console.ConsoleTheme;
+import com.zsumz.logyard.output.console.style.ConsoleTheme;
 import com.zsumz.logyard.output.json.encoding.ResourceAttributes;
 import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 

@@ -1,2 +1,2 @@
-/** Semantic terminal rendering, capability detection, and built-in color themes. */
+/** Thread-safe console delivery facade. */
 package com.zsumz.logyard.output.console;

@@ -1,4 +1,4 @@
-package com.zsumz.logyard.output.console;
+package com.zsumz.logyard.output.console.rendering;
 
 import java.util.Collection;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package com.zsumz.logyard.output.console;
+package com.zsumz.logyard.output.console.rendering;
 
 import com.zsumz.logyard.api.event.LogEvent;
 

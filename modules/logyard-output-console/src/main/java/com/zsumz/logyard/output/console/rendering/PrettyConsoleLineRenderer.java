@@ -1,6 +1,8 @@
-package com.zsumz.logyard.output.console;
+package com.zsumz.logyard.output.console.rendering;
 
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.output.console.style.ConsoleTheme;
+import com.zsumz.logyard.output.console.terminal.ColorCapability;
 
 import java.time.Instant;
 import java.time.ZoneId;

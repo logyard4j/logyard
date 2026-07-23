@@ -1,4 +1,6 @@
-package com.zsumz.logyard.output.console;
+package com.zsumz.logyard.output.console.style;
+
+import com.zsumz.logyard.output.console.terminal.ColorCapability;
 
 import java.util.ArrayList;
 import java.util.List;

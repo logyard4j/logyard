@@ -6,7 +6,7 @@ import com.zsumz.logyard.api.format.TextTemplate;
 import com.zsumz.logyard.config.encoding.JsonAttributeTransformConfig;
 import com.zsumz.logyard.config.encoding.JsonProfileConfig;
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.output.console.TemplateTextFormatter;
+import com.zsumz.logyard.output.console.rendering.TemplateTextFormatter;
 import com.zsumz.logyard.output.json.encoding.JsonAttributeTransform;
 import com.zsumz.logyard.output.json.encoding.JsonEncoder;
 import com.zsumz.logyard.output.json.encoding.JsonProfile;
