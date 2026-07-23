@@ -2,8 +2,6 @@ package com.zsumz.logyard.core.delivery;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
-import com.zsumz.logyard.api.diagnostics.HealthStatus;
-import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.BatchEventSink;
@@ -14,8 +12,6 @@ import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -37,6 +33,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     private final OverflowPolicy overflowPolicy;
     private final Duration shutdownTimeout;
     private final AsyncSinkMetrics metrics = new AsyncSinkMetrics();
+    private final AsyncDropReporter dropReporter = new AsyncDropReporter(metrics);
     private final AsyncSinkDiagnostics diagnostics;
     private final Thread worker;
     private final ReentrantLock deliveryLock = new ReentrantLock();
@@ -47,7 +44,6 @@ public final class AsyncSink implements EventSink, HealthContributor {
     private volatile boolean running = true;
     private volatile boolean closeDelegateOnExit;
     private volatile boolean workerPolling;
-    private volatile long nextDropReportNanos;
 
     public AsyncSink(
             String name,
@@ -90,7 +86,6 @@ public final class AsyncSink implements EventSink, HealthContributor {
         if (shutdownTimeout.isNegative()) {
             throw new IllegalArgumentException("shutdown timeout must not be negative");
         }
-        nextDropReportNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
         worker = new Thread(this::drainLoop, "logyard-output-"
                 + EmergencyText.threadComponent(this.name, 64));
         worker.setDaemon(true);
@@ -182,56 +177,19 @@ public final class AsyncSink implements EventSink, HealthContributor {
 
     @Override
     public ComponentHealth health(String componentName) {
-        int currentQueued = queued();
-        int currentCapacity = capacity();
-        AsyncSinkMetrics.Snapshot telemetry = metrics.snapshot();
-        HealthStatus status;
-        if (!worker.isAlive() && running) {
-            status = HealthStatus.FAILED;
-        } else if (delegateCloseStarted.get()) {
-            status = worker.isAlive() ? HealthStatus.STOPPING : HealthStatus.STOPPED;
-        } else if (!accepting) {
-            status = HealthStatus.STOPPING;
-        } else if (telemetry.dropped() > 0L || telemetry.emergencyFallbacks() > 0L
-                || currentQueued * 5L >= currentCapacity * 4L) {
-            status = HealthStatus.DEGRADED;
-        } else {
-            status = HealthStatus.HEALTHY;
-        }
-
-        Map<String, String> details = new LinkedHashMap<>();
-        details.put("delivery", "async");
-        details.put("accepting", Boolean.toString(accepting));
-        details.put("worker_alive", Boolean.toString(worker.isAlive()));
-        details.put("delegate", delegate.getClass().getName());
-        details.put("caller_thread_delivery", Boolean.toString(callerThreadDeliveryAllowed));
-        details.put("batching", Boolean.toString(batchDelegate != null));
-        if (delegate instanceof HealthContributor contributor) {
-            try {
-                ComponentHealth delegateHealth = contributor.health(componentName + ".delegate");
-                status = HealthStatus.worst(status, delegateHealth.status());
-                details.put("delegate_status",
-                        delegateHealth.status().name().toLowerCase(java.util.Locale.ROOT));
-            } catch (RuntimeException failure) {
-                status = HealthStatus.FAILED;
-                details.put("delegate_status", "failed");
-                details.put("delegate_health_failure",
-                        EmergencyText.failureSummary(failure, 512));
-            }
-        }
-
-        Map<String, Long> metrics = new LinkedHashMap<>();
-        metrics.put("capacity", (long) currentCapacity);
-        metrics.put("queued", (long) currentQueued);
-        metrics.put("active_deliveries", (long) activeDeliveries.get());
-        metrics.put("outstanding_queued_events", (long) outstandingQueuedEvents.get());
-        metrics.put("maximum_batch_size", (long) maximumBatchSize);
-        metrics.put("enqueued_total", telemetry.enqueued());
-        metrics.put("delivered_total", telemetry.delivered());
-        metrics.put("dropped_total", telemetry.dropped());
-        metrics.put("synchronous_fallback_total", telemetry.synchronousFallbacks());
-        metrics.put("emergency_fallback_total", telemetry.emergencyFallbacks());
-        return new ComponentHealth(componentName, "output", status, details, metrics);
+        return AsyncSinkHealth.snapshot(componentName, delegate, new AsyncSinkHealth.State(
+                running,
+                accepting,
+                worker.isAlive(),
+                delegateCloseStarted.get(),
+                callerThreadDeliveryAllowed,
+                batchDelegate != null,
+                capacity(),
+                queued(),
+                activeDeliveries.get(),
+                outstandingQueuedEvents.get(),
+                maximumBatchSize,
+                metrics.snapshot()));
     }
 
     private boolean offerImmediately(LogEvent event) {
@@ -437,34 +395,10 @@ public final class AsyncSink implements EventSink, HealthContributor {
     }
 
     private void emitDropSummary(boolean force) {
-        long now = System.nanoTime();
-        if (!force && now < nextDropReportNanos) {
-            return;
+        LogEvent report = dropReporter.nextReport(force);
+        if (report != null) {
+            deliverInternalEvent(report);
         }
-        nextDropReportNanos = now + TimeUnit.SECONDS.toNanos(10);
-        AttributeSet.Builder attributes = AttributeSet.builder();
-        long total = 0;
-        for (Map.Entry<Level, Long> dropped : metrics.drainPendingDropReport().entrySet()) {
-            attributes.put("logyard.dropped." + dropped.getKey().name().toLowerCase(java.util.Locale.ROOT), dropped.getValue());
-            total += dropped.getValue();
-        }
-        if (total == 0) {
-            return;
-        }
-        Thread thread = Thread.currentThread();
-        long timestampMillis = System.currentTimeMillis();
-        deliverInternalEvent(new LogEvent(
-                timestampMillis,
-                TimeUnit.MILLISECONDS.toNanos(timestampMillis),
-                Level.WARN,
-                "logyard.internal.async",
-                "logyard.async.events_dropped",
-                "Dropped {} log events because an output queue was full",
-                new Object[] {total},
-                attributes.put("logyard.dropped.total", total).build(),
-                null,
-                thread.threadId(),
-                thread.getName()));
     }
 
     private boolean awaitQuiescence(Duration timeout) {
