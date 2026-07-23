@@ -1,0 +1,29 @@
+[project]
+name = "logyard-benchmarks"
+version = "0.7.0-SNAPSHOT"
+group = "com.zsumz.logyard"
+java = "21"
+main = "org.openjdk.jmh.Main"
+
+[repositories]
+central = "https://repo.maven.apache.org/maven2"
+
+[dependencies]
+"com.zsumz.logyard:logyard-api" = { workspace = "modules/logyard-api" }
+"com.zsumz.logyard:logyard-core" = { workspace = "modules/logyard-core" }
+"com.zsumz.logyard:logyard-output-console" = { workspace = "modules/logyard-output-console" }
+"com.zsumz.logyard:logyard-output-json" = { workspace = "modules/logyard-output-json" }
+"com.zsumz.logyard:logyard-runtime" = { workspace = "modules/logyard-runtime" }
+"com.zsumz.logyard:logyard-slf4j2" = { workspace = "modules/logyard-slf4j2" }
+"org.openjdk.jmh:jmh-core" = "1.37"
+"org.slf4j:slf4j-api" = "2.0.18"
+
+[annotationProcessors]
+"org.openjdk.jmh:jmh-generator-annprocess" = "1.37"
+
+[build]
+source = "src/main/java"
+output = "target/classes"
+
+[build.metadata]
+reproducible = true

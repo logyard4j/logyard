@@ -1,0 +1,64 @@
+package com.zsumz.logyard.benchmarks.encoding;
+
+import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.benchmarks.fixture.BenchmarkFixtures;
+import com.zsumz.logyard.core.processing.RedactionProcessor;
+import com.zsumz.logyard.output.console.rendering.TemplateTextFormatter;
+import com.zsumz.logyard.output.json.encoding.JsonEncoder;
+import com.zsumz.logyard.output.json.encoding.ResourceAttributes;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
+
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+/** Console, JSON, rendering, and redaction allocation baselines. */
+@State(Scope.Thread)
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@Warmup(iterations = 3, time = 1)
+@Measurement(iterations = 5, time = 1)
+@Fork(1)
+public class EncodingBenchmark {
+    private final LogEvent plain = BenchmarkFixtures.event(AttributeSet.builder().put("order.id", 42L).build());
+    private final LogEvent secret = BenchmarkFixtures.event(
+            AttributeSet.builder().put("order.id", 42L).put("payment.token", "secret").build());
+    private final JsonEncoder json = new JsonEncoder(ResourceAttributes.service("orders", "benchmark", "1"));
+    private final TemplateTextFormatter console =
+            new TemplateTextFormatter("{timestamp} {level} {logger} - {message} {fields}", ZoneOffset.UTC);
+    private final RedactionProcessor redaction = new RedactionProcessor(List.of("*.token"));
+
+    @Benchmark
+    public String jsonEncoding() {
+        return json.encode(plain);
+    }
+
+    @Benchmark
+    public String consoleEncoding() {
+        return console.format(plain);
+    }
+
+    @Benchmark
+    public String cachedMessageRendering() {
+        return plain.renderedMessage();
+    }
+
+    @Benchmark
+    public LogEvent redactionWithoutMatch() {
+        return redaction.process(plain);
+    }
+
+    @Benchmark
+    public LogEvent redactionWithMatch() {
+        return redaction.process(secret);
+    }
+}

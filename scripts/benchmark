@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+RESULT="${LOGYARD_BENCHMARK_RESULT:-$ROOT/target/benchmarks/results.json}"
+
+mkdir -p "$(dirname "$RESULT")"
+cd "$ROOT"
+"$ZOLT" run --workspace --member benchmarks/logyard-benchmarks -- \
+  'com.zsumz.logyard.benchmarks.*' \
+  -bm thrpt,sample \
+  -prof gc \
+  -rf json \
+  -rff "$RESULT"
+
+printf 'JMH results: %s\n' "$RESULT"

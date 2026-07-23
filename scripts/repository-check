@@ -9,7 +9,7 @@ fail() {
   exit 1
 }
 
-for removed in docs apps benchmarks; do
+for removed in docs apps; do
   [[ ! -e "$removed" ]] || fail "$removed should not exist in the core-focused package"
 done
 
@@ -29,7 +29,7 @@ actual_members=()
 while IFS= read -r member; do
   actual_members+=("$member")
 done < <(
-  find modules tests -mindepth 2 -maxdepth 2 -name zolt.toml -print \
+  find modules tests benchmarks -mindepth 2 -maxdepth 2 -name zolt.toml -print \
     | sed 's#/zolt\.toml$##' \
     | sort
 )

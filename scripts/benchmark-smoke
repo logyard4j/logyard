@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+
+cd "$ROOT"
+"$ZOLT" run --workspace --member benchmarks/logyard-benchmarks -- \
+  '.*(ContextPolicyBenchmark|NativeIngressBenchmark.enabledOneArgument).*' \
+  -wi 1 -i 1 -f 1 -w 100ms -r 100ms

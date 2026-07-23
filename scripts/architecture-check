@@ -16,13 +16,13 @@ PREFIX = "com.zsumz.logyard."
 MAX_JAVA_SOURCE_LINES = 300
 SOURCE_ROOTS = sorted(
     path
-    for group in ("modules", "tests")
+    for group in ("modules", "tests", "benchmarks")
     for path in (ROOT / group).glob("*/src/main/java")
     if path.is_dir()
 )
 TEST_ROOTS = sorted(
     path
-    for group in ("modules", "tests")
+    for group in ("modules", "tests", "benchmarks")
     for path in (ROOT / group).glob("*/src/test/java")
     if path.is_dir()
 )
@@ -66,6 +66,11 @@ ALLOWED_IMPORT_PREFIXES = {
         PREFIX + "output.console.", PREFIX + "output.json.", PREFIX + "runtime.",
         PREFIX + "tests."
     ),
+    "logyard-benchmarks": (
+        "java.", "org.openjdk.jmh.", "org.slf4j.", PREFIX + "api.",
+        PREFIX + "core.", PREFIX + "output.console.", PREFIX + "output.json.",
+        PREFIX + "runtime.", PREFIX + "slf4j.", PREFIX + "benchmarks."
+    ),
 }
 
 EXPECTED_DEPENDENCIES = {
@@ -101,6 +106,16 @@ EXPECTED_DEPENDENCIES = {
         "com.zsumz.logyard:logyard-output-console",
         "com.zsumz.logyard:logyard-output-json",
         "com.zsumz.logyard:logyard-runtime",
+    },
+    "benchmarks/logyard-benchmarks": {
+        "com.zsumz.logyard:logyard-api",
+        "com.zsumz.logyard:logyard-core",
+        "com.zsumz.logyard:logyard-output-console",
+        "com.zsumz.logyard:logyard-output-json",
+        "com.zsumz.logyard:logyard-runtime",
+        "com.zsumz.logyard:logyard-slf4j2",
+        "org.openjdk.jmh:jmh-core",
+        "org.slf4j:slf4j-api",
     },
 }
 
@@ -412,12 +427,14 @@ else:
         errors.append("logyard.toml does not expose the workspace version")
 
 for manifest in sorted(
-        path for group in ("modules", "tests")
+        path for group in ("modules", "tests", "benchmarks")
         for path in (ROOT / group).glob("*/zolt.toml")):
     text = manifest.read_text(encoding="utf-8")
     for coordinate, expected_version in {
         "org.junit.platform:junit-platform-console-standalone": "1.11.4",
         "org.slf4j:slf4j-api": "2.0.18",
+        "org.openjdk.jmh:jmh-core": "1.37",
+        "org.openjdk.jmh:jmh-generator-annprocess": "1.37",
     }.items():
         match = re.search(rf'(?m)^"{re.escape(coordinate)}"\s*=\s*"([^"]+)"', text)
         if match is not None and match.group(1) != expected_version:
