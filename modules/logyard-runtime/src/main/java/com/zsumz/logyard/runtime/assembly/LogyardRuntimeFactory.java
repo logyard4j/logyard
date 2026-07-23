@@ -5,8 +5,6 @@ import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.spi.ContextProvider;
-import com.zsumz.logyard.api.spi.EventEncoder;
-import com.zsumz.logyard.api.spi.EventEncoderProvider;
 import com.zsumz.logyard.api.spi.EventProcessor;
 import com.zsumz.logyard.api.spi.EventProcessorKind;
 import com.zsumz.logyard.api.spi.EventProcessorProvider;
@@ -14,7 +12,6 @@ import com.zsumz.logyard.api.spi.EventSink;
 import com.zsumz.logyard.api.spi.OutputProvider;
 import com.zsumz.logyard.api.spi.OutputProviderContext;
 import com.zsumz.logyard.api.spi.TextFormatter;
-import com.zsumz.logyard.api.spi.TextFormatterProvider;
 import com.zsumz.logyard.config.ConsoleOutputConfig;
 import com.zsumz.logyard.config.CustomOutputConfig;
 import com.zsumz.logyard.config.DeliveryConfig;
@@ -28,13 +25,9 @@ import com.zsumz.logyard.config.JsonProfileConfig;
 import com.zsumz.logyard.config.JsonStreamOutputConfig;
 import com.zsumz.logyard.config.LoggerRuleConfig;
 import com.zsumz.logyard.config.OutputConfig;
-import com.zsumz.logyard.config.ProviderEncoderConfig;
 import com.zsumz.logyard.config.ProviderFilterConfig;
-import com.zsumz.logyard.config.ProviderFormatterConfig;
 import com.zsumz.logyard.config.RateLimitFilterConfig;
 import com.zsumz.logyard.config.SamplingFilterConfig;
-import com.zsumz.logyard.config.TemplateFormatterConfig;
-import com.zsumz.logyard.config.TextStyleConfig;
 import com.zsumz.logyard.config.ThemeConfig;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.delivery.AsyncSink;
@@ -47,24 +40,20 @@ import com.zsumz.logyard.core.processing.SamplingProcessor;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
-import com.zsumz.logyard.output.console.AnsiStyle;
-import com.zsumz.logyard.output.console.BuiltInThemes;
 import com.zsumz.logyard.output.console.ColorCapability;
 import com.zsumz.logyard.output.console.ConsoleSink;
 import com.zsumz.logyard.output.console.ConsoleTheme;
-import com.zsumz.logyard.output.console.TemplateTextFormatter;
 import com.zsumz.logyard.output.console.TerminalSupport;
-import com.zsumz.logyard.output.json.encoding.JsonAttributeTransform;
-import com.zsumz.logyard.output.json.encoding.JsonEncoder;
-import com.zsumz.logyard.output.json.encoding.JsonProfile;
 import com.zsumz.logyard.output.json.encoding.ResourceAttributes;
 import com.zsumz.logyard.output.json.file.JsonFileSink;
 import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
 import com.zsumz.logyard.output.json.stream.JsonLinesSink;
+import com.zsumz.logyard.runtime.assembly.output.EncoderResolver;
+import com.zsumz.logyard.runtime.assembly.output.FormatterResolver;
 import com.zsumz.logyard.runtime.assembly.routing.ConfiguredLoggerRuleResolver;
 import com.zsumz.logyard.runtime.context.ContextProviderDiscovery;
-import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 import com.zsumz.logyard.runtime.extension.ExtensionGuardrails;
+import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 import com.zsumz.logyard.runtime.extension.ProviderResolver;
 
 import java.io.OutputStreamWriter;
@@ -79,7 +68,6 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -89,7 +77,6 @@ import java.util.WeakHashMap;
 public final class LogyardRuntimeFactory {
     private static final String CONTEXT_PROCESSOR = "logyard-context";
     private static final String REDACTION_PROCESSOR = "logyard-redaction";
-    private static final Set<String> BUILT_IN_THEME_NAMES = Set.of("ember", "nord", "mono");
     private static final Map<LogyardRuntime, RuntimeAssembly> ASSEMBLIES =
             Collections.synchronizedMap(new WeakHashMap<>());
 
@@ -183,7 +170,7 @@ public final class LogyardRuntimeFactory {
     /** Resolves one named formatter for side-effect-free tooling such as render previews. */
     public static TextFormatter textFormatter(LogyardConfig config, String name) {
         Objects.requireNonNull(config, "config");
-        return formatter(config, name, ExtensionRegistry.discover());
+        return FormatterResolver.resolve(config, name, ExtensionRegistry.discover());
     }
 
     private static void validate(LogyardConfig config, ExtensionRegistry extensions) {
@@ -199,27 +186,8 @@ public final class LogyardRuntimeFactory {
                         OutputProvider::configurationSpec);
             }
         }
-        for (JsonProfileConfig profile : config.jsonProfiles().values()) {
-            jsonProfile(config, profile.name());
-        }
-        for (FormatterConfig formatter : config.formatters().values()) {
-            if (formatter instanceof ProviderFormatterConfig custom) {
-                ProviderResolver.resolve(
-                        extensions.formatters(),
-                        custom.providerReference(),
-                        "formatter '" + custom.name() + "'",
-                        TextFormatterProvider::configurationSpec);
-            }
-        }
-        for (EncoderConfig encoder : config.encoders().values()) {
-            if (encoder instanceof ProviderEncoderConfig custom) {
-                ProviderResolver.resolve(
-                        extensions.encoders(),
-                        custom.providerReference(),
-                        "encoder '" + custom.name() + "'",
-                        EventEncoderProvider::configurationSpec);
-            }
-        }
+        FormatterResolver.validateDefinitions(config, extensions);
+        EncoderResolver.validateDefinitions(config, extensions);
         for (EnricherConfig enricher : config.enrichers().values()) {
             ProviderResolver.resolveProcessor(
                     extensions.processors(),
@@ -313,10 +281,10 @@ public final class LogyardRuntimeFactory {
             LogyardConfig config,
             OutputConfig output,
             ExtensionRegistry extensions) {
-        ResourceAttributes resource = resource(config);
+        ResourceAttributes resource = EncoderResolver.resource(config);
         EventSink raw;
         if (output instanceof ConsoleOutputConfig console) {
-            ConsoleTheme theme = consoleTheme(config, console.color().theme());
+            ConsoleTheme theme = FormatterResolver.consoleTheme(config, console.color().theme());
             boolean colors = TerminalSupport.colorsEnabled(console.color().mode());
             ColorCapability capability = TerminalSupport.colorCapability(console.color().capability());
             PrintStream stream = "stdout".equals(console.stream()) ? System.out : System.err;
@@ -329,12 +297,12 @@ public final class LogyardRuntimeFactory {
                     "compact".equals(console.exception().style()),
                     "collapse".equals(console.exception().commonFrames()),
                     false,
-                    formatter(config, console.formatter(), extensions));
+                    FormatterResolver.resolve(config, console.formatter(), extensions));
         } else if (output instanceof JsonStreamOutputConfig json) {
             PrintStream stream = "stdout".equals(json.stream()) ? System.out : System.err;
             raw = new JsonLinesSink(
                     new OutputStreamWriter(stream, StandardCharsets.UTF_8),
-                    encoder(config, json.encoder(), resource, extensions),
+                    EncoderResolver.resolve(config, json.encoder(), resource, extensions),
                     json.flushInterval(),
                     false);
         } else if (output instanceof JsonFileOutputConfig json) {
@@ -347,7 +315,7 @@ public final class LogyardRuntimeFactory {
                             config.runtime().shutdownTimeout());
             raw = new JsonFileSink(
                     json.path(),
-                    encoder(config, json.encoder(), resource, extensions),
+                    EncoderResolver.resolve(config, json.encoder(), resource, extensions),
                     json.bufferBytes(),
                     json.flushInterval(),
                     json.append(),
@@ -362,10 +330,10 @@ public final class LogyardRuntimeFactory {
                     custom.name(),
                     AttributeSet.builder().putAll(resource.values()).build(),
                     config.runtime().shutdownTimeout(),
-                    formatter(config, custom.formatter(), extensions),
+                    FormatterResolver.resolve(config, custom.formatter(), extensions),
                     custom.encoder() == null
                             ? null
-                            : encoder(config, custom.encoder(), resource, extensions));
+                            : EncoderResolver.resolve(config, custom.encoder(), resource, extensions));
             raw = Objects.requireNonNull(
                     provider.create(context, custom.providerReference().configuration()),
                     "custom output provider returned null: " + custom.name());
@@ -395,90 +363,6 @@ public final class LogyardRuntimeFactory {
             delivery = raw;
         }
         return new FilteringSink(output.minimumLevel(), delivery);
-    }
-
-    private static TextFormatter formatter(
-            LogyardConfig config,
-            String name,
-            ExtensionRegistry extensions) {
-        if (name == null) {
-            return null;
-        }
-        FormatterConfig configured = config.formatters().get(name);
-        TextFormatter created;
-        if (configured instanceof TemplateFormatterConfig template) {
-            created = new TemplateTextFormatter(template.template(), ZoneId.systemDefault());
-        } else if (configured instanceof ProviderFormatterConfig custom) {
-            TextFormatterProvider provider = ProviderResolver.resolve(
-                    extensions.formatters(),
-                    custom.providerReference(),
-                    "formatter '" + name + "'",
-                    TextFormatterProvider::configurationSpec);
-            created = Objects.requireNonNull(
-                    provider.create(custom.providerReference().configuration()),
-                    "formatter provider returned null: " + name);
-        } else {
-            throw new IllegalArgumentException("unknown formatter definition '" + name + "'");
-        }
-        return ExtensionGuardrails.formatter(created);
-    }
-
-    private static EventEncoder encoder(
-            LogyardConfig config,
-            String name,
-            ResourceAttributes resource,
-            ExtensionRegistry extensions) {
-        EventEncoder created;
-        if (name == null) {
-            created = new JsonEncoder(resource, JsonProfile.named("logyard"));
-        } else {
-            EncoderConfig configured = config.encoders().get(name);
-            if (configured instanceof JsonEncoderConfig json) {
-                created = new JsonEncoder(resource, jsonProfile(config, json.profile()));
-            } else if (configured instanceof ProviderEncoderConfig custom) {
-                EventEncoderProvider provider = ProviderResolver.resolve(
-                        extensions.encoders(),
-                        custom.providerReference(),
-                        "encoder '" + name + "'",
-                        EventEncoderProvider::configurationSpec);
-                created = Objects.requireNonNull(
-                        provider.create(custom.providerReference().configuration()),
-                        "encoder provider returned null: " + name);
-            } else {
-                throw new IllegalArgumentException("unknown encoder definition '" + name + "'");
-            }
-        }
-        return ExtensionGuardrails.encoder(created);
-    }
-
-    private static JsonProfile jsonProfile(LogyardConfig config, String name) {
-        JsonProfileConfig configured = config.jsonProfiles().get(name);
-        if (configured == null) {
-            return JsonProfile.named(name);
-        }
-        com.zsumz.logyard.config.JsonAttributeTransformConfig attributes = configured.attributes();
-        JsonAttributeTransform transform = new JsonAttributeTransform(
-                JsonAttributeTransform.Mode.parse(attributes.mode()),
-                attributes.prefix(),
-                attributes.include(),
-                attributes.exclude(),
-                attributes.rename());
-        return JsonProfile.custom(
-                configured.name(),
-                configured.preset(),
-                configured.rename(),
-                configured.drop(),
-                transform);
-    }
-
-    private static ResourceAttributes resource(LogyardConfig config) {
-        return ResourceAttributes.service(
-                config.service().name(),
-                config.service().namespace(),
-                config.service().environment(),
-                config.service().version(),
-                config.service().instanceId(),
-                config.resource().attributes());
     }
 
     private static Map<String, EventProcessor> processors(
@@ -585,29 +469,7 @@ public final class LogyardRuntimeFactory {
     }
 
     public static ConsoleTheme consoleTheme(LogyardConfig config, String name) {
-        ThemeConfig custom = config.themes().get(name);
-        if (custom == null) {
-            if (!BUILT_IN_THEME_NAMES.contains(name.toLowerCase(Locale.ROOT))) {
-                throw new IllegalArgumentException(
-                        "console output references unknown theme '" + name + "'");
-            }
-            return BuiltInThemes.named(name);
-        }
-        Map<String, AnsiStyle> roles = new LinkedHashMap<>();
-        custom.roles().forEach((role, value) -> roles.put(role, style(value)));
-        EnumMap<Level, AnsiStyle> levels = new EnumMap<>(Level.class);
-        custom.levels().forEach((level, value) -> levels.put(level, style(value)));
-        return new ConsoleTheme(name, roles, levels);
-    }
-
-    private static AnsiStyle style(TextStyleConfig value) {
-        return new AnsiStyle(
-                value.foreground(),
-                value.background(),
-                Boolean.TRUE.equals(value.bold()),
-                Boolean.TRUE.equals(value.dim()),
-                Boolean.TRUE.equals(value.italic()),
-                Boolean.TRUE.equals(value.underline()));
+        return FormatterResolver.consoleTheme(config, name);
     }
 
     private static void closeCreated(List<EventSink> sinks, Throwable primaryFailure) {
