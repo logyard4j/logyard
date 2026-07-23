@@ -16,9 +16,7 @@ PREFIX = "com.zsumz.logyard."
 MAX_JAVA_SOURCE_LINES = 300
 # Temporary migration ledger. Checked-in generated sources receive no exemption:
 # generated Java belongs under ignored build output, not the maintained source tree.
-LINE_LIMIT_DEBT = {
-    "tests/logyard-integration-tests/src/main/java/com/zsumz/logyard/tests/CoreVerificationMain.java": 428,
-}
+LINE_LIMIT_DEBT = {}
 SOURCE_ROOTS = sorted(
     path
     for group in ("modules", "tests")
