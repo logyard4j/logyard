@@ -2,25 +2,15 @@ package com.zsumz.logyard.core.runtime;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.LogBuilder;
-import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.CaptureLimits;
-import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
-import com.zsumz.logyard.api.spi.EventProcessor;
-import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.core.delivery.CompositeSink;
-import com.zsumz.logyard.core.diagnostics.EmergencyText;
-import com.zsumz.logyard.core.routing.CompiledRoute;
-import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
-import com.zsumz.logyard.core.routing.PlanEpoch;
-import com.zsumz.logyard.core.routing.RouteDefinition;
 
 import java.util.Arrays;
 import java.util.Objects;
 
-final class DefaultLogyardLogger implements com.zsumz.logyard.api.LogyardLogger {
+final class DefaultLogyardLogger implements LogyardLogger {
     private final String name;
     private final DefaultLogyardRuntime runtime;
     private final LoggerControl control;
@@ -31,48 +21,53 @@ final class DefaultLogyardLogger implements com.zsumz.logyard.api.LogyardLogger 
         this.control = control;
     }
 
-    public String name() { return name; }
-    public boolean isEnabled(Level level) { return control.enabled(Objects.requireNonNull(level, "level")); }
-    public boolean isTraceEnabled() { return isEnabled(Level.TRACE); }
-    public boolean isDebugEnabled() { return isEnabled(Level.DEBUG); }
-    public boolean isInfoEnabled() { return isEnabled(Level.INFO); }
-    public boolean isWarnEnabled() { return isEnabled(Level.WARN); }
-    public boolean isErrorEnabled() { return isEnabled(Level.ERROR); }
+    @Override public String name() { return name; }
+    @Override public boolean isEnabled(Level level) { return control.enabled(Objects.requireNonNull(level, "level")); }
+    @Override public boolean isTraceEnabled() { return isEnabled(Level.TRACE); }
+    @Override public boolean isDebugEnabled() { return isEnabled(Level.DEBUG); }
+    @Override public boolean isInfoEnabled() { return isEnabled(Level.INFO); }
+    @Override public boolean isWarnEnabled() { return isEnabled(Level.WARN); }
+    @Override public boolean isErrorEnabled() { return isEnabled(Level.ERROR); }
 
+    @Override
     public LogBuilder at(Level level) {
         return isEnabled(level) ? new ActiveLogBuilder(this, level) : NoopLogBuilder.INSTANCE;
     }
-    public LogBuilder atTrace() { return at(Level.TRACE); }
-    public LogBuilder atDebug() { return at(Level.DEBUG); }
-    public LogBuilder atInfo() { return at(Level.INFO); }
-    public LogBuilder atWarn() { return at(Level.WARN); }
-    public LogBuilder atError() { return at(Level.ERROR); }
+    @Override public LogBuilder atTrace() { return at(Level.TRACE); }
+    @Override public LogBuilder atDebug() { return at(Level.DEBUG); }
+    @Override public LogBuilder atInfo() { return at(Level.INFO); }
+    @Override public LogBuilder atWarn() { return at(Level.WARN); }
+    @Override public LogBuilder atError() { return at(Level.ERROR); }
 
-    public void trace(String message) { publish0(Level.TRACE, message, null); }
-    public void trace(String message, Object arg) { publish1(Level.TRACE, message, arg); }
-    public void trace(String message, Object a, Object b) { publish2(Level.TRACE, message, a, b); }
-    public void trace(String message, Object... args) { publishVarargs(Level.TRACE, message, args); }
-    public void trace(String message, Throwable error) { publish0(Level.TRACE, message, error); }
-    public void debug(String message) { publish0(Level.DEBUG, message, null); }
-    public void debug(String message, Object arg) { publish1(Level.DEBUG, message, arg); }
-    public void debug(String message, Object a, Object b) { publish2(Level.DEBUG, message, a, b); }
-    public void debug(String message, Object... args) { publishVarargs(Level.DEBUG, message, args); }
-    public void debug(String message, Throwable error) { publish0(Level.DEBUG, message, error); }
-    public void info(String message) { publish0(Level.INFO, message, null); }
-    public void info(String message, Object arg) { publish1(Level.INFO, message, arg); }
-    public void info(String message, Object a, Object b) { publish2(Level.INFO, message, a, b); }
-    public void info(String message, Object... args) { publishVarargs(Level.INFO, message, args); }
-    public void info(String message, Throwable error) { publish0(Level.INFO, message, error); }
-    public void warn(String message) { publish0(Level.WARN, message, null); }
-    public void warn(String message, Object arg) { publish1(Level.WARN, message, arg); }
-    public void warn(String message, Object a, Object b) { publish2(Level.WARN, message, a, b); }
-    public void warn(String message, Object... args) { publishVarargs(Level.WARN, message, args); }
-    public void warn(String message, Throwable error) { publish0(Level.WARN, message, error); }
-    public void error(String message) { publish0(Level.ERROR, message, null); }
-    public void error(String message, Object arg) { publish1(Level.ERROR, message, arg); }
-    public void error(String message, Object a, Object b) { publish2(Level.ERROR, message, a, b); }
-    public void error(String message, Object... args) { publishVarargs(Level.ERROR, message, args); }
-    public void error(String message, Throwable error) { publish0(Level.ERROR, message, error); }
+    @Override public void trace(String message) { publish0(Level.TRACE, message, null); }
+    @Override public void trace(String message, Object arg) { publish1(Level.TRACE, message, arg); }
+    @Override public void trace(String message, Object a, Object b) { publish2(Level.TRACE, message, a, b); }
+    @Override public void trace(String message, Object... args) { publishVarargs(Level.TRACE, message, args); }
+    @Override public void trace(String message, Throwable error) { publish0(Level.TRACE, message, error); }
+
+    @Override public void debug(String message) { publish0(Level.DEBUG, message, null); }
+    @Override public void debug(String message, Object arg) { publish1(Level.DEBUG, message, arg); }
+    @Override public void debug(String message, Object a, Object b) { publish2(Level.DEBUG, message, a, b); }
+    @Override public void debug(String message, Object... args) { publishVarargs(Level.DEBUG, message, args); }
+    @Override public void debug(String message, Throwable error) { publish0(Level.DEBUG, message, error); }
+
+    @Override public void info(String message) { publish0(Level.INFO, message, null); }
+    @Override public void info(String message, Object arg) { publish1(Level.INFO, message, arg); }
+    @Override public void info(String message, Object a, Object b) { publish2(Level.INFO, message, a, b); }
+    @Override public void info(String message, Object... args) { publishVarargs(Level.INFO, message, args); }
+    @Override public void info(String message, Throwable error) { publish0(Level.INFO, message, error); }
+
+    @Override public void warn(String message) { publish0(Level.WARN, message, null); }
+    @Override public void warn(String message, Object arg) { publish1(Level.WARN, message, arg); }
+    @Override public void warn(String message, Object a, Object b) { publish2(Level.WARN, message, a, b); }
+    @Override public void warn(String message, Object... args) { publishVarargs(Level.WARN, message, args); }
+    @Override public void warn(String message, Throwable error) { publish0(Level.WARN, message, error); }
+
+    @Override public void error(String message) { publish0(Level.ERROR, message, null); }
+    @Override public void error(String message, Object arg) { publish1(Level.ERROR, message, arg); }
+    @Override public void error(String message, Object a, Object b) { publish2(Level.ERROR, message, a, b); }
+    @Override public void error(String message, Object... args) { publishVarargs(Level.ERROR, message, args); }
+    @Override public void error(String message, Throwable error) { publish0(Level.ERROR, message, error); }
 
     /** Adapter entry point used by SLF4J and future ingress modules. */
     @Override
@@ -132,9 +127,8 @@ final class DefaultLogyardLogger implements com.zsumz.logyard.api.LogyardLogger 
             AttributeSet attributes,
             Throwable throwable,
             IngressMetadata metadata) {
-        runtime.publish(
+        EventDraft draft = new EventDraft(
                 name,
-                control,
                 level,
                 eventName,
                 template,
@@ -142,6 +136,7 @@ final class DefaultLogyardLogger implements com.zsumz.logyard.api.LogyardLogger 
                 attributes,
                 throwable,
                 Objects.requireNonNull(metadata, "metadata"));
+        runtime.publish(control, draft);
     }
 
     private void publish0(Level level, String message, Throwable throwable) {

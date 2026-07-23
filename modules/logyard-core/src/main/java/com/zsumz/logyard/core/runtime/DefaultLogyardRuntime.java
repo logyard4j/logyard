@@ -1,18 +1,14 @@
 package com.zsumz.logyard.core.runtime;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.LogBuilder;
-import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.diagnostics.HealthStatus;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
-import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.ingress.IngressMetadata;
 import com.zsumz.logyard.api.spi.EventProcessor;
 import com.zsumz.logyard.api.spi.EventSink;
 import com.zsumz.logyard.api.spi.HealthContributor;
@@ -30,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -158,16 +153,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         }
     }
 
-    void publish(
-            String loggerName,
-            LoggerControl control,
-            Level level,
-            String eventName,
-            String messageTemplate,
-            Object[] arguments,
-            AttributeSet attributes,
-            Throwable throwable,
-            IngressMetadata metadata) {
+    void publish(LoggerControl control, EventDraft draft) {
         if (closed.get()) {
             return;
         }
@@ -181,36 +167,14 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
                 return;
             }
             synchronized (this) {
-                control.update(compileRoute(loggerName, state));
+                control.update(compileRoute(draft.loggerName(), state));
             }
         }
         try {
-            if (!route.level().enables(level)) {
+            if (!route.level().enables(draft.level())) {
                 return;
             }
-            Thread thread = Thread.currentThread();
-            Instant observed = Instant.now();
-            long timestampMillis = metadata.hasSourceTimestamp()
-                    ? metadata.sourceTimestampMillis()
-                    : observed.toEpochMilli();
-            long threadId = metadata.hasSourceThreadId()
-                    ? metadata.sourceThreadId()
-                    : metadata.sourceThreadName() == null ? thread.threadId() : -1L;
-            String threadName = metadata.sourceThreadName() == null
-                    ? thread.getName()
-                    : metadata.sourceThreadName();
-            LogEvent event = new LogEvent(
-                    timestampMillis,
-                    unixNanos(observed),
-                    level,
-                    loggerName,
-                    eventName,
-                    messageTemplate,
-                    arguments,
-                    attributes,
-                    throwable,
-                    threadId,
-                    threadName);
+            LogEvent event = draft.capture();
             try {
                 for (EventProcessor processor : route.processors()) {
                     event = processor.process(event);
@@ -392,12 +356,6 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         System.err.println("Logyard delivery failure for " + event.level() + " "
                 + EmergencyText.sanitize(event.loggerName(), CaptureLimits.MAX_NAME_CHARS)
                 + " - " + body + ": " + EmergencyText.failureSummary(failure, 4_096));
-    }
-
-    private static long unixNanos(Instant instant) {
-        return Math.addExact(
-                Math.multiplyExact(instant.getEpochSecond(), 1_000_000_000L),
-                instant.getNano());
     }
 
     private static long saturatedNanos(Duration duration) {
