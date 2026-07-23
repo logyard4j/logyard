@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.spi.context.ContextProvider;
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.LogyardConfigLoader;
+import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 
 import java.nio.file.Path;

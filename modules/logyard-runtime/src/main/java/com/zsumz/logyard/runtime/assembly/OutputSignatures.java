@@ -1,16 +1,16 @@
 package com.zsumz.logyard.runtime.assembly;
 
-import com.zsumz.logyard.config.ConsoleOutputConfig;
-import com.zsumz.logyard.config.CustomOutputConfig;
-import com.zsumz.logyard.config.EncoderConfig;
-import com.zsumz.logyard.config.FormatterConfig;
-import com.zsumz.logyard.config.JsonEncoderConfig;
-import com.zsumz.logyard.config.JsonFileOutputConfig;
-import com.zsumz.logyard.config.JsonProfileConfig;
-import com.zsumz.logyard.config.JsonStreamOutputConfig;
+import com.zsumz.logyard.config.output.ConsoleOutputConfig;
+import com.zsumz.logyard.config.output.CustomOutputConfig;
+import com.zsumz.logyard.config.encoding.EncoderConfig;
+import com.zsumz.logyard.config.formatting.FormatterConfig;
+import com.zsumz.logyard.config.encoding.JsonEncoderConfig;
+import com.zsumz.logyard.config.output.JsonFileOutputConfig;
+import com.zsumz.logyard.config.encoding.JsonProfileConfig;
+import com.zsumz.logyard.config.output.JsonStreamOutputConfig;
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.OutputConfig;
-import com.zsumz.logyard.config.ThemeConfig;
+import com.zsumz.logyard.config.output.OutputConfig;
+import com.zsumz.logyard.config.theme.ThemeConfig;
 
 import java.nio.file.Path;
 

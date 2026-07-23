@@ -4,7 +4,7 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.LogyardConfigLoader;
+import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 
 import java.nio.file.Path;
 import java.util.Map;

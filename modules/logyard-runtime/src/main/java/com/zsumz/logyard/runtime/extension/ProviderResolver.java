@@ -3,7 +3,7 @@ package com.zsumz.logyard.runtime.extension;
 import com.zsumz.logyard.api.spi.processing.EventProcessorKind;
 import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
 import com.zsumz.logyard.api.spi.config.ProviderConfigurationSpec;
-import com.zsumz.logyard.config.ProviderReferenceConfig;
+import com.zsumz.logyard.config.extension.ProviderReferenceConfig;
 
 import java.util.Locale;
 import java.util.Map;

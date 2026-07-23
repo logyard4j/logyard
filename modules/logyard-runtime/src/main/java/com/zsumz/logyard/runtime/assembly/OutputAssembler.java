@@ -2,7 +2,7 @@ package com.zsumz.logyard.runtime.assembly;
 
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.OutputConfig;
+import com.zsumz.logyard.config.output.OutputConfig;
 import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 
 import java.nio.file.Path;

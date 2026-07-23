@@ -5,7 +5,7 @@ import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.spi.context.ContextProvider;
 import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.LoggerRuleConfig;
+import com.zsumz.logyard.config.logging.LoggerRuleConfig;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.core.runtime.RuntimePlan;

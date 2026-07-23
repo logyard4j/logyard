@@ -2,12 +2,12 @@ package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.api.spi.encoding.EventEncoder;
 import com.zsumz.logyard.api.spi.encoding.EventEncoderProvider;
-import com.zsumz.logyard.config.EncoderConfig;
-import com.zsumz.logyard.config.JsonAttributeTransformConfig;
-import com.zsumz.logyard.config.JsonEncoderConfig;
-import com.zsumz.logyard.config.JsonProfileConfig;
+import com.zsumz.logyard.config.encoding.EncoderConfig;
+import com.zsumz.logyard.config.encoding.JsonAttributeTransformConfig;
+import com.zsumz.logyard.config.encoding.JsonEncoderConfig;
+import com.zsumz.logyard.config.encoding.JsonProfileConfig;
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.ProviderEncoderConfig;
+import com.zsumz.logyard.config.encoding.ProviderEncoderConfig;
 import com.zsumz.logyard.output.json.encoding.JsonAttributeTransform;
 import com.zsumz.logyard.output.json.encoding.JsonEncoder;
 import com.zsumz.logyard.output.json.encoding.JsonProfile;

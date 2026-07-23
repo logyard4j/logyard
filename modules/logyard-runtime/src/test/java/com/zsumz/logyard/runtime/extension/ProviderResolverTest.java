@@ -11,7 +11,7 @@ import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
 import com.zsumz.logyard.api.spi.config.ProviderConfigurationSpec;
 import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 import com.zsumz.logyard.api.spi.formatting.TextFormatterProvider;
-import com.zsumz.logyard.config.ProviderReferenceConfig;
+import com.zsumz.logyard.config.extension.ProviderReferenceConfig;
 
 import java.util.Map;
 import java.util.Set;

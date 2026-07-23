@@ -7,7 +7,7 @@ import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.LogyardConfigLoader;
+import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;

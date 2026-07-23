@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.LogyardConfigLoader;
+import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 
 import java.nio.file.Path;
 import java.util.Map;

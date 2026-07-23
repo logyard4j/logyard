@@ -2,9 +2,9 @@ package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.spi.output.EventSink;
-import com.zsumz.logyard.config.CustomOutputConfig;
-import com.zsumz.logyard.config.DeliveryConfig;
-import com.zsumz.logyard.config.OutputConfig;
+import com.zsumz.logyard.config.output.CustomOutputConfig;
+import com.zsumz.logyard.config.delivery.DeliveryConfig;
+import com.zsumz.logyard.config.output.OutputConfig;
 import com.zsumz.logyard.core.delivery.AsyncSink;
 import com.zsumz.logyard.core.delivery.FilteringSink;
 import com.zsumz.logyard.core.delivery.OverflowPolicy;

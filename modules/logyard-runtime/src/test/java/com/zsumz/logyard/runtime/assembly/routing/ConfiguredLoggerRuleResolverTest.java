@@ -3,7 +3,7 @@ package com.zsumz.logyard.runtime.assembly.routing;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.config.LoggerRuleConfig;
+import com.zsumz.logyard.config.logging.LoggerRuleConfig;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

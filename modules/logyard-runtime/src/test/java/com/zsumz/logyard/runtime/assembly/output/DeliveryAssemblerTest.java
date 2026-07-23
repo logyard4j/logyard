@@ -7,10 +7,10 @@ import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
-import com.zsumz.logyard.config.CustomOutputConfig;
-import com.zsumz.logyard.config.DeliveryConfig;
-import com.zsumz.logyard.config.DeliveryOverrideConfig;
-import com.zsumz.logyard.config.ProviderReferenceConfig;
+import com.zsumz.logyard.config.output.CustomOutputConfig;
+import com.zsumz.logyard.config.delivery.DeliveryConfig;
+import com.zsumz.logyard.config.delivery.DeliveryOverrideConfig;
+import com.zsumz.logyard.config.extension.ProviderReferenceConfig;
 
 import java.time.Duration;
 import java.util.EnumMap;
