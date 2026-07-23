@@ -7,6 +7,8 @@ import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.core.level.RuntimeLevelOverride;
+import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.routing.RouteDefinition;
@@ -17,6 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 
 /** Thread-safe runtime with compiled routes and lease-protected atomic plan replacement. */
 public final class DefaultLogyardRuntime implements LogyardRuntime {
@@ -29,7 +32,10 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     private volatile RuntimeState state;
 
     public DefaultLogyardRuntime(RuntimePlan plan) {
-        state = new RuntimeState(Objects.requireNonNull(plan, "plan"), new PlanEpoch());
+        state = new RuntimeState(
+                Objects.requireNonNull(plan, "plan"),
+                RuntimeLevelOverrides.empty(),
+                new PlanEpoch());
         routeLeases = new RuntimeRouteLeases(closed::get, this::refreshRoute);
         publicationPipeline = new EventPublicationPipeline(new EmergencyPublicationFailureHandler());
     }
@@ -95,17 +101,51 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     public synchronized void reload(RuntimePlan nextPlan) {
         Objects.requireNonNull(nextPlan, "nextPlan");
-        if (closed.get()) {
-            throw new IllegalStateException("runtime is closed");
-        }
+        requireOpen();
         RuntimeState previous = state;
-        RuntimeState next = new RuntimeState(nextPlan, new PlanEpoch());
+        RuntimeState next = new RuntimeState(nextPlan, previous.levelOverrides(), new PlanEpoch());
         Map<String, CompiledRoute> compiled = new LinkedHashMap<>();
         controls.forEach((name, control) -> compiled.put(name, compileRoute(name, next)));
         retirements.replacePlan(previous.plan(), previous.epoch(), next.plan(), () -> {
             state = next;
             compiled.forEach((name, route) -> controls.get(name).update(route));
         });
+    }
+
+    public synchronized void setLevelOverride(
+            String loggerName,
+            RuntimeLevelOverride override) {
+        requireOpen();
+        RuntimeState current = state;
+        RuntimeLevelOverrides nextOverrides = current.levelOverrides().withLevel(loggerName, override);
+        publishLevelOverrides(current, nextOverrides, loggerName);
+    }
+
+    public synchronized void clearLevelOverride(String loggerName) {
+        requireOpen();
+        RuntimeState current = state;
+        RuntimeLevelOverrides nextOverrides = current.levelOverrides().withoutLevel(loggerName);
+        publishLevelOverrides(current, nextOverrides, loggerName);
+    }
+
+    public synchronized void clearAllLevelOverrides() {
+        requireOpen();
+        RuntimeState current = state;
+        RuntimeLevelOverrides nextOverrides = current.levelOverrides().clear();
+        if (nextOverrides == current.levelOverrides()) {
+            return;
+        }
+        RuntimeState next = new RuntimeState(current.plan(), nextOverrides, current.epoch());
+        Map<String, CompiledRoute> compiled = compileExistingControls(next, ignored -> true);
+        publishState(next, compiled);
+    }
+
+    public Map<String, RuntimeLevelOverride> levelOverrides() {
+        return state.levelOverrides().configuredLevels();
+    }
+
+    public RuntimeLevelOverride effectiveLevelOverride(String loggerName) {
+        return state.levelOverrides().resolve(loggerName);
     }
 
     void publish(LoggerControl control, EventDraft draft) {
@@ -120,6 +160,39 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     private synchronized void refreshRoute(LoggerControl control, String loggerName) {
         control.update(compileRoute(loggerName, state));
+    }
+
+    private void publishLevelOverrides(
+            RuntimeState current,
+            RuntimeLevelOverrides nextOverrides,
+            String changedLogger) {
+        if (nextOverrides == current.levelOverrides()) {
+            return;
+        }
+        RuntimeState next = new RuntimeState(current.plan(), nextOverrides, current.epoch());
+        Map<String, CompiledRoute> compiled = compileExistingControls(
+                next,
+                loggerName -> nextOverrides.affects(changedLogger, loggerName));
+        publishState(next, compiled);
+    }
+
+    private Map<String, CompiledRoute> compileExistingControls(
+            RuntimeState next,
+            Predicate<String> affected) {
+        Map<String, CompiledRoute> compiled = new LinkedHashMap<>();
+        controls.forEach((name, control) -> {
+            if (affected.test(name)) {
+                compiled.put(name, compileRoute(name, next));
+            }
+        });
+        return compiled;
+    }
+
+    private void publishState(
+            RuntimeState next,
+            Map<String, CompiledRoute> compiled) {
+        state = next;
+        compiled.forEach((name, route) -> controls.get(name).update(route));
     }
 
     @Override
@@ -152,7 +225,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     }
 
     private static CompiledRoute compileRoute(String loggerName, RuntimeState state) {
-        return RuntimeRouteCompiler.compile(loggerName, state.plan(), state.epoch());
+        return RuntimeRouteCompiler.compile(loggerName, state.plan(), state.levelOverrides(), state.epoch());
     }
 
     private RuntimeHealth stoppedHealth() {
@@ -169,6 +242,15 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
                 Map.of()));
     }
 
-    private record RuntimeState(RuntimePlan plan, PlanEpoch epoch) {
+    private void requireOpen() {
+        if (closed.get()) {
+            throw new IllegalStateException("runtime is closed");
+        }
+    }
+
+    private record RuntimeState(
+            RuntimePlan plan,
+            RuntimeLevelOverrides levelOverrides,
+            PlanEpoch epoch) {
     }
 }

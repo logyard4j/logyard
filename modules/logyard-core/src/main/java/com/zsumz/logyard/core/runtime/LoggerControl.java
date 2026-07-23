@@ -17,6 +17,6 @@ final class LoggerControl {
 
     void update(CompiledRoute next) {
         route = next;
-        enabledMask = Level.enabledMaskFrom(next.level());
+        enabledMask = next.enabledMask();
     }
 }

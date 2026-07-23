@@ -16,7 +16,7 @@ final class EventPublicationPipeline {
     }
 
     void publish(CompiledRoute route, EventDraft draft) {
-        if (!route.level().enables(draft.level())) {
+        if (!route.enables(draft.level())) {
             return;
         }
 
