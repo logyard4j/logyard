@@ -1,12 +1,18 @@
 package com.zsumz.logyard.runtime.assembly.processing;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
 import com.zsumz.logyard.api.spi.context.ContextProvider;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
+import com.zsumz.logyard.api.spi.processing.EventProcessorKind;
+import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.loading.LogyardConfigLoader;
+import com.zsumz.logyard.core.failure.ComponentInvocationException;
 import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 
 import java.nio.file.Path;
@@ -32,6 +38,39 @@ final class ProcessorAssemblerTest {
         assertEquals(List.of("logyard-context", "sample", "logyard-redaction"), route);
         assertTrue(assembly.contextEnabled());
         assertTrue(assembly.redactionEnabled());
+    }
+
+    @Test
+    void convertsRecoverableProviderCreationErrorsAndPreservesTheCause() {
+        LogyardConfig config = LogyardConfigLoader.parse(
+                """
+                schema = 1
+                [delivery]
+                mode = "sync"
+                [filters.hostile]
+                type = "custom"
+                provider = "hostile"
+                [loggers]
+                root = { level = "info", outputs = ["console"], filters = ["hostile"] }
+                [outputs.console]
+                type = "console"
+                """,
+                "hostile-provider.toml",
+                Path.of("."),
+                Map.of());
+        AssertionError providerFailure = new AssertionError("provider failed");
+        EventProcessorProvider provider = new EventProcessorProvider() {
+            @Override public String name() { return "hostile"; }
+            @Override public EventProcessorKind kind() { return EventProcessorKind.FILTER; }
+            @Override public EventProcessor create(ProviderConfiguration configuration) { throw providerFailure; }
+        };
+        ExtensionRegistry extensions = new ExtensionRegistry(Map.of(), Map.of(), Map.of(), Map.of("hostile", provider));
+
+        ComponentInvocationException failure = assertThrows(
+                ComponentInvocationException.class,
+                () -> ProcessorAssembler.assemble(config, extensions, List.of()));
+
+        assertEquals(providerFailure, failure.getCause());
     }
 
     private static LogyardConfig config() {

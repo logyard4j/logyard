@@ -62,6 +62,34 @@ final class RuntimeRetirementsTest {
         assertEquals(0, executor.pendingReloads());
     }
 
+    @Test
+    void retirementContinuesPastRecoverableOutputCloseErrors() {
+        EventSink hostile = new EventSink() {
+            @Override
+            public void accept(LogEvent event) {
+            }
+
+            @Override
+            public void close() {
+                throw new AssertionError("close failed");
+            }
+        };
+        RecordingSink recording = new RecordingSink();
+        RuntimePlan plan = new RuntimePlan(
+                RouteDefinition.root(Level.INFO, List.of("hostile", "recording"), List.of()),
+                Map.of(),
+                Map.of("hostile", hostile, "recording", recording),
+                Map.of(),
+                Duration.ofSeconds(1));
+        RuntimeRetirements retirements = new RuntimeRetirements();
+
+        retirements.finishPlan(plan, new PlanEpoch());
+        retirements.await(Duration.ofSeconds(1));
+
+        assertTrue(recording.closed.get());
+        assertEquals(0, retirements.pendingCount());
+    }
+
     private static RuntimePlan plan(EventSink sink) {
         return new RuntimePlan(
                 RouteDefinition.root(Level.INFO, List.of("capture"), List.of()),

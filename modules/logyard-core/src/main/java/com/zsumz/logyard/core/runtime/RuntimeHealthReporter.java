@@ -5,6 +5,7 @@ import com.zsumz.logyard.api.diagnostics.HealthStatus;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 
 import java.time.Instant;
@@ -12,6 +13,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Renders bounded runtime and output health snapshots from an acquired plan epoch. */
 final class RuntimeHealthReporter {
@@ -54,16 +57,22 @@ final class RuntimeHealthReporter {
 
     private static ComponentHealth output(String name, EventSink sink) {
         if (sink instanceof HealthContributor contributor) {
-            try {
-                return contributor.health(name);
-            } catch (RuntimeException failure) {
-                return new ComponentHealth(
-                        name,
-                        "output",
-                        HealthStatus.FAILED,
-                        Map.of("health_failure", failure.getClass().getName()),
-                        Map.of());
+            AtomicReference<ComponentHealth> result = new AtomicReference<>();
+            AtomicReference<Throwable> healthFailure = new AtomicReference<>();
+            if (ComponentInvocationBoundary.invoke(
+                    "output '" + name + "' health contributor",
+                    () -> result.set(Objects.requireNonNull(
+                            contributor.health(name),
+                            "health contributor returned null")),
+                    (component, failure) -> healthFailure.set(failure))) {
+                return result.get();
             }
+            return new ComponentHealth(
+                    name,
+                    "output",
+                    HealthStatus.FAILED,
+                    Map.of("health_failure", healthFailure.get().getClass().getName()),
+                    Map.of());
         }
         return ComponentHealth.healthy(name, "output");
     }

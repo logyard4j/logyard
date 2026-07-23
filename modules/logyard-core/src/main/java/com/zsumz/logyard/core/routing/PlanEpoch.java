@@ -1,5 +1,7 @@
 package com.zsumz.logyard.core.routing;
 
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
+
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,22 +65,18 @@ public final class PlanEpoch {
         if (!cleanupScheduled.compareAndSet(false, true)) {
             return;
         }
-        try {
-            scheduler.get().accept(this::runCleanup);
-        } catch (RuntimeException failure) {
-            completion.completeExceptionally(failure);
-        }
+        ComponentInvocationBoundary.invoke(
+                "retired-plan cleanup scheduler",
+                () -> scheduler.get().accept(this::runCleanup),
+                (component, failure) -> completion.completeExceptionally(failure));
     }
 
     private void runCleanup() {
-        try {
-            cleanup.get().run();
+        if (ComponentInvocationBoundary.invoke(
+                "retired-plan cleanup",
+                () -> cleanup.get().run(),
+                (component, failure) -> completion.completeExceptionally(failure))) {
             completion.complete(null);
-        } catch (RuntimeException failure) {
-            completion.completeExceptionally(failure);
-        } catch (Error failure) {
-            completion.completeExceptionally(failure);
-            throw failure;
         }
     }
 }

@@ -5,9 +5,12 @@ import com.zsumz.logyard.api.diagnostics.HealthStatus;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Assembles a bounded health view without participating in delivery coordination. */
 final class AsyncSinkHealth {
@@ -25,11 +28,19 @@ final class AsyncSinkHealth {
         details.put("batching", Boolean.toString(state.batching()));
 
         if (delegate instanceof HealthContributor contributor) {
-            try {
-                ComponentHealth delegateHealth = contributor.health(componentName + ".delegate");
+            AtomicReference<ComponentHealth> result = new AtomicReference<>();
+            AtomicReference<Throwable> healthFailure = new AtomicReference<>();
+            if (ComponentInvocationBoundary.invoke(
+                    "async output health contributor",
+                    () -> result.set(Objects.requireNonNull(
+                            contributor.health(componentName + ".delegate"),
+                            "health contributor returned null")),
+                    (component, failure) -> healthFailure.set(failure))) {
+                ComponentHealth delegateHealth = result.get();
                 status = HealthStatus.worst(status, delegateHealth.status());
                 details.put("delegate_status", delegateHealth.status().name().toLowerCase(java.util.Locale.ROOT));
-            } catch (RuntimeException failure) {
+            } else {
+                Throwable failure = healthFailure.get();
                 status = HealthStatus.FAILED;
                 details.put("delegate_status", "failed");
                 details.put("delegate_health_failure", EmergencyText.failureSummary(failure, 512));

@@ -4,6 +4,7 @@ import com.zsumz.logyard.api.spi.processing.EventProcessorKind;
 import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
 import com.zsumz.logyard.api.spi.config.ProviderConfigurationSpec;
 import com.zsumz.logyard.config.extension.ProviderReferenceConfig;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.Locale;
 import java.util.Map;
@@ -43,8 +44,13 @@ public final class ProviderResolver {
             throw new IllegalArgumentException(
                     label + " pins implementation '" + reference.implementation() + "' but discovered '" + provider.getClass().getName() + "'");
         }
+        ProviderConfigurationSpec spec = ComponentInvocationBoundary.call(
+                label + " provider configuration contract",
+                () -> Objects.requireNonNull(
+                        configurationSpec.apply(provider),
+                        label + " provider configuration spec"));
         try {
-            Objects.requireNonNull(configurationSpec.apply(provider), label + " provider configuration spec").validate(reference.configuration());
+            spec.validate(reference.configuration());
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException(label + ": " + exception.getMessage(), exception);
         }
@@ -66,7 +72,9 @@ public final class ProviderResolver {
             EventProcessorKind expectedKind,
             String label) {
         EventProcessorProvider provider = resolve(providers, reference, label, EventProcessorProvider::configurationSpec);
-        EventProcessorKind actual = Objects.requireNonNull(provider.kind(), label + " provider kind");
+        EventProcessorKind actual = ComponentInvocationBoundary.call(
+                label + " provider kind",
+                () -> Objects.requireNonNull(provider.kind(), label + " provider kind"));
         if (actual != Objects.requireNonNull(expectedKind, "expectedKind")) {
             throw new IllegalArgumentException(
                     label + " uses provider '" + reference.provider() + "' declared as " + actual.name().toLowerCase(Locale.ROOT));

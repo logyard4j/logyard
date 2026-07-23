@@ -4,6 +4,7 @@ import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.output.BatchEventSink;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
@@ -36,12 +37,16 @@ final class AsyncDelegateDelivery {
     void deliverEvent(LogEvent event) {
         lock.lock();
         try {
-            delegate.accept(event);
-            metrics.recordDelivered();
-        } catch (RuntimeException failure) {
-            metrics.recordEmergencyFallback();
-            diagnostics.emergency(event, "delegate failure: " + failure.getClass().getSimpleName());
-            diagnostics.status("delegate accept failure: " + EmergencyText.failureSummary(failure, 2_048));
+            if (ComponentInvocationBoundary.invoke(
+                    "async output delegate accept",
+                    () -> delegate.accept(event),
+                    (component, failure) -> {
+                        metrics.recordEmergencyFallback();
+                        diagnostics.emergency(event, componentFailure(component, failure));
+                        diagnostics.failure(component, failure);
+                    })) {
+                metrics.recordDelivered();
+            }
         } finally {
             lock.unlock();
         }
@@ -50,18 +55,22 @@ final class AsyncDelegateDelivery {
     void deliverBatch(List<LogEvent> events) {
         lock.lock();
         try {
-            batchDelegate.acceptBatch(List.copyOf(events));
-            metrics.recordDelivered(events.size());
-        } catch (RuntimeException failure) {
-            metrics.recordEmergencyFallbacks(events.size());
-            int reported = Math.min(events.size(), MAX_EMERGENCY_BATCH_EVENTS);
-            for (int index = 0; index < reported; index++) {
-                diagnostics.emergency(events.get(index), "batch delegate failure: " + failure.getClass().getSimpleName());
+            if (ComponentInvocationBoundary.invoke(
+                    "async output batch delegate accept",
+                    () -> batchDelegate.acceptBatch(List.copyOf(events)),
+                    (component, failure) -> {
+                        metrics.recordEmergencyFallbacks(events.size());
+                        int reported = Math.min(events.size(), MAX_EMERGENCY_BATCH_EVENTS);
+                        for (int index = 0; index < reported; index++) {
+                            diagnostics.emergency(events.get(index), componentFailure(component, failure));
+                        }
+                        if (events.size() > reported) {
+                            diagnostics.status((events.size() - reported) + " additional event(s) omitted from emergency output");
+                        }
+                        diagnostics.failure(component, failure);
+                    })) {
+                metrics.recordDelivered(events.size());
             }
-            if (events.size() > reported) {
-                diagnostics.status((events.size() - reported) + " additional event(s) omitted from emergency output");
-            }
-            diagnostics.status("batch delegate failure: " + EmergencyText.failureSummary(failure, 2_048));
         } finally {
             lock.unlock();
         }
@@ -70,9 +79,10 @@ final class AsyncDelegateDelivery {
     void deliverInternalEvent(LogEvent event) {
         lock.lock();
         try {
-            delegate.accept(event);
-        } catch (RuntimeException failure) {
-            diagnostics.status("failed to report dropped events: " + EmergencyText.failureSummary(failure, 2_048));
+            ComponentInvocationBoundary.invoke(
+                    "async output internal-event accept",
+                    () -> delegate.accept(event),
+                    diagnostics::failure);
         } finally {
             lock.unlock();
         }
@@ -81,37 +91,32 @@ final class AsyncDelegateDelivery {
     void flush() {
         lock.lock();
         try {
-            delegate.flush();
-        } catch (RuntimeException failure) {
-            diagnostics.status("delegate flush failure: " + EmergencyText.failureSummary(failure, 2_048));
+            ComponentInvocationBoundary.invoke(
+                    "async output delegate flush",
+                    delegate::flush,
+                    diagnostics::failure);
         } finally {
             lock.unlock();
         }
     }
 
     void close(String outputName) {
-        RuntimeException failure = null;
         lock.lock();
         try {
-            try {
-                delegate.flush();
-            } catch (RuntimeException current) {
-                failure = current;
-            }
-            try {
-                delegate.close();
-            } catch (RuntimeException current) {
-                if (failure == null) {
-                    failure = current;
-                } else {
-                    failure.addSuppressed(current);
-                }
-            }
+            ComponentInvocationBoundary.invoke(
+                    "async output '" + outputName + "' delegate flush during close",
+                    delegate::flush,
+                    diagnostics::failure);
+            ComponentInvocationBoundary.invoke(
+                    "async output '" + outputName + "' delegate close",
+                    delegate::close,
+                    diagnostics::failure);
         } finally {
             lock.unlock();
         }
-        if (failure != null) {
-            throw new IllegalStateException("failed to close Logyard async output '" + outputName + "'", failure);
-        }
+    }
+
+    private static String componentFailure(String component, Throwable failure) {
+        return component + " failure: " + EmergencyText.failureSummary(failure, 512);
     }
 }

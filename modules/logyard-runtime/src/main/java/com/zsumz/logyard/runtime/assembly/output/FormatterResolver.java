@@ -9,6 +9,7 @@ import com.zsumz.logyard.config.formatting.ProviderFormatterConfig;
 import com.zsumz.logyard.config.formatting.TemplateFormatterConfig;
 import com.zsumz.logyard.config.theme.TextStyleConfig;
 import com.zsumz.logyard.config.theme.ThemeConfig;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.output.console.style.AnsiStyle;
 import com.zsumz.logyard.output.console.style.BuiltInThemes;
 import com.zsumz.logyard.output.console.style.ConsoleTheme;
@@ -57,9 +58,11 @@ public final class FormatterResolver {
                     custom.providerReference(),
                     "formatter '" + name + "'",
                     TextFormatterProvider::configurationSpec);
-            created = Objects.requireNonNull(
-                    provider.create(custom.providerReference().configuration()),
-                    "formatter provider returned null: " + name);
+            created = ComponentInvocationBoundary.call(
+                    "formatter '" + name + "' provider creation",
+                    () -> Objects.requireNonNull(
+                            provider.create(custom.providerReference().configuration()),
+                            "formatter provider returned null: " + name));
         } else {
             throw new IllegalArgumentException("unknown formatter definition '" + name + "'");
         }

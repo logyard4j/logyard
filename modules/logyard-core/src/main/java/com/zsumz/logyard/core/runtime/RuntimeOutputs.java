@@ -2,6 +2,8 @@ package com.zsumz.logyard.core.runtime;
 
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.failure.ComponentFailureCollector;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,9 +17,16 @@ final class RuntimeOutputs {
     }
 
     static void flush(RuntimePlan plan) {
-        for (EventSink sink : unique(plan)) {
-            sink.flush();
+        ComponentFailureCollector failures = new ComponentFailureCollector();
+        List<EventSink> outputs = unique(plan);
+        for (int index = 0; index < outputs.size(); index++) {
+            EventSink sink = outputs.get(index);
+            ComponentInvocationBoundary.invoke(
+                    "runtime output " + index + " flush",
+                    sink::flush,
+                    failures);
         }
+        failures.throwIfPresent("runtime output flush");
     }
 
     static void closeNotReused(RuntimePlan previous, RuntimePlan next) {
@@ -52,10 +61,10 @@ final class RuntimeOutputs {
     }
 
     private static void closeQuietly(EventSink sink) {
-        try {
-            sink.close();
-        } catch (RuntimeException failure) {
-            System.err.println("Logyard failed to close output: " + EmergencyText.failureSummary(failure, 4_096));
-        }
+        ComponentInvocationBoundary.invoke(
+                "runtime output close",
+                sink::close,
+                (component, failure) -> System.err.println(
+                        "Logyard failed to close output: " + EmergencyText.failureSummary(failure, 4_096)));
     }
 }

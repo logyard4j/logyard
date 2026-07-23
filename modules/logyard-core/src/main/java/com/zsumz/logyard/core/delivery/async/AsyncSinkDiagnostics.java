@@ -18,6 +18,10 @@ final class AsyncSinkDiagnostics {
         System.err.println("Logyard async output '" + EmergencyText.sanitize(outputName, 256) + "': " + EmergencyText.sanitize(message, 4_096));
     }
 
+    void failure(String component, Throwable failure) {
+        status(component + " failure: " + EmergencyText.failureSummary(failure, 2_048));
+    }
+
     void emergency(LogEvent event, String reason) {
         System.err.printf(
                 "%s %-5s %s - %s [Logyard emergency path: %s]%n",

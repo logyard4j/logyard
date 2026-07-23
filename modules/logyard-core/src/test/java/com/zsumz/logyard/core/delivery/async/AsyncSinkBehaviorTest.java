@@ -96,6 +96,31 @@ final class AsyncSinkBehaviorTest {
         }
     }
 
+    @Test
+    void keepsTheWorkerAliveAfterARecoverableDelegateError() {
+        AtomicInteger attempts = new AtomicInteger();
+        AtomicInteger delivered = new AtomicInteger();
+        EventSink delegate = event -> {
+            if (attempts.getAndIncrement() == 0) {
+                throw new AssertionError("hostile sink");
+            }
+            delivered.incrementAndGet();
+        };
+        AsyncSink sink = sink("hostile", delegate, OverflowAction.DROP, false);
+        try {
+            sink.accept(event(AttributeSet.of("sequence", 1)));
+            sink.accept(event(AttributeSet.of("sequence", 2)));
+            sink.flush();
+
+            assertEquals(2, attempts.get());
+            assertEquals(1, delivered.get());
+            assertEquals(1L, sink.emergencyFallbacks());
+            assertEquals("true", sink.health("hostile").details().get("worker_alive"));
+        } finally {
+            sink.close();
+        }
+    }
+
     private static AsyncSink sink(String name, EventSink delegate, OverflowAction action, boolean callerThreadDeliveryAllowed) {
         return new AsyncSink(
                 name,

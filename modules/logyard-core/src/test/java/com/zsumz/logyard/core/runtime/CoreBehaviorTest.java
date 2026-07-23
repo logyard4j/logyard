@@ -11,6 +11,7 @@ import com.zsumz.logyard.api.event.MessageFormatter;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.delivery.CompositeSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.failure.ComponentInvocationException;
 import com.zsumz.logyard.core.processing.RedactionProcessor;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 import java.time.Duration;
@@ -140,9 +141,9 @@ public final class CoreBehaviorTest {
     void fansOutPastFailingSinksAndRejectsInvalidPlans() {
         RecordingSink recording = new RecordingSink();
         CompositeSink composite = new CompositeSink(List.<EventSink>of(
-                ignored -> { throw new IllegalStateException("first failed"); },
+                ignored -> { throw new AssertionError("first failed"); },
                 recording));
-        expect(IllegalStateException.class, () -> composite.accept(event(AttributeSet.EMPTY)));
+        expect(ComponentInvocationException.class, () -> composite.accept(event(AttributeSet.EMPTY)));
         equal(1, recording.events.size());
 
         expect(IllegalArgumentException.class, () -> new RuntimePlan(

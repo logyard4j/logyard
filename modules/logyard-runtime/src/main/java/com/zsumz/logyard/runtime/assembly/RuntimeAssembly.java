@@ -2,6 +2,7 @@ package com.zsumz.logyard.runtime.assembly;
 
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.config.LogyardConfig;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
@@ -65,11 +66,10 @@ public final class RuntimeAssembly {
             if (shared.contains(sink) || !closed.add(sink)) {
                 continue;
             }
-            try {
-                sink.close();
-            } catch (RuntimeException closeFailure) {
-                primaryFailure.addSuppressed(closeFailure);
-            }
+            ComponentInvocationBoundary.invoke(
+                    "reload candidate output close",
+                    sink::close,
+                    (component, closeFailure) -> primaryFailure.addSuppressed(closeFailure));
         }
     }
 }

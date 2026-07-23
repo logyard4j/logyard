@@ -1,5 +1,7 @@
 package com.zsumz.logyard.runtime.extension.discovery;
 
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -39,8 +41,10 @@ final class NamedProviderDiscovery {
                     throw new IllegalStateException(
                             "more than " + MAX_PROVIDERS + " Logyard " + label + " providers are visible");
                 }
-                candidates.add(Objects.requireNonNull(
-                        iterator.next().get(), label + " provider instance"));
+                ServiceLoader.Provider<T> candidate = iterator.next();
+                candidates.add(ComponentInvocationBoundary.call(
+                        label + " provider construction",
+                        () -> Objects.requireNonNull(candidate.get(), label + " provider instance")));
             }
         } catch (ServiceConfigurationError failure) {
             throw new IllegalStateException("could not load a Logyard " + label + " provider", failure);
@@ -48,8 +52,9 @@ final class NamedProviderDiscovery {
         candidates.sort(Comparator.comparing(candidate -> candidate.getClass().getName()));
         LinkedHashMap<String, T> result = new LinkedHashMap<>();
         for (T provider : candidates) {
-            String providerName = Objects.requireNonNull(
-                            name.apply(provider), label + " provider name")
+            String providerName = ComponentInvocationBoundary.call(
+                            label + " provider name",
+                            () -> Objects.requireNonNull(name.apply(provider), label + " provider name"))
                     .trim()
                     .toLowerCase(Locale.ROOT);
             if (!providerName.matches(NAME_PATTERN)) {

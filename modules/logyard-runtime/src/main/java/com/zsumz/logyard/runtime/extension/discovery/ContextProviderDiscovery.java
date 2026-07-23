@@ -1,6 +1,7 @@
 package com.zsumz.logyard.runtime.extension.discovery;
 
 import com.zsumz.logyard.api.spi.context.ContextProvider;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -37,7 +38,11 @@ public final class ContextProviderDiscovery {
                     throw new IllegalStateException(
                             "more than " + MAX_PROVIDERS + " Logyard context providers are visible");
                 }
-                providers.put(type, candidate.get());
+                providers.put(
+                        type,
+                        ComponentInvocationBoundary.call(
+                                "context provider construction",
+                                candidate::get));
             }
         } catch (ServiceConfigurationError failure) {
             throw new IllegalStateException("could not load a Logyard context provider", failure);

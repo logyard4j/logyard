@@ -84,7 +84,8 @@ public final class LogyardHandler extends Handler {
                 : new IllegalStateException(failure);
         try {
             reportError(message, exception, code);
-        } catch (RuntimeException diagnosticFailure) {
+        } catch (Throwable diagnosticFailure) {
+            AdapterDiagnostics.rethrowIfFatal(diagnosticFailure);
             AdapterDiagnostics.adapterFailure("jul", "diagnostic", diagnosticFailure);
         }
     }

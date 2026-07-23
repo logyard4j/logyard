@@ -10,6 +10,7 @@ import com.zsumz.logyard.config.output.CustomOutputConfig;
 import com.zsumz.logyard.config.output.JsonFileOutputConfig;
 import com.zsumz.logyard.config.output.JsonStreamOutputConfig;
 import com.zsumz.logyard.config.output.OutputConfig;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.output.console.ConsoleSink;
 import com.zsumz.logyard.output.console.style.ConsoleTheme;
 import com.zsumz.logyard.output.console.terminal.ColorCapability;
@@ -130,8 +131,10 @@ final class OutputFactory {
                 config.runtime().shutdownTimeout(),
                 FormatterResolver.resolve(config, output.formatter(), extensions),
                 output.encoder() == null ? null : EncoderResolver.resolve(config, output.encoder(), resource, extensions));
-        return Objects.requireNonNull(
-                provider.create(context, output.providerReference().configuration()),
-                "custom output provider returned null: " + output.name());
+        return ComponentInvocationBoundary.call(
+                "custom output '" + output.name() + "' provider creation",
+                () -> Objects.requireNonNull(
+                        provider.create(context, output.providerReference().configuration()),
+                        "custom output provider returned null: " + output.name()));
     }
 }

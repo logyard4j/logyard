@@ -1,6 +1,7 @@
 package com.zsumz.logyard.runtime.assembly;
 
 import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -21,11 +22,10 @@ final class EventSinkCleanup {
             if (!closed.add(sink)) {
                 continue;
             }
-            try {
-                sink.close();
-            } catch (RuntimeException closeFailure) {
-                primaryFailure.addSuppressed(closeFailure);
-            }
+            ComponentInvocationBoundary.invoke(
+                    "candidate output rollback close",
+                    sink::close,
+                    (component, closeFailure) -> primaryFailure.addSuppressed(closeFailure));
         }
     }
 }

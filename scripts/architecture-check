@@ -609,6 +609,41 @@ processor_order = (
 if any(index < 0 for index in processor_order) or list(processor_order) != sorted(processor_order):
     errors.append("processor order must remain context, filters, enrichers, redaction")
 
+FAILURE_BOUNDARY_CONTRACTS = {
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/CompositeSink.java":
+        "ComponentInvocationBoundary.invoke(",
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/async/AsyncDelegateDelivery.java":
+        "ComponentInvocationBoundary.invoke(",
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/async/AsyncSinkHealth.java":
+        "ComponentInvocationBoundary.invoke(",
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/RetirementExecutor.java":
+        "ComponentInvocationBoundary.report(",
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/RuntimeHealthReporter.java":
+        "ComponentInvocationBoundary.invoke(",
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/RuntimeOutputs.java":
+        "ComponentInvocationBoundary.invoke(",
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/EventSinkCleanup.java":
+        "ComponentInvocationBoundary.invoke(",
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/OutputFactory.java":
+        "ComponentInvocationBoundary.call(",
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/output/EncoderResolver.java":
+        "ComponentInvocationBoundary.call(",
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/output/FormatterResolver.java":
+        "ComponentInvocationBoundary.call(",
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/processing/ProcessorAssembler.java":
+        "ComponentInvocationBoundary.call(",
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/extension/ProviderResolver.java":
+        "ComponentInvocationBoundary.call(",
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload/ConfigurationWatchLoop.java":
+        "ComponentInvocationBoundary.invoke(",
+}
+for relative, required_fragment in FAILURE_BOUNDARY_CONTRACTS.items():
+    source = ROOT / relative
+    if not source.is_file() or required_fragment not in source.read_text(encoding="utf-8"):
+        errors.append(
+            f"{relative}: recoverable SPI and lifecycle callbacks must use the shared component invocation boundary"
+        )
+
 BOUND_CONTRACTS = {
     "modules/logyard-api/src/main/java/com/zsumz/logyard/api/format/TextTemplate.java": (
         "MAX_TEMPLATE_CHARS = 4_096",

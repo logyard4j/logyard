@@ -8,6 +8,7 @@ import com.zsumz.logyard.config.encoding.JsonEncoderConfig;
 import com.zsumz.logyard.config.encoding.JsonProfileConfig;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.encoding.ProviderEncoderConfig;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.output.json.encoding.JsonAttributeTransform;
 import com.zsumz.logyard.output.json.encoding.JsonEncoder;
 import com.zsumz.logyard.output.json.encoding.JsonProfile;
@@ -54,14 +55,19 @@ public final class EncoderResolver {
                         custom.providerReference(),
                         "encoder '" + name + "'",
                         EventEncoderProvider::configurationSpec);
-                created = Objects.requireNonNull(
-                        provider.create(custom.providerReference().configuration()),
-                        "encoder provider returned null: " + name);
+                created = ComponentInvocationBoundary.call(
+                        "encoder '" + name + "' provider creation",
+                        () -> Objects.requireNonNull(
+                                provider.create(custom.providerReference().configuration()),
+                                "encoder provider returned null: " + name));
             } else {
                 throw new IllegalArgumentException("unknown encoder definition '" + name + "'");
             }
         }
-        return ExtensionGuardrails.encoder(created);
+        EventEncoder resolved = created;
+        return ComponentInvocationBoundary.call(
+                "encoder '" + Objects.requireNonNullElse(name, "logyard") + "' initialization",
+                () -> ExtensionGuardrails.encoder(resolved));
     }
 
     /**

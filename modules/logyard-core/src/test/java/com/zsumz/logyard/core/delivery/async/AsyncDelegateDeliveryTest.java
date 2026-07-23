@@ -4,15 +4,16 @@ import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 final class AsyncDelegateDeliveryTest {
     @Test
-    void preservesBothFlushAndCloseFailures() {
-        RuntimeException flushFailure = new IllegalStateException("flush failed");
-        RuntimeException closeFailure = new IllegalArgumentException("close failed");
+    void isolatesRecoverableFlushAndCloseErrorsAndAttemptsBoth() {
+        AtomicInteger flushAttempts = new AtomicInteger();
+        AtomicInteger closeAttempts = new AtomicInteger();
         EventSink delegate = new EventSink() {
             @Override
             public void accept(LogEvent event) {
@@ -20,20 +21,21 @@ final class AsyncDelegateDeliveryTest {
 
             @Override
             public void flush() {
-                throw flushFailure;
+                flushAttempts.incrementAndGet();
+                throw new AssertionError("flush failed");
             }
 
             @Override
             public void close() {
-                throw closeFailure;
+                closeAttempts.incrementAndGet();
+                throw new AssertionError("close failed");
             }
         };
         AsyncDelegateDelivery delivery = new AsyncDelegateDelivery(delegate, new AsyncSinkMetrics(), new AsyncSinkDiagnostics("test"));
 
-        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> delivery.close("test"));
+        assertDoesNotThrow(() -> delivery.close("test"));
 
-        assertSame(flushFailure, failure.getCause());
-        assertEquals(1, flushFailure.getSuppressed().length);
-        assertSame(closeFailure, flushFailure.getSuppressed()[0]);
+        assertEquals(1, flushAttempts.get());
+        assertEquals(1, closeAttempts.get());
     }
 }

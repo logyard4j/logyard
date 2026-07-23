@@ -1,6 +1,7 @@
 package com.zsumz.logyard.core.runtime;
 
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -100,9 +101,13 @@ final class RetirementExecutor {
                 }
             } catch (InterruptedException ignored) {
                 // Wake-up signal for newly queued work or a completed final retirement.
-            } catch (RuntimeException failure) {
-                System.err.println("Logyard retirement worker failure: "
-                        + EmergencyText.failureSummary(failure, 4_096));
+            } catch (Throwable failure) {
+                ComponentInvocationBoundary.report(
+                        "runtime retirement worker",
+                        failure,
+                        (component, current) -> System.err.println(
+                                "Logyard retirement worker failure: "
+                                        + EmergencyText.failureSummary(current, 4_096)));
             }
         }
     }

@@ -1,12 +1,9 @@
 package com.zsumz.logyard.core.delivery;
 
-import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.event.AttributeSet;
-import com.zsumz.logyard.api.event.CaptureLimits;
-import com.zsumz.logyard.api.event.ExceptionSnapshot;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.output.EventSink;
-import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.failure.ComponentFailureCollector;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.List;
 import java.util.Objects;
@@ -26,41 +23,27 @@ public final class CompositeSink implements EventSink {
 
     @Override
     public void accept(LogEvent event) {
-        RuntimeException failure = null;
-        for (EventSink sink : sinks) {
-            try {
-                sink.accept(event);
-            } catch (RuntimeException current) {
-                failure = combine(failure, current);
-            }
+        ComponentFailureCollector failures = new ComponentFailureCollector();
+        for (int index = 0; index < sinks.length; index++) {
+            EventSink sink = sinks[index];
+            ComponentInvocationBoundary.invoke(
+                    "fanout sink " + index + " accept",
+                    () -> sink.accept(event),
+                    failures);
         }
-        if (failure != null) {
-            throw failure;
-        }
+        failures.throwIfPresent("fanout accept");
     }
 
     @Override
     public void flush() {
-        RuntimeException failure = null;
-        for (EventSink sink : sinks) {
-            try {
-                sink.flush();
-            } catch (RuntimeException current) {
-                failure = combine(failure, current);
-            }
+        ComponentFailureCollector failures = new ComponentFailureCollector();
+        for (int index = 0; index < sinks.length; index++) {
+            EventSink sink = sinks[index];
+            ComponentInvocationBoundary.invoke(
+                    "fanout sink " + index + " flush",
+                    sink::flush,
+                    failures);
         }
-        if (failure != null) {
-            throw failure;
-        }
-    }
-
-    private static RuntimeException combine(RuntimeException first, RuntimeException current) {
-        if (first == null) {
-            return current;
-        }
-        if (first != current) {
-            first.addSuppressed(current);
-        }
-        return first;
+        failures.throwIfPresent("fanout flush");
     }
 }

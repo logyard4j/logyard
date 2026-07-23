@@ -11,6 +11,7 @@ import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.processing.ProviderFilterConfig;
 import com.zsumz.logyard.config.processing.RateLimitFilterConfig;
 import com.zsumz.logyard.config.processing.SamplingFilterConfig;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.processing.ContextEnrichmentProcessor;
 import com.zsumz.logyard.core.processing.RateLimitProcessor;
 import com.zsumz.logyard.core.processing.RedactionProcessor;
@@ -131,9 +132,11 @@ public final class ProcessorAssembler {
                     custom.providerReference(),
                     EventProcessorKind.FILTER,
                     "filter '" + name + "'");
-            return Objects.requireNonNull(
-                    provider.create(custom.providerReference().configuration()),
-                    "filter provider returned null: " + name);
+            return ComponentInvocationBoundary.call(
+                    "filter '" + name + "' provider creation",
+                    () -> Objects.requireNonNull(
+                            provider.create(custom.providerReference().configuration()),
+                            "filter provider returned null: " + name));
         }
         throw new IllegalArgumentException("unknown filter definition '" + name + "'");
     }
@@ -145,9 +148,11 @@ public final class ProcessorAssembler {
                 configured.providerReference(),
                 EventProcessorKind.ENRICHER,
                 "enricher '" + name + "'");
-        EventProcessor processor = Objects.requireNonNull(
-                provider.create(configured.providerReference().configuration()),
-                "enricher provider returned null: " + name);
+        EventProcessor processor = ComponentInvocationBoundary.call(
+                "enricher '" + name + "' provider creation",
+                () -> Objects.requireNonNull(
+                        provider.create(configured.providerReference().configuration()),
+                        "enricher provider returned null: " + name));
         return ExtensionGuardrails.enricher(name, processor);
     }
 

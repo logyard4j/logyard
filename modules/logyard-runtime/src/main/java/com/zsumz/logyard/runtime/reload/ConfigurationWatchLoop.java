@@ -1,6 +1,8 @@
 package com.zsumz.logyard.runtime.reload;
 
+import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -22,7 +24,7 @@ final class ConfigurationWatchLoop implements Runnable {
     private final WatchService watchService;
     private final ReloadDebouncer debouncer;
     private final Runnable reload;
-    private final ReloadDiagnostics diagnostics;
+    private final ReloadDiagnosticBoundary diagnostics;
     private final AtomicBoolean stopped = new AtomicBoolean();
 
     ConfigurationWatchLoop(
@@ -35,7 +37,7 @@ final class ConfigurationWatchLoop implements Runnable {
         watchService = registration.watchService();
         debouncer = new ReloadDebouncer(debounce);
         this.reload = reload;
-        this.diagnostics = diagnostics;
+        this.diagnostics = new ReloadDiagnosticBoundary(diagnostics);
     }
 
     @Override
@@ -47,7 +49,10 @@ final class ConfigurationWatchLoop implements Runnable {
                 if (key != null && consume(key)) {
                     debouncer.signalChange();
                 }
-                debouncer.runIfDue(reload);
+                ComponentInvocationBoundary.invoke(
+                        "configuration reload callback",
+                        () -> debouncer.runIfDue(reload),
+                        (component, failure) -> diagnostics.rejected(source, failure));
             }
         } catch (ClosedWatchServiceException ignored) {
             // Expected during close.
@@ -56,7 +61,8 @@ final class ConfigurationWatchLoop implements Runnable {
                 terminalFailure = interrupted;
                 Thread.currentThread().interrupt();
             }
-        } catch (RuntimeException failure) {
+        } catch (Throwable failure) {
+            FailureIsolation.prepareForRecovery(failure);
             terminalFailure = failure;
         } finally {
             terminalFailure = closeAfterRun(terminalFailure);

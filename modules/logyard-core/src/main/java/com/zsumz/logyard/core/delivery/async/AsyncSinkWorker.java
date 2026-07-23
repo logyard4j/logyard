@@ -3,6 +3,7 @@ package com.zsumz.logyard.core.delivery.async;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -118,17 +119,19 @@ final class AsyncSinkWorker {
                     emitDropSummary(false);
                 } catch (InterruptedException ignored) {
                     // close() interrupts only the queue poll to begin draining immediately.
-                } catch (RuntimeException failure) {
-                    diagnostics.status("output failure: " + EmergencyText.failureSummary(failure, 2_048));
+                } catch (Throwable failure) {
+                    ComponentInvocationBoundary.report(
+                            "async output worker",
+                            failure,
+                            diagnostics::failure);
                 }
             }
         } finally {
             if (closeDelegateOnExit) {
-                try {
-                    closeDelegate();
-                } catch (RuntimeException failure) {
-                    diagnostics.status("delegate close failure: " + EmergencyText.failureSummary(failure, 2_048));
-                }
+                ComponentInvocationBoundary.invoke(
+                        "async output worker delegate close",
+                        this::closeDelegate,
+                        diagnostics::failure);
             }
         }
     }
