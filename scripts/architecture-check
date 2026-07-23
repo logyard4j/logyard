@@ -13,6 +13,20 @@ from pathlib import Path
 
 ROOT = Path.cwd()
 PREFIX = "com.zsumz.logyard."
+MAX_JAVA_SOURCE_LINES = 300
+# Temporary migration ledger. Checked-in generated sources receive no exemption:
+# generated Java belongs under ignored build output, not the maintained source tree.
+LINE_LIMIT_DEBT = {
+    "modules/logyard-api/src/main/java/com/zsumz/logyard/api/LogyardLogger.java": 343,
+    "modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/AttributeSet.java": 356,
+    "modules/logyard-config-toml/src/main/java/com/zsumz/logyard/config/toml/TomlParser.java": 491,
+    "modules/logyard-config-toml/src/test/java/com/zsumz/logyard/config/LogyardConfigLoaderTest.java": 409,
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/AsyncSink.java": 377,
+    "modules/logyard-core/src/test/java/com/zsumz/logyard/core/runtime/CoreBehaviorTest.java": 471,
+    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/encoding/JsonEncoder.java": 316,
+    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/file/rotation/ArchiveMaintenance.java": 331,
+    "tests/logyard-integration-tests/src/main/java/com/zsumz/logyard/tests/CoreVerificationMain.java": 428,
+}
 SOURCE_ROOTS = sorted(
     path
     for group in ("modules", "tests")
@@ -106,6 +120,7 @@ EXPECTED_DEPENDENCIES = {
 errors: list[str] = []
 main_files: list[tuple[Path, str]] = []
 package_names: set[str] = set()
+java_sources: set[str] = set()
 
 for source_root in SOURCE_ROOTS:
     member = source_root.parents[2].name
@@ -114,6 +129,7 @@ for source_root in SOURCE_ROOTS:
         errors.append(f"{source_root.relative_to(ROOT)}: no import boundary is defined")
         continue
     for source in sorted(source_root.rglob("*.java")):
+        java_sources.add(source.relative_to(ROOT).as_posix())
         relative = source.relative_to(source_root)
         expected_package = ".".join(relative.parent.parts)
         text = source.read_text(encoding="utf-8")
@@ -173,6 +189,7 @@ test_file_count = 0
 test_method_count = 0
 for source_root in TEST_ROOTS:
     for source in sorted(source_root.rglob("*.java")):
+        java_sources.add(source.relative_to(ROOT).as_posix())
         test_file_count += 1
         relative = source.relative_to(source_root)
         expected_package = ".".join(relative.parent.parts)
@@ -189,6 +206,24 @@ for source_root in TEST_ROOTS:
         for imported in IMPORT.findall(text):
             if imported.endswith(".*"):
                 errors.append(f"{source.relative_to(ROOT)}: wildcard imports are forbidden")
+
+for relative in sorted(java_sources):
+    source = ROOT / relative
+    line_count = len(source.read_text(encoding="utf-8").splitlines())
+    allowed_lines = LINE_LIMIT_DEBT.get(relative, MAX_JAVA_SOURCE_LINES)
+    if line_count > allowed_lines:
+        errors.append(
+            f"{relative}: {line_count} lines exceeds its {allowed_lines}-line limit; "
+            "extract cohesive collaborators instead of extending the file"
+        )
+    if relative in LINE_LIMIT_DEBT and line_count <= MAX_JAVA_SOURCE_LINES:
+        errors.append(
+            f"{relative}: now satisfies the {MAX_JAVA_SOURCE_LINES}-line limit; "
+            "remove its stale LINE_LIMIT_DEBT entry"
+        )
+
+for relative in sorted(LINE_LIMIT_DEBT.keys() - java_sources):
+    errors.append(f"{relative}: stale LINE_LIMIT_DEBT entry does not reference a Java source")
 
 manifest_versions: dict[str, str] = {}
 for project_path, expected_dependencies in EXPECTED_DEPENDENCIES.items():
