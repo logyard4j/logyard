@@ -1,6 +1,5 @@
 package com.zsumz.logyard.runtime.adapter;
 
-import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardRuntime;
 
 import java.util.List;
@@ -9,13 +8,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /** One ownership-aware lease on the runtime selected for a compatibility adapter. */
 public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
-    private final LogyardRuntime runtime;
-    private final AdapterRuntimeResolver.SharedOwned sharedOwned;
+    private final AdapterRuntimeLease lease;
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    AdapterRuntimeHandle(LogyardRuntime runtime, AdapterRuntimeResolver.SharedOwned sharedOwned) {
-        this.runtime = Objects.requireNonNull(runtime, "runtime");
-        this.sharedOwned = sharedOwned;
+    AdapterRuntimeHandle(AdapterRuntimeLease lease) {
+        this.lease = Objects.requireNonNull(lease, "lease");
     }
 
     @Override
@@ -23,7 +20,7 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
         if (!initialized()) {
             throw new IllegalStateException("Logyard adapter runtime lease is closed or stale");
         }
-        return runtime;
+        return lease.runtime();
     }
 
     /** Immutable context keys from the currently published configuration. */
@@ -32,27 +29,23 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
         if (!initialized()) {
             return List.of();
         }
-        return sharedOwned == null
-                ? AdapterRuntimeResolver.contextInclude(runtime)
-                : sharedOwned.contextInclude();
+        return lease.contextInclude();
     }
 
     public boolean ownsRuntime() {
-        return sharedOwned != null;
+        return lease.ownsRuntime();
     }
 
     @Override
     public boolean initialized() {
-        return !closed.get() && (sharedOwned == null
-                ? Logyard.runtimeOrNull() == runtime
-                : sharedOwned.active(runtime));
+        return !closed.get() && lease.active();
     }
 
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true) || sharedOwned == null) {
+        if (!closed.compareAndSet(false, true)) {
             return;
         }
-        AdapterRuntimeResolver.release(sharedOwned);
+        lease.release();
     }
 }
