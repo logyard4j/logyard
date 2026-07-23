@@ -52,6 +52,8 @@ required_files=(
   scripts/ci
   scripts/api-compatibility
   scripts/javadoc
+  scripts/package-verify
+  scripts/package
   scripts/verify
   scripts/architecture-check
   modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider

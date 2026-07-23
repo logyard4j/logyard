@@ -119,11 +119,12 @@ EXPECTED_DEPENDENCIES = {
     },
 }
 
-MODULE_CONTRACTS = {
+ARTIFACT_CONTRACTS = {
     "modules/logyard-api": (
         "com.zsumz.logyard.api",
         {
             "com.zsumz.logyard.api",
+            "com.zsumz.logyard.api.annotation",
             "com.zsumz.logyard.api.delivery",
             "com.zsumz.logyard.api.diagnostics",
             "com.zsumz.logyard.api.event",
@@ -131,6 +132,7 @@ MODULE_CONTRACTS = {
             "com.zsumz.logyard.api.format",
             "com.zsumz.logyard.api.ingress",
             "com.zsumz.logyard.api.reload",
+            "com.zsumz.logyard.api.spi",
             "com.zsumz.logyard.api.spi.config",
             "com.zsumz.logyard.api.spi.context",
             "com.zsumz.logyard.api.spi.diagnostics",
@@ -466,25 +468,13 @@ else:
     if f"LOGYARD_SERVICE_VERSION:-{version}" not in (ROOT / "logyard.toml").read_text():
         errors.append("logyard.toml does not expose the workspace version")
 
-for project_path, (expected_module, expected_exports) in MODULE_CONTRACTS.items():
+for project_path, (expected_module, supported_packages) in ARTIFACT_CONTRACTS.items():
     descriptor = ROOT / project_path / "src/main/java/module-info.java"
-    if not descriptor.is_file():
-        errors.append(f"{descriptor.relative_to(ROOT)}: missing JPMS descriptor")
-        continue
-    descriptor_text = descriptor.read_text(encoding="utf-8")
-    module_match = re.search(r"(?m)^module\s+([A-Za-z_][\w.]*)\s*\{", descriptor_text)
-    if module_match is None or module_match.group(1) != expected_module:
-        actual = module_match.group(1) if module_match is not None else None
+    if descriptor.exists():
         errors.append(
-            f"{descriptor.relative_to(ROOT)}: module name must be {expected_module!r}, found {actual!r}"
+            f"{descriptor.relative_to(ROOT)}: JPMS descriptors are deferred until Zolt packages modular Javadocs; "
+            "use the stable Automatic-Module-Name and InternalApi boundary"
         )
-    actual_exports = set(re.findall(r"(?m)^\s*exports\s+([A-Za-z_][\w.]*)\s*;", descriptor_text))
-    if actual_exports != expected_exports:
-        errors.append(
-            f"{descriptor.relative_to(ROOT)}: supported exports {sorted(actual_exports)} do not "
-            f"match {sorted(expected_exports)}"
-        )
-
     manifest = ROOT / project_path / "zolt.toml"
     manifest_text = manifest.read_text(encoding="utf-8")
     automatic_name = re.search(
@@ -506,6 +496,20 @@ for project_path, (expected_module, expected_exports) in MODULE_CONTRACTS.items(
     ):
         if fragment not in manifest_text:
             errors.append(f"{manifest.relative_to(ROOT)}: missing publication contract {fragment!r}")
+
+    source_root = ROOT / project_path / "src/main/java"
+    for package_info in sorted(source_root.rglob("package-info.java")):
+        package_match = PACKAGE.search(package_info.read_text(encoding="utf-8"))
+        if package_match is None:
+            continue
+        package_name = package_match.group(1)
+        if package_name in supported_packages:
+            continue
+        package_text = package_info.read_text(encoding="utf-8")
+        if "@com.zsumz.logyard.api.annotation.InternalApi" not in package_text:
+            errors.append(
+                f"{package_info.relative_to(ROOT)}: unsupported packages must declare @InternalApi"
+            )
 
 for manifest in sorted(
         path for group in ("modules", "tests", "benchmarks")

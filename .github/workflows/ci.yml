@@ -9,22 +9,74 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-      - name: Repository and JDK-only checks
+      - name: Bootstrap the pinned Zolt revision
+        run: ./scripts/bootstrap-zolt
+      - name: Put Zolt on PATH
+        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+      - name: Resolve the locked workspace
+        run: zolt resolve --workspace
+      - name: Repository, Javadoc, build, and test checks
         run: ./scripts/ci
-      - name: Build and test the Zolt workspace
+      - name: Package and verify the published artifacts
         run: |
-          ./scripts/bootstrap-zolt
-          export PATH="$HOME/.zolt/bin:$PATH"
+          ./scripts/package
+          ./scripts/package-verify
+      - name: Smoke the benchmark harness
+        run: ./scripts/benchmark-smoke
+
+  platform:
+    name: Platform smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Bootstrap the pinned Zolt revision
+        run: ./scripts/bootstrap-zolt
+      - name: Put Zolt on PATH
+        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+      - name: Exercise file locking, reload, rotation, and packaged services
+        run: |
           zolt resolve --workspace
-          zolt build --workspace --all
-          zolt test --workspace --all
-          zolt run --workspace --member tests/logyard-integration-tests
+          zolt test --workspace --all --no-progress --color never
+          ./scripts/package
+          ./scripts/package-verify
+
+  forward-jdk:
+    name: Forward compatibility (JDK 25)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Bootstrap the pinned Zolt revision
+        run: ./scripts/bootstrap-zolt
+      - name: Put Zolt on PATH
+        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+      - name: Build and test the Java 21 surface on JDK 25
+        run: |
+          zolt resolve --workspace
+          zolt build --workspace --all --no-progress --color never
+          zolt test --workspace --all --no-progress --color never

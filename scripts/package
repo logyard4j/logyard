@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ZOLT="${ZOLT:-zolt}"
+
+"$ZOLT" package \
+  --workspace \
+  --members modules/logyard-api,modules/logyard-core,modules/logyard-config-toml,modules/logyard-output-console,modules/logyard-output-json,modules/logyard-runtime,modules/logyard-slf4j2,modules/logyard-jul,modules/logyard-system-logger \
+  --no-progress \
+  --color never
