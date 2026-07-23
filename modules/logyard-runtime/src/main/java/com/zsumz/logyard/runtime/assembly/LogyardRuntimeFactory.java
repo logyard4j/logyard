@@ -45,7 +45,7 @@ public final class LogyardRuntimeFactory {
         ExtensionRegistry extensions = ExtensionRegistry.discover();
         validate(config, extensions);
         List<ContextProvider> contextProviders = contextProviders();
-        OutputAssembler.AssembledOutputs outputs = null;
+        AssembledOutputs outputs = null;
         try {
             outputs = OutputAssembler.assemble(config, current, extensions);
             ProcessorAssembler.Assembly processors = ProcessorAssembler.assemble(config, extensions, contextProviders);
@@ -99,7 +99,7 @@ public final class LogyardRuntimeFactory {
     }
 
     private static void validate(LogyardConfig config, ExtensionRegistry extensions) {
-        OutputAssembler.validateDefinitions(config, extensions);
+        OutputFactory.validateDefinitions(config, extensions);
         FormatterResolver.validateDefinitions(config, extensions);
         EncoderResolver.validateDefinitions(config, extensions);
         ProcessorAssembler.validateDefinitions(config, extensions);
