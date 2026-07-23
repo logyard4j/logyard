@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.extension;
+package com.zsumz.logyard.runtime.extension.discovery;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,14 +14,14 @@ import java.util.ServiceLoader;
 import java.util.function.Function;
 
 /** Shared deterministic and bounded ServiceLoader catalog construction. */
-public final class NamedProviderDiscovery {
-    public static final int MAX_PROVIDERS = 64;
+final class NamedProviderDiscovery {
+    static final int MAX_PROVIDERS = 64;
     private static final String NAME_PATTERN = "[a-z][a-z0-9_.-]{0,63}";
 
     private NamedProviderDiscovery() {
     }
 
-    public static <T> Map<String, T> discover(
+    static <T> Map<String, T> discover(
             Class<T> service,
             ClassLoader loader,
             Function<T, String> name,
@@ -68,7 +68,7 @@ public final class NamedProviderDiscovery {
         return Collections.unmodifiableMap(result);
     }
 
-    public static ClassLoader contextLoader(Class<?> anchor) {
+    static ClassLoader contextLoader(Class<?> anchor) {
         ClassLoader context = Thread.currentThread().getContextClassLoader();
         return context == null ? anchor.getClassLoader() : context;
     }

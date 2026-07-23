@@ -1,8 +1,6 @@
-package com.zsumz.logyard.runtime.format;
+package com.zsumz.logyard.runtime.extension.discovery;
 
 import com.zsumz.logyard.api.spi.formatting.TextFormatterProvider;
-import com.zsumz.logyard.runtime.extension.NamedProviderDiscovery;
-
 import java.util.Map;
 
 /** Deterministic, bounded discovery of custom text-formatter providers. */

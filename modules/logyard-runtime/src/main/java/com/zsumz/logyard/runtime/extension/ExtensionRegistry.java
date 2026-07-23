@@ -4,10 +4,10 @@ import com.zsumz.logyard.api.spi.encoding.EventEncoderProvider;
 import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
 import com.zsumz.logyard.api.spi.output.OutputProvider;
 import com.zsumz.logyard.api.spi.formatting.TextFormatterProvider;
-import com.zsumz.logyard.runtime.encoding.EventEncoderProviderDiscovery;
-import com.zsumz.logyard.runtime.format.TextFormatterProviderDiscovery;
-import com.zsumz.logyard.runtime.output.OutputProviderDiscovery;
-import com.zsumz.logyard.runtime.processing.EventProcessorProviderDiscovery;
+import com.zsumz.logyard.runtime.extension.discovery.EventEncoderProviderDiscovery;
+import com.zsumz.logyard.runtime.extension.discovery.EventProcessorProviderDiscovery;
+import com.zsumz.logyard.runtime.extension.discovery.OutputProviderDiscovery;
+import com.zsumz.logyard.runtime.extension.discovery.TextFormatterProviderDiscovery;
 
 import java.util.Map;
 import java.util.Objects;

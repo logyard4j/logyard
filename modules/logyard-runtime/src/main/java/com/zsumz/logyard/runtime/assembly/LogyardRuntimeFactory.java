@@ -14,8 +14,8 @@ import com.zsumz.logyard.runtime.assembly.output.EncoderResolver;
 import com.zsumz.logyard.runtime.assembly.output.FormatterResolver;
 import com.zsumz.logyard.runtime.assembly.processing.ProcessorAssembler;
 import com.zsumz.logyard.runtime.assembly.routing.ConfiguredLoggerRuleResolver;
-import com.zsumz.logyard.runtime.context.ContextProviderDiscovery;
 import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
+import com.zsumz.logyard.runtime.extension.discovery.ContextProviderDiscovery;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;

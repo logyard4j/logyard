@@ -213,6 +213,26 @@ if console_root_types != {"ConsoleSink.java"}:
         + ", ".join(sorted(console_root_types))
     )
 
+discovery_root = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/extension/discovery"
+discovery_types = {
+    source.name
+    for source in discovery_root.glob("*.java")
+    if source.name != "package-info.java"
+}
+expected_discovery_types = {
+    "ContextProviderDiscovery.java",
+    "EventEncoderProviderDiscovery.java",
+    "EventProcessorProviderDiscovery.java",
+    "NamedProviderDiscovery.java",
+    "OutputProviderDiscovery.java",
+    "TextFormatterProviderDiscovery.java",
+}
+if discovery_types != expected_discovery_types:
+    errors.append(
+        "extension discovery package is incomplete or misplaced; found "
+        + ", ".join(sorted(discovery_types))
+    )
+
 test_file_count = 0
 test_method_count = 0
 for source_root in TEST_ROOTS:
@@ -402,7 +422,7 @@ BOUND_CONTRACTS = {
         "MAX_TEXT_CHARS = 4_096",
         "MAX_LIST_ITEMS = 128",
     ),
-    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/extension/NamedProviderDiscovery.java": (
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/extension/discovery/NamedProviderDiscovery.java": (
         "MAX_PROVIDERS = 64",
         "duplicate Logyard",
     ),

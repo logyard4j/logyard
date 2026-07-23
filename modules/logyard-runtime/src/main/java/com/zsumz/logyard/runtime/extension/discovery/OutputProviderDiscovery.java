@@ -1,8 +1,6 @@
-package com.zsumz.logyard.runtime.output;
+package com.zsumz.logyard.runtime.extension.discovery;
 
 import com.zsumz.logyard.api.spi.output.OutputProvider;
-import com.zsumz.logyard.runtime.extension.NamedProviderDiscovery;
-
 import java.util.Map;
 
 /** Deterministic, bounded discovery of custom output providers. */

@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.context;
+package com.zsumz.logyard.runtime.extension.discovery;
 
 import com.zsumz.logyard.api.spi.context.ContextProvider;
 
