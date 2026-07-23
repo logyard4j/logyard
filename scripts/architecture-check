@@ -172,16 +172,17 @@ for source_root in SOURCE_ROOTS:
                 f"{source.relative_to(ROOT)}: file locking is confined to logyard-output-json"
             )
 
-api_source_root = ROOT / "modules/logyard-api/src/main/java"
-for package_directory in sorted(
-        directory for directory in api_source_root.rglob("*")
-        if directory.is_dir() and any(directory.glob("*.java"))):
-    package_info = package_directory / "package-info.java"
-    if not package_info.is_file():
-        errors.append(
-            f"{package_directory.relative_to(ROOT)}: public API package is missing package-info.java"
-        )
+for source_root in SOURCE_ROOTS:
+    for package_directory in sorted(
+            directory for directory in source_root.rglob("*")
+            if directory.is_dir() and any(directory.glob("*.java"))):
+        package_info = package_directory / "package-info.java"
+        if not package_info.is_file():
+            errors.append(
+                f"{package_directory.relative_to(ROOT)}: production package is missing package-info.java"
+            )
 
+api_source_root = ROOT / "modules/logyard-api/src/main/java"
 spi_root = api_source_root / "com/zsumz/logyard/api/spi"
 for source in sorted(spi_root.glob("*.java")):
     if source.name != "package-info.java":

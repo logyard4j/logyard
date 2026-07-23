@@ -1,7 +1,7 @@
 package com.zsumz.logyard.runtime.assembly.routing;
 
 import com.zsumz.logyard.config.logging.LoggerRuleConfig;
-import com.zsumz.logyard.core.routing.hierarchy.LoggerNameHierarchy;
+import com.zsumz.logyard.core.routing.LoggerNameHierarchy;
 
 import java.util.Map;
 import java.util.Objects;

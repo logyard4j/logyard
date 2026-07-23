@@ -1,4 +1,4 @@
-package com.zsumz.logyard.core.routing.hierarchy;
+package com.zsumz.logyard.core.routing;
 
 import java.util.Comparator;
 import java.util.List;
