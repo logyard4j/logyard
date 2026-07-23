@@ -1,7 +1,6 @@
 package com.zsumz.logyard.slf4j.internal.event;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.ingress.IngressMetadata;
 import com.zsumz.logyard.api.ingress.LogEventIngress;
 import com.zsumz.logyard.slf4j.internal.context.ContextSnapshotPolicy;
 import com.zsumz.logyard.slf4j.internal.context.LogyardMdcAdapter;
@@ -90,9 +89,6 @@ public final class Slf4jEventMapper {
             Long timestamp = capture.read(event::getTimeStamp, null);
             String threadName = capture.read(event::getThreadName, null);
             capture.annotate(attributes);
-            IngressMetadata metadata = timestamp == null
-                    ? IngressMetadata.current()
-                    : IngressMetadata.source(timestamp, threadName);
             delegate.log(
                     level,
                     eventName,
@@ -100,7 +96,7 @@ public final class Slf4jEventMapper {
                     arguments,
                     attributes.build(),
                     throwable,
-                    metadata);
+                    Slf4jSourceMetadata.normalize(timestamp, threadName));
             capture.report(delegate.name());
         } catch (Throwable failure) {
             ProviderDiagnostics.rethrowIfFatal(failure);

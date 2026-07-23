@@ -81,6 +81,8 @@ final class Slf4jProviderBehaviorTest {
             assertEquals("explicit-request", fluent.attributes().get("request.id"));
             assertEquals(7L, fluent.attributes().get("order.id"));
             assertEquals(List.of("AUDIT", "ORDER"), fluent.attributes().get("slf4j.markers"));
+            assertTrue(fluent.timestampMillis() > 0L);
+            assertEquals(Thread.currentThread().getName(), fluent.threadName());
             assertNotNull(fluent.exception());
             assertEquals("payment rejected", fluent.exception().message());
         }
