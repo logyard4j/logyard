@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TARGET="${LOGYARD_JAVADOC_TARGET:-$ROOT/target/javadoc}"
+JAVADOC="${JAVADOC:-javadoc}"
+
+# This allowlist is the supported Java contract. Implementation packages stay
+# out of generated documentation even when cross-package assembly requires a
+# public Java declaration.
+source_roots=(
+  "$ROOT/modules/logyard-api/src/main/java"
+)
+
+sources=()
+for source_root in "${source_roots[@]}"; do
+  while IFS= read -r source; do
+    sources+=("$source")
+  done < <(find "$source_root" -type f -name '*.java' -print | LC_ALL=C sort)
+done
+
+mkdir -p "$TARGET"
+"$JAVADOC" \
+  --release 21 \
+  -encoding UTF-8 \
+  -docencoding UTF-8 \
+  -charset UTF-8 \
+  -notimestamp \
+  -quiet \
+  -Werror \
+  -Xdoclint:all \
+  -d "$TARGET" \
+  "${sources[@]}"
+
+printf 'Strict Javadocs generated for %d supported API source files: %s\n' "${#sources[@]}" "$TARGET"

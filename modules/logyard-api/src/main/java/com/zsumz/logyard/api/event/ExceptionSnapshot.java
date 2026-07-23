@@ -12,9 +12,16 @@ import java.util.Objects;
  * delivery cannot keep an arbitrary object graph alive after the logging call returns.</p>
  */
 public final class ExceptionSnapshot {
+    /** Maximum number of linked causes captured from a throwable graph. */
     public static final int MAX_CAUSE_DEPTH = 8;
+
+    /** Maximum number of suppressed exceptions captured at each node. */
     public static final int MAX_SUPPRESSED_PER_NODE = 8;
+
+    /** Maximum number of stack frames captured at each node. */
     public static final int MAX_FRAMES_PER_NODE = 256;
+
+    /** Maximum UTF-16 characters retained from an exception message. */
     public static final int MAX_MESSAGE_CHARS = 16_384;
 
     private final String type;
@@ -39,6 +46,12 @@ public final class ExceptionSnapshot {
         this.truncated = truncated;
     }
 
+    /**
+     * Captures a detached, bounded throwable graph.
+     *
+     * @param throwable throwable to capture, or {@code null}
+     * @return immutable snapshot, or {@code null} for a null throwable
+     */
     public static ExceptionSnapshot capture(Throwable throwable) {
         if (throwable == null) {
             return null;
@@ -46,30 +59,65 @@ public final class ExceptionSnapshot {
         return capture(throwable, new IdentityHashMap<>(), 0);
     }
 
+    /**
+     * Returns the fully qualified throwable type name.
+     *
+     * @return throwable type name
+     */
     public String type() {
         return type;
     }
 
+    /**
+     * Returns the captured exception message, or {@code null}.
+     *
+     * @return exception message, or {@code null}
+     */
     public String message() {
         return message;
     }
 
+    /**
+     * Returns the captured stack frames in source order.
+     *
+     * @return immutable stack frames
+     */
     public List<StackTraceElement> frames() {
         return frames;
     }
 
+    /**
+     * Returns captured suppressed exceptions in source order.
+     *
+     * @return immutable suppressed exceptions
+     */
     public List<ExceptionSnapshot> suppressed() {
         return suppressed;
     }
 
+    /**
+     * Returns the captured cause, or {@code null}.
+     *
+     * @return captured cause, or {@code null}
+     */
     public ExceptionSnapshot cause() {
         return cause;
     }
 
+    /**
+     * Returns whether any part of this throwable graph was truncated or unavailable.
+     *
+     * @return {@code true} when capture was incomplete
+     */
     public boolean truncated() {
         return truncated;
     }
 
+    /**
+     * Returns a single-line type-and-message summary.
+     *
+     * @return exception summary
+     */
     public String summary() {
         return message == null || message.isBlank() ? type : type + ": " + message;
     }

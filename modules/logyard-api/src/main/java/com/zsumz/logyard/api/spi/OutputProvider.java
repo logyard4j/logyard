@@ -10,11 +10,28 @@ package com.zsumz.logyard.api.spi;
  * must not create an unbounded queue or retain the provider context after close.</p>
  */
 public interface OutputProvider {
+    /**
+     * Returns the stable configuration name of this provider.
+     *
+     * @return provider name
+     */
     String name();
 
+    /**
+     * Returns the exact configuration-key contract.
+     *
+     * @return provider configuration specification
+     */
     default ProviderConfigurationSpec configurationSpec() {
         return ProviderConfigurationSpec.none();
     }
 
+    /**
+     * Creates a transport sink owned by one immutable runtime plan.
+     *
+     * @param context output-scoped runtime resources
+     * @param configuration validated provider configuration
+     * @return new sink
+     */
     EventSink create(OutputProviderContext context, ProviderConfiguration configuration);
 }

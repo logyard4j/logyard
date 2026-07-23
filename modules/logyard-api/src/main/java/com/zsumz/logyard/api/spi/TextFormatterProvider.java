@@ -8,11 +8,27 @@ package com.zsumz.logyard.api.spi;
  * The returned formatter is owned by one runtime plan.</p>
  */
 public interface TextFormatterProvider {
+    /**
+     * Returns the stable configuration name of this provider.
+     *
+     * @return provider name
+     */
     String name();
 
+    /**
+     * Returns the exact configuration-key contract.
+     *
+     * @return provider configuration specification
+     */
     default ProviderConfigurationSpec configurationSpec() {
         return ProviderConfigurationSpec.none();
     }
 
+    /**
+     * Creates a formatter owned by one immutable runtime plan.
+     *
+     * @param configuration validated provider configuration
+     * @return new formatter
+     */
     TextFormatter create(ProviderConfiguration configuration);
 }

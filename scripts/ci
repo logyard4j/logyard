@@ -6,6 +6,7 @@ cd "$ROOT"
 
 ./scripts/repository-check
 ./scripts/verify
+./scripts/javadoc
 
 if command -v zolt >/dev/null 2>&1; then
   if [[ -f zolt.lock ]]; then

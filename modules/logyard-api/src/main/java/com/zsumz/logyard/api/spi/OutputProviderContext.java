@@ -11,6 +11,12 @@ import java.util.Objects;
  * <p>{@link #formatter()} and {@link #encoder()} are {@code null} unless the
  * custom output explicitly references named definitions. The attributes and
  * components are detached runtime-owned values and must not be mutated.</p>
+ *
+ * @param outputName configured output name
+ * @param resourceAttributes immutable service resource attributes
+ * @param shutdownTimeout maximum graceful shutdown duration
+ * @param formatter referenced formatter, or {@code null}
+ * @param encoder referenced encoder, or {@code null}
  */
 public record OutputProviderContext(
         String outputName,
@@ -18,6 +24,7 @@ public record OutputProviderContext(
         Duration shutdownTimeout,
         TextFormatter formatter,
         EventEncoder encoder) {
+    /** Validates and normalizes output-scoped resources. */
     public OutputProviderContext {
         outputName = Objects.requireNonNull(outputName, "outputName").trim();
         if (!outputName.matches("[A-Za-z][A-Za-z0-9_.-]{0,63}")) {

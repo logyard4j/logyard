@@ -2,23 +2,46 @@ package com.zsumz.logyard.api.event;
 
 /** Fixed alpha limits that make one captured event's memory use finite. */
 public final class CaptureLimits {
+    /** Maximum positional arguments retained by one event. */
     public static final int MAX_ARGUMENTS = 64;
+
+    /** Maximum attributes retained by one event, including truncation markers. */
     public static final int MAX_ATTRIBUTES = 128;
+
+    /** Maximum elements retained from a captured collection, map, or array. */
     public static final int MAX_COLLECTION_ELEMENTS = 128;
+
+    /** Maximum recursive depth retained from nested values. */
     public static final int MAX_NESTING_DEPTH = 8;
+
+    /** Maximum UTF-16 characters retained from ordinary captured text. */
     public static final int MAX_TEXT_CHARS = 65_536;
+
+    /** Maximum UTF-16 characters retained from names used in diagnostics and routing. */
     public static final int MAX_NAME_CHARS = 1_024;
+
+    /** Maximum UTF-16 characters retained from an attribute key. */
     public static final int MAX_ATTRIBUTE_KEY_CHARS = 256;
 
     private CaptureLimits() {
     }
 
-    /** Bounds arbitrary captured text without splitting a surrogate pair. */
+    /**
+     * Bounds arbitrary captured text without splitting a surrogate pair.
+     *
+     * @param value text to bound, or {@code null}
+     * @return bounded text, preserving {@code null}
+     */
     public static String text(String value) {
         return truncate(value, MAX_TEXT_CHARS);
     }
 
-    /** Bounds a logger, output, processor, or other diagnostic name. */
+    /**
+     * Bounds a logger, output, processor, or other diagnostic name.
+     *
+     * @param value name to bound, or {@code null}
+     * @return bounded name, preserving {@code null}
+     */
     public static String name(String value) {
         return truncate(value, MAX_NAME_CHARS);
     }

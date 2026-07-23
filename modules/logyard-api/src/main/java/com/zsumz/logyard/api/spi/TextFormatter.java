@@ -13,5 +13,11 @@ import com.zsumz.logyard.api.event.LogEvent;
  */
 @FunctionalInterface
 public interface TextFormatter {
+    /**
+     * Formats one event.
+     *
+     * @param event event to format
+     * @return bounded one-line text
+     */
     String format(LogEvent event);
 }

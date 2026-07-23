@@ -12,8 +12,19 @@ import com.zsumz.logyard.api.event.LogEvent;
  */
 @FunctionalInterface
 public interface EventEncoder {
+    /**
+     * Encodes one event.
+     *
+     * @param event event to encode
+     * @return one bounded record without a trailing line break
+     */
     String encode(LogEvent event);
 
+    /**
+     * Returns the media type produced by this encoder.
+     *
+     * @return valid media type
+     */
     default String mediaType() {
         return "text/plain; charset=utf-8";
     }

@@ -17,8 +17,13 @@ import java.util.function.Function;
  * expressions, reflection, or arbitrary field lookup.</p>
  */
 public final class TextTemplate {
+    /** Maximum UTF-16 characters accepted in a template source. */
     public static final int MAX_TEMPLATE_CHARS = 4_096;
+
+    /** Maximum placeholder occurrences accepted in a template. */
     public static final int MAX_PLACEHOLDERS = 64;
+
+    /** Complete set of supported placeholder names. */
     public static final Set<String> PLACEHOLDERS = Set.of(
             "timestamp", "level", "logger", "thread", "event", "message", "fields");
 
@@ -30,7 +35,12 @@ public final class TextTemplate {
         this.segments = List.copyOf(segments);
     }
 
-    /** Compiles and validates a one-line template. */
+    /**
+     * Compiles and validates a one-line template.
+     *
+     * @param source template source
+     * @return compiled immutable template
+     */
     public static TextTemplate compile(String source) {
         Objects.requireNonNull(source, "source");
         if (source.isBlank()) {
@@ -92,11 +102,21 @@ public final class TextTemplate {
         return new TextTemplate(source, segments);
     }
 
+    /**
+     * Returns the original template source.
+     *
+     * @return template source
+     */
     public String source() {
         return source;
     }
 
-    /** Renders using a bounded value resolver. Missing values become empty strings. */
+    /**
+     * Renders using a bounded value resolver. Missing values become empty strings.
+     *
+     * @param values placeholder value resolver
+     * @return bounded rendered text
+     */
     public String render(Function<String, String> values) {
         Objects.requireNonNull(values, "values");
         StringBuilder result = new StringBuilder(Math.min(source.length() + 128, 1_024));

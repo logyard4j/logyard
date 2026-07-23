@@ -8,11 +8,27 @@ package com.zsumz.logyard.api.spi;
  * immutable runtime plan.</p>
  */
 public interface EventEncoderProvider {
+    /**
+     * Returns the stable configuration name of this provider.
+     *
+     * @return provider name
+     */
     String name();
 
+    /**
+     * Returns the exact configuration-key contract.
+     *
+     * @return provider configuration specification
+     */
     default ProviderConfigurationSpec configurationSpec() {
         return ProviderConfigurationSpec.none();
     }
 
+    /**
+     * Creates an encoder owned by one immutable runtime plan.
+     *
+     * @param configuration validated provider configuration
+     * @return new encoder
+     */
     EventEncoder create(ProviderConfiguration configuration);
 }

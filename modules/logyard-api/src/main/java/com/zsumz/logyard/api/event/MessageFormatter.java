@@ -8,6 +8,13 @@ public final class MessageFormatter {
     private MessageFormatter() {
     }
 
+    /**
+     * Renders SLF4J-style {@code {}} placeholders with captured arguments.
+     *
+     * @param template message template, or {@code null}
+     * @param arguments positional arguments
+     * @return bounded rendered message
+     */
     public static String format(String template, Object[] arguments) {
         if (template == null) {
             return "null";
@@ -39,6 +46,12 @@ public final class MessageFormatter {
         return CaptureLimits.text(result.append(template, cursor, template.length()).toString());
     }
 
+    /**
+     * Renders an arbitrary value without allowing an ordinary {@code toString()} failure to escape.
+     *
+     * @param value value to render
+     * @return bounded rendered value
+     */
     public static String safeToString(Object value) {
         StringBuilder result = new StringBuilder();
         appendValue(result, value, new IdentityHashMap<>());

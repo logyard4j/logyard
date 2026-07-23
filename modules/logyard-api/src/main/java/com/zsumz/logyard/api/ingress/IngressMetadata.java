@@ -32,25 +32,53 @@ public final class IngressMetadata {
         this.sourceThreadName = normalize(sourceThreadName);
     }
 
-    /** Uses the capture timestamp and current thread identity. */
+    /**
+     * Uses the capture timestamp and current thread identity.
+     *
+     * @return shared metadata indicating that no source values override capture values
+     */
     public static IngressMetadata current() {
         return CURRENT;
     }
 
-    /** Preserves an external timestamp and thread name; the source thread id is unknown. */
+    /**
+     * Preserves an external timestamp and thread name; the source thread id is unknown.
+     *
+     * @param timestampMillis source timestamp in Unix epoch milliseconds
+     * @param threadName source thread name
+     * @return source metadata
+     */
     public static IngressMetadata source(long timestampMillis, String threadName) {
         return new IngressMetadata(true, timestampMillis, false, 0L, threadName);
     }
 
-    /** Preserves an external timestamp and complete source thread identity. */
+    /**
+     * Preserves an external timestamp and complete source thread identity.
+     *
+     * @param timestampMillis source timestamp in Unix epoch milliseconds
+     * @param threadId source thread identifier
+     * @param threadName source thread name
+     * @return source metadata
+     */
     public static IngressMetadata source(long timestampMillis, long threadId, String threadName) {
         return new IngressMetadata(true, timestampMillis, true, threadId, threadName);
     }
 
+    /**
+     * Returns whether a source timestamp is present.
+     *
+     * @return {@code true} when a source timestamp is present
+     */
     public boolean hasSourceTimestamp() {
         return sourceTimestampPresent;
     }
 
+    /**
+     * Returns the source timestamp.
+     *
+     * @return source timestamp in Unix epoch milliseconds
+     * @throws IllegalStateException if no source timestamp is present
+     */
     public long sourceTimestampMillis() {
         if (!sourceTimestampPresent) {
             throw new IllegalStateException("source timestamp is not present");
@@ -58,10 +86,21 @@ public final class IngressMetadata {
         return sourceTimestampMillis;
     }
 
+    /**
+     * Returns whether a source thread identifier is present.
+     *
+     * @return {@code true} when a source thread identifier is present
+     */
     public boolean hasSourceThreadId() {
         return sourceThreadIdPresent;
     }
 
+    /**
+     * Returns the source thread identifier.
+     *
+     * @return source thread identifier
+     * @throws IllegalStateException if no source thread identifier is present
+     */
     public long sourceThreadId() {
         if (!sourceThreadIdPresent) {
             throw new IllegalStateException("source thread id is not present");
@@ -69,6 +108,11 @@ public final class IngressMetadata {
         return sourceThreadId;
     }
 
+    /**
+     * Returns the normalized source thread name, or {@code null}.
+     *
+     * @return source thread name, or {@code null}
+     */
     public String sourceThreadName() {
         return sourceThreadName;
     }

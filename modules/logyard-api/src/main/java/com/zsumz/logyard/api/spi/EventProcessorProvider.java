@@ -9,16 +9,34 @@ package com.zsumz.logyard.api.spi;
  * processor.</p>
  */
 public interface EventProcessorProvider {
-    /** Stable lower-case provider name used by an explicit enricher or filter definition. */
+    /**
+     * Returns the stable lower-case provider name used by an explicit enricher or filter definition.
+     *
+     * @return provider name
+     */
     String name();
 
-    /** Prevents an enricher provider from being wired as a dropping filter, or vice versa. */
+    /**
+     * Declares whether this provider creates enrichers or filters.
+     *
+     * @return processor kind
+     */
     EventProcessorKind kind();
 
+    /**
+     * Returns the exact configuration-key contract.
+     *
+     * @return provider configuration specification
+     */
     default ProviderConfigurationSpec configurationSpec() {
         return ProviderConfigurationSpec.none();
     }
 
-    /** Creates a processor owned by one immutable runtime plan. */
+    /**
+     * Creates a processor owned by one immutable runtime plan.
+     *
+     * @param configuration validated provider configuration
+     * @return new processor
+     */
     EventProcessor create(ProviderConfiguration configuration);
 }
