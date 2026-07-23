@@ -4,8 +4,8 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.api.spi.HealthContributor;
+import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 
 import java.time.Duration;
 import java.util.Objects;

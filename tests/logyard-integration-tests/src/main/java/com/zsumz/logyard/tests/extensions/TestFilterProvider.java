@@ -1,10 +1,10 @@
 package com.zsumz.logyard.tests.extensions;
 
-import com.zsumz.logyard.api.spi.EventProcessor;
-import com.zsumz.logyard.api.spi.EventProcessorKind;
-import com.zsumz.logyard.api.spi.EventProcessorProvider;
-import com.zsumz.logyard.api.spi.ProviderConfiguration;
-import com.zsumz.logyard.api.spi.ProviderConfigurationSpec;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
+import com.zsumz.logyard.api.spi.processing.EventProcessorKind;
+import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
+import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
+import com.zsumz.logyard.api.spi.config.ProviderConfigurationSpec;
 
 import java.util.Set;
 

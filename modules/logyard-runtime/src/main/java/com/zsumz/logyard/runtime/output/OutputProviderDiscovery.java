@@ -1,6 +1,6 @@
 package com.zsumz.logyard.runtime.output;
 
-import com.zsumz.logyard.api.spi.OutputProvider;
+import com.zsumz.logyard.api.spi.output.OutputProvider;
 import com.zsumz.logyard.runtime.extension.NamedProviderDiscovery;
 
 import java.util.Map;

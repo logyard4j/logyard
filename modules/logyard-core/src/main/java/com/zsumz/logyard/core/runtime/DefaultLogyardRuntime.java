@@ -6,7 +6,7 @@ import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
 import com.zsumz.logyard.api.event.CaptureLimits;
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.routing.RouteDefinition;

@@ -1,7 +1,7 @@
 package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.config.CustomOutputConfig;
 import com.zsumz.logyard.config.DeliveryConfig;
 import com.zsumz.logyard.config.OutputConfig;

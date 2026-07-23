@@ -1,6 +1,6 @@
 package com.zsumz.logyard.runtime.encoding;
 
-import com.zsumz.logyard.api.spi.EventEncoderProvider;
+import com.zsumz.logyard.api.spi.encoding.EventEncoderProvider;
 import com.zsumz.logyard.runtime.extension.NamedProviderDiscovery;
 
 import java.util.Map;

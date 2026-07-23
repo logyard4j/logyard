@@ -1,6 +1,6 @@
 package com.zsumz.logyard.runtime.assembly;
 
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 
 import java.nio.file.Path;
 import java.util.Objects;

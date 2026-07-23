@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
-import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.api.spi.HealthContributor;
-import com.zsumz.logyard.api.spi.ProviderConfiguration;
+import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
+import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
 import com.zsumz.logyard.config.CustomOutputConfig;
 import com.zsumz.logyard.config.DeliveryConfig;
 import com.zsumz.logyard.config.DeliveryOverrideConfig;

@@ -2,8 +2,8 @@ package com.zsumz.logyard.core.delivery;
 
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.diagnostics.HealthStatus;
-import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.api.spi.HealthContributor;
+import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 
 import java.util.LinkedHashMap;

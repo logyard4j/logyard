@@ -3,8 +3,8 @@ package com.zsumz.logyard.core.runtime;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.diagnostics.HealthStatus;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
-import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.api.spi.HealthContributor;
+import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 
 import java.time.Instant;

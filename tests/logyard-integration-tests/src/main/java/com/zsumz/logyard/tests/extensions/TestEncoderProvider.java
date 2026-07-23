@@ -1,9 +1,9 @@
 package com.zsumz.logyard.tests.extensions;
 
-import com.zsumz.logyard.api.spi.EventEncoder;
-import com.zsumz.logyard.api.spi.EventEncoderProvider;
-import com.zsumz.logyard.api.spi.ProviderConfiguration;
-import com.zsumz.logyard.api.spi.ProviderConfigurationSpec;
+import com.zsumz.logyard.api.spi.encoding.EventEncoder;
+import com.zsumz.logyard.api.spi.encoding.EventEncoderProvider;
+import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
+import com.zsumz.logyard.api.spi.config.ProviderConfigurationSpec;
 
 import java.util.Set;
 

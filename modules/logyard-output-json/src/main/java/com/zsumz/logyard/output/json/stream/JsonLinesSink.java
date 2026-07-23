@@ -2,9 +2,9 @@ package com.zsumz.logyard.output.json.stream;
 
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.diagnostics.HealthStatus;
-import com.zsumz.logyard.api.spi.EventEncoder;
-import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.api.spi.HealthContributor;
+import com.zsumz.logyard.api.spi.encoding.EventEncoder;
+import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 import com.zsumz.logyard.api.event.LogEvent;
 import java.io.IOException;
 import java.io.UncheckedIOException;

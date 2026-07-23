@@ -2,7 +2,7 @@ package com.zsumz.logyard.core.processing;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventProcessor;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
 
 import java.util.Objects;
 import java.util.Set;

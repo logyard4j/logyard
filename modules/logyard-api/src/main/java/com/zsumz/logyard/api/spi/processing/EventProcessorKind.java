@@ -1,4 +1,4 @@
-package com.zsumz.logyard.api.spi;
+package com.zsumz.logyard.api.spi.processing;
 
 /** Declared role of a provider-created event processor. */
 public enum EventProcessorKind {

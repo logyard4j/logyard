@@ -1,9 +1,9 @@
 package com.zsumz.logyard.runtime.extension;
 
 import com.zsumz.logyard.api.event.CaptureLimits;
-import com.zsumz.logyard.api.spi.EventEncoder;
-import com.zsumz.logyard.api.spi.EventProcessor;
-import com.zsumz.logyard.api.spi.TextFormatter;
+import com.zsumz.logyard.api.spi.encoding.EventEncoder;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
+import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 
 import java.util.Objects;
 

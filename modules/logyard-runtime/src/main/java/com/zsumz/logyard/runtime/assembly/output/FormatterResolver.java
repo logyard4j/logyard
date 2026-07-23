@@ -1,8 +1,8 @@
 package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.spi.TextFormatter;
-import com.zsumz.logyard.api.spi.TextFormatterProvider;
+import com.zsumz.logyard.api.spi.formatting.TextFormatter;
+import com.zsumz.logyard.api.spi.formatting.TextFormatterProvider;
 import com.zsumz.logyard.config.FormatterConfig;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.ProviderFormatterConfig;

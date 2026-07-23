@@ -1,6 +1,6 @@
 package com.zsumz.logyard.runtime.format;
 
-import com.zsumz.logyard.api.spi.TextFormatterProvider;
+import com.zsumz.logyard.api.spi.formatting.TextFormatterProvider;
 import com.zsumz.logyard.runtime.extension.NamedProviderDiscovery;
 
 import java.util.Map;

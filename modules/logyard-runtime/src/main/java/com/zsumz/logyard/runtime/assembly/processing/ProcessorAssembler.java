@@ -1,9 +1,9 @@
 package com.zsumz.logyard.runtime.assembly.processing;
 
-import com.zsumz.logyard.api.spi.ContextProvider;
-import com.zsumz.logyard.api.spi.EventProcessor;
-import com.zsumz.logyard.api.spi.EventProcessorKind;
-import com.zsumz.logyard.api.spi.EventProcessorProvider;
+import com.zsumz.logyard.api.spi.context.ContextProvider;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
+import com.zsumz.logyard.api.spi.processing.EventProcessorKind;
+import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
 import com.zsumz.logyard.config.EnricherConfig;
 import com.zsumz.logyard.config.FilterConfig;
 import com.zsumz.logyard.config.LoggerRuleConfig;

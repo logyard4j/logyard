@@ -1,8 +1,8 @@
 package com.zsumz.logyard.core.delivery;
 
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.BatchEventSink;
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.BatchEventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 
 import java.util.List;

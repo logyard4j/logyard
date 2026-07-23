@@ -1,7 +1,7 @@
 package com.zsumz.logyard.runtime.assembly.output;
 
-import com.zsumz.logyard.api.spi.EventEncoder;
-import com.zsumz.logyard.api.spi.EventEncoderProvider;
+import com.zsumz.logyard.api.spi.encoding.EventEncoder;
+import com.zsumz.logyard.api.spi.encoding.EventEncoderProvider;
 import com.zsumz.logyard.config.EncoderConfig;
 import com.zsumz.logyard.config.JsonAttributeTransformConfig;
 import com.zsumz.logyard.config.JsonEncoderConfig;

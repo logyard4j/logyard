@@ -1,7 +1,7 @@
 package com.zsumz.logyard.core.runtime;
 
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventProcessor;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 
 import java.util.Objects;

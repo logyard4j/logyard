@@ -127,6 +127,7 @@ phase "Compile and run JUnit tests"
 JUNIT_JAR="$(find_artifact "${JUNIT_PLATFORM_JAR:-}" \
   'junit-platform-console-standalone-1.11.4.jar')"
 base_test_roots=(
+  "$ROOT/modules/logyard-api/src/test/java"
   "$ROOT/modules/logyard-core/src/test/java"
   "$ROOT/modules/logyard-config-toml/src/test/java"
   "$ROOT/modules/logyard-output-console/src/test/java"

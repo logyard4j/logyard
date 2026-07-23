@@ -1,11 +1,11 @@
 package com.zsumz.logyard.tests.extensions;
 
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.api.spi.OutputProvider;
-import com.zsumz.logyard.api.spi.OutputProviderContext;
-import com.zsumz.logyard.api.spi.ProviderConfiguration;
-import com.zsumz.logyard.api.spi.ProviderConfigurationSpec;
+import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.api.spi.output.OutputProvider;
+import com.zsumz.logyard.api.spi.output.OutputProviderContext;
+import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
+import com.zsumz.logyard.api.spi.config.ProviderConfigurationSpec;
 
 import java.util.Objects;
 import java.util.Set;

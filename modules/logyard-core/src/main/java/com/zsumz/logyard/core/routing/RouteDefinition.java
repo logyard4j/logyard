@@ -1,8 +1,8 @@
 package com.zsumz.logyard.core.routing;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.spi.EventProcessor;
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
+import com.zsumz.logyard.api.spi.output.EventSink;
 
 import java.util.List;
 

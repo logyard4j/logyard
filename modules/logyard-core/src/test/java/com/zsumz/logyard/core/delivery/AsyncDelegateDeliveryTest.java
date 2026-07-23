@@ -1,7 +1,7 @@
 package com.zsumz.logyard.core.delivery;
 
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

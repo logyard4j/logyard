@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventProcessor;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
 import org.junit.jupiter.api.Test;
 
 final class ExtensionGuardrailsTest {

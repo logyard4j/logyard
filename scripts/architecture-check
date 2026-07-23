@@ -172,6 +172,23 @@ for source_root in SOURCE_ROOTS:
                 f"{source.relative_to(ROOT)}: file locking is confined to logyard-output-json"
             )
 
+api_source_root = ROOT / "modules/logyard-api/src/main/java"
+for package_directory in sorted(
+        directory for directory in api_source_root.rglob("*")
+        if directory.is_dir() and any(directory.glob("*.java"))):
+    package_info = package_directory / "package-info.java"
+    if not package_info.is_file():
+        errors.append(
+            f"{package_directory.relative_to(ROOT)}: public API package is missing package-info.java"
+        )
+
+spi_root = api_source_root / "com/zsumz/logyard/api/spi"
+for source in sorted(spi_root.glob("*.java")):
+    if source.name != "package-info.java":
+        errors.append(
+            f"{source.relative_to(ROOT)}: SPI contracts must live in a capability subpackage"
+        )
+
 test_file_count = 0
 test_method_count = 0
 for source_root in TEST_ROOTS:
@@ -273,15 +290,15 @@ SERVICE_CONTRACTS = {
         ["com.zsumz.logyard.slf4j.LogyardServiceProvider"],
     "modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder":
         ["com.zsumz.logyard.systemlogger.LogyardLoggerFinder"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.TextFormatterProvider":
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.formatting.TextFormatterProvider":
         ["com.zsumz.logyard.tests.extensions.TestFormatterProvider"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.EventEncoderProvider":
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.encoding.EventEncoderProvider":
         ["com.zsumz.logyard.tests.extensions.TestEncoderProvider"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.EventProcessorProvider": [
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.processing.EventProcessorProvider": [
         "com.zsumz.logyard.tests.extensions.TestEnricherProvider",
         "com.zsumz.logyard.tests.extensions.TestFilterProvider",
     ],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.OutputProvider":
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.output.OutputProvider":
         ["com.zsumz.logyard.tests.extensions.TestOutputProvider"],
 }
 for relative, expected in SERVICE_CONTRACTS.items():
@@ -356,7 +373,7 @@ BOUND_CONTRACTS = {
         "MAX_PLACEHOLDERS = 64",
         "text template must contain {message}",
     ),
-    "modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/ProviderConfiguration.java": (
+    "modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/config/ProviderConfiguration.java": (
         "MAX_ENTRIES = 64",
         "MAX_TEXT_CHARS = 4_096",
         "MAX_LIST_ITEMS = 128",

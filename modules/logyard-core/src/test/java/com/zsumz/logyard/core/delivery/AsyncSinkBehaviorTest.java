@@ -4,8 +4,8 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.delivery.OverflowAction;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.BatchEventSink;
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.BatchEventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

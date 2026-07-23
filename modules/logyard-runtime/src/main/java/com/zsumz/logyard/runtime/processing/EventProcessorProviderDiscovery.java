@@ -1,6 +1,6 @@
 package com.zsumz.logyard.runtime.processing;
 
-import com.zsumz.logyard.api.spi.EventProcessorProvider;
+import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
 import com.zsumz.logyard.runtime.extension.NamedProviderDiscovery;
 
 import java.util.Map;

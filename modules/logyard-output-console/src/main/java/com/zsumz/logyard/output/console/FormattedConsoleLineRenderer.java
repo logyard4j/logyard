@@ -2,7 +2,7 @@ package com.zsumz.logyard.output.console;
 
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.TextFormatter;
+import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 
 import java.util.Objects;
 

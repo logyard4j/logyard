@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.TextFormatter;
+import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;

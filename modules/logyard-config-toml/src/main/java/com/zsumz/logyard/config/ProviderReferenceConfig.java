@@ -1,6 +1,6 @@
 package com.zsumz.logyard.config;
 
-import com.zsumz.logyard.api.spi.ProviderConfiguration;
+import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
 
 import java.util.Objects;
 

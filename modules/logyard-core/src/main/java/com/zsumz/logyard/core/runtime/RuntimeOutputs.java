@@ -1,6 +1,6 @@
 package com.zsumz.logyard.core.runtime;
 
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 
 import java.util.ArrayList;

@@ -3,9 +3,9 @@ package com.zsumz.logyard.runtime.extension;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.zsumz.logyard.api.spi.ProviderConfiguration;
-import com.zsumz.logyard.api.spi.TextFormatter;
-import com.zsumz.logyard.api.spi.TextFormatterProvider;
+import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
+import com.zsumz.logyard.api.spi.formatting.TextFormatter;
+import com.zsumz.logyard.api.spi.formatting.TextFormatterProvider;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

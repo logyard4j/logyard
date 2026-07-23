@@ -1,9 +1,9 @@
 package com.zsumz.logyard.runtime.assembly;
 
 import com.zsumz.logyard.api.event.AttributeSet;
-import com.zsumz.logyard.api.spi.EventSink;
-import com.zsumz.logyard.api.spi.OutputProvider;
-import com.zsumz.logyard.api.spi.OutputProviderContext;
+import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.api.spi.output.OutputProvider;
+import com.zsumz.logyard.api.spi.output.OutputProviderContext;
 import com.zsumz.logyard.config.ConsoleOutputConfig;
 import com.zsumz.logyard.config.CustomOutputConfig;
 import com.zsumz.logyard.config.JsonFileOutputConfig;

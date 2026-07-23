@@ -11,7 +11,7 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.core.runtime.RuntimePlan;

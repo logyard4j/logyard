@@ -1,6 +1,6 @@
 package com.zsumz.logyard.runtime.context;
 
-import com.zsumz.logyard.api.spi.ContextProvider;
+import com.zsumz.logyard.api.spi.context.ContextProvider;
 
 import java.util.ArrayList;
 import java.util.Comparator;

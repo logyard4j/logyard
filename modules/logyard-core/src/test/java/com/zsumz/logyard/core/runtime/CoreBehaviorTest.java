@@ -8,7 +8,7 @@ import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.event.MessageFormatter;
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.delivery.CompositeSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.processing.RedactionProcessor;

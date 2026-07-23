@@ -4,7 +4,7 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
-import com.zsumz.logyard.api.spi.EventProcessor;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import org.junit.jupiter.api.Test;

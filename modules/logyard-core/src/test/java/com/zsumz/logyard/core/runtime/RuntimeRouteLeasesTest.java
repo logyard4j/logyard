@@ -1,7 +1,7 @@
 package com.zsumz.logyard.core.runtime;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.api.spi.EventProcessor;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package com.zsumz.logyard.api.spi;
+package com.zsumz.logyard.api.spi.config;
 
 import org.junit.jupiter.api.Test;
 

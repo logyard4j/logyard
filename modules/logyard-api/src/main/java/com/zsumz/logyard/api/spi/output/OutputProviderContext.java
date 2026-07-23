@@ -1,6 +1,8 @@
-package com.zsumz.logyard.api.spi;
+package com.zsumz.logyard.api.spi.output;
 
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.spi.encoding.EventEncoder;
+import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 
 import java.time.Duration;
 import java.util.Objects;

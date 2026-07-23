@@ -1,8 +1,8 @@
 package com.zsumz.logyard.runtime.extension;
 
-import com.zsumz.logyard.api.spi.EventProcessorKind;
-import com.zsumz.logyard.api.spi.EventProcessorProvider;
-import com.zsumz.logyard.api.spi.ProviderConfigurationSpec;
+import com.zsumz.logyard.api.spi.processing.EventProcessorKind;
+import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
+import com.zsumz.logyard.api.spi.config.ProviderConfigurationSpec;
 import com.zsumz.logyard.config.ProviderReferenceConfig;
 
 import java.util.Locale;

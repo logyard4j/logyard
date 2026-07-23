@@ -2,8 +2,8 @@ package com.zsumz.logyard.core.processing;
 
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.ContextProvider;
-import com.zsumz.logyard.api.spi.EventProcessor;
+import com.zsumz.logyard.api.spi.context.ContextProvider;
+import com.zsumz.logyard.api.spi.processing.EventProcessor;
 import com.zsumz.logyard.core.diagnostics.FailureIsolation;
 
 import java.util.ArrayList;

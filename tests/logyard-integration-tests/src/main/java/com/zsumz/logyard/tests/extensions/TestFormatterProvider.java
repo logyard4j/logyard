@@ -1,9 +1,9 @@
 package com.zsumz.logyard.tests.extensions;
 
-import com.zsumz.logyard.api.spi.ProviderConfiguration;
-import com.zsumz.logyard.api.spi.ProviderConfigurationSpec;
-import com.zsumz.logyard.api.spi.TextFormatter;
-import com.zsumz.logyard.api.spi.TextFormatterProvider;
+import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
+import com.zsumz.logyard.api.spi.config.ProviderConfigurationSpec;
+import com.zsumz.logyard.api.spi.formatting.TextFormatter;
+import com.zsumz.logyard.api.spi.formatting.TextFormatterProvider;
 
 import java.util.Set;
 

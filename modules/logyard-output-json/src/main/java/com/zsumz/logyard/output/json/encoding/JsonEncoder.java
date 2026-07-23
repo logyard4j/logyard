@@ -2,7 +2,7 @@ package com.zsumz.logyard.output.json.encoding;
 
 import com.zsumz.logyard.api.event.ExceptionSnapshot;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.spi.EventEncoder;
+import com.zsumz.logyard.api.spi.encoding.EventEncoder;
 
 import java.time.Instant;
 import java.util.HashSet;

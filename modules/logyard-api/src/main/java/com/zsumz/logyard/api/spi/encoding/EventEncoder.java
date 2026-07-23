@@ -1,4 +1,4 @@
-package com.zsumz.logyard.api.spi;
+package com.zsumz.logyard.api.spi.encoding;
 
 import com.zsumz.logyard.api.event.LogEvent;
 

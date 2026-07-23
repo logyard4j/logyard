@@ -1,6 +1,6 @@
 package com.zsumz.logyard.runtime.assembly;
 
-import com.zsumz.logyard.api.spi.EventSink;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
 

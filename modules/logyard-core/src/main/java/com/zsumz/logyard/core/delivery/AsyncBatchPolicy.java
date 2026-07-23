@@ -1,6 +1,6 @@
 package com.zsumz.logyard.core.delivery;
 
-import com.zsumz.logyard.api.spi.BatchEventSink;
+import com.zsumz.logyard.api.spi.output.BatchEventSink;
 
 import java.time.Duration;
 import java.util.Objects;
