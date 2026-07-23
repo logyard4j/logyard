@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.LogyardLogger;
+import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
@@ -51,7 +52,7 @@ final class ReloadCoordinatorTest {
             Files.writeString(fixture.source(), fixture.config("debug", "4KiB")
                     + "\ninvalid_key = true\n", StandardCharsets.UTF_8);
             assertEquals(ReloadResult.REJECTED, bundle.reloadNow());
-            assertEquals(Level.ERROR, bundle.config().rootLogger().level());
+            assertEquals(Level.ERROR, bundle.runtime().explain("test.Logger").level());
         }
     }
 
@@ -61,7 +62,7 @@ final class ReloadCoordinatorTest {
         try (RuntimeBundle bundle = LogyardBootstrap.start(fixture.source())) {
             fixture.write("warn", "4KiB");
             assertEquals(ReloadResult.APPLIED, bundle.reloadNow());
-            assertEquals(Level.WARN, bundle.config().rootLogger().level());
+            assertEquals(Level.WARN, bundle.runtime().explain("test.Logger").level());
         }
     }
 
@@ -71,7 +72,7 @@ final class ReloadCoordinatorTest {
         try (RuntimeBundle bundle = LogyardBootstrap.start(fixture.source())) {
             fixture.write("error", "8KiB");
             assertEquals(ReloadResult.REJECTED, bundle.reloadNow());
-            assertEquals(Level.INFO, bundle.config().rootLogger().level());
+            assertEquals(Level.INFO, bundle.runtime().explain("test.Logger").level());
         }
     }
 

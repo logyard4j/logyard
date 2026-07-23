@@ -26,3 +26,20 @@ main = ["src/main/resources"]
 
 [build.metadata]
 reproducible = true
+
+[package]
+mode = "thin"
+sources = true
+javadoc = true
+
+[package.metadata]
+name = "Logyard System.Logger Provider"
+description = "JDK System.Logger provider backed by the Logyard runtime."
+url = "https://github.com/zsumz/logyard"
+license = "Apache-2.0"
+developers = ["zsumz <shawn@zsumz.com>"]
+scm = "https://github.com/zsumz/logyard"
+issues = "https://github.com/zsumz/logyard/issues"
+
+[package.manifest]
+"Automatic-Module-Name" = "com.zsumz.logyard.system.logger"

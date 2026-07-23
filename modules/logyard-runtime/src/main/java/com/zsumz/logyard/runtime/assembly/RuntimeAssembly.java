@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -34,10 +33,6 @@ public final class RuntimeAssembly {
 
     public RuntimePlan plan() {
         return plan;
-    }
-
-    public List<String> contextInclude() {
-        return config.context().mdc();
     }
 
     public ContextPolicySnapshot contextPolicy() {

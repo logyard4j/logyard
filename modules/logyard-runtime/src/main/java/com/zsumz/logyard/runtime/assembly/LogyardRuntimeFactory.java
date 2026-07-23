@@ -83,12 +83,6 @@ public final class LogyardRuntimeFactory {
         return ASSEMBLIES.get(Objects.requireNonNull(runtime, "runtime"));
     }
 
-    /** Returns the current immutable MDC/context allowlist for a runtime. */
-    public static List<String> contextIncludeFor(LogyardRuntime runtime) {
-        RuntimeAssembly assembly = assemblyFor(runtime);
-        return assembly == null ? List.of() : assembly.contextInclude();
-    }
-
     /** Validates every extension definition without opening files or starting output workers. */
     public static void validate(LogyardConfig config) {
         validate(Objects.requireNonNull(config, "config"), ExtensionRegistry.discover());

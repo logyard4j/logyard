@@ -60,7 +60,7 @@ public final class LogyardBootstrap {
                             coordinator,
                             diagnostics)
                     : null;
-            return new RuntimeBundle(snapshot.source(), config, runtime, coordinator, watcher);
+            return new RuntimeBundle(snapshot.source(), runtime, coordinator, watcher);
         } catch (RuntimeException | Error failure) {
             if (initialized && Logyard.runtimeOrNull() == runtime) {
                 try {

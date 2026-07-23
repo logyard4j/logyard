@@ -2,7 +2,6 @@ package com.zsumz.logyard.runtime.adapter;
 
 import com.zsumz.logyard.api.LogyardRuntime;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -18,11 +17,6 @@ final class BorrowedRuntimeLease implements AdapterRuntimeLease {
     @Override
     public LogyardRuntime runtime() {
         return runtime;
-    }
-
-    @Override
-    public List<String> contextInclude() {
-        return AdapterRuntimeResolver.contextInclude(runtime);
     }
 
     @Override

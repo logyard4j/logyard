@@ -2,7 +2,6 @@ package com.zsumz.logyard.runtime.adapter;
 
 import com.zsumz.logyard.api.LogyardRuntime;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -20,11 +19,6 @@ public final class LazyAdapterRuntime implements AdapterRuntimeAccess {
     @Override
     public LogyardRuntime runtime() {
         return handle().runtime();
-    }
-
-    @Override
-    public List<String> contextInclude() {
-        return handle().contextInclude();
     }
 
     @Override

@@ -4,14 +4,11 @@ import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
-import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
+import com.zsumz.logyard.runtime.bootstrap.RuntimeBundleFixture;
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,17 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class AdapterRuntimeCoordinatorTest {
     private static final long TEST_TRANSITION_WAIT_NANOS = TimeUnit.SECONDS.toNanos(2);
-    private static final LogyardConfig CONFIG = LogyardConfigLoader.parse(
-            """
-                    schema = 1
-                    [loggers]
-                    root = { outputs = ["console"] }
-                    [outputs.console]
-                    type = "console"
-                    """,
-            "adapter-runtime-coordinator-test.toml",
-            Path.of("."),
-            Map.of());
 
     @Test
     void sharesOneOwnedRuntimeUntilTheLastLeaseCloses() {
@@ -48,7 +34,7 @@ final class AdapterRuntimeCoordinatorTest {
                     TestRuntime runtime = new TestRuntime();
                     created.set(runtime);
                     current.set(runtime);
-                    return new RuntimeBundle(null, CONFIG, runtime);
+                    return RuntimeBundleFixture.create(runtime);
                 },
                 current,
                 hooks);
@@ -109,7 +95,7 @@ final class AdapterRuntimeCoordinatorTest {
                         secondRuntime.set(runtime);
                     }
                     current.set(runtime);
-                    return new RuntimeBundle(null, CONFIG, runtime);
+                    return RuntimeBundleFixture.create(runtime);
                 },
                 current,
                 new AtomicInteger());

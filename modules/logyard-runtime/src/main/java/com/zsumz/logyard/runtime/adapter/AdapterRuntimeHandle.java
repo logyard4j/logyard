@@ -4,7 +4,6 @@ import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -24,15 +23,6 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
             throw new IllegalStateException("Logyard adapter runtime lease is closed or stale");
         }
         return lease.runtime();
-    }
-
-    /** Immutable context keys from the currently published configuration. */
-    @Override
-    public List<String> contextInclude() {
-        if (!initialized()) {
-            return List.of();
-        }
-        return lease.contextInclude();
     }
 
     public boolean ownsRuntime() {

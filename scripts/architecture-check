@@ -119,6 +119,43 @@ EXPECTED_DEPENDENCIES = {
     },
 }
 
+MODULE_CONTRACTS = {
+    "modules/logyard-api": (
+        "com.zsumz.logyard.api",
+        {
+            "com.zsumz.logyard.api",
+            "com.zsumz.logyard.api.delivery",
+            "com.zsumz.logyard.api.diagnostics",
+            "com.zsumz.logyard.api.event",
+            "com.zsumz.logyard.api.failure",
+            "com.zsumz.logyard.api.format",
+            "com.zsumz.logyard.api.ingress",
+            "com.zsumz.logyard.api.reload",
+            "com.zsumz.logyard.api.spi.config",
+            "com.zsumz.logyard.api.spi.context",
+            "com.zsumz.logyard.api.spi.diagnostics",
+            "com.zsumz.logyard.api.spi.encoding",
+            "com.zsumz.logyard.api.spi.formatting",
+            "com.zsumz.logyard.api.spi.output",
+            "com.zsumz.logyard.api.spi.processing",
+        },
+    ),
+    "modules/logyard-core": ("com.zsumz.logyard.core", set()),
+    "modules/logyard-config-toml": ("com.zsumz.logyard.config.toml", set()),
+    "modules/logyard-output-console": ("com.zsumz.logyard.output.console", set()),
+    "modules/logyard-output-json": ("com.zsumz.logyard.output.json", set()),
+    "modules/logyard-runtime": (
+        "com.zsumz.logyard.runtime",
+        {"com.zsumz.logyard.runtime.bootstrap"},
+    ),
+    "modules/logyard-slf4j2": ("com.zsumz.logyard.slf4j2", set()),
+    "modules/logyard-jul": (
+        "com.zsumz.logyard.jul",
+        {"com.zsumz.logyard.jul"},
+    ),
+    "modules/logyard-system-logger": ("com.zsumz.logyard.system.logger", set()),
+}
+
 errors: list[str] = []
 main_files: list[tuple[Path, str]] = []
 package_names: set[str] = set()
@@ -132,6 +169,8 @@ for source_root in SOURCE_ROOTS:
         continue
     for source in sorted(source_root.rglob("*.java")):
         java_sources.add(source.relative_to(ROOT).as_posix())
+        if source.name == "module-info.java":
+            continue
         relative = source.relative_to(source_root)
         expected_package = ".".join(relative.parent.parts)
         text = source.read_text(encoding="utf-8")
@@ -190,7 +229,8 @@ for source_root in SOURCE_ROOTS:
 for source_root in SOURCE_ROOTS:
     for package_directory in sorted(
             directory for directory in source_root.rglob("*")
-            if directory.is_dir() and any(directory.glob("*.java"))):
+            if directory.is_dir()
+            and any(source.name != "module-info.java" for source in directory.glob("*.java"))):
         package_info = package_directory / "package-info.java"
         if not package_info.is_file():
             errors.append(
@@ -425,6 +465,47 @@ else:
         errors.append("LogyardVersion does not match the workspace version")
     if f"LOGYARD_SERVICE_VERSION:-{version}" not in (ROOT / "logyard.toml").read_text():
         errors.append("logyard.toml does not expose the workspace version")
+
+for project_path, (expected_module, expected_exports) in MODULE_CONTRACTS.items():
+    descriptor = ROOT / project_path / "src/main/java/module-info.java"
+    if not descriptor.is_file():
+        errors.append(f"{descriptor.relative_to(ROOT)}: missing JPMS descriptor")
+        continue
+    descriptor_text = descriptor.read_text(encoding="utf-8")
+    module_match = re.search(r"(?m)^module\s+([A-Za-z_][\w.]*)\s*\{", descriptor_text)
+    if module_match is None or module_match.group(1) != expected_module:
+        actual = module_match.group(1) if module_match is not None else None
+        errors.append(
+            f"{descriptor.relative_to(ROOT)}: module name must be {expected_module!r}, found {actual!r}"
+        )
+    actual_exports = set(re.findall(r"(?m)^\s*exports\s+([A-Za-z_][\w.]*)\s*;", descriptor_text))
+    if actual_exports != expected_exports:
+        errors.append(
+            f"{descriptor.relative_to(ROOT)}: supported exports {sorted(actual_exports)} do not "
+            f"match {sorted(expected_exports)}"
+        )
+
+    manifest = ROOT / project_path / "zolt.toml"
+    manifest_text = manifest.read_text(encoding="utf-8")
+    automatic_name = re.search(
+        r'(?ms)^\[package\.manifest\]\s*.*?^"Automatic-Module-Name"\s*=\s*"([^"]+)"',
+        manifest_text,
+    )
+    if automatic_name is None or automatic_name.group(1) != expected_module:
+        errors.append(
+            f"{manifest.relative_to(ROOT)}: Automatic-Module-Name must be {expected_module!r}"
+        )
+    for fragment in (
+        'mode = "thin"',
+        "sources = true",
+        "javadoc = true",
+        'license = "Apache-2.0"',
+        'url = "https://github.com/zsumz/logyard"',
+        'scm = "https://github.com/zsumz/logyard"',
+        'issues = "https://github.com/zsumz/logyard/issues"',
+    ):
+        if fragment not in manifest_text:
+            errors.append(f"{manifest.relative_to(ROOT)}: missing publication contract {fragment!r}")
 
 for manifest in sorted(
         path for group in ("modules", "tests", "benchmarks")

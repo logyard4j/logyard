@@ -50,6 +50,7 @@ required_files=(
   logyard.toml
   zolt.toml
   scripts/ci
+  scripts/api-compatibility
   scripts/javadoc
   scripts/verify
   scripts/architecture-check

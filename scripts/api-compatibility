@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+JAPICMP_VERSION="0.26.1"
+JAPICMP_SHA256="4b4f0301861d97cd2a05af3f7fa9173cc1dd3831b1284b2b9e2f81c4f1c2f858"
+TOOL_DIR="$ROOT/target/tools"
+JAPICMP_JAR="$TOOL_DIR/japicmp-$JAPICMP_VERSION.jar"
+CURRENT_DIR="$ROOT/target/api-compatibility"
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  scripts/api-compatibility OLD_API_JAR OLD_RUNTIME_JAR
+  scripts/api-compatibility --self-test
+
+Compares the supported Logyard API and runtime-bootstrap packages with japicmp.
+Release verification supplies the two jars from the previous published version.
+USAGE
+}
+
+digest() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
+}
+
+require_file() {
+  [[ -f "$1" ]] || {
+    printf 'error: required jar does not exist: %s\n' "$1" >&2
+    exit 2
+  }
+}
+
+install_japicmp() {
+  mkdir -p "$TOOL_DIR"
+  if [[ ! -f "$JAPICMP_JAR" ]]; then
+    curl -fsSL \
+      -o "$JAPICMP_JAR" \
+      "https://repo.maven.apache.org/maven2/com/github/siom79/japicmp/japicmp/$JAPICMP_VERSION/japicmp-$JAPICMP_VERSION-jar-with-dependencies.jar"
+  fi
+  local actual
+  actual="$(digest "$JAPICMP_JAR")"
+  [[ "$actual" == "$JAPICMP_SHA256" ]] || {
+    printf 'error: japicmp checksum mismatch: expected %s, found %s\n' "$JAPICMP_SHA256" "$actual" >&2
+    exit 2
+  }
+}
+
+build_current_jars() {
+  "$ZOLT" build --workspace --members modules/logyard-api,modules/logyard-runtime --no-progress --color never
+  mkdir -p "$CURRENT_DIR"
+  jar --create --file "$CURRENT_DIR/logyard-api-current.jar" -C "$ROOT/modules/logyard-api/target/classes" .
+  jar --create --file "$CURRENT_DIR/logyard-runtime-current.jar" -C "$ROOT/modules/logyard-runtime/target/classes" .
+}
+
+compare() {
+  local old_jar="$1"
+  local new_jar="$2"
+  local include="$3"
+  java -jar "$JAPICMP_JAR" \
+    --old "$old_jar" \
+    --new "$new_jar" \
+    --include "$include" \
+    --only-modified \
+    --ignore-missing-classes \
+    --error-on-binary-incompatibility \
+    --error-on-source-incompatibility
+}
+
+if [[ "$#" -eq 1 && "$1" == "--self-test" ]]; then
+  build_current_jars
+  old_api="$CURRENT_DIR/logyard-api-current.jar"
+  old_runtime="$CURRENT_DIR/logyard-runtime-current.jar"
+elif [[ "$#" -eq 2 ]]; then
+  old_api="$1"
+  old_runtime="$2"
+  require_file "$old_api"
+  require_file "$old_runtime"
+  build_current_jars
+else
+  usage >&2
+  exit 2
+fi
+
+install_japicmp
+compare "$old_api" "$CURRENT_DIR/logyard-api-current.jar" "com.zsumz.logyard.api.*"
+compare "$old_runtime" "$CURRENT_DIR/logyard-runtime-current.jar" "com.zsumz.logyard.runtime.bootstrap.*"
+printf 'API compatibility passed for the supported Logyard API and runtime bootstrap packages.\n'

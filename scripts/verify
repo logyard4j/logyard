@@ -47,7 +47,7 @@ compile_sources() {
     [[ -d "$root" ]] || continue
     while IFS= read -r source; do
       sources+=("$source")
-    done < <(find "$root" -type f -name '*.java' -print | LC_ALL=C sort)
+    done < <(find "$root" -type f -name '*.java' ! -name 'module-info.java' -print | LC_ALL=C sort)
   done
   if [[ "${#sources[@]}" -eq 0 ]]; then
     printf 'error: no Java sources selected for %s\n' "$output" >&2

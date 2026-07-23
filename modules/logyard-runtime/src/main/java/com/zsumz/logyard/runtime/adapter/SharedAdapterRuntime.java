@@ -3,7 +3,6 @@ package com.zsumz.logyard.runtime.adapter;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
 
-import java.util.List;
 import java.util.Objects;
 
 final class SharedAdapterRuntime implements AdapterRuntimeLease {
@@ -50,11 +49,6 @@ final class SharedAdapterRuntime implements AdapterRuntimeLease {
     @Override
     public LogyardRuntime runtime() {
         return bundle.runtime();
-    }
-
-    @Override
-    public List<String> contextInclude() {
-        return closed ? List.of() : bundle.contextInclude();
     }
 
     @Override

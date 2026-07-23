@@ -18,3 +18,20 @@ testOutput = "target/test-classes"
 
 [build.metadata]
 reproducible = true
+
+[package]
+mode = "thin"
+sources = true
+javadoc = true
+
+[package.metadata]
+name = "Logyard API"
+description = "Stable native logging API and extension contracts for Logyard."
+url = "https://github.com/zsumz/logyard"
+license = "Apache-2.0"
+developers = ["zsumz <shawn@zsumz.com>"]
+scm = "https://github.com/zsumz/logyard"
+issues = "https://github.com/zsumz/logyard/issues"
+
+[package.manifest]
+"Automatic-Module-Name" = "com.zsumz.logyard.api"

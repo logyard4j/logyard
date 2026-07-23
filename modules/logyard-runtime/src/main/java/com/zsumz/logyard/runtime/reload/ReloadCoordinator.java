@@ -1,5 +1,6 @@
 package com.zsumz.logyard.runtime.reload;
 
+import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
