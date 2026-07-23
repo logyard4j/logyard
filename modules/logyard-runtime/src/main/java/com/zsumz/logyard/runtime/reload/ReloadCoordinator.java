@@ -2,8 +2,8 @@ package com.zsumz.logyard.runtime.reload;
 
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
-import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
+import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 
 import java.io.IOException;
@@ -15,7 +15,7 @@ import java.util.Objects;
 public final class ReloadCoordinator {
     private final Path source;
     private final DefaultLogyardRuntime runtime;
-    private final ReloadDiagnostics diagnostics;
+    private final ReloadDiagnosticBoundary diagnostics;
     private final Map<String, String> environment;
     private ConfigurationSnapshot snapshot;
     private RuntimeAssembly assembly;
@@ -31,7 +31,7 @@ public final class ReloadCoordinator {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.snapshot = Objects.requireNonNull(snapshot, "snapshot");
         this.assembly = Objects.requireNonNull(assembly, "assembly");
-        this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
+        this.diagnostics = new ReloadDiagnosticBoundary(diagnostics);
         this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
     }
 

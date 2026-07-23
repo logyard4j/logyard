@@ -6,12 +6,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.LogyardLogger;
-import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
+import com.zsumz.logyard.config.LogyardConfig;
+import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
+import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
+import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
+import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
+import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 final class ReloadCoordinatorTest {
@@ -66,6 +72,83 @@ final class ReloadCoordinatorTest {
             fixture.write("error", "8KiB");
             assertEquals(ReloadResult.REJECTED, bundle.reloadNow());
             assertEquals(Level.INFO, bundle.config().rootLogger().level());
+        }
+    }
+
+    @Test
+    void appliedObserverFailureDoesNotChangeCommittedResult() throws Exception {
+        Fixture fixture = Fixture.create();
+        ReloadDiagnostics diagnostics = new ReloadDiagnostics() {
+            @Override
+            public void applied(Path source, String previousDigest, String nextDigest) {
+                throw new AssertionError("observer failed");
+            }
+        };
+        try (ReloadHarness harness = ReloadHarness.start(fixture, diagnostics)) {
+            LogyardLogger logger = harness.runtime().logger("test.Logger");
+            fixture.write("error", "4KiB");
+
+            assertEquals(ReloadResult.APPLIED, harness.coordinator().reloadIfChanged());
+            assertEquals(Level.ERROR, harness.coordinator().currentConfig().rootLogger().level());
+            assertFalse(logger.isInfoEnabled());
+            assertTrue(logger.isErrorEnabled());
+        }
+    }
+
+    @Test
+    void unchangedObserverFailureDoesNotChangeResult() throws Exception {
+        Fixture fixture = Fixture.create();
+        ReloadDiagnostics diagnostics = new ReloadDiagnostics() {
+            @Override
+            public void unchanged(Path source, String digest) {
+                throw new AssertionError("observer failed");
+            }
+        };
+        try (ReloadHarness harness = ReloadHarness.start(fixture, diagnostics)) {
+            assertEquals(ReloadResult.UNCHANGED, harness.coordinator().reloadIfChanged());
+            assertEquals(Level.INFO, harness.coordinator().currentConfig().rootLogger().level());
+        }
+    }
+
+    @Test
+    void rejectedObserverFailureDoesNotChangeResultOrState() throws Exception {
+        Fixture fixture = Fixture.create();
+        ReloadDiagnostics diagnostics = new ReloadDiagnostics() {
+            @Override
+            public void rejected(Path source, Throwable failure) {
+                throw new AssertionError("observer failed");
+            }
+        };
+        try (ReloadHarness harness = ReloadHarness.start(fixture, diagnostics)) {
+            Files.writeString(fixture.source(), fixture.config("debug", "4KiB")
+                    + "\ninvalid_key = true\n", StandardCharsets.UTF_8);
+
+            assertEquals(ReloadResult.REJECTED, harness.coordinator().reloadIfChanged());
+            assertEquals(Level.INFO, harness.coordinator().currentConfig().rootLogger().level());
+        }
+    }
+
+    private record ReloadHarness(DefaultLogyardRuntime runtime, ReloadCoordinator coordinator) implements AutoCloseable {
+        static ReloadHarness start(Fixture fixture, ReloadDiagnostics diagnostics) throws Exception {
+            ConfigurationSnapshot snapshot = ConfigurationSnapshot.read(fixture.source());
+            LogyardConfig config = snapshot.parse(Map.of());
+            RuntimeAssembly assembly = LogyardRuntimeFactory.assemble(config, null);
+            DefaultLogyardRuntime runtime = new DefaultLogyardRuntime(assembly.plan());
+            LogyardRuntimeFactory.attach(runtime, assembly);
+            return new ReloadHarness(
+                    runtime,
+                    new ReloadCoordinator(
+                            fixture.source(),
+                            runtime,
+                            snapshot,
+                            assembly,
+                            diagnostics,
+                            Map.of()));
+        }
+
+        @Override
+        public void close() {
+            runtime.close();
         }
     }
 
