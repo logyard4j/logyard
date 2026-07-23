@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+fail() {
+  printf 'repository check failed: %s\n' "$1" >&2
+  exit 1
+}
+
+for removed in docs apps benchmarks; do
+  [[ ! -e "$removed" ]] || fail "$removed should not exist in the core-focused package"
+done
+
+declared_members=()
+while IFS= read -r member; do
+  declared_members+=("$member")
+done < <(
+  awk '
+    /^members = \[/ { inside = 1; next }
+    inside && /^]/ { exit }
+    inside && match($0, /"[^"]+"/) {
+      print substr($0, RSTART + 1, RLENGTH - 2)
+    }
+  ' zolt.toml | sort
+)
+actual_members=()
+while IFS= read -r member; do
+  actual_members+=("$member")
+done < <(
+  find modules tests -mindepth 2 -maxdepth 2 -name zolt.toml -print \
+    | sed 's#/zolt\.toml$##' \
+    | sort
+)
+if ! diff -u \
+    <(printf '%s\n' "${declared_members[@]}") \
+    <(printf '%s\n' "${actual_members[@]}"); then
+  fail 'root zolt.toml members do not match project manifests'
+fi
+
+for member in "${actual_members[@]}"; do
+  [[ -d "$member/src/main/java" ]] || fail "$member has no src/main/java directory"
+done
+
+required_files=(
+  README.md
+  LICENSE
+  NOTICE
+  logyard.toml
+  zolt.toml
+  scripts/ci
+  scripts/verify
+  scripts/architecture-check
+  modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider
+  'modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder'
+  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.TextFormatterProvider
+  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.EventEncoderProvider
+  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.EventProcessorProvider
+  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.OutputProvider
+)
+for required in "${required_files[@]}"; do
+  [[ -f "$required" ]] || fail "required file is missing: $required"
+done
+
+if find . -path './.git' -prune -o -path './.zolt' -prune -o \
+    -path './target' -prune -o \
+    \( -name pom.xml -o -name build.gradle -o -name build.gradle.kts \
+       -o -name settings.gradle -o -name settings.gradle.kts \) -print | grep -q .; then
+  fail 'Maven or Gradle project files are checked in; Zolt is the project model'
+fi
+
+for script in scripts/*; do
+  [[ -f "$script" ]] || continue
+  bash -n "$script"
+done
+
+./scripts/architecture-check
+
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git diff --check
+fi
+
+printf 'Repository checks passed: %d focused Zolt projects and shell/build contracts.\n' \
+  "${#actual_members[@]}"

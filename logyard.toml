@@ -1,0 +1,74 @@
+schema = 1
+
+[service]
+name = "${LOGYARD_SERVICE_NAME:-logyard-example}"
+version = "${LOGYARD_SERVICE_VERSION:-0.7.0-SNAPSHOT}"
+environment = "${LOGYARD_ENVIRONMENT:-local}"
+
+[runtime]
+shutdown_timeout = "2s"
+watch = false
+
+[delivery]
+mode = "async"
+capacity = 4096
+
+[delivery.overflow]
+trace = "drop"
+debug = "drop"
+info = "drop"
+warn = { action = "block", timeout = "2ms" }
+error = "stderr"
+
+[context]
+mdc = ["request.id"]
+redact = ["authorization", "cookie", "password", "*.secret", "*.token"]
+
+[formatters.console]
+type = "template"
+template = "{timestamp} {level} {logger} {message} {fields}"
+
+[json_profiles.application]
+preset = "logyard"
+drop = ["message_template"]
+[json_profiles.application.attributes]
+mode = "flatten"
+prefix = "field."
+exclude = ["authorization", "cookie"]
+
+[encoders.application]
+type = "json"
+profile = "application"
+
+[filters.debug-sample]
+type = "sampling"
+probability = 0.25
+key = "logger"
+seed = 42
+
+[filters.noisy-limit]
+type = "rate_limit"
+permits_per_second = 20
+burst = 40
+key = "logger"
+max_keys = 256
+
+[loggers]
+root = { level = "info", outputs = ["console", "json"] }
+"com.example" = { level = "debug", filters = ["debug-sample"] }
+"com.example.noisy" = { filters = ["noisy-limit"] }
+
+[outputs.console]
+type = "console"
+stream = "stderr"
+formatter = "console"
+color = { mode = "auto", theme = "ember" }
+
+[outputs.json]
+type = "file"
+path = "target/logyard.jsonl"
+encoder = "application"
+append = true
+buffer = "64KiB"
+flush = "1s"
+rotate = { size = "32MiB", keep = 3, compression = "gzip" }

@@ -1,0 +1,23 @@
+[workspace]
+name = "logyard"
+members = [
+    "modules/logyard-api",
+    "modules/logyard-core",
+    "modules/logyard-config-toml",
+    "modules/logyard-output-console",
+    "modules/logyard-output-json",
+    "modules/logyard-runtime",
+    "modules/logyard-slf4j2",
+    "modules/logyard-jul",
+    "modules/logyard-system-logger",
+    "tests/logyard-integration-tests",
+]
+defaultMembers = ["tests/logyard-integration-tests"]
+
+[repositories]
+central = "https://repo.maven.apache.org/maven2"
+
+[toolchain.java]
+version = "21"
+distribution = "temurin"
+policy = "allow-system"

@@ -1,0 +1,21 @@
+# Zolt and Java outputs
+.zolt/
+**/target/
+zolt.lock.tmp
+
+# Runtime output
+logs/
+*.log
+*.jsonl
+
+# Editors and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.*
+!.env.example

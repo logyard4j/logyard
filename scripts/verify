@@ -1,0 +1,446 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TARGET="${LOGYARD_VERIFY_TARGET:-$ROOT/target/verify}"
+JAVAC="${JAVAC:-javac}"
+JAVA="${JAVA:-java}"
+DEADLINE="${LOGYARD_VERIFY_COMMAND_TIMEOUT_SECONDS:-180}"
+
+phase() {
+  printf '\n==> %s\n' "$1"
+}
+
+run_bounded() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --signal=TERM --kill-after=5s "${DEADLINE}s" "$@"
+  else
+    "$@"
+  fi
+}
+
+require_java_21() {
+  local version major
+  version="$($JAVAC -version 2>&1 | awk '{print $2}')"
+  major="${version%%.*}"
+  if [[ "$major" == "1" ]]; then
+    major="$(printf '%s' "$version" | cut -d. -f2)"
+  fi
+  major="${major%%[!0-9]*}"
+  if [[ -z "$major" || "$major" -lt 21 ]]; then
+    printf 'error: Logyard requires JDK 21 or newer; found javac %s\n' "$version" >&2
+    exit 2
+  fi
+}
+
+compile_sources() {
+  local output="$1"
+  local classpath="$2"
+  shift 2
+  local -a sources=()
+  local root source
+  for root in "$@"; do
+    if [[ -f "$root" && "$root" == *.java ]]; then
+      sources+=("$root")
+      continue
+    fi
+    [[ -d "$root" ]] || continue
+    while IFS= read -r source; do
+      sources+=("$source")
+    done < <(find "$root" -type f -name '*.java' -print | LC_ALL=C sort)
+  done
+  if [[ "${#sources[@]}" -eq 0 ]]; then
+    printf 'error: no Java sources selected for %s\n' "$output" >&2
+    exit 2
+  fi
+  mkdir -p "$output"
+  printf 'Compiling %-18s %4d source file(s)\n' "${output#"$TARGET/"}" "${#sources[@]}"
+  if [[ -n "$classpath" ]]; then
+    run_bounded "$JAVAC" --release 21 -encoding UTF-8 -Xlint:all -Werror \
+      -cp "$classpath" -d "$output" "${sources[@]}"
+  else
+    run_bounded "$JAVAC" --release 21 -encoding UTF-8 -Xlint:all -Werror \
+      -d "$output" "${sources[@]}"
+  fi
+}
+
+find_artifact() {
+  local configured="$1"
+  local filename="$2"
+  if [[ -n "$configured" ]]; then
+    [[ -f "$configured" ]] || {
+      printf 'error: configured dependency does not exist: %s\n' "$configured" >&2
+      exit 2
+    }
+    printf '%s\n' "$configured"
+    return
+  fi
+
+  local candidate search_root
+  for candidate in \
+      "$ROOT/target/dependencies/$filename" \
+      "$ROOT/.zolt/cache/$filename"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+
+  for search_root in "$HOME/.m2/repository" "$ROOT/.zolt" "$HOME/.zolt"; do
+    [[ -d "$search_root" ]] || continue
+    candidate="$(find "$search_root" -type f -name "$filename" -print -quit 2>/dev/null || true)"
+    if [[ -n "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+}
+
+require_java_21
+rm -rf "$TARGET"
+mkdir -p "$TARGET"
+
+phase "Compile the core logging modules"
+compile_sources "$TARGET/api" "" "$ROOT/modules/logyard-api/src/main/java"
+compile_sources "$TARGET/core" "$TARGET/api" "$ROOT/modules/logyard-core/src/main/java"
+compile_sources "$TARGET/config" "$TARGET/api" "$ROOT/modules/logyard-config-toml/src/main/java"
+compile_sources "$TARGET/console" "$TARGET/api" "$ROOT/modules/logyard-output-console/src/main/java"
+compile_sources "$TARGET/json" "$TARGET/api" "$ROOT/modules/logyard-output-json/src/main/java"
+
+PRODUCT_CP="$TARGET/api:$TARGET/core:$TARGET/config:$TARGET/console:$TARGET/json"
+compile_sources "$TARGET/runtime" "$PRODUCT_CP" "$ROOT/modules/logyard-runtime/src/main/java"
+PRODUCT_CP="$PRODUCT_CP:$TARGET/runtime"
+compile_sources "$TARGET/jul" "$TARGET/api:$TARGET/runtime" \
+  "$ROOT/modules/logyard-jul/src/main/java"
+compile_sources "$TARGET/system-logger" "$TARGET/api:$TARGET/runtime" \
+  "$ROOT/modules/logyard-system-logger/src/main/java"
+ADAPTER_CP="$TARGET/jul:$TARGET/system-logger"
+
+phase "Compile and run executable integration checks"
+compile_sources "$TARGET/integration" "$PRODUCT_CP" \
+  "$ROOT/tests/logyard-integration-tests/src/main/java"
+cp -R "$ROOT/tests/logyard-integration-tests/src/main/resources/." "$TARGET/integration/"
+run_bounded "$JAVA" -cp "$PRODUCT_CP:$TARGET/integration" \
+  com.zsumz.logyard.tests.CoreVerificationMain
+
+phase "Compile and run JUnit tests"
+JUNIT_JAR="$(find_artifact "${JUNIT_PLATFORM_JAR:-}" \
+  'junit-platform-console-standalone-1.11.4.jar')"
+base_test_roots=(
+  "$ROOT/modules/logyard-core/src/test/java"
+  "$ROOT/modules/logyard-config-toml/src/test/java"
+  "$ROOT/modules/logyard-output-console/src/test/java"
+  "$ROOT/modules/logyard-output-json/src/test/java"
+  "$ROOT/modules/logyard-runtime/src/test/java"
+  "$ROOT/modules/logyard-jul/src/test/java"
+  "$ROOT/modules/logyard-system-logger/src/test/java"
+)
+if [[ -n "$JUNIT_JAR" ]]; then
+  TEST_CP="$PRODUCT_CP:$ADAPTER_CP:$JUNIT_JAR"
+  compile_sources "$TARGET/tests" "$TEST_CP" "${base_test_roots[@]}"
+  run_bounded "$JAVA" -jar "$JUNIT_JAR" execute \
+    --disable-banner --details=summary \
+    --class-path "$TARGET/tests:$TEST_CP" --scan-class-path
+else
+  cat <<'NOTE'
+NOTE: JUnit Platform 1.11.4 was not found locally. Running every dependency-free
+      @Test method with the sealed-environment fallback runner. A resolved Zolt
+      build uses the real JUnit engine.
+NOTE
+  mkdir -p "$TARGET/junit-stub-src/org/junit/jupiter/api"
+  cat > "$TARGET/junit-stub-src/org/junit/jupiter/api/Test.java" <<'JAVA'
+package org.junit.jupiter.api;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface Test {
+}
+JAVA
+  mkdir -p "$TARGET/junit-stub-src/org/junit/jupiter/api/function"
+  cat > "$TARGET/junit-stub-src/org/junit/jupiter/api/function/Executable.java" <<'JAVA'
+package org.junit.jupiter.api.function;
+
+@FunctionalInterface
+public interface Executable {
+    void execute() throws Throwable;
+}
+JAVA
+  cat > "$TARGET/junit-stub-src/org/junit/jupiter/api/function/ThrowingSupplier.java" <<'JAVA'
+package org.junit.jupiter.api.function;
+
+@FunctionalInterface
+public interface ThrowingSupplier<T> {
+    T get() throws Throwable;
+}
+JAVA
+  cat > "$TARGET/junit-stub-src/org/junit/jupiter/api/Assertions.java" <<'JAVA'
+package org.junit.jupiter.api;
+
+import java.util.Objects;
+import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.function.ThrowingSupplier;
+
+public final class Assertions {
+    private Assertions() {
+    }
+
+    public static void assertTrue(boolean condition) {
+        if (!condition) {
+            throw new AssertionError("expected true");
+        }
+    }
+
+    public static void assertFalse(boolean condition) {
+        if (condition) {
+            throw new AssertionError("expected false");
+        }
+    }
+
+    public static void assertNull(Object actual) {
+        if (actual != null) {
+            throw new AssertionError("expected null but was <" + actual + ">");
+        }
+    }
+
+    public static void assertNotNull(Object actual) {
+        if (actual == null) {
+            throw new AssertionError("expected a non-null value");
+        }
+    }
+
+    public static void assertSame(Object expected, Object actual) {
+        if (expected != actual) {
+            throw new AssertionError("expected same instance");
+        }
+    }
+
+    public static void assertEquals(Object expected, Object actual) {
+        if (!Objects.equals(expected, actual)) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(int expected, int actual) {
+        if (expected != actual) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(long expected, long actual) {
+        if (expected != actual) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(boolean expected, boolean actual) {
+        if (expected != actual) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(char expected, char actual) {
+        if (expected != actual) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(double expected, double actual) {
+        if (Double.compare(expected, actual) != 0) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(double expected, double actual, double delta) {
+        if (!(Math.abs(expected - actual) <= delta)) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static <T extends Throwable> T assertThrows(
+            Class<T> expectedType,
+            Executable executable) {
+        Objects.requireNonNull(expectedType, "expectedType");
+        Objects.requireNonNull(executable, "executable");
+        try {
+            executable.execute();
+        } catch (Throwable failure) {
+            if (expectedType.isInstance(failure)) {
+                return expectedType.cast(failure);
+            }
+            throw new AssertionError(
+                    "expected " + expectedType.getName() + " but caught "
+                            + failure.getClass().getName(),
+                    failure);
+        }
+        throw new AssertionError("expected " + expectedType.getName() + " to be thrown");
+    }
+
+    public static void assertDoesNotThrow(Executable executable) {
+        Objects.requireNonNull(executable, "executable");
+        try {
+            executable.execute();
+        } catch (Throwable failure) {
+            throw new AssertionError("unexpected exception", failure);
+        }
+    }
+
+    public static <T> T assertDoesNotThrow(ThrowingSupplier<T> supplier) {
+        Objects.requireNonNull(supplier, "supplier");
+        try {
+            return supplier.get();
+        } catch (Throwable failure) {
+            throw new AssertionError("unexpected exception", failure);
+        }
+    }
+
+    private static AssertionError unequal(Object expected, Object actual) {
+        return new AssertionError("expected <" + expected + "> but was <" + actual + ">");
+    }
+}
+JAVA
+  mkdir -p "$TARGET/fallback-runner-src/com/zsumz/logyard/tests"
+  cat > "$TARGET/fallback-runner-src/com/zsumz/logyard/tests/FallbackTestRunner.java" <<'JAVA'
+package com.zsumz.logyard.tests;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.Comparator;
+import org.junit.jupiter.api.Test;
+
+public final class FallbackTestRunner {
+    private FallbackTestRunner() {
+    }
+
+    public static void main(String[] classNames) throws Exception {
+        int passed = 0;
+        int failed = 0;
+        for (String className : classNames) {
+            Class<?> testClass = Class.forName(className);
+            Method[] methods = testClass.getDeclaredMethods();
+            Arrays.sort(methods, Comparator.comparing(Method::getName));
+            for (Method method : methods) {
+                if (!method.isAnnotationPresent(Test.class)) {
+                    continue;
+                }
+                Object instance = null;
+                if (!Modifier.isStatic(method.getModifiers())) {
+                    var constructor = testClass.getDeclaredConstructor();
+                    constructor.setAccessible(true);
+                    instance = constructor.newInstance();
+                }
+                method.setAccessible(true);
+                try {
+                    method.invoke(instance);
+                    passed++;
+                } catch (InvocationTargetException invocationFailure) {
+                    failed++;
+                    Throwable cause = invocationFailure.getCause();
+                    System.err.printf("FAIL  %s#%s: %s%n",
+                            className, method.getName(), cause);
+                    cause.printStackTrace(System.err);
+                }
+            }
+        }
+        System.out.printf("Fallback JUnit verification passed: %d test method(s)%n", passed);
+        if (failed != 0) {
+            throw new AssertionError(failed + " fallback test method(s) failed");
+        }
+    }
+}
+JAVA
+  compile_sources "$TARGET/junit-stub" "" "$TARGET/junit-stub-src"
+  compile_sources "$TARGET/fallback-tests" \
+    "$PRODUCT_CP:$ADAPTER_CP:$TARGET/junit-stub" \
+    "$TARGET/fallback-runner-src" "${base_test_roots[@]}"
+  fallback_classes=(
+    com.zsumz.logyard.config.RuntimeReloadConfigTest
+    com.zsumz.logyard.config.LogyardConfigLoaderTest
+    com.zsumz.logyard.core.processing.SamplingAndRateLimitProcessorTest
+    com.zsumz.logyard.core.runtime.CoreBehaviorTest
+    com.zsumz.logyard.jul.LogyardHandlerTest
+    com.zsumz.logyard.output.console.ConsoleSinkTest
+    com.zsumz.logyard.output.console.TemplateTextFormatterTest
+    com.zsumz.logyard.output.json.encoding.JsonEncoderTest
+    com.zsumz.logyard.output.json.encoding.JsonProfileTest
+    com.zsumz.logyard.output.json.file.JsonFileSinkTest
+    com.zsumz.logyard.runtime.adapter.AdapterReentryGuardTest
+    com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactoryTest
+    com.zsumz.logyard.runtime.extension.ExtensionGuardrailsTest
+    com.zsumz.logyard.runtime.reload.ConfigurationSnapshotTest
+    com.zsumz.logyard.runtime.reload.ReloadCoordinatorTest
+    com.zsumz.logyard.systemlogger.SystemLoggerMappingTest
+  )
+  run_bounded "$JAVA" -cp \
+    "$PRODUCT_CP:$ADAPTER_CP:$TARGET/junit-stub:$TARGET/fallback-tests" \
+    com.zsumz.logyard.tests.FallbackTestRunner "${fallback_classes[@]}"
+fi
+
+phase "Compile the SLF4J 2 adapter when its API is available"
+SLF4J_JAR="$(find_artifact "${SLF4J_API_JAR:-}" 'slf4j-api-2.0.18.jar')"
+if [[ -n "$SLF4J_JAR" ]]; then
+  compile_sources "$TARGET/slf4j2" "$TARGET/api:$TARGET/runtime:$SLF4J_JAR" \
+    "$ROOT/modules/logyard-slf4j2/src/main/java"
+  cp -R "$ROOT/modules/logyard-slf4j2/src/main/resources/." "$TARGET/slf4j2/"
+  adapter_shape="$(javap -classpath "$TARGET/slf4j2:$TARGET/api:$SLF4J_JAR" \
+    com.zsumz.logyard.slf4j.internal.logger.LogyardSlf4jLogger)"
+  if grep -Fq 'LocationAwareLogger' <<<"$adapter_shape"; then
+    echo 'error: LogyardSlf4jLogger must not implement LocationAwareLogger' >&2
+    exit 1
+  fi
+  if ! grep -Fq 'LoggingEventAware' <<<"$adapter_shape"; then
+    echo 'error: LogyardSlf4jLogger must implement LoggingEventAware' >&2
+    exit 1
+  fi
+
+  if [[ -n "$JUNIT_JAR" ]]; then
+    SLF4J_TEST_CP="$PRODUCT_CP:$TARGET/slf4j2:$SLF4J_JAR:$JUNIT_JAR"
+    compile_sources "$TARGET/tests-slf4j2" "$SLF4J_TEST_CP" \
+      "$ROOT/modules/logyard-slf4j2/src/test/java"
+    run_bounded "$JAVA" -jar "$JUNIT_JAR" execute \
+      --disable-banner --details=summary \
+      --class-path "$TARGET/tests-slf4j2:$SLF4J_TEST_CP" --scan-class-path
+  fi
+else
+  echo 'NOTE: SLF4J API 2.0.18 was not found locally; its adapter gate was skipped.'
+fi
+
+phase "Run the System.Logger ServiceLoader canary"
+SYSTEM_PROVIDER="$TARGET/system-logger-provider"
+mkdir -p "$SYSTEM_PROVIDER"
+cp -R "$ROOT/modules/logyard-system-logger/src/main/resources/." "$SYSTEM_PROVIDER/"
+CANARY_DIR="$TARGET/system-logger-canary"
+CANARY_CONFIG="$CANARY_DIR/logyard.toml"
+CANARY_OUTPUT="$CANARY_DIR/events.jsonl"
+mkdir -p "$CANARY_DIR"
+rm -f "$CANARY_OUTPUT"
+cat > "$CANARY_CONFIG" <<EOF2
+schema = 1
+[service]
+name = "system-logger-canary"
+[delivery]
+mode = "sync"
+capacity = 16
+[loggers]
+root = { level = "info", outputs = ["json"] }
+[outputs.json]
+type = "file"
+path = "$CANARY_OUTPUT"
+append = false
+flush = "0s"
+EOF2
+run_bounded "$JAVA" -cp \
+  "$SYSTEM_PROVIDER:$PRODUCT_CP:$TARGET/system-logger:$TARGET/integration" \
+  com.zsumz.logyard.tests.SystemLoggerCanaryMain "$CANARY_CONFIG" "$CANARY_OUTPUT"
+
+main_count="$(find "$ROOT/modules" "$ROOT/tests" -path '*/src/main/java/*' -type f -name '*.java' | wc -l)"
+test_count="$(find "$ROOT/modules" -path '*/src/test/java/*' -type f -name '*.java' | wc -l)"
+printf '\nVerification passed: %s main Java files, %s JUnit source files.\n' \
+  "$main_count" "$test_count"
+printf 'Artifacts: %s\n' "$TARGET"

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+./scripts/repository-check
+./scripts/verify
+
+if command -v zolt >/dev/null 2>&1; then
+  if [[ -f zolt.lock ]]; then
+    zolt resolve --workspace --locked
+  else
+    zolt resolve --workspace
+  fi
+  zolt build --workspace --all
+  zolt test --workspace --all
+  zolt run --workspace --member tests/logyard-integration-tests
+else
+  echo 'NOTE: Zolt is not installed; the JDK-only verification completed successfully.'
+fi

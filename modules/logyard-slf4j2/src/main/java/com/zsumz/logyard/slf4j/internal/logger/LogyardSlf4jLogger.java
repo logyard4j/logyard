@@ -1,0 +1,89 @@
+package com.zsumz.logyard.slf4j.internal.logger;
+
+import com.zsumz.logyard.api.LogyardLogger;
+import com.zsumz.logyard.runtime.adapter.AdapterReentryGuard;
+import com.zsumz.logyard.slf4j.internal.diagnostics.ProviderDiagnostics;
+import com.zsumz.logyard.slf4j.internal.event.LevelMapper;
+import com.zsumz.logyard.slf4j.internal.event.Slf4jEventMapper;
+
+import java.util.Objects;
+import org.slf4j.Marker;
+import org.slf4j.event.LoggingEvent;
+import org.slf4j.helpers.AbstractLogger;
+import org.slf4j.spi.LoggingEventAware;
+
+/** SLF4J logger adapter that deliberately leaves templates and arguments separate. */
+public final class LogyardSlf4jLogger extends AbstractLogger implements LoggingEventAware {
+    private static final long serialVersionUID = 1L;
+    private static final String FQCN = LogyardSlf4jLogger.class.getName();
+    private static final AdapterReentryGuard REENTRY = new AdapterReentryGuard();
+
+    private final transient LogyardLogger delegate;
+    private final transient Slf4jEventMapper mapper;
+
+    public LogyardSlf4jLogger(LogyardLogger delegate, Slf4jEventMapper mapper) {
+        this.delegate = Objects.requireNonNull(delegate, "delegate");
+        this.mapper = Objects.requireNonNull(mapper, "mapper");
+        name = delegate.name();
+    }
+
+    @Override public boolean isTraceEnabled() { return enabled(org.slf4j.event.Level.TRACE); }
+    @Override public boolean isDebugEnabled() { return enabled(org.slf4j.event.Level.DEBUG); }
+    @Override public boolean isInfoEnabled() { return enabled(org.slf4j.event.Level.INFO); }
+    @Override public boolean isWarnEnabled() { return enabled(org.slf4j.event.Level.WARN); }
+    @Override public boolean isErrorEnabled() { return enabled(org.slf4j.event.Level.ERROR); }
+    @Override public boolean isTraceEnabled(Marker marker) { return isTraceEnabled(); }
+    @Override public boolean isDebugEnabled(Marker marker) { return isDebugEnabled(); }
+    @Override public boolean isInfoEnabled(Marker marker) { return isInfoEnabled(); }
+    @Override public boolean isWarnEnabled(Marker marker) { return isWarnEnabled(); }
+    @Override public boolean isErrorEnabled(Marker marker) { return isErrorEnabled(); }
+
+    @Override
+    protected String getFullyQualifiedCallerName() {
+        return FQCN;
+    }
+
+    @Override
+    protected void handleNormalizedLoggingCall(
+            org.slf4j.event.Level level,
+            Marker marker,
+            String messagePattern,
+            Object[] arguments,
+            Throwable throwable) {
+        if (!REENTRY.enter()) {
+            return;
+        }
+        try {
+            mapper.publishNormalized(delegate, level, marker, messagePattern, arguments, throwable);
+        } finally {
+            REENTRY.exit();
+        }
+    }
+
+    @Override
+    public void log(LoggingEvent event) {
+        if (!REENTRY.enter()) {
+            return;
+        }
+        try {
+            mapper.publish(delegate, event);
+        } finally {
+            REENTRY.exit();
+        }
+    }
+
+    private boolean enabled(org.slf4j.event.Level level) {
+        if (!REENTRY.enter()) {
+            return false;
+        }
+        try {
+            return delegate.isEnabled(LevelMapper.toLogyard(level));
+        } catch (Throwable failure) {
+            ProviderDiagnostics.rethrowIfFatal(failure);
+            ProviderDiagnostics.eventMappingFailure(delegate.name(), failure);
+            return false;
+        } finally {
+            REENTRY.exit();
+        }
+    }
+}

@@ -1,0 +1,106 @@
+version = 1
+projectResolutionFingerprint = "sha256:79f38cd5e8ac091a13bf9436cea8e15456798dd958b34046a8162fd5b57efebd"
+projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:df79b82fc5bde49578e5d00e988a89b6d56a284dece1f3c3c3c4c62c7414c2b2", "dependencies.compile=sha256:602ec01234795e1c78c26e33eb5814089259b68becd220b02f0c217368d63481", "dependencies.test.workspace=sha256:f860d9b35ab0eb7b43d438dffcded4c51d9aeba9bfdb7ea7f8089c303b001287", "dependencies.test=sha256:8ac3b627653c7566b298ec744736da2dcf682381ae3f0cc31880c459b77034de", "framework.quarkus=sha256:e59a25baf0cc1e520304bbbe6d9505578fe47ac41f3680b99ebeff1a5655f4aa", "framework.springBoot.native=sha256:e81dd4baf979f796ccc503c717a8b33d7bcc5b0ad958c36cf2b3badb57cd75a0", "java=sha256:bc3eddb4da1514756fe98712d725ff3e94f99f9eb1ed020afcb7171c39b4d5b3", "package=sha256:ec5f1e161462952ec6e591cc9711c3b6e198ed137c71869f01ef9e4a860b5039", "repositories=sha256:fa72302a3ab52727db054f9f2296ce5bf8ed537b072fa6df7ed99b3571c26548", "schema=sha256:5282f9629b30190bb0199b83b06c5db8f49e61f1a7afc29cda632061ada8bb1f"]
+
+[[package]]
+id = "com.zsumz.logyard:logyard-api"
+version = "0.7.0-SNAPSHOT"
+source = "workspace"
+scope = "compile"
+direct = true
+workspace = "modules/logyard-api"
+workspaceOutput = "target/classes"
+members = ["modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-system-logger", "tests/logyard-integration-tests"]
+dependencies = []
+
+[[package]]
+id = "com.zsumz.logyard:logyard-config-toml"
+version = "0.7.0-SNAPSHOT"
+source = "workspace"
+scope = "compile"
+direct = true
+workspace = "modules/logyard-config-toml"
+workspaceOutput = "target/classes"
+members = ["modules/logyard-runtime", "tests/logyard-integration-tests"]
+dependencies = []
+
+[[package]]
+id = "com.zsumz.logyard:logyard-core"
+version = "0.7.0-SNAPSHOT"
+source = "workspace"
+scope = "compile"
+direct = true
+workspace = "modules/logyard-core"
+workspaceOutput = "target/classes"
+members = ["modules/logyard-runtime", "tests/logyard-integration-tests"]
+dependencies = []
+
+[[package]]
+id = "com.zsumz.logyard:logyard-core"
+version = "0.7.0-SNAPSHOT"
+source = "workspace"
+scope = "test"
+direct = true
+workspace = "modules/logyard-core"
+workspaceOutput = "target/classes"
+members = ["modules/logyard-jul", "modules/logyard-system-logger"]
+dependencies = []
+
+[[package]]
+id = "com.zsumz.logyard:logyard-output-console"
+version = "0.7.0-SNAPSHOT"
+source = "workspace"
+scope = "compile"
+direct = true
+workspace = "modules/logyard-output-console"
+workspaceOutput = "target/classes"
+members = ["modules/logyard-runtime", "tests/logyard-integration-tests"]
+dependencies = []
+
+[[package]]
+id = "com.zsumz.logyard:logyard-output-json"
+version = "0.7.0-SNAPSHOT"
+source = "workspace"
+scope = "compile"
+direct = true
+workspace = "modules/logyard-output-json"
+workspaceOutput = "target/classes"
+members = ["modules/logyard-runtime", "tests/logyard-integration-tests"]
+dependencies = []
+
+[[package]]
+id = "com.zsumz.logyard:logyard-runtime"
+version = "0.7.0-SNAPSHOT"
+source = "workspace"
+scope = "compile"
+direct = true
+workspace = "modules/logyard-runtime"
+workspaceOutput = "target/classes"
+members = ["modules/logyard-jul", "modules/logyard-slf4j2", "modules/logyard-system-logger", "tests/logyard-integration-tests"]
+dependencies = []
+
+[[package]]
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+source = "maven-central"
+scope = "test"
+direct = true
+jar = "org/junit/platform/junit-platform-console-standalone/1.11.4/junit-platform-console-standalone-1.11.4.jar"
+pom = "org/junit/platform/junit-platform-console-standalone/1.11.4/junit-platform-console-standalone-1.11.4.pom"
+jarSha256 = "b016ef6b1c3454d6d7c2c88ce081dabf289699686af6622d6e4e2e1b54b4a2fc"
+pomSha256 = "f44619c18edb94360cc382e6baf943e9300625d1a0a949ee158977eace5713d1"
+members = ["modules/logyard-api", "modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-system-logger"]
+dependencies = []
+
+[[package]]
+id = "org.slf4j:slf4j-api"
+version = "2.0.18"
+source = "maven-central"
+scope = "compile"
+direct = true
+jar = "org/slf4j/slf4j-api/2.0.18/slf4j-api-2.0.18.jar"
+pom = "org/slf4j/slf4j-api/2.0.18/slf4j-api-2.0.18.pom"
+jarSha256 = "44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55"
+pomSha256 = "6c2c7f2c02774cc2b7b619fbd2df7873cdad29718926e44754b87f70d1eb43cb"
+members = ["modules/logyard-slf4j2"]
+dependencies = []

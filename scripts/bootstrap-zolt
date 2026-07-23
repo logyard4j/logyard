@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly ZOLT_COMMIT="${ZOLT_BOOTSTRAP_COMMIT:-515e81c821e05ecee52a9c2f4a53c5b6d0bab37e}"
+readonly ZOLT_REPOSITORY="${ZOLT_BOOTSTRAP_REPOSITORY:-https://github.com/zsumz/zolt.git}"
+readonly INSTALL_ROOT="${ZOLT_HOME:-$HOME/.zolt}"
+readonly SOURCE_ROOT="$INSTALL_ROOT/source"
+readonly BIN_ROOT="$INSTALL_ROOT/bin"
+readonly CLASSPATH_FILE="$INSTALL_ROOT/runtime-classpath.txt"
+
+fail() {
+  printf 'error: %s\n' "$1" >&2
+  exit 1
+}
+
+for tool in git javac jar java; do
+  command -v "$tool" >/dev/null 2>&1 || fail "$tool is required to bootstrap the pinned Zolt source"
+done
+
+if [[ -x "$BIN_ROOT/zolt" ]]; then
+  installed_version="$("$BIN_ROOT/zolt" --version)"
+  if [[ "$installed_version" == *"${ZOLT_COMMIT:0:12}"* ]]; then
+    printf 'Using installed Zolt %s at %s.\n' "$installed_version" "$BIN_ROOT/zolt"
+    exit 0
+  fi
+  fail "Zolt $installed_version is installed at $BIN_ROOT/zolt; expected commit ${ZOLT_COMMIT:0:12}"
+fi
+
+javac_version="$(javac -version 2>&1 | awk '{print $2}')"
+javac_major="${javac_version%%.*}"
+if [[ "$javac_major" == "1" ]]; then
+  javac_major="$(printf '%s' "$javac_version" | cut -d. -f2)"
+fi
+javac_major="${javac_major%%[!0-9]*}"
+if [[ -z "$javac_major" || "$javac_major" -lt 21 ]]; then
+  fail "Zolt source bootstrap requires JDK 21 or newer; found javac $javac_version"
+fi
+
+installed_commit=""
+if [[ -d "$SOURCE_ROOT/.git" ]]; then
+  installed_commit="$(git -C "$SOURCE_ROOT" rev-parse HEAD 2>/dev/null || true)"
+fi
+
+if [[ "$installed_commit" != "$ZOLT_COMMIT" \
+    || ! -f "$SOURCE_ROOT/build/bootstrap-zolt/zolt-bootstrap.jar" ]]; then
+  mkdir -p "$INSTALL_ROOT"
+  work_root="$(mktemp -d "$INSTALL_ROOT/source.tmp.XXXXXX")"
+  cleanup() {
+    rm -rf "$work_root"
+  }
+  trap cleanup EXIT
+
+  git -C "$work_root" init --quiet
+  git -C "$work_root" remote add origin "$ZOLT_REPOSITORY"
+  git -C "$work_root" fetch --quiet --depth 1 origin "$ZOLT_COMMIT"
+  git -C "$work_root" checkout --quiet --detach FETCH_HEAD
+
+  fetched_commit="$(git -C "$work_root" rev-parse HEAD)"
+  [[ "$fetched_commit" == "$ZOLT_COMMIT" ]] \
+    || fail "Git resolved Zolt commit $fetched_commit; expected $ZOLT_COMMIT"
+  [[ -x "$work_root/scripts/bootstrap-zolt-jvm" ]] \
+    || fail "pinned Zolt source does not contain scripts/bootstrap-zolt-jvm"
+  [[ -f "$work_root/zolt.lock" ]] \
+    || fail "pinned Zolt source does not contain zolt.lock"
+
+  (
+    cd "$work_root"
+    ./scripts/bootstrap-zolt-jvm --version
+  )
+
+  rm -rf "$SOURCE_ROOT.previous"
+  if [[ -e "$SOURCE_ROOT" ]]; then
+    mv "$SOURCE_ROOT" "$SOURCE_ROOT.previous"
+  fi
+  mv "$work_root" "$SOURCE_ROOT"
+  rm -rf "$SOURCE_ROOT.previous"
+  trap - EXIT
+fi
+
+mkdir -p "$BIN_ROOT"
+awk '
+  /^\[\[package\]\]/ {
+    scope = ""
+    jar = ""
+  }
+  /^scope = / {
+    scope = $3
+    gsub(/"/, "", scope)
+  }
+  /^jar = / {
+    jar = $3
+    gsub(/"/, "", jar)
+  }
+  /^jarSha256 = / {
+    if (scope != "test" && jar != "") {
+      print jar
+    }
+  }
+' "$SOURCE_ROOT/zolt.lock" > "$CLASSPATH_FILE"
+
+[[ -s "$CLASSPATH_FILE" ]] || fail "could not derive the pinned Zolt runtime classpath"
+while IFS= read -r jar_path; do
+  [[ -f "$SOURCE_ROOT/.zolt/cache/$jar_path" ]] \
+    || fail "pinned Zolt bootstrap artifact is missing: $jar_path"
+done < "$CLASSPATH_FILE"
+
+cat > "$BIN_ROOT/zolt" <<'WRAPPER'
+#!/usr/bin/env bash
+set -euo pipefail
+INSTALL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE_ROOT="$INSTALL_ROOT/source"
+CLASSPATH="$SOURCE_ROOT/build/bootstrap-zolt/zolt-bootstrap.jar"
+while IFS= read -r jar_path; do
+  CLASSPATH="$CLASSPATH:$SOURCE_ROOT/.zolt/cache/$jar_path"
+done < "$INSTALL_ROOT/runtime-classpath.txt"
+exec java -cp "$CLASSPATH" sh.zolt.cli.ZoltCli "$@"
+WRAPPER
+chmod 0755 "$BIN_ROOT/zolt"
+
+version="$($BIN_ROOT/zolt --version)"
+printf 'Installed project-local Zolt %s from commit %s.\n' "$version" "$ZOLT_COMMIT"
+printf 'Wrapper: %s\n' "$BIN_ROOT/zolt"

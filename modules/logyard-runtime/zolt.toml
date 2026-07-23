@@ -1,0 +1,27 @@
+[project]
+name = "logyard-runtime"
+version = "0.7.0-SNAPSHOT"
+group = "com.zsumz.logyard"
+java = "21"
+
+[repositories]
+central = "https://repo.maven.apache.org/maven2"
+
+[dependencies]
+"com.zsumz.logyard:logyard-api" = { workspace = "modules/logyard-api" }
+"com.zsumz.logyard:logyard-core" = { workspace = "modules/logyard-core" }
+"com.zsumz.logyard:logyard-config-toml" = { workspace = "modules/logyard-config-toml" }
+"com.zsumz.logyard:logyard-output-console" = { workspace = "modules/logyard-output-console" }
+"com.zsumz.logyard:logyard-output-json" = { workspace = "modules/logyard-output-json" }
+
+[test.dependencies]
+"org.junit.platform:junit-platform-console-standalone" = "1.11.4"
+
+[build]
+source = "src/main/java"
+test = "src/test/java"
+output = "target/classes"
+testOutput = "target/test-classes"
+
+[build.metadata]
+reproducible = true
