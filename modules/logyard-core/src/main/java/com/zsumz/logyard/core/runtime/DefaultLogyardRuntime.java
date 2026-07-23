@@ -6,6 +6,7 @@ import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
+import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.api.diagnostics.HealthStatus;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
 import com.zsumz.logyard.api.event.AttributeSet;
@@ -18,15 +19,15 @@ import com.zsumz.logyard.api.spi.HealthContributor;
 import com.zsumz.logyard.core.delivery.CompositeSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.routing.CompiledRoute;
-import com.zsumz.logyard.api.diagnostics.EffectiveRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.routing.RouteDefinition;
+import com.zsumz.logyard.core.routing.ResolvedRoute;
+import com.zsumz.logyard.core.routing.RouteResolver;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -262,20 +263,8 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     private static CompiledRoute compileRoute(String loggerName, RuntimeState state) {
         RuntimePlan plan = state.plan();
-        RouteDefinition effective = plan.root();
-        String matched = "root";
-        List<Map.Entry<String, RouteDefinition>> matches = new ArrayList<>();
-        for (Map.Entry<String, RouteDefinition> entry : plan.loggers().entrySet()) {
-            String rule = entry.getKey();
-            if (loggerName.equals(rule) || loggerName.startsWith(rule + ".")) {
-                matches.add(entry);
-            }
-        }
-        matches.sort(Comparator.comparingInt(entry -> entry.getKey().length()));
-        for (Map.Entry<String, RouteDefinition> match : matches) {
-            effective = overlay(effective, match.getValue());
-            matched = match.getKey();
-        }
+        ResolvedRoute resolved = RouteResolver.resolve(loggerName, plan.root(), plan.loggers());
+        RouteDefinition effective = resolved.definition();
 
         List<String> outputNames = Objects.requireNonNull(effective.outputs(), "effective outputs");
         List<EventSink> sinks = new ArrayList<>(outputNames.size());
@@ -293,15 +282,8 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
                 processors,
                 List.copyOf(outputNames),
                 List.copyOf(processorNames),
-                matched,
+                resolved.matchedRule(),
                 state.epoch());
-    }
-
-    private static RouteDefinition overlay(RouteDefinition parent, RouteDefinition child) {
-        return new RouteDefinition(
-                child.level() == null ? parent.level() : child.level(),
-                child.outputs() == null ? parent.outputs() : child.outputs(),
-                child.processors() == null ? parent.processors() : child.processors());
     }
 
     private void observeRetirement(CompletableFuture<Void> retirement) {

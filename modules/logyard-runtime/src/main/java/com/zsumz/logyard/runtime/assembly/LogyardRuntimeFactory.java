@@ -63,6 +63,7 @@ import com.zsumz.logyard.output.json.encoding.ResourceAttributes;
 import com.zsumz.logyard.output.json.file.JsonFileSink;
 import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
 import com.zsumz.logyard.output.json.stream.JsonLinesSink;
+import com.zsumz.logyard.runtime.assembly.routing.ConfiguredLoggerRuleResolver;
 import com.zsumz.logyard.runtime.context.ContextProviderDiscovery;
 import com.zsumz.logyard.runtime.encoding.EventEncoderProviderDiscovery;
 import com.zsumz.logyard.runtime.extension.ExtensionGuardrails;
@@ -146,7 +147,9 @@ public final class LogyardRuntimeFactory {
             RouteDefinition root = route(config.rootLogger(), context, redact);
             Map<String, RouteDefinition> loggers = new LinkedHashMap<>();
             for (String logger : config.loggers().keySet()) {
-                loggers.put(logger, route(effectiveRule(config, logger).rule(), context, redact));
+                LoggerRuleConfig rule =
+                        ConfiguredLoggerRuleResolver.resolve(logger, config.rootLogger(), config.loggers()).rule();
+                loggers.put(logger, route(rule, context, redact));
             }
             RuntimePlan plan = new RuntimePlan(
                     root,
@@ -248,7 +251,8 @@ public final class LogyardRuntimeFactory {
         if (loggerName.isBlank()) {
             throw new IllegalArgumentException("logger name must not be blank");
         }
-        EffectiveRule effective = effectiveRule(config, loggerName);
+        ConfiguredLoggerRuleResolver.ResolvedRule effective =
+                ConfiguredLoggerRuleResolver.resolve(loggerName, config.rootLogger(), config.loggers());
         List<String> processorNames = processorNames(
                 effective.rule(), !contextProviders().isEmpty(), !config.context().redact().isEmpty());
         return new EffectiveRoute(
@@ -256,27 +260,7 @@ public final class LogyardRuntimeFactory {
                 effective.rule().level(),
                 effective.rule().outputs(),
                 processorNames,
-                effective.matched());
-    }
-
-    private static EffectiveRule effectiveRule(LogyardConfig config, String loggerName) {
-        LoggerRuleConfig effective = config.rootLogger();
-        String matched = "root";
-        List<Map.Entry<String, LoggerRuleConfig>> matches = config.loggers().entrySet().stream()
-                .filter(entry -> loggerName.equals(entry.getKey())
-                        || loggerName.startsWith(entry.getKey() + "."))
-                .sorted(java.util.Comparator.comparingInt(entry -> entry.getKey().length()))
-                .toList();
-        for (Map.Entry<String, LoggerRuleConfig> match : matches) {
-            LoggerRuleConfig child = match.getValue();
-            effective = new LoggerRuleConfig(
-                    child.level() == null ? effective.level() : child.level(),
-                    child.outputs() == null ? effective.outputs() : child.outputs(),
-                    child.enrich() == null ? effective.enrich() : child.enrich(),
-                    child.filters() == null ? effective.filters() : child.filters());
-            matched = match.getKey();
-        }
-        return new EffectiveRule(effective, matched);
+                effective.matchedRule());
     }
 
     private static OutputSignature signature(LogyardConfig config, OutputConfig output) {
@@ -689,9 +673,6 @@ public final class LogyardRuntimeFactory {
                 primaryFailure.addSuppressed(closeFailure);
             }
         }
-    }
-
-    private record EffectiveRule(LoggerRuleConfig rule, String matched) {
     }
 
     private record Extensions(
