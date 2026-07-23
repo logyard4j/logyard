@@ -47,6 +47,11 @@ class EventLog:
         actual = self._events[-1].get("body")
         self._equal(body, actual, body, "final flushed event")
 
+    def require_last_one_of(self, bodies: tuple[str, ...]) -> None:
+        actual = self._events[-1].get("body")
+        if actual not in bodies:
+            raise AssertionError(f"final flushed event {actual!r} was not one of {bodies!r}")
+
     def require_real_timestamps(self) -> None:
         for event in self._events:
             timestamp = str(event.get("timestamp", ""))

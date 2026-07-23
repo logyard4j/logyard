@@ -294,6 +294,8 @@ The supported public surface is every package in `logyard-api`, `com.zsumz.logya
 
 All Logyard artifacts use the same version. Java 21 is the minimum runtime, SLF4J 2.x is supported, and no compatibility claim is made for SLF4J 1.x.
 
+Published-shaped CI consumers certify plain SLF4J 2, Vert.x 5.1.5, and Micronaut 4.10.9 on the JVM. Micronaut is also built and exercised as a GraalVM 21 native image. Spring Boot and Quarkus integrations are not supported yet.
+
 ## Build and verify
 
 The repository pins and bootstraps Zolt:
@@ -305,6 +307,8 @@ zolt resolve
 ./scripts/ci
 ./scripts/package
 ./scripts/package-verify
+./scripts/examples-verify
+./scripts/examples-native-verify
 ```
 
 `scripts/ci` runs architecture checks and the full test suite. Packaged verification uses only produced JARs to check module names, sources, Javadocs, extension `ServiceLoader` contracts, native logging, SLF4J, and `System.Logger`. CI runs on Linux, macOS, and Windows with Java 21, plus a forward-compatibility lane on Java 25.

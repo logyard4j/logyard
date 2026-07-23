@@ -18,6 +18,17 @@ class HttpExample:
     shutdown_path: str = "/shutdown"
 
 
+@dataclass(frozen=True)
+class ExecutableHttpExample:
+    name: str
+    project_directory: Path
+    command: tuple[str, ...]
+    additional_environment: tuple[tuple[str, str], ...] = ()
+    success_path: str = "/success"
+    failure_path: str = "/failure"
+    shutdown_path: str = "/shutdown"
+
+
 class HttpExampleRunner:
     def __init__(self, maven: MavenExampleRunner, target: Path) -> None:
         self._maven = maven
@@ -25,17 +36,35 @@ class HttpExampleRunner:
 
     def build_run_and_exercise(self, example: HttpExample) -> Path:
         built = self._maven.build(example.maven)
-        output = self._maven.output_path(example.maven)
-        port_file = self._target / f"{example.maven.name}.port"
-        process_log = self._target / f"{example.maven.name}.process.log"
+        return self.run_and_exercise(
+            ExecutableHttpExample(
+                name=example.maven.name,
+                project_directory=example.maven.project_directory,
+                command=self._maven.java_command(built),
+                success_path=example.success_path,
+                failure_path=example.failure_path,
+                shutdown_path=example.shutdown_path,
+            )
+        )
+
+    def run_and_exercise(self, example: ExecutableHttpExample) -> Path:
+        output = self._target / f"{example.name}.jsonl"
+        port_file = self._target / f"{example.name}.port"
+        process_log = self._target / f"{example.name}.process.log"
         for stale in (output, port_file, process_log):
             stale.unlink(missing_ok=True)
-        environment = self._maven.environment(output, {"LOGYARD_EXAMPLE_PORT_FILE": str(port_file)})
+        environment = self._maven.environment(
+            output,
+            {
+                "LOGYARD_EXAMPLE_PORT_FILE": str(port_file),
+                **dict(example.additional_environment),
+            },
+        )
 
         with process_log.open("wb") as log:
             process = subprocess.Popen(
-                self._maven.java_command(built),
-                cwd=example.maven.project_directory,
+                example.command,
+                cwd=example.project_directory,
                 env=environment,
                 stdout=log,
                 stderr=subprocess.STDOUT,

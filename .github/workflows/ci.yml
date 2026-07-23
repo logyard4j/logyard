@@ -82,3 +82,27 @@ jobs:
           zolt resolve --workspace
           zolt build --workspace --all --no-progress --color never
           zolt test --workspace --all --no-progress --color never
+
+  native-example:
+    name: Micronaut native consumer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '21'
+          distribution: graalvm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: maven
+          native-image-job-reports: 'true'
+      - name: Bootstrap the pinned Zolt revision
+        run: ./scripts/bootstrap-zolt
+      - name: Put Zolt on PATH
+        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+      - name: Package the published Maven surface
+        run: ./scripts/release-bundle
+      - name: Build and run the published-shaped native consumer
+        env:
+          LOGYARD_EXAMPLES_SKIP_RELEASE: '1'
+        run: ./scripts/examples-native-verify

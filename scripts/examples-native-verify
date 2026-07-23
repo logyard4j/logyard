@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RELEASE_REPOSITORY="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
+
+command -v native-image >/dev/null 2>&1 || {
+  printf 'native example verification requires GraalVM native-image on PATH\n' >&2
+  exit 2
+}
+if [[ "${LOGYARD_EXAMPLES_SKIP_RELEASE:-0}" != "1" ]]; then
+  "$ROOT/scripts/release-bundle"
+fi
+"$ROOT/scripts/release-verify"
+version="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli version "$ROOT")"
+PYTHONPATH="$ROOT/scripts" python3 -m example_tools.native_verify "$ROOT" "$RELEASE_REPOSITORY" "$version"

@@ -36,7 +36,17 @@ def main() -> None:
             )
         ),
     )
-    print("Published-shaped example verification passed: plain SLF4J and Vert.x.")
+    verify_micronaut(
+        HttpExampleRunner(runner, root / "target" / "examples-verify"),
+        HttpExample(
+            MavenExample(
+                name="micronaut",
+                project_directory=root / "examples" / "micronaut",
+                main_class="com.zsumz.logyard.examples.micronaut.MicronautExampleApplication",
+            )
+        ),
+    )
+    print("Published-shaped example verification passed: plain SLF4J, Vert.x, and Micronaut.")
 
 
 def verify_plain_slf4j(runner: MavenExampleRunner, example: MavenExample) -> None:
@@ -82,6 +92,30 @@ def verify_vertx(runner: HttpExampleRunner, example: HttpExample) -> None:
         )
     )
     events.require_last("Vert.x shutdown flush")
+
+
+def verify_micronaut(runner: HttpExampleRunner, example: HttpExample) -> None:
+    require_micronaut_events(EventLog.read(runner.build_run_and_exercise(example)))
+
+
+def require_micronaut_events(events: EventLog, final_bodies: tuple[str, ...] = ("Micronaut shutdown flush", "Embedded Application shutting down")) -> None:
+    events.require_real_timestamps()
+    events.require_logger_prefix("io.micronaut")
+    application_logger = "com.zsumz.logyard.examples.micronaut.MicronautExampleApplication"
+    controller_logger = "com.zsumz.logyard.examples.micronaut.MicronautExampleController"
+    events.require(EventExpectation("Micronaut application started", application_logger, "INFO", (("phase", "startup"),)))
+    events.require(EventExpectation("Micronaut request succeeded", controller_logger, "INFO", (("request.id", "request-success"),)))
+    events.require(
+        EventExpectation(
+            "Micronaut request failed",
+            controller_logger,
+            "ERROR",
+            (("request.id", "request-failure"),),
+            "expected Micronaut example failure",
+        )
+    )
+    events.require(EventExpectation("Micronaut shutdown flush", "com.zsumz.logyard.examples.micronaut.DeferredShutdown", "INFO", (("phase", "shutdown"),)))
+    events.require_last_one_of(final_bodies)
 
 
 if __name__ == "__main__":

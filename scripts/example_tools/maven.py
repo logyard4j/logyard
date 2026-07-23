@@ -46,13 +46,7 @@ class MavenExampleRunner:
         project = example.project_directory
         classpath_file = project / "target" / "runtime-classpath.txt"
         self._run(
-            (
-                "mvn",
-                "--batch-mode",
-                "--no-transfer-progress",
-                f"-Dmaven.repo.local={self._local_repository}",
-                f"-Dlogyard.repository={self._release_repository.as_uri()}",
-                f"-Dlogyard.version={self._version}",
+            self._command(
                 "clean",
                 "package",
                 "org.apache.maven.plugins:maven-dependency-plugin:3.7.0:build-classpath",
@@ -62,8 +56,26 @@ class MavenExampleRunner:
         )
         return BuiltMavenExample(example, classpath_file.read_text(encoding="utf-8").strip())
 
+    def build_native(self, example: MavenExample, executable_name: str) -> Path:
+        self._run(self._command("clean", "package", "-Dpackaging=native-image"), example.project_directory)
+        executable = example.project_directory / "target" / executable_name
+        if not executable.is_file():
+            raise AssertionError(f"native example did not produce {executable}")
+        return executable
+
     def output_path(self, example: MavenExample) -> Path:
         return self._target / f"{example.name}.jsonl"
+
+    def _command(self, *goals: str) -> tuple[str, ...]:
+        return (
+            "mvn",
+            "--batch-mode",
+            "--no-transfer-progress",
+            f"-Dmaven.repo.local={self._local_repository}",
+            f"-Dlogyard.repository={self._release_repository.as_uri()}",
+            f"-Dlogyard.version={self._version}",
+            *goals,
+        )
 
     @staticmethod
     def environment(output: Path, additional: dict[str, str] | None = None) -> dict[str, str]:
