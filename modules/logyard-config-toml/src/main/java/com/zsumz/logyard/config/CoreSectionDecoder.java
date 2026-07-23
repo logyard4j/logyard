@@ -39,7 +39,7 @@ final class CoreSectionDecoder {
             }
             attributes.put(
                     key,
-                    LogyardConfigLoader.expandEnvironment(
+                    EnvironmentExpander.expand(
                             text, reader.environment(), reader.source(), reader.childPath("attributes." + key)));
         });
         reader.finish();

@@ -69,7 +69,7 @@ final class ProviderReferenceDecoder {
 
     private static Object normalize(Object value, ConfigReader reader, String path) {
         if (value instanceof String text) {
-            return LogyardConfigLoader.expandEnvironment(text, reader.environment(), reader.source(), reader.childPath(path));
+            return EnvironmentExpander.expand(text, reader.environment(), reader.source(), reader.childPath(path));
         }
         if (value instanceof Long || value instanceof Double || value instanceof Boolean) {
             return value;

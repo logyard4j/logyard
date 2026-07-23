@@ -90,7 +90,7 @@ final class ConfigReader {
         if (!(value instanceof String string)) {
             throw failure(key, "expected a string");
         }
-        return LogyardConfigLoader.expandEnvironment(string, environment, source, childPath(key));
+        return EnvironmentExpander.expand(string, environment, source, childPath(key));
     }
 
     boolean bool(String key, boolean fallback) {
@@ -226,7 +226,7 @@ final class ConfigReader {
             if (!(item instanceof String text)) {
                 throw failure(key + "[" + index + "]", "expected a string");
             }
-            String expanded = LogyardConfigLoader.expandEnvironment(text, environment, source, childPath(key + "[" + index + "]"));
+            String expanded = EnvironmentExpander.expand(text, environment, source, childPath(key + "[" + index + "]"));
             if (!seen.add(expanded)) {
                 throw failure(key, "contains duplicate value '" + expanded + "'");
             }
@@ -240,7 +240,7 @@ final class ConfigReader {
             return;
         }
         String unknown = values.keySet().iterator().next();
-        String suggestion = nearest(unknown, knownKeys());
+        String suggestion = ConfigKeySuggestions.nearest(unknown);
         String message = "unknown key '" + unknown + "'";
         if (suggestion != null) {
             message += "; did you mean '" + suggestion + "'?";
@@ -256,55 +256,4 @@ final class ConfigReader {
         return path.isEmpty() ? child : path + "." + child;
     }
 
-    private static Set<String> knownKeys() {
-        return Set.of(
-                "schema", "service", "resource", "runtime", "context", "loggers",
-                "delivery", "outputs", "themes", "formatters", "encoders",
-                "json_profiles", "enrichers", "filters", "name", "namespace", "version",
-                "environment", "instance_id", "attributes", "shutdown_timeout",
-                "internal_status", "watch", "reload_debounce", "trace", "mdc",
-                "baggage", "redact", "mode", "capacity", "overflow", "action",
-                "timeout", "type", "stream", "min_level", "formatter", "encoder",
-                "provider", "implementation", "config", "template", "profile", "preset",
-                "rename", "drop", "prefix", "include", "exclude", "probability", "key",
-                "seed", "permits_per_second", "burst", "max_keys", "color", "exception",
-                "capability", "theme", "style", "common_frames", "path", "buffer",
-                "flush", "append", "rotate", "size", "keep", "compression",
-                "endpoint", "headers", "batch", "max_events", "max_bytes", "retry",
-                "max_attempts", "max_elapsed", "initial_backoff", "max_backoff",
-                "circuit_breaker", "failure_threshold", "open_duration", "level",
-                "enrich", "fg", "bg", "bold", "dim", "italic", "underline");
-    }
-
-    private static String nearest(String value, Set<String> candidates) {
-        String best = null;
-        int bestDistance = Integer.MAX_VALUE;
-        for (String candidate : candidates) {
-            int distance = levenshtein(value, candidate);
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                best = candidate;
-            }
-        }
-        return bestDistance <= Math.max(2, value.length() / 3) ? best : null;
-    }
-
-    private static int levenshtein(String left, String right) {
-        int[] previous = new int[right.length() + 1];
-        int[] current = new int[right.length() + 1];
-        for (int index = 0; index <= right.length(); index++) {
-            previous[index] = index;
-        }
-        for (int i = 1; i <= left.length(); i++) {
-            current[0] = i;
-            for (int j = 1; j <= right.length(); j++) {
-                int cost = left.charAt(i - 1) == right.charAt(j - 1) ? 0 : 1;
-                current[j] = Math.min(Math.min(current[j - 1] + 1, previous[j] + 1), previous[j - 1] + cost);
-            }
-            int[] swap = previous;
-            previous = current;
-            current = swap;
-        }
-        return previous[right.length()];
-    }
 }

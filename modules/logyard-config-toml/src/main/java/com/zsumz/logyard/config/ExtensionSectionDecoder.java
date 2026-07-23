@@ -147,7 +147,7 @@ final class ExtensionSectionDecoder {
             }
             result.put(
                     entry.getKey(),
-                    LogyardConfigLoader.expandEnvironment(
+                    EnvironmentExpander.expand(
                             text, reader.environment(), reader.source(), reader.childPath(key + "." + entry.getKey())));
         }
         return Collections.unmodifiableMap(result);
