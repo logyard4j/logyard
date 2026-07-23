@@ -361,7 +361,9 @@ JAVA
     "$TARGET/fallback-runner-src" "${base_test_roots[@]}"
   fallback_classes=(
     com.zsumz.logyard.config.RuntimeReloadConfigTest
+    com.zsumz.logyard.config.ExtensionConfigurationTest
     com.zsumz.logyard.config.LogyardConfigLoaderTest
+    com.zsumz.logyard.api.spi.ProviderConfigurationTest
     com.zsumz.logyard.core.delivery.AsyncSinkBehaviorTest
     com.zsumz.logyard.core.processing.SamplingAndRateLimitProcessorTest
     com.zsumz.logyard.core.runtime.CoreBehaviorTest
