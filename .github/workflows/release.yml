@@ -49,6 +49,7 @@ jobs:
         run: |
           zolt resolve --workspace
           ./scripts/ci
+          ./scripts/api-compatibility --baseline
           ./scripts/release-bundle --sign
           ./scripts/zolt-publication-check
       - name: Create the Central Portal archive

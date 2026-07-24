@@ -12,8 +12,9 @@ import com.zsumz.logyard.core.routing.ResolvedRoute;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 import com.zsumz.logyard.core.routing.RouteResolver;
 
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /** Compiles one resolved logger rule into its immutable hot-path route. */
@@ -34,9 +35,9 @@ final class RuntimeRouteCompiler {
                 override);
 
         List<String> outputNames = Objects.requireNonNull(effective.outputs(), "effective outputs");
-        List<EventSink> sinks = new ArrayList<>(outputNames.size());
+        Map<String, EventSink> sinks = new LinkedHashMap<>();
         for (String output : outputNames) {
-            sinks.add(plan.outputs().get(output));
+            sinks.put(output, plan.outputs().get(output));
         }
 
         List<String> processorNames = Objects.requireNonNull(effective.processors(), "effective processors");

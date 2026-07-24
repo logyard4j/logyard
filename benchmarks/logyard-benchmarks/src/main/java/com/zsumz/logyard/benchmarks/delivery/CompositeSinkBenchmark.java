@@ -42,17 +42,20 @@ public class CompositeSinkBenchmark {
     private CompositeSink successful;
     private CompositeSink firstFailing;
     private CompositeSink lastFailing;
+    private BenchmarkFixtures.ObservingSink observer;
 
     @Setup
     public void setUp() {
+        observer = new BenchmarkFixtures.ObservingSink();
         successful = new CompositeSink(sinks(-1));
         firstFailing = new CompositeSink(sinks(0));
         lastFailing = new CompositeSink(sinks(sinkCount - 1));
     }
 
     @Benchmark
-    public void success() {
+    public LogEvent success() {
         successful.accept(event);
+        return observer.last();
     }
 
     @Benchmark
@@ -68,7 +71,7 @@ public class CompositeSinkBenchmark {
     private List<EventSink> sinks(int failingIndex) {
         List<EventSink> sinks = new ArrayList<>(sinkCount);
         for (int index = 0; index < sinkCount; index++) {
-            sinks.add(index == failingIndex ? failing : BenchmarkFixtures.DISCARDING_SINK);
+            sinks.add(index == failingIndex ? failing : observer);
         }
         return sinks;
     }

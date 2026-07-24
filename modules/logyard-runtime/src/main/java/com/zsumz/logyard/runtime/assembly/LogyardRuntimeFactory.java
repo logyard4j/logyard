@@ -6,6 +6,7 @@ import com.zsumz.logyard.api.spi.context.ContextProvider;
 import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.logging.LoggerRuleConfig;
+import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
@@ -56,12 +57,20 @@ public final class LogyardRuntimeFactory {
                 LoggerRuleConfig rule = ConfiguredLoggerRuleResolver.resolve(logger, config.rootLogger(), config.loggers()).rule();
                 loggers.put(logger, route(rule, processors.contextEnabled(), processors.redactionEnabled()));
             }
+            Map<String, com.zsumz.logyard.api.Level> configuredLevels = new LinkedHashMap<>();
+            configuredLevels.put(RuntimeLevelOverrides.ROOT_LOGGER_NAME, config.rootLogger().level());
+            config.loggers().forEach((logger, rule) -> {
+                if (rule.level() != null) {
+                    configuredLevels.put(logger, rule.level());
+                }
+            });
             RuntimePlan plan = new RuntimePlan(
                     root,
                     loggers,
                     outputs.sinks(),
                     processors.processors(),
-                    config.runtime().shutdownTimeout());
+                    config.runtime().shutdownTimeout(),
+                    configuredLevels);
             return new RuntimeAssembly(config, plan, outputs.bindings());
         } catch (RuntimeException | Error failure) {
             if (outputs != null) {

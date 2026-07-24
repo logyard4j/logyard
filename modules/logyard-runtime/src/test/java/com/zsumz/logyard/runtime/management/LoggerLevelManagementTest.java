@@ -7,7 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zsumz.logyard.api.LogyardLogger;
+import com.zsumz.logyard.api.Level;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.reload.ReloadResult;
+import com.zsumz.logyard.core.routing.RouteDefinition;
+import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
+import com.zsumz.logyard.core.runtime.RuntimePlan;
 import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
 import com.zsumz.logyard.runtime.bootstrap.LogyardConfigurationSource;
 import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
@@ -17,6 +22,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 final class LoggerLevelManagementTest {
@@ -148,6 +155,27 @@ final class LoggerLevelManagementTest {
                 assertEquals(LoggerLevel.DEBUG, levels.getEffectiveLevel("com.acme.Service"));
                 assertTrue(logger.isDebugEnabled());
             }
+        }
+    }
+
+    @Test
+    void listsTenThousandLoggerRulesFromOneLinearSnapshot() {
+        Map<String, RouteDefinition> rules = new LinkedHashMap<>();
+        for (int index = 0; index < 10_000; index++) {
+            rules.put("com.example.service." + index, new RouteDefinition(Level.DEBUG, null, null));
+        }
+        EventSink sink = ignored -> { };
+        RuntimePlan plan = new RuntimePlan(
+                RouteDefinition.root(Level.INFO, List.of("capture"), List.of()),
+                rules,
+                Map.of("capture", sink),
+                Map.of());
+
+        try (DefaultLogyardRuntime runtime = new DefaultLogyardRuntime(plan)) {
+            Map<String, LoggerLevelSnapshot> levels = LoggerLevelManagement.forRuntime(runtime).listLoggerLevels();
+
+            assertEquals(10_001, levels.size());
+            assertEquals(LoggerLevel.DEBUG, levels.get("com.example.service.9999").effectiveLevel());
         }
     }
 

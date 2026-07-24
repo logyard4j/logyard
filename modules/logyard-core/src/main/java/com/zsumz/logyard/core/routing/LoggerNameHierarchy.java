@@ -1,6 +1,6 @@
 package com.zsumz.logyard.core.routing;
 
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -25,16 +25,23 @@ public final class LoggerNameHierarchy {
             throw new IllegalArgumentException("logger name must not be blank");
         }
 
-        return rules.entrySet().stream()
-                .filter(entry -> matches(loggerName, entry.getKey()))
-                .sorted(Comparator.comparingInt((Map.Entry<String, T> entry) -> entry.getKey().length())
-                        .thenComparing(Map.Entry::getKey))
-                .map(entry -> new Match<>(entry.getKey(), entry.getValue()))
-                .toList();
+        List<Match<T>> matches = new ArrayList<>();
+        int separator = loggerName.indexOf('.');
+        while (separator >= 0) {
+            addIfPresent(matches, loggerName.substring(0, separator), rules);
+            separator = loggerName.indexOf('.', separator + 1);
+        }
+        addIfPresent(matches, loggerName, rules);
+        return List.copyOf(matches);
     }
 
-    private static boolean matches(String loggerName, String ruleName) {
-        return loggerName.equals(ruleName) || loggerName.startsWith(ruleName + ".");
+    private static <T> void addIfPresent(
+            List<Match<T>> matches,
+            String name,
+            Map<String, T> rules) {
+        if (rules.containsKey(name)) {
+            matches.add(new Match<>(name, rules.get(name)));
+        }
     }
 
     /**

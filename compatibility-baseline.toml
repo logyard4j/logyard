@@ -1,0 +1,5 @@
+schema = 1
+version = "none"
+first_release = "0.7.0"
+reason = "Logyard 0.7.0 will be the first public Maven Central release."
+repository = "https://repo.maven.apache.org/maven2"

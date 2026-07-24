@@ -64,17 +64,17 @@ final class DefaultLogyardLogger implements LogyardLogger {
             Level level,
             String eventName,
             String template,
-            Object[] arguments,
-            AttributeSet attributes,
+            PendingEventFields fields,
             Throwable throwable) {
-        publish(
+        EventDraft draft = new EventDraft(
+                name,
                 level,
                 eventName,
                 template,
-                arguments,
-                attributes,
+                fields,
                 throwable,
                 IngressMetadata.current());
+        runtime.publish(control, draft);
     }
 
     private void publish(

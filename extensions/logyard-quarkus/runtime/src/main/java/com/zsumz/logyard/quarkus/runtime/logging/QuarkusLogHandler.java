@@ -2,6 +2,7 @@ package com.zsumz.logyard.quarkus.runtime.logging;
 
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.runtime.adapter.AdapterReentryGuard;
+import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
 import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
 
 import java.util.Objects;
@@ -12,7 +13,7 @@ import java.util.logging.LogRecord;
 /** Non-owning JBoss Log Manager handler installed by the Quarkus recorder. */
 public final class QuarkusLogHandler extends Handler {
     private final LogyardRuntime runtime;
-    private final QuarkusEventMapper mapper = new QuarkusEventMapper();
+    private final QuarkusEventMapper mapper;
     private final AdapterReentryGuard reentry = new AdapterReentryGuard();
     private final AtomicBoolean closed = new AtomicBoolean();
 
@@ -23,6 +24,7 @@ public final class QuarkusLogHandler extends Handler {
      */
     public QuarkusLogHandler(LogyardRuntime runtime) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
+        mapper = new QuarkusEventMapper(ContextPolicyRegistry.sourceFor(runtime));
         setLevel(java.util.logging.Level.ALL);
     }
 

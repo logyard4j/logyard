@@ -8,15 +8,19 @@ JAPICMP_SHA256="4b4f0301861d97cd2a05af3f7fa9173cc1dd3831b1284b2b9e2f81c4f1c2f858
 TOOL_DIR="$ROOT/target/tools"
 JAPICMP_JAR="$TOOL_DIR/japicmp-$JAPICMP_VERSION.jar"
 CURRENT_DIR="$ROOT/target/api-compatibility"
+BASELINE_MANIFEST="$ROOT/compatibility-baseline.toml"
+BASELINE_DIR="$CURRENT_DIR/baseline"
 
 usage() {
   cat <<'USAGE'
 Usage:
+  scripts/api-compatibility --baseline
   scripts/api-compatibility OLD_API_JAR OLD_RUNTIME_JAR OLD_JUL_JAR OLD_SPRING_JAR OLD_QUARKUS_JAR
   scripts/api-compatibility --self-test
 
-Compares every documented public library and framework surface with japicmp.
-Release verification supplies the five jars from the previous published version.
+--baseline enforces compatibility against the checksummed release declared in
+compatibility-baseline.toml, or confirms an explicit "none" policy before the
+first public release. --self-test checks only japicmp wiring and include filters.
 USAGE
 }
 
@@ -81,13 +85,48 @@ compare() {
     --error-on-source-incompatibility
 }
 
-if [[ "$#" -eq 1 && "$1" == "--self-test" ]]; then
+mode=""
+if [[ "$#" -eq 1 && "$1" == "--baseline" ]]; then
+  baseline_status=()
+  while IFS= read -r baseline_line; do
+    baseline_status+=("$baseline_line")
+  done < <(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.compatibility_baseline status "$BASELINE_MANIFEST")
+  baseline_version="${baseline_status[0]}"
+  if [[ "$baseline_version" == "none" ]]; then
+    current_version="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli version "$ROOT")"
+    current_release="${current_version%-SNAPSHOT}"
+    [[ "$current_release" == "${baseline_status[1]}" ]] || {
+      printf 'error: absent compatibility baseline applies only to first release %s, not %s\n' \
+        "${baseline_status[1]}" "$current_version" >&2
+      exit 2
+    }
+    printf 'API compatibility baseline: none for first release %s (%s)\n' \
+      "${baseline_status[1]}" "${baseline_status[2]}"
+    exit 0
+  fi
+  baseline_jars=()
+  while IFS= read -r baseline_jar; do
+    baseline_jars+=("$baseline_jar")
+  done < <(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.compatibility_baseline fetch "$BASELINE_MANIFEST" "$BASELINE_DIR")
+  [[ "${#baseline_jars[@]}" -eq 5 ]] || {
+    printf 'error: compatibility baseline resolved %d jars instead of 5\n' "${#baseline_jars[@]}" >&2
+    exit 2
+  }
+  old_api="${baseline_jars[0]}"
+  old_runtime="${baseline_jars[1]}"
+  old_jul="${baseline_jars[2]}"
+  old_spring="${baseline_jars[3]}"
+  old_quarkus="${baseline_jars[4]}"
+  mode="release $baseline_version baseline"
+  build_current_jars
+elif [[ "$#" -eq 1 && "$1" == "--self-test" ]]; then
   build_current_jars
   old_api="$CURRENT_DIR/logyard-api-current.jar"
   old_runtime="$CURRENT_DIR/logyard-runtime-current.jar"
   old_jul="$CURRENT_DIR/logyard-jul-current.jar"
   old_spring="$CURRENT_DIR/logyard-spring-boot-current.jar"
   old_quarkus="$CURRENT_DIR/logyard-quarkus-current.jar"
+  mode="tool wiring self-test"
 elif [[ "$#" -eq 5 ]]; then
   old_api="$1"
   old_runtime="$2"
@@ -98,6 +137,7 @@ elif [[ "$#" -eq 5 ]]; then
     require_file "$old_jar"
   done
   build_current_jars
+  mode="caller-supplied baseline"
 else
   usage >&2
   exit 2
@@ -112,4 +152,4 @@ compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.zsumz.
 compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.zsumz.logyard.spring.boot.logging.*"
 compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.zsumz.logyard.spring.boot.nativeimage.*"
 compare "$old_quarkus" "$CURRENT_DIR/logyard-quarkus-current.jar" "com.zsumz.logyard.quarkus.runtime.*"
-printf 'API compatibility passed for Logyard API, bootstrap, management, JUL, Spring Boot, and Quarkus surfaces.\n'
+printf 'API compatibility %s passed for Logyard API, bootstrap, management, JUL, Spring Boot, and Quarkus surfaces.\n' "$mode"

@@ -3,6 +3,7 @@ package com.zsumz.logyard.slf4j.internal.context;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
@@ -152,6 +153,20 @@ final class LogyardMdcAdapterTest {
         current.set(ContextPolicySnapshot.of(List.of("tenant.id")));
         assertEquals("tenant-7", policy.capture(mdc).get("tenant.id"));
         assertEquals(2, reads.get());
+    }
+
+    @Test
+    void marksContextTruncatedWhenTheBoundedEventCannotRetainEveryMdcEntry() {
+        LogyardMdcAdapter mdc = new LogyardMdcAdapter();
+        for (int index = 0; index < LogyardMdcAdapter.MAX_ENTRIES; index++) {
+            mdc.put("context." + index, "value-" + index);
+        }
+
+        var captured = new ContextSnapshotPolicy(List.of("*")).capture(mdc);
+
+        assertEquals(CaptureLimits.MAX_ATTRIBUTES, captured.size());
+        assertTrue((Boolean) captured.get("logyard.attributes.truncated"));
+        assertNull(captured.get("context." + (LogyardMdcAdapter.MAX_ENTRIES - 1)));
     }
 
 }

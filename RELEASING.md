@@ -9,6 +9,8 @@ scripts/release-bundle --sign
 scripts/zolt-publication-check
 ```
 
+`compatibility-baseline.toml` is the reviewed source of truth for API compatibility. It explicitly declares `version = "none"` before the first public release. After publication, replace that policy with the previous immutable release and the SHA-256 of its API, runtime, JUL, Spring, and Quarkus JARs; `scripts/api-compatibility --baseline` downloads and verifies those exact artifacts before running japicmp. `--self-test` is only a tooling and filter smoke test.
+
 The publication check runs Zolt's complete whole-workspace Central planner and the packaged-artifact verifier together. Zolt must plan every native workspace member’s main artifact, sources, Javadocs, checksums, signatures, and atomic family metadata. A snapshot requires the release version to be the only blocker. Any metadata, POM, signing, routing, family, or artifact failure is fatal.
 
 Build the signed, deterministic Central Portal ZIP without uploading it:

@@ -59,6 +59,7 @@ def main() -> None:
         try:
             await_success(process, port, process_log)
             await_count(output, STARTED, 1, process, process_log)
+            assert_redaction(output, 1)
             initial_starts = count(output, STARTED)
             initial_successes = count(output, SUCCEEDED)
             source = project / "src" / "main" / "java" / "com" / "zsumz" / "logyard" / "examples" / "quarkus" / "QuarkusExampleResource.java"
@@ -71,6 +72,7 @@ def main() -> None:
                 process,
                 process_log,
             )
+            assert_redaction(output, initial_successes + 1)
         finally:
             stop(process)
 
@@ -143,6 +145,18 @@ def count(path: Path, token: str) -> int:
     if not path.is_file():
         return 0
     return path.read_text(encoding="utf-8", errors="replace").count(token)
+
+
+def assert_redaction(path: Path, expected_events: int) -> None:
+    events = path.read_text(encoding="utf-8", errors="replace")
+    for secret in ("quarkus-example-secret", "quarkus-example-token"):
+        if secret in events:
+            raise AssertionError(f"Quarkus dev output exposed injected secret {secret!r}")
+    redactions = events.count('"[REDACTED]"')
+    if redactions < expected_events * 2:
+        raise AssertionError(
+            f"Quarkus dev output contained {redactions} redactions; expected at least {expected_events * 2}"
+        )
 
 
 def ensure_running(process: subprocess.Popen[bytes], process_log: Path) -> None:

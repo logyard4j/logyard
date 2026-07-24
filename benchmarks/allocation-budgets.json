@@ -41,30 +41,76 @@
     },
     {
       "benchmark": "com.zsumz.logyard.benchmarks.ingress.NativeIngressBenchmark.enabledOneArgument",
-      "maxBytesPerOperation": 1
+      "maxBytesPerOperation": 384
     },
     {
       "benchmark": "com.zsumz.logyard.benchmarks.ingress.NativeIngressBenchmark.twoOutputFanout",
-      "maxBytesPerOperation": 1
+      "maxBytesPerOperation": 384
     },
     {
       "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jIngressBenchmark.enabledEmptyMdc",
-      "maxBytesPerOperation": 128
+      "maxBytesPerOperation": 512
     },
     {
-      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCompleteRecord",
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.CapturedEventAllocationBenchmark.smallEvent",
+      "maxBytesPerOperation": 512
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.CapturedEventAllocationBenchmark.structuredEvent",
+      "maxBytesPerOperation": 1536
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.CapturedEventAllocationBenchmark.exceptionEvent",
+      "maxBytesPerOperation": 4096
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.management.LoggerManagementBenchmark.listAllLevels",
+      "params": {"loggerCount": "1000"},
+      "maxBytesPerOperation": 1572864
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.management.LoggerManagementBenchmark.listAllLevels",
+      "params": {"loggerCount": "10000"},
+      "maxBytesPerOperation": 15728640
+    },
+    {
+      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
+      "params": {"mdcEntries": "0"},
+      "maxBytesPerOperation": 5120
+    },
+    {
+      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
+      "params": {"mdcEntries": "1"},
+      "maxBytesPerOperation": 5632
+    },
+    {
+      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
+      "params": {"mdcEntries": "4"},
+      "maxBytesPerOperation": 6656
+    },
+    {
+      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "0"},
       "maxBytesPerOperation": 2048
     },
     {
-      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCompleteRecord",
+      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "1"},
-      "maxBytesPerOperation": 2304
+      "maxBytesPerOperation": 2560
     },
     {
-      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCompleteRecord",
+      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "4"},
       "maxBytesPerOperation": 3072
+    }
+  ],
+  "scalingBudgets": [
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.management.LoggerManagementBenchmark.listAllLevels",
+      "smallParams": {"loggerCount": "1000"},
+      "largeParams": {"loggerCount": "10000"},
+      "maxAllocationRatio": 12,
+      "maxTimeRatio": 15
     }
   ]
 }

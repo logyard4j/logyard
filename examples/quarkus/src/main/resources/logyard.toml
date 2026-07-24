@@ -20,6 +20,7 @@ warn = "stderr"
 error = "stderr"
 
 [context]
+mdc = ["request.id", "authorization", "session.token"]
 redact = ["authorization", "mdc.*token"]
 
 [loggers]

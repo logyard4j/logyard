@@ -185,7 +185,7 @@ mdc = ["request.id", "trace.id"]
 redact = ["authorization", "cookie", "password", "*.secret", "*.token"]
 ```
 
-Supplier arguments and attributes are lazy:
+Supplier arguments and attributes are evaluated only when an enabled event enters the protected publication boundary:
 
 ```java
 log.atDebug()
@@ -219,7 +219,7 @@ Overflow actions are:
 - `sync`: wait for the optional timeout, then deliver on the caller thread.
 - `stderr`: wait for the optional timeout, then write the emergency representation directly to standard error.
 
-The default policy drops trace, debug, and info events; sends warnings and errors immediately to emergency stderr; and uses 16,384 slots per async output. The queue itself reserves one reference array per output—about 64 KiB with compressed references or 128 KiB with eight-byte references—before accounting for events already retained by the application. Runtime health exposes queue capacity, depth, dropped-event counts, and failure state.
+The default policy drops trace, debug, and info events; sends warnings and errors immediately to emergency stderr; and uses 16,384 slots per async output. The queue's reference array consumes approximately 64–128 KiB per output. Queued `LogEvent` instances and their captured arguments, attributes, exception snapshots, and rendered values consume additional heap until delivered. Runtime health exposes queue capacity, depth, dropped-event counts, and failure state.
 
 ## Outputs
 
@@ -366,6 +366,8 @@ All Logyard artifacts use the same version. Java 21 is the minimum runtime, SLF4
 Published-shaped CI consumers certify plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16 and 4.1.0, and Quarkus 3.37.3. Spring Boot verification covers executable JAR startup, MVC, WebFlux, Actuator present and absent, AOT generation, structured events, dynamic levels, JUL capture, context restart, and shutdown flush. Quarkus verification covers test mode, packaged JVM startup, dev-mode hot reload, complete JBoss record mapping, duplicate-handler prevention, SmallRye Health, and shutdown flush. Micronaut, Spring Boot 4, and Quarkus are also built and exercised as GraalVM 21 native images.
 
 Compatibility checks cover the public API, runtime bootstrap and management packages, JUL bridge, Spring Boot integration, and Quarkus runtime integration. No documented framework surface is treated as implicitly stable without appearing in that check.
+
+Allocation gates use observable sinks so accepted events escape JIT scalar replacement. They separately measure an intentionally elidable pipeline, real native and SLF4J ingress, fanout, and representative small, structured, and exception-bearing events. The management benchmark enforces near-linear time and allocation growth from 1,000 to 10,000 configured logger rules.
 
 ## Build and verify
 

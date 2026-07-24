@@ -1,6 +1,7 @@
 package com.zsumz.logyard.benchmarks.ingress;
 
 import com.zsumz.logyard.api.Level;
+import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.benchmarks.fixture.BenchmarkFixtures;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.slf4j.internal.context.ContextSnapshotPolicy;
@@ -36,11 +37,14 @@ public class Slf4jIngressBenchmark {
     private Logger disabled;
     private Logger emptyMdc;
     private Logger populatedMdc;
+    private BenchmarkFixtures.ObservingSink enabledSink;
 
     @Setup
     public void setUp() {
         disabledRuntime = BenchmarkFixtures.runtime(Level.ERROR, 1);
-        enabledRuntime = BenchmarkFixtures.runtime(Level.INFO, 1);
+        BenchmarkFixtures.ObservedRuntime observed = BenchmarkFixtures.observedRuntime(Level.INFO, 1);
+        enabledRuntime = observed.runtime();
+        enabledSink = observed.sink();
         LogyardMdcAdapter mdc = new LogyardMdcAdapter();
         mdc.put("request.id", "request-7");
         mdc.put("tenant.id", "tenant-3");
@@ -61,18 +65,21 @@ public class Slf4jIngressBenchmark {
     }
 
     @Benchmark
-    public void enabledEmptyMdc() {
+    public LogEvent enabledEmptyMdc() {
         emptyMdc.info("accepted order {}", 42L);
+        return enabledSink.last();
     }
 
     @Benchmark
-    public void enabledPopulatedMdc() {
+    public LogEvent enabledPopulatedMdc() {
         populatedMdc.info("accepted order {}", 42L);
+        return enabledSink.last();
     }
 
     @Benchmark
-    public void structuredFieldsAndMdc() {
+    public LogEvent structuredFieldsAndMdc() {
         populatedMdc.atInfo().addKeyValue("order.id", 42L).addKeyValue("customer.id", "customer-7").log("accepted order");
+        return enabledSink.last();
     }
 
     private static Logger logger(DefaultLogyardRuntime runtime, LogyardMdcAdapter mdc, List<String> includedKeys) {

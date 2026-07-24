@@ -38,10 +38,11 @@ public final class ContextSnapshotPolicy {
                         : Math.min(values.size(), current.includedKeys().size()));
         for (Map.Entry<String, String> entry : values.entrySet()) {
             if (current.includes(entry.getKey())) {
-                attributes.put(entry.getKey(), entry.getValue());
                 if (attributes.isFull()) {
+                    attributes.markTruncated();
                     break;
                 }
+                attributes.put(entry.getKey(), entry.getValue());
             }
         }
         return attributes.build();

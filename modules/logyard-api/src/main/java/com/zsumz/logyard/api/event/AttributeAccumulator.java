@@ -30,6 +30,10 @@ final class AttributeAccumulator {
         return truncated;
     }
 
+    void markTruncated() {
+        truncated = true;
+    }
+
     void put(String key, Object value, boolean alreadyCaptured) {
         int existing = indexOf(key);
         if (existing >= 0) {

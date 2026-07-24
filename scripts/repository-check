@@ -49,6 +49,7 @@ done
 required_files=(
   README.md
   RELEASING.md
+  compatibility-baseline.toml
   framework-versions.toml
   LICENSE
   NOTICE
@@ -118,7 +119,7 @@ if grep -R -nE 'uses: [^[:space:]]+@(main|master|v[0-9]+([.][0-9]+)*)($|[[:space
   fail 'GitHub Actions must use immutable commit SHAs'
 fi
 
-PYTHONPATH="$ROOT/scripts" python3 -m unittest release_tools.test_publication
+PYTHONPATH="$ROOT/scripts" python3 -m unittest discover -s scripts/release_tools -t scripts -p 'test_*.py'
 
 ./scripts/framework-versions-check
 ./scripts/architecture-check

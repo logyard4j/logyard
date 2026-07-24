@@ -33,7 +33,9 @@ jobs:
         run: ./scripts/verify
       - name: Package and verify the published Maven surface
         run: ./scripts/release-bundle
-      - name: Verify every documented public compatibility surface
+      - name: Enforce the reviewed API compatibility baseline policy
+        run: ./scripts/api-compatibility --baseline
+      - name: Smoke japicmp wiring and public-surface filters
         run: ./scripts/api-compatibility --self-test
       - name: Verify the Zolt workspace publication family
         run: ./scripts/zolt-publication-check

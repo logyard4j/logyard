@@ -5,16 +5,27 @@ import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
 import com.zsumz.logyard.api.ingress.LogEventIngress;
+import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 import org.jboss.logmanager.ExtLogRecord;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
+import java.util.function.Supplier;
 import java.util.logging.LogRecord;
 
 /** Captures one JBoss Log Manager record at the Logyard ingress boundary. */
 final class QuarkusEventMapper {
+    private final Supplier<ContextPolicySnapshot> contextPolicySource;
+
+    QuarkusEventMapper() {
+        this(ContextPolicySnapshot::all);
+    }
+
+    QuarkusEventMapper(Supplier<ContextPolicySnapshot> contextPolicySource) {
+        this.contextPolicySource = Objects.requireNonNull(contextPolicySource, "contextPolicySource");
+    }
+
     void publish(LogyardRuntime runtime, LogRecord sourceRecord) {
         Objects.requireNonNull(runtime, "runtime");
         Objects.requireNonNull(sourceRecord, "record");
@@ -32,7 +43,6 @@ final class QuarkusEventMapper {
             return;
         }
 
-        record.copyAll();
         String template = record.getMessage();
         String rendered = QuarkusMessageRenderer.render(record);
         AttributeSet.Builder attributes = AttributeSet.builder(18)
@@ -40,7 +50,7 @@ final class QuarkusEventMapper {
                 .put("quarkus.sequence_number", record.getSequenceNumber());
         addSource(attributes, record);
         addProcess(attributes, record);
-        addContext(attributes, record);
+        addContext(attributes, record, Objects.requireNonNull(contextPolicySource.get(), "context policy snapshot"));
         if (template != null && !Objects.equals(template, rendered)) {
             attributes.put("quarkus.message_template", template);
         }
@@ -95,16 +105,44 @@ final class QuarkusEventMapper {
         }
     }
 
-    private static void addContext(AttributeSet.Builder attributes, ExtLogRecord record) {
-        Map<String, String> mdc = record.getMdcCopy();
-        for (Map.Entry<String, String> entry : new TreeMap<>(mdc).entrySet()) {
+    private static void addContext(
+            AttributeSet.Builder attributes,
+            ExtLogRecord record,
+            ContextPolicySnapshot policy) {
+        if (policy.includesAll()) {
+            addAllMdc(attributes, record.getMdcCopy());
+        } else if (!policy.disabled()) {
+            addSelectedMdc(attributes, record, policy);
+        }
+        if (record.getNdc() != null && !record.getNdc().isBlank()) {
+            attributes.put("quarkus.ndc", record.getNdc());
+        }
+    }
+
+    private static void addAllMdc(AttributeSet.Builder attributes, Map<String, String> mdc) {
+        for (Map.Entry<String, String> entry : mdc.entrySet()) {
             if (attributes.isFull()) {
+                attributes.markTruncated();
                 break;
             }
             attributes.put("mdc." + entry.getKey(), entry.getValue());
         }
-        if (record.getNdc() != null && !record.getNdc().isBlank()) {
-            attributes.put("quarkus.ndc", record.getNdc());
+    }
+
+    private static void addSelectedMdc(
+            AttributeSet.Builder attributes,
+            ExtLogRecord record,
+            ContextPolicySnapshot policy) {
+        for (String key : policy.includedKeys()) {
+            String value = record.getMdc(key);
+            if (value == null) {
+                continue;
+            }
+            if (attributes.isFull()) {
+                attributes.markTruncated();
+                break;
+            }
+            attributes.put("mdc." + key, value);
         }
     }
 

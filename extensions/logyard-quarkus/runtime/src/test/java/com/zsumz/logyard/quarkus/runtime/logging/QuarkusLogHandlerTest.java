@@ -101,6 +101,7 @@ final class QuarkusLogHandlerTest {
                 capacity = 16
 
                 [context]
+                mdc = ["request.id", "authorization", "session.token"]
                 redact = ["authorization", "mdc.*token"]
 
                 [loggers]

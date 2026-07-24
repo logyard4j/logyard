@@ -1,5 +1,7 @@
 package com.zsumz.logyard.quarkus.runtime.logging;
 
+import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import org.jboss.logmanager.ExtLogRecord;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -30,7 +32,8 @@ public class QuarkusEventMappingBenchmark {
 
     private final QuarkusEventMapper mapper = new QuarkusEventMapper();
     private DefaultLogyardRuntime runtime;
-    private ExtLogRecord record;
+    private ObservingSink sink;
+    private ExtLogRecord copiedRecord;
 
     /** Creates the JMH state. */
     public QuarkusEventMappingBenchmark() {
@@ -39,8 +42,14 @@ public class QuarkusEventMappingBenchmark {
     /** Creates the runtime and complete source record for one parameter value. */
     @Setup
     public void setUp() {
-        runtime = DefaultLogyardRuntime.consoleOnly(event -> { });
-        record = new ExtLogRecord(
+        sink = new ObservingSink();
+        runtime = DefaultLogyardRuntime.consoleOnly(sink);
+        copiedRecord = record();
+        copiedRecord.copyAll();
+    }
+
+    private ExtLogRecord record() {
+        ExtLogRecord record = new ExtLogRecord(
                 java.util.logging.Level.INFO,
                 "mapped {0}",
                 ExtLogRecord.FormatStyle.MESSAGE_FORMAT,
@@ -50,6 +59,7 @@ public class QuarkusEventMappingBenchmark {
         for (int index = 0; index < mdcEntries; index++) {
             record.putMdc("context." + index, "value-" + index);
         }
+        return record;
     }
 
     /** Releases the benchmark runtime after the trial. */
@@ -58,9 +68,38 @@ public class QuarkusEventMappingBenchmark {
         runtime.close();
     }
 
-    /** Maps and publishes one complete Quarkus record. */
+    /**
+     * Maps and publishes a newly constructed, not-previously-copied Quarkus record.
+     *
+     * @return event retained by the observable benchmark sink
+     */
     @Benchmark
-    public void mapCompleteRecord() {
-        mapper.publish(runtime, record);
+    public LogEvent mapFreshRecord() {
+        mapper.publish(runtime, record());
+        return sink.last();
+    }
+
+    /**
+     * Measures mapping separately when JBoss Log Manager has already copied the record.
+     *
+     * @return event retained by the observable benchmark sink
+     */
+    @Benchmark
+    public LogEvent mapCopiedRecord() {
+        mapper.publish(runtime, copiedRecord);
+        return sink.last();
+    }
+
+    private static final class ObservingSink implements EventSink {
+        private volatile LogEvent last;
+
+        @Override
+        public void accept(LogEvent event) {
+            last = event;
+        }
+
+        LogEvent last() {
+            return last;
+        }
     }
 }

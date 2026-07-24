@@ -46,13 +46,27 @@ public final class CaptureLimits {
         return truncate(value, MAX_NAME_CHARS);
     }
 
-    static String attributeKey(String value) {
+    /**
+     * Produces the bounded storage form of an attribute key while preserving its leaf segment.
+     *
+     * @param value non-null attribute key
+     * @return bounded key suitable for storage and leaf-based security matching
+     */
+    public static String attributeKey(String value) {
         if (value.length() <= MAX_ATTRIBUTE_KEY_CHARS) {
             return value;
         }
-        int suffixLength = 17;
         String hash = String.format(java.util.Locale.ROOT, "%016x", stableHash(value));
-        return safePrefix(value, MAX_ATTRIBUTE_KEY_CHARS - suffixLength) + '~' + hash;
+        int separator = value.lastIndexOf('.');
+        if (separator < 0 || separator == value.length() - 1) {
+            return safePrefix(value, MAX_ATTRIBUTE_KEY_CHARS - 17) + '~' + hash;
+        }
+
+        String leaf = value.substring(separator + 1);
+        int maximumLeafLength = Math.min(leaf.length(), MAX_ATTRIBUTE_KEY_CHARS / 2);
+        String boundedLeaf = safeSuffix(leaf, maximumLeafLength);
+        int prefixLength = MAX_ATTRIBUTE_KEY_CHARS - 18 - boundedLeaf.length();
+        return safePrefix(value, prefixLength) + '~' + hash + '.' + boundedLeaf;
     }
 
     static String truncate(String value, int maximum) {
@@ -70,6 +84,16 @@ public final class CaptureLimits {
             length--;
         }
         return value.substring(0, length);
+    }
+
+    private static String safeSuffix(String value, int requestedLength) {
+        int start = Math.max(0, value.length() - Math.max(0, requestedLength));
+        if (start > 0 && start < value.length()
+                && Character.isHighSurrogate(value.charAt(start - 1))
+                && Character.isLowSurrogate(value.charAt(start))) {
+            start++;
+        }
+        return value.substring(start);
     }
 
     private static long stableHash(String value) {

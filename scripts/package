@@ -20,6 +20,7 @@ PYTHONPATH="$ROOT/scripts" python3 -m release_tools.assemble \
   "$STAGING" \
   --metadata-only-build-system maven
 
+rm -rf "$MAVEN_CACHE"
 mkdir -p "$MAVEN_CACHE"
 cp -R "$STAGING/." "$MAVEN_CACHE/"
 

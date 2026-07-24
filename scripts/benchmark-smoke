@@ -11,9 +11,10 @@ QUARKUS_RESULTS="$TARGET/quarkus.json"
 cd "$ROOT"
 mkdir -p "$TARGET"
 "$ZOLT" run --directory "$ROOT" --workspace --member benchmarks/logyard-benchmarks -- \
-  '.*(AsyncDeliveryBenchmark\.oneProducer|CompositeSinkBenchmark\.success|ContextPolicyBenchmark|EncodingBenchmark\.(jsonEncoding|redactionWithoutMatch)|NativeIngressBenchmark\.(disabled|enabledOneArgument|twoOutputFanout)|Slf4jIngressBenchmark\.enabledEmptyMdc).*' \
+  '.*(AsyncDeliveryBenchmark\.oneProducer|CapturedEventAllocationBenchmark|CompositeSinkBenchmark\.success|ContextPolicyBenchmark|EncodingBenchmark\.(jsonEncoding|redactionWithoutMatch)|LoggerManagementBenchmark\.listAllLevels|NativeIngressBenchmark\.(disabled|enabledOneArgument|twoOutputFanout)|Slf4jIngressBenchmark\.enabledEmptyMdc).*' \
   -wi 1 -i 2 -f 1 -w 200ms -r 200ms -prof gc -rf json -rff "$CORE_RESULTS"
 
+rm -rf "$MAVEN_REPOSITORY"
 mvn --batch-mode --no-transfer-progress \
   -Dmaven.repo.local="$MAVEN_REPOSITORY" \
   -Dlogyard.repository="file://$ROOT/target/release-bundle" \
@@ -25,7 +26,7 @@ mvn --batch-mode --no-transfer-progress \
   package
 
 java -jar extensions/logyard-quarkus/benchmarks/target/logyard-quarkus-benchmarks.jar \
-  '.*QuarkusEventMappingBenchmark\.mapCompleteRecord.*' \
+  '.*QuarkusEventMappingBenchmark\.(mapFreshRecord|mapCopiedRecord).*' \
   -wi 1 -i 2 -f 1 -w 200ms -r 200ms -prof gc -rf json -rff "$QUARKUS_RESULTS"
 
 PYTHONPATH="$ROOT/scripts" python3 -m release_tools.benchmark_allocations \

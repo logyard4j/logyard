@@ -229,6 +229,16 @@ public final class AttributeSet {
         }
 
         /**
+         * Records that a source contained additional attributes which could not be captured.
+         *
+         * @return this builder
+         */
+        public Builder markTruncated() {
+            attributes.markTruncated();
+            return this;
+        }
+
+        /**
          * Adds all attributes from an immutable set.
          *
          * @param attributes attributes to add

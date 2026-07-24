@@ -259,6 +259,12 @@ public final class Assertions {
         }
     }
 
+    public static void assertNotEquals(Object unexpected, Object actual) {
+        if (Objects.equals(unexpected, actual)) {
+            throw new AssertionError("expected values to differ, but both were <" + actual + ">");
+        }
+    }
+
     public static void assertEquals(double expected, double actual, double delta) {
         if (!(Math.abs(expected - actual) <= delta)) {
             throw unequal(expected, actual);

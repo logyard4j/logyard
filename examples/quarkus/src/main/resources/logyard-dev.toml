@@ -12,6 +12,10 @@ internal_status = "warn"
 mode = "sync"
 capacity = 64
 
+[context]
+mdc = ["request.id", "authorization", "session.token"]
+redact = ["authorization", "mdc.*token"]
+
 [loggers]
 root = { level = "info", outputs = ["json"] }
 "io.quarkus" = { level = "info" }

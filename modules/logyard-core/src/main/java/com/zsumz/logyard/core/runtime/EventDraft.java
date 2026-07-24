@@ -20,6 +20,7 @@ final class EventDraft {
     private final String messageTemplate;
     private final Object[] arguments;
     private final AttributeSet attributes;
+    private final PendingEventFields pendingFields;
     private final Throwable throwable;
     private final IngressMetadata ingressMetadata;
 
@@ -38,6 +39,26 @@ final class EventDraft {
         this.messageTemplate = messageTemplate;
         this.arguments = arguments;
         this.attributes = attributes;
+        pendingFields = null;
+        this.throwable = throwable;
+        this.ingressMetadata = Objects.requireNonNull(ingressMetadata, "ingressMetadata");
+    }
+
+    EventDraft(
+            String loggerName,
+            Level level,
+            String eventName,
+            String messageTemplate,
+            PendingEventFields pendingFields,
+            Throwable throwable,
+            IngressMetadata ingressMetadata) {
+        this.loggerName = Objects.requireNonNull(loggerName, "loggerName");
+        this.level = Objects.requireNonNull(level, "level");
+        this.eventName = eventName;
+        this.messageTemplate = messageTemplate;
+        arguments = null;
+        attributes = null;
+        this.pendingFields = Objects.requireNonNull(pendingFields, "pendingFields");
         this.throwable = throwable;
         this.ingressMetadata = Objects.requireNonNull(ingressMetadata, "ingressMetadata");
     }
@@ -55,6 +76,9 @@ final class EventDraft {
     }
 
     LogEvent capture() {
+        PendingEventFields.CapturedEventFields captured = pendingFields == null
+                ? new PendingEventFields.CapturedEventFields(arguments, attributes)
+                : pendingFields.capture();
         Thread currentThread = Thread.currentThread();
         Instant observedAt = Instant.now();
         long timestampMillis = ingressMetadata.hasSourceTimestamp()
@@ -72,8 +96,8 @@ final class EventDraft {
                 loggerName,
                 eventName,
                 messageTemplate,
-                arguments,
-                attributes,
+                captured.arguments(),
+                captured.attributes(),
                 throwable,
                 threadId,
                 threadName);

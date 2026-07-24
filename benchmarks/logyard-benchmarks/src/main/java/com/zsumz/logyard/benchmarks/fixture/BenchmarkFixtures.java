@@ -20,9 +20,18 @@ public final class BenchmarkFixtures {
     }
 
     public static DefaultLogyardRuntime runtime(Level level, int outputCount) {
+        return runtime(level, outputCount, DISCARDING_SINK);
+    }
+
+    public static ObservedRuntime observedRuntime(Level level, int outputCount) {
+        ObservingSink sink = new ObservingSink();
+        return new ObservedRuntime(runtime(level, outputCount, sink), sink);
+    }
+
+    private static DefaultLogyardRuntime runtime(Level level, int outputCount, EventSink sink) {
         Map<String, EventSink> outputs = new LinkedHashMap<>();
         for (int index = 0; index < outputCount; index++) {
-            outputs.put("discard-" + index, DISCARDING_SINK);
+            outputs.put("output-" + index, sink);
         }
         return new DefaultLogyardRuntime(new RuntimePlan(
                 RouteDefinition.root(level, List.copyOf(outputs.keySet()), List.of()),
@@ -44,5 +53,21 @@ public final class BenchmarkFixtures {
                 null,
                 7L,
                 "benchmark-worker");
+    }
+
+    public record ObservedRuntime(DefaultLogyardRuntime runtime, ObservingSink sink) {
+    }
+
+    public static final class ObservingSink implements EventSink {
+        private volatile LogEvent last;
+
+        @Override
+        public void accept(LogEvent event) {
+            last = event;
+        }
+
+        public LogEvent last() {
+            return last;
+        }
     }
 }

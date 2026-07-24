@@ -1,7 +1,9 @@
 package com.zsumz.logyard.core.runtime;
 
+import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.spi.processing.EventProcessor;
 import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 
 import java.time.Duration;
@@ -18,6 +20,7 @@ public final class RuntimePlan {
     private final Map<String, RouteDefinition> loggers;
     private final Map<String, EventSink> outputs;
     private final Map<String, EventProcessor> processors;
+    private final Map<String, Level> configuredLevels;
     private final Duration shutdownTimeout;
 
     public RuntimePlan(
@@ -25,7 +28,7 @@ public final class RuntimePlan {
             Map<String, RouteDefinition> loggers,
             Map<String, EventSink> outputs,
             Map<String, EventProcessor> processors) {
-        this(root, loggers, outputs, processors, Duration.ofSeconds(3));
+        this(root, loggers, outputs, processors, Duration.ofSeconds(3), inferredConfiguredLevels(root, loggers));
     }
 
     public RuntimePlan(
@@ -34,13 +37,25 @@ public final class RuntimePlan {
             Map<String, EventSink> outputs,
             Map<String, EventProcessor> processors,
             Duration shutdownTimeout) {
+        this(root, loggers, outputs, processors, shutdownTimeout, inferredConfiguredLevels(root, loggers));
+    }
+
+    public RuntimePlan(
+            RouteDefinition root,
+            Map<String, RouteDefinition> loggers,
+            Map<String, EventSink> outputs,
+            Map<String, EventProcessor> processors,
+            Duration shutdownTimeout,
+            Map<String, Level> configuredLevels) {
         this.root = Objects.requireNonNull(root, "root");
         this.loggers = orderedCopy(loggers, "loggers");
         this.outputs = orderedCopy(outputs, "outputs");
         this.processors = orderedCopy(processors, "processors");
+        this.configuredLevels = orderedCopy(configuredLevels, "configuredLevels");
         validateNamedValues(this.loggers, "logger rule");
         validateNamedValues(this.outputs, "output");
         validateNamedValues(this.processors, "processor");
+        validateNamedValues(this.configuredLevels, "configured logger level");
         this.shutdownTimeout = Objects.requireNonNull(shutdownTimeout, "shutdownTimeout");
         if (shutdownTimeout.isNegative()) {
             throw new IllegalArgumentException("shutdown timeout must not be negative");
@@ -52,10 +67,24 @@ public final class RuntimePlan {
     public Map<String, RouteDefinition> loggers() { return loggers; }
     public Map<String, EventSink> outputs() { return outputs; }
     public Map<String, EventProcessor> processors() { return processors; }
+    public Map<String, Level> configuredLevels() { return configuredLevels; }
     public Duration shutdownTimeout() { return shutdownTimeout; }
 
     private static <K, V> Map<K, V> orderedCopy(Map<K, V> source, String name) {
         return Collections.unmodifiableMap(new LinkedHashMap<>(Objects.requireNonNull(source, name)));
+    }
+
+    private static Map<String, Level> inferredConfiguredLevels(
+            RouteDefinition root,
+            Map<String, RouteDefinition> loggers) {
+        LinkedHashMap<String, Level> levels = new LinkedHashMap<>();
+        levels.put(RuntimeLevelOverrides.ROOT_LOGGER_NAME, Objects.requireNonNull(root, "root").level());
+        Objects.requireNonNull(loggers, "loggers").forEach((name, definition) -> {
+            if (definition != null && definition.level() != null) {
+                levels.put(name, definition.level());
+            }
+        });
+        return levels;
     }
 
     private void validateReferences() {

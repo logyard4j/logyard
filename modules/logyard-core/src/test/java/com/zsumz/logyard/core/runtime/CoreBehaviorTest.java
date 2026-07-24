@@ -151,7 +151,9 @@ public final class CoreBehaviorTest {
                 () -> composite.accept(event(AttributeSet.EMPTY)));
         equal(1, recording.events.size());
         check(fanoutFailure.getCause() == first, "the first fanout failure must remain primary");
-        equal(List.of(second), List.of(first.getSuppressed()));
+        check(fanoutFailure.getMessage().contains("fanout output '0' accept"), "the first output identity must be retained");
+        equal(1, fanoutFailure.getSuppressed().length);
+        check(fanoutFailure.getSuppressed()[0].getCause() == second, "the second fanout failure must remain suppressed");
 
         expect(IllegalArgumentException.class, () -> new RuntimePlan(
                 RouteDefinition.root(Level.INFO, List.of("capture", "capture"), List.of()),

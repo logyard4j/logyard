@@ -9,6 +9,7 @@ import java.util.Set;
 /** Immutable adapter-context allowlist prepared on the configuration control plane. */
 public final class ContextPolicySnapshot {
     private static final ContextPolicySnapshot NONE = new ContextPolicySnapshot(Set.of());
+    private static final ContextPolicySnapshot ALL = new ContextPolicySnapshot(Set.of("*"));
 
     private final Set<String> includedKeys;
     private final boolean includesAll;
@@ -20,6 +21,10 @@ public final class ContextPolicySnapshot {
 
     public static ContextPolicySnapshot none() {
         return NONE;
+    }
+
+    public static ContextPolicySnapshot all() {
+        return ALL;
     }
 
     public static ContextPolicySnapshot of(List<String> includedKeys) {
