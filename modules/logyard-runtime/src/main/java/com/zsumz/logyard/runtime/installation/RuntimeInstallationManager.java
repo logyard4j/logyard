@@ -1,11 +1,10 @@
 package com.zsumz.logyard.runtime.installation;
 
 import com.zsumz.logyard.api.LogyardRuntime;
-import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
+import com.zsumz.logyard.api.reload.ReloadResult;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
@@ -20,6 +19,7 @@ public final class RuntimeInstallationManager {
     private final RuntimeShutdownHookRegistrar shutdownHooks;
     private final Supplier<Map<String, String>> environment;
     private final RuntimeInstallationFactory installations;
+    private final RuntimeInstallationRetirements retirements = new RuntimeInstallationRetirements();
     private final RuntimeLeaseCounts leaseCounts = new RuntimeLeaseCounts();
 
     private InstallationPhase phase = InstallationPhase.EMPTY;
@@ -27,6 +27,7 @@ public final class RuntimeInstallationManager {
     private RuntimeOwner configurationAuthority;
     private long generation;
     private boolean shutdownHookInstalled;
+    private boolean terminating;
 
     RuntimeInstallationManager(
             GlobalRuntimeAccess globalRuntime,
@@ -80,7 +81,9 @@ public final class RuntimeInstallationManager {
         RuntimeInstallation closing = null;
         long closingGeneration = 0;
         synchronized (this) {
-            if (installation != candidate || phase == InstallationPhase.CLOSING) {
+            if (installation != candidate
+                    || phase == InstallationPhase.CLOSING
+                    || phase == InstallationPhase.TERMINATED) {
                 return;
             }
             leaseCounts.decrement(owner);
@@ -99,10 +102,9 @@ public final class RuntimeInstallationManager {
     private RuntimeInstallationLease acquire(RuntimeOwner owner, ConfigurationInstallationRequest request) {
         Objects.requireNonNull(owner, "owner");
         Objects.requireNonNull(request, "request");
-        LogyardRuntime observedGlobal = globalRuntime.current();
         AcquisitionPlan plan;
         synchronized (this) {
-            plan = reserveAcquisition(owner, observedGlobal);
+            plan = reserveAcquisition(owner, globalRuntime.current());
         }
         return switch (plan.action()) {
             case BORROW -> RuntimeInstallationLease.borrowed(globalRuntime, plan.borrowedRuntime());
@@ -111,7 +113,7 @@ public final class RuntimeInstallationManager {
             case RECONFIGURE -> reconfigure(owner, request, plan);
             case CLOSE_STALE -> {
                 beginClosing(plan.installation(), plan.generation());
-                throw transitionFailure(InstallationPhase.CLOSING);
+                throw InstallationTransitionFailures.forPhase(InstallationPhase.CLOSING);
             }
         };
     }
@@ -119,8 +121,9 @@ public final class RuntimeInstallationManager {
     private AcquisitionPlan reserveAcquisition(RuntimeOwner owner, LogyardRuntime observedGlobal) {
         if (phase == InstallationPhase.STARTING
                 || phase == InstallationPhase.RECONFIGURING
-                || phase == InstallationPhase.CLOSING) {
-            throw transitionFailure(phase);
+                || phase == InstallationPhase.CLOSING
+                || phase == InstallationPhase.TERMINATED) {
+            throw InstallationTransitionFailures.forPhase(phase);
         }
         if (phase == InstallationPhase.ACTIVE) {
             if (observedGlobal != installation.runtime()) {
@@ -156,14 +159,16 @@ public final class RuntimeInstallationManager {
             candidate = installations.open(request, Map.copyOf(environment.get()));
             globalRuntime.install(candidate.runtime());
             if (plan.installShutdownHook()) {
-                shutdownHooks.install(this::shutdownAtExit);
-                synchronized (this) {
-                    shutdownHookInstalled = true;
+                boolean installed = shutdownHooks.install(this::shutdownAtExit);
+                if (installed) {
+                    synchronized (this) {
+                        shutdownHookInstalled = true;
+                    }
                 }
             }
             synchronized (this) {
                 if (phase != InstallationPhase.STARTING || generation != plan.generation()) {
-                    throw transitionFailure(phase);
+                    throw InstallationTransitionFailures.forPhase(phase);
                 }
                 installation = candidate;
                 configurationAuthority = owner;
@@ -182,10 +187,13 @@ public final class RuntimeInstallationManager {
             ConfigurationInstallationRequest request,
             AcquisitionPlan plan) {
         try {
-            plan.installation().reconfigure(request);
+            ReloadResult result = Objects.requireNonNull(plan.installation().reconfigure(request), "runtime reconfiguration result");
+            if (result == ReloadResult.REJECTED) {
+                throw InstallationTransitionFailures.rejectedHandoff();
+            }
             synchronized (this) {
                 if (phase != InstallationPhase.RECONFIGURING || generation != plan.generation()) {
-                    throw transitionFailure(phase);
+                    throw InstallationTransitionFailures.forPhase(phase);
                 }
                 configurationAuthority = owner;
                 phase = InstallationPhase.ACTIVE;
@@ -218,9 +226,9 @@ public final class RuntimeInstallationManager {
         if (candidate == null) {
             synchronized (this) {
                 if (phase == InstallationPhase.STARTING && generation == expectedGeneration) {
-                    phase = InstallationPhase.EMPTY;
+                    phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
                 } else if (phase == InstallationPhase.CLOSING && installation == null) {
-                    phase = InstallationPhase.EMPTY;
+                    phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
                 }
             }
             return;
@@ -244,7 +252,15 @@ public final class RuntimeInstallationManager {
         RuntimeInstallation closing;
         long closingGeneration;
         synchronized (this) {
-            if (phase == InstallationPhase.EMPTY || phase == InstallationPhase.CLOSING) {
+            terminating = true;
+            if (phase == InstallationPhase.TERMINATED) {
+                return;
+            }
+            if (phase == InstallationPhase.EMPTY) {
+                phase = InstallationPhase.TERMINATED;
+                return;
+            }
+            if (phase == InstallationPhase.CLOSING) {
                 return;
             }
             phase = InstallationPhase.CLOSING;
@@ -259,31 +275,15 @@ public final class RuntimeInstallationManager {
     }
 
     private CompletionStage<Void> beginClosing(RuntimeInstallation candidate, long expectedGeneration) {
-        CompletionStage<Void> completion;
-        try {
-            completion = candidate.close(globalRuntime);
-        } catch (Throwable failure) {
-            AdapterDiagnostics.rethrowIfFatal(failure);
-            completion = CompletableFuture.failedFuture(failure);
-        }
-        completion.whenComplete((ignored, failure) -> {
+        return retirements.close(candidate, globalRuntime, failure -> {
             synchronized (this) {
                 if (phase == InstallationPhase.CLOSING
                         && generation == expectedGeneration
                         && installation == candidate) {
                     installation = null;
-                    phase = InstallationPhase.EMPTY;
+                    phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
                 }
             }
-            if (failure != null) {
-                AdapterDiagnostics.adapterFailure("runtime", "shutdown", failure);
-            }
         });
-        return completion;
-    }
-
-    private static IllegalStateException transitionFailure(InstallationPhase transition) {
-        return new IllegalStateException("Logyard runtime installation is " + transition.name().toLowerCase()
-                + "; recursive acquisition is not allowed during lifecycle transitions");
     }
 }

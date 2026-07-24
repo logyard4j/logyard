@@ -70,11 +70,11 @@ public final class RedactionProcessor implements EventProcessor {
         return redacted == null ? event : event.withAttributes(redacted.build());
     }
 
-    private boolean matches(String path, String leaf) {
+    private boolean matches(CharSequence path, String leaf) {
         if (matchesCandidate(path, 0)) {
             return true;
         }
-        if (leaf.isEmpty() || leaf.equals(path)) {
+        if (leaf.isEmpty() || sameText(leaf, path)) {
             return false;
         }
         if (matchesCandidate(leaf, 0)) {
@@ -98,7 +98,7 @@ public final class RedactionProcessor implements EventProcessor {
         return Math.max(key.lastIndexOf('.'), key.lastIndexOf('~'));
     }
 
-    private boolean matchesCandidate(String candidate, int start) {
+    private boolean matchesCandidate(CharSequence candidate, int start) {
         for (String pattern : patterns) {
             if (glob(pattern, candidate, start)) {
                 return true;
@@ -107,7 +107,7 @@ public final class RedactionProcessor implements EventProcessor {
         return false;
     }
 
-    private static boolean glob(String pattern, String value, int start) {
+    private static boolean glob(String pattern, CharSequence value, int start) {
         int p = 0;
         int v = start;
         int star = -1;
@@ -136,5 +136,17 @@ public final class RedactionProcessor implements EventProcessor {
         return left == right
                 || Character.toLowerCase(left) == Character.toLowerCase(right)
                 || Character.toUpperCase(left) == Character.toUpperCase(right);
+    }
+
+    private static boolean sameText(String value, CharSequence candidate) {
+        if (value.length() != candidate.length()) {
+            return false;
+        }
+        for (int index = 0; index < value.length(); index++) {
+            if (value.charAt(index) != candidate.charAt(index)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

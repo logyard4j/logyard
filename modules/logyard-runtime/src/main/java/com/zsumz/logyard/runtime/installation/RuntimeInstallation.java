@@ -9,6 +9,10 @@ import java.util.concurrent.CompletionStage;
 interface RuntimeInstallation {
     LogyardRuntime runtime();
 
+    /**
+     * Applies the requested source, returning {@link ReloadResult#UNCHANGED} only when that exact
+     * source identity and digest are already active.
+     */
     ReloadResult reconfigure(ConfigurationInstallationRequest request);
 
     ReloadResult reloadNow();

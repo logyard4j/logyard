@@ -240,7 +240,10 @@ final class RuntimeInstallationManagerTest {
             TestGlobalRuntimeAccess global = new TestGlobalRuntimeAccess();
             AtomicInteger hooks = new AtomicInteger();
             return new Harness(
-                    new RuntimeInstallationManager(global, shutdown -> hooks.incrementAndGet(), Map::of),
+                    new RuntimeInstallationManager(global, shutdown -> {
+                        hooks.incrementAndGet();
+                        return true;
+                    }, Map::of),
                     global,
                     hooks);
         }

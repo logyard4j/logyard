@@ -108,6 +108,7 @@ final class RuntimeInstallationLifecycleTest {
 
     private static RuntimeInstallationManager manager(TestGlobal global, RuntimeInstallationFactory factory) {
         return new RuntimeInstallationManager(global, ignored -> {
+            return true;
         }, Map::of, factory);
     }
 

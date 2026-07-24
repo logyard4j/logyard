@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 final class AttributeAccumulator {
     private String[] keys;
     private String[] originals;
+    private String[] normalizedKeyIdentities;
     private Object[] values;
     private int size;
     private boolean capacityTruncated;
@@ -40,10 +41,12 @@ final class AttributeAccumulator {
     }
 
     void put(String original, String canonicalKey, boolean keyTruncated, Object value) {
-        String storageKey = resolveStorageKey(original, canonicalKey, keyTruncated);
-        if (storageKey == null) {
+        int existingOriginal = indexOfOriginal(original, canonicalKey, keyTruncated);
+        if (existingOriginal >= 0) {
+            values[existingOriginal] = value;
             return;
         }
+        String storageKey = resolveNewStorageKey(original, canonicalKey, keyTruncated);
         int existing = indexOf(storageKey);
         if (existing >= 0) {
             values[existing] = value;
@@ -56,7 +59,10 @@ final class AttributeAccumulator {
         ensureCapacity(size + 1);
         keys[size] = storageKey;
         if (keyTruncated) {
-            ensureOriginalStorage();
+            ensureKeyIdentityStorage();
+            normalizedKeyIdentities[size] = canonicalKey;
+        }
+        if (originals != null) {
             originals[size] = original;
         }
         values[size] = value;
@@ -64,8 +70,29 @@ final class AttributeAccumulator {
         captureTruncated |= keyTruncated;
     }
 
-    void putCaptured(String key, Object value) {
-        put(key, key, false, value);
+    void putCaptured(String key, String normalizedIdentity, Object value) {
+        String storageKey = resolveCapturedStorageKey(key, normalizedIdentity);
+        int existing = indexOf(storageKey);
+        if (existing >= 0) {
+            values[existing] = value;
+            return;
+        }
+        if (isFull()) {
+            markTruncated();
+            return;
+        }
+        ensureCapacity(size + 1);
+        keys[size] = storageKey;
+        if (normalizedIdentity != null) {
+            ensureKeyIdentityStorage();
+            normalizedKeyIdentities[size] = normalizedIdentity;
+        }
+        if (originals != null) {
+            originals[size] = storageKey;
+        }
+        values[size] = value;
+        size++;
+        captureTruncated |= normalizedIdentity != null || !storageKey.equals(key);
     }
 
     void putSupplied(
@@ -73,13 +100,9 @@ final class AttributeAccumulator {
             String canonicalKey,
             boolean keyTruncated,
             Supplier<?> supplier) {
-        String storageKey = resolveStorageKey(original, canonicalKey, keyTruncated);
-        if (storageKey == null) {
-            return;
-        }
-        int existing = indexOf(storageKey);
-        if (existing >= 0) {
-            values[existing] = supplier.get();
+        int existingOriginal = indexOfOriginal(original, canonicalKey, keyTruncated);
+        if (existingOriginal >= 0) {
+            values[existingOriginal] = supplier.get();
             return;
         }
         if (isFull()) {
@@ -99,6 +122,7 @@ final class AttributeAccumulator {
         CaptureContext context = CaptureContext.currentOrCreate();
         String[] snapshotKeys = new String[size];
         Object[] snapshotValues = new Object[size];
+        String[] snapshotIdentities = normalizedKeyIdentities == null ? null : new String[size];
         int retained = 0;
         for (int index = 0; index < size; index++) {
             if (context.remainingPayloadCharacters() < keys[index].length()) {
@@ -109,12 +133,16 @@ final class AttributeAccumulator {
                 break;
             }
             snapshotKeys[retained] = context.capturePayloadText(keys[index], CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
+            if (snapshotIdentities != null) {
+                snapshotIdentities[retained] = normalizedKeyIdentities[index];
+            }
             snapshotValues[retained] = ValueCapture.capture(values[index], context);
             retained++;
         }
         boolean capturedTruncation = captureTruncated || context.truncated();
         return new AttributeSet(
                 Arrays.copyOf(snapshotKeys, retained),
+                snapshotIdentities == null ? null : Arrays.copyOf(snapshotIdentities, retained),
                 Arrays.copyOf(snapshotValues, retained),
                 capturedTruncation);
     }
@@ -137,6 +165,9 @@ final class AttributeAccumulator {
         if (originals != null) {
             originals = Arrays.copyOf(originals, next);
         }
+        if (normalizedKeyIdentities != null) {
+            normalizedKeyIdentities = Arrays.copyOf(normalizedKeyIdentities, next);
+        }
         values = Arrays.copyOf(values, next);
     }
 
@@ -153,27 +184,71 @@ final class AttributeAccumulator {
             if (originals != null) {
                 originals[size] = key;
             }
+            if (normalizedKeyIdentities != null) {
+                normalizedKeyIdentities[size] = null;
+            }
             values[size] = true;
             size++;
         }
     }
 
-    private String resolveStorageKey(String original, String canonicalKey, boolean keyTruncated) {
+    private int indexOfOriginal(String original, String canonicalKey, boolean keyTruncated) {
+        int canonical = indexOf(canonicalKey);
+        if (canonical < 0) {
+            return canonical;
+        }
+        if (originals == null) {
+            return keyTruncated ? -1 : canonical;
+        }
+        for (int index = 0; index < size; index++) {
+            if (original.equals(originals[index])) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private String resolveNewStorageKey(String original, String canonicalKey, boolean keyTruncated) {
         int canonical = indexOf(canonicalKey);
         if (canonical < 0) {
             return canonicalKey;
         }
-        if (!keyTruncated) {
+        ensureKeyIdentityStorage();
+        if (!keyTruncated && normalizedKeyIdentities[canonical] != null) {
+            relocateNormalizedEntry(canonical);
             return canonicalKey;
         }
-        if (originals != null) {
-            for (int index = 0; index < size; index++) {
-                if (original.equals(originals[index])) {
-                    return keys[index];
-                }
-            }
+        captureTruncated = true;
+        return uniqueCollisionKey(canonicalKey);
+    }
+
+    private String resolveCapturedStorageKey(String storageKey, String normalizedIdentity) {
+        int occupied = indexOf(storageKey);
+        if (occupied < 0) {
+            return storageKey;
+        }
+        if (normalizedIdentity == null && normalizedKeyIdentity(occupied) == null) {
+            return storageKey;
+        }
+        ensureKeyIdentityStorage();
+        if (normalizedIdentity == null) {
+            relocateNormalizedEntry(occupied);
+            return storageKey;
         }
         captureTruncated = true;
+        return uniqueCollisionKey(normalizedIdentity);
+    }
+
+    private void relocateNormalizedEntry(int index) {
+        String normalizedIdentity = normalizedKeyIdentity(index);
+        if (normalizedIdentity == null) {
+            return;
+        }
+        keys[index] = uniqueCollisionKey(normalizedIdentity);
+        captureTruncated = true;
+    }
+
+    private String uniqueCollisionKey(String canonicalKey) {
         for (int collision = 2; ; collision++) {
             String candidate = CaptureLimits.disambiguateAttributeKey(canonicalKey, collision);
             if (indexOf(candidate) < 0) {
@@ -182,9 +257,17 @@ final class AttributeAccumulator {
         }
     }
 
-    private void ensureOriginalStorage() {
+    private String normalizedKeyIdentity(int index) {
+        return normalizedKeyIdentities == null ? null : normalizedKeyIdentities[index];
+    }
+
+    private void ensureKeyIdentityStorage() {
         if (originals == null) {
             originals = new String[keys.length];
+            System.arraycopy(keys, 0, originals, 0, size);
+        }
+        if (normalizedKeyIdentities == null) {
+            normalizedKeyIdentities = new String[keys.length];
         }
     }
 }

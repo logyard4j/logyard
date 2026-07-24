@@ -260,7 +260,9 @@ final class EventCaptureBudgetTest {
 
         AttributeSet forged = new AttributeSet(
                 new String[] {"logyard.arguments.omitted"},
-                new Object[] {99});
+                null,
+                new Object[] {99},
+                false);
         Object[] arguments = new Object[CaptureLimits.MAX_ARGUMENTS + 3];
         LogEvent event = event(arguments, forged, null);
 

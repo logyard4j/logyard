@@ -187,6 +187,8 @@ Built-in rendering is independently defensive: one JSON record is capped at 262,
 
 The `logyard.*` attribute namespace is reserved for these system diagnostics. Application attributes, SLF4J key values, and captured context must use application-owned names.
 
+Attribute keys are retained atomically: if the remaining event allowance cannot hold a complete normalized key, that attribute is omitted and capture truncation is reported. Distinct long keys that normalize to the same bounded storage form are disambiguated, including when independently built attribute sets are merged.
+
 Redaction is recursive and runs before outputs see an event. Map keys extend a dot-separated path; zero-based list indexes use brackets, so the first token below `request.users` has the path `request.users[0].token`. Globs can match either the complete path or a map-key leaf:
 
 ```toml

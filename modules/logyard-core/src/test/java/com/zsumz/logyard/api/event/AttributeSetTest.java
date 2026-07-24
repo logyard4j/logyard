@@ -141,17 +141,33 @@ final class AttributeSetTest {
         String longKey = "x".repeat(5_000);
         String literalKey = CaptureLimits.attributeKey(longKey);
 
-        AttributeSet attributes = AttributeSet.builder()
+        AttributeSet literalFirst = AttributeSet.builder()
                 .put(literalKey, "literal")
                 .put(longKey, "first")
                 .put(longKey, "updated")
                 .build();
+        AttributeSet longFirst = AttributeSet.builder()
+                .put(longKey, "updated")
+                .put(literalKey, "literal")
+                .build();
 
-        assertEquals(2, attributes.size());
-        assertEquals(literalKey, attributes.keyAt(0));
-        assertEquals("literal", attributes.valueAt(0));
-        assertTrue(attributes.keyAt(1).contains("~collision-2"));
-        assertEquals("updated", attributes.valueAt(1));
+        assertLiteralAndNormalizedValues(literalFirst, literalKey);
+        assertLiteralAndNormalizedValues(longFirst, literalKey);
+    }
+
+    @Test
+    void preservesNormalizedIdentityWhenSeparatelyBuiltSetsAreMerged() {
+        String[] colliding = sampledCollisionKeys();
+        AttributeSet first = AttributeSet.of(colliding[0], "first");
+        AttributeSet second = AttributeSet.of(colliding[1], "second");
+
+        AttributeSet merged = first.mergedWith(second);
+
+        assertEquals(2, merged.size());
+        assertNotEquals(merged.keyAt(0), merged.keyAt(1));
+        assertTrue(merged.toMap().containsValue("first"));
+        assertTrue(merged.toMap().containsValue("second"));
+        assertTrue(merged.captureTruncated());
     }
 
     @Test
@@ -181,5 +197,24 @@ final class AttributeSetTest {
             }
         }
         assertTrue(!codePoints.isEmpty());
+    }
+
+    private static void assertLiteralAndNormalizedValues(AttributeSet attributes, String literalKey) {
+        assertEquals(2, attributes.size());
+        assertEquals("literal", attributes.get(literalKey));
+        assertTrue(attributes.toMap().containsValue("updated"));
+        assertTrue(attributes.toMap().keySet().stream().anyMatch(key -> key.contains("~collision-2")));
+    }
+
+    private static String[] sampledCollisionKeys() {
+        char[] firstCharacters = new char[5_000];
+        java.util.Arrays.fill(firstCharacters, 'x');
+        char[] secondCharacters = firstCharacters.clone();
+        firstCharacters[2_501] = 'a';
+        secondCharacters[2_501] = 'b';
+        String first = new String(firstCharacters);
+        String second = new String(secondCharacters);
+        assertEquals(CaptureLimits.attributeKey(first), CaptureLimits.attributeKey(second));
+        return new String[] {first, second};
     }
 }

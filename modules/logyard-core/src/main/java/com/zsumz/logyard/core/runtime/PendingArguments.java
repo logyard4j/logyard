@@ -50,6 +50,11 @@ final class PendingArguments {
         return captured;
     }
 
+    void clear() {
+        values.clear();
+        omitted = 0;
+    }
+
     private void add(PendingValue value) {
         if (values.size() < CaptureLimits.MAX_ARGUMENTS) {
             values.add(value);

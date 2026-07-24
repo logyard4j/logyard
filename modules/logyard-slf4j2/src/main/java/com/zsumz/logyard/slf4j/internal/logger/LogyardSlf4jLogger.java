@@ -7,6 +7,7 @@ import com.zsumz.logyard.slf4j.internal.event.LevelMapper;
 import com.zsumz.logyard.slf4j.internal.event.Slf4jEventMapper;
 
 import java.util.Objects;
+import java.util.function.Supplier;
 import org.slf4j.Marker;
 import org.slf4j.event.LoggingEvent;
 import org.slf4j.helpers.AbstractLogger;
@@ -18,13 +19,23 @@ public final class LogyardSlf4jLogger extends AbstractLogger implements LoggingE
     private static final String FQCN = LogyardSlf4jLogger.class.getName();
     private static final AdapterReentryGuard REENTRY = new AdapterReentryGuard();
 
-    private final transient LogyardLogger delegate;
+    private final transient Supplier<LogyardLogger> delegate;
     private final transient Slf4jEventMapper mapper;
 
     public LogyardSlf4jLogger(LogyardLogger delegate, Slf4jEventMapper mapper) {
+        LogyardLogger resolved = Objects.requireNonNull(delegate, "delegate");
+        this.delegate = () -> resolved;
+        this.mapper = Objects.requireNonNull(mapper, "mapper");
+        name = resolved.name();
+    }
+
+    public LogyardSlf4jLogger(
+            String name,
+            Supplier<LogyardLogger> delegate,
+            Slf4jEventMapper mapper) {
+        this.name = Objects.requireNonNull(name, "name");
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.mapper = Objects.requireNonNull(mapper, "mapper");
-        name = delegate.name();
     }
 
     @Override public boolean isTraceEnabled() { return enabled(org.slf4j.event.Level.TRACE); }
@@ -54,7 +65,10 @@ public final class LogyardSlf4jLogger extends AbstractLogger implements LoggingE
             return;
         }
         try {
-            mapper.publishNormalized(delegate, level, marker, messagePattern, arguments, throwable);
+            mapper.publishNormalized(resolveDelegate(), level, marker, messagePattern, arguments, throwable);
+        } catch (Throwable failure) {
+            ProviderDiagnostics.rethrowIfFatal(failure);
+            ProviderDiagnostics.eventMappingFailure(name, failure);
         } finally {
             REENTRY.exit();
         }
@@ -66,7 +80,10 @@ public final class LogyardSlf4jLogger extends AbstractLogger implements LoggingE
             return;
         }
         try {
-            mapper.publish(delegate, event);
+            mapper.publish(resolveDelegate(), event);
+        } catch (Throwable failure) {
+            ProviderDiagnostics.rethrowIfFatal(failure);
+            ProviderDiagnostics.eventMappingFailure(name, failure);
         } finally {
             REENTRY.exit();
         }
@@ -77,13 +94,17 @@ public final class LogyardSlf4jLogger extends AbstractLogger implements LoggingE
             return false;
         }
         try {
-            return delegate.isEnabled(LevelMapper.toLogyard(level));
+            return resolveDelegate().isEnabled(LevelMapper.toLogyard(level));
         } catch (Throwable failure) {
             ProviderDiagnostics.rethrowIfFatal(failure);
-            ProviderDiagnostics.eventMappingFailure(delegate.name(), failure);
+            ProviderDiagnostics.eventMappingFailure(name, failure);
             return false;
         } finally {
             REENTRY.exit();
         }
+    }
+
+    private LogyardLogger resolveDelegate() {
+        return Objects.requireNonNull(delegate.get(), "delegate logger");
     }
 }

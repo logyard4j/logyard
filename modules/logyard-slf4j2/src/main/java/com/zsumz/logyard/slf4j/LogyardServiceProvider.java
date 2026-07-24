@@ -1,7 +1,6 @@
 package com.zsumz.logyard.slf4j;
 
-import com.zsumz.logyard.runtime.adapter.AdapterRuntimeHandle;
-import com.zsumz.logyard.runtime.adapter.AdapterRuntimeResolver;
+import com.zsumz.logyard.runtime.adapter.LazyAdapterRuntime;
 import com.zsumz.logyard.slf4j.internal.context.ContextSnapshotPolicy;
 import com.zsumz.logyard.slf4j.internal.context.LogyardMdcAdapter;
 import com.zsumz.logyard.slf4j.internal.diagnostics.ProviderDiagnostics;
@@ -24,7 +23,7 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider {
     private final LogyardMdcAdapter mdcAdapter = new LogyardMdcAdapter();
     private State state = State.NEW;
     private Throwable initializationFailure;
-    private AdapterRuntimeHandle runtimeHandle;
+    private LazyAdapterRuntime runtime;
 
     @Override
     public ILoggerFactory getLoggerFactory() {
@@ -60,14 +59,13 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider {
                     initializationFailure);
         }
         state = State.INITIALIZING;
-        AdapterRuntimeHandle resolved = null;
+        LazyAdapterRuntime resolved = null;
         try {
-            resolved = AdapterRuntimeResolver.resolve("slf4j2");
-            ContextSnapshotPolicy contextPolicy = new ContextSnapshotPolicy(
-                    resolved.contextPolicySource());
+            resolved = new LazyAdapterRuntime("slf4j2");
+            ContextSnapshotPolicy contextPolicy = new ContextSnapshotPolicy(resolved.contextPolicySource());
             Slf4jEventMapper mapper = new Slf4jEventMapper(mdcAdapter, contextPolicy);
-            loggerFactory.install(new LogyardLoggerFactory(resolved.runtime(), mapper));
-            runtimeHandle = resolved;
+            loggerFactory.install(new LogyardLoggerFactory(resolved, mapper));
+            runtime = resolved;
             state = State.READY;
         } catch (Throwable failure) {
             ProviderDiagnostics.rethrowIfFatal(failure);
@@ -81,7 +79,7 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider {
     }
 
     private static void closeAfterInitializationFailure(
-            AdapterRuntimeHandle resolved,
+            LazyAdapterRuntime resolved,
             Throwable initializationFailure) {
         if (resolved == null) {
             return;
@@ -96,7 +94,7 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider {
 
     /** Exposed for diagnostics and provider tests; SLF4J itself has no shutdown callback. */
     public synchronized boolean ownsRuntime() {
-        return runtimeHandle != null && runtimeHandle.ownsRuntime();
+        return runtime != null && runtime.ownsRuntime();
     }
 
     private enum State {

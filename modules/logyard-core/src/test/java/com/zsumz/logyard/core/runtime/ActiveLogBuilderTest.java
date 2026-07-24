@@ -87,6 +87,13 @@ final class ActiveLogBuilderTest {
             assertThrows(NullPointerException.class, () -> builder.argument((java.util.function.Supplier<?>) null));
             builder.log("once");
             assertThrows(IllegalStateException.class, () -> builder.log("twice"));
+            assertThrows(IllegalStateException.class, () -> builder.event("late"));
+            assertThrows(IllegalStateException.class, () -> builder.message("late"));
+            assertThrows(IllegalStateException.class, () -> builder.argument("late"));
+            assertThrows(IllegalStateException.class, () -> builder.argument(() -> "late"));
+            assertThrows(IllegalStateException.class, () -> builder.add("late", "value"));
+            assertThrows(IllegalStateException.class, () -> builder.add("late", () -> "value"));
+            assertThrows(IllegalStateException.class, () -> builder.cause(new IllegalStateException("late")));
         }
     }
 

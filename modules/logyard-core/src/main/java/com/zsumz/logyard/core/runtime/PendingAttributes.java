@@ -5,13 +5,13 @@ import com.zsumz.logyard.api.event.AttributeKey;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.NormalizedAttributeKey;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 /** Validated attribute declarations whose caller-owned values are captured at publication. */
 final class PendingAttributes {
-    private final Map<NormalizedAttributeKey, PendingValue> values = new LinkedHashMap<>();
+    private final List<Entry> values = new ArrayList<>(4);
     private boolean truncated;
 
     void add(String key, Object value) {
@@ -24,12 +24,12 @@ final class PendingAttributes {
 
     AttributeSet capture() {
         AttributeSet.Builder captured = AttributeSet.builder(values.size());
-        for (Map.Entry<NormalizedAttributeKey, PendingValue> entry : values.entrySet()) {
+        for (Entry entry : values) {
             if (captured.isFull()) {
                 captured.markTruncated();
                 break;
             }
-            captured.putNormalized(entry.getKey(), entry.getValue().resolve());
+            captured.putNormalized(entry.key, entry.value.resolve());
         }
         if (truncated) {
             captured.markTruncated();
@@ -38,14 +38,36 @@ final class PendingAttributes {
     }
 
     private void add(NormalizedAttributeKey key, PendingValue value) {
-        if (!values.containsKey(key) && values.size() >= CaptureLimits.MAX_ATTRIBUTES - 1) {
+        for (Entry entry : values) {
+            if (entry.key.storageKey().equals(key.storageKey())
+                    && entry.key.original().equals(key.original())) {
+                entry.value = value;
+                return;
+            }
+        }
+        if (values.size() >= CaptureLimits.MAX_ATTRIBUTES - 1) {
             truncated = true;
             return;
         }
-        values.put(key, value);
+        values.add(new Entry(key, value));
+    }
+
+    void clear() {
+        values.clear();
+        truncated = false;
     }
 
     private static NormalizedAttributeKey requireKey(String key) {
         return AttributeKey.normalize(key, false);
+    }
+
+    private static final class Entry {
+        private final NormalizedAttributeKey key;
+        private PendingValue value;
+
+        private Entry(NormalizedAttributeKey key, PendingValue value) {
+            this.key = key;
+            this.value = value;
+        }
     }
 }

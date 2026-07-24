@@ -6,5 +6,6 @@ enum InstallationPhase {
     STARTING,
     ACTIVE,
     RECONFIGURING,
-    CLOSING
+    CLOSING,
+    TERMINATED
 }

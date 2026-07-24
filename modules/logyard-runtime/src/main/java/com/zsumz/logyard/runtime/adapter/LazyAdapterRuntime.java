@@ -1,10 +1,13 @@
 package com.zsumz.logyard.runtime.adapter;
 
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
+import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /** Lazy, thread-safe adapter access that performs no configuration work at construction time. */
 public final class LazyAdapterRuntime implements AdapterRuntimeAccess {
@@ -25,6 +28,17 @@ public final class LazyAdapterRuntime implements AdapterRuntimeAccess {
     public boolean initialized() {
         AdapterRuntimeHandle current = handle.get();
         return !closed.get() && current != null && current.initialized();
+    }
+
+    /** Returns whether the currently resolved adapter lease participates in managed ownership. */
+    public boolean ownsRuntime() {
+        AdapterRuntimeHandle current = handle.get();
+        return !closed.get() && current != null && current.initialized() && current.ownsRuntime();
+    }
+
+    /** Returns a lazy context-policy source that follows whichever runtime is currently resolved. */
+    public Supplier<ContextPolicySnapshot> contextPolicySource() {
+        return () -> ContextPolicyRegistry.sourceFor(runtime()).get();
     }
 
     @Override

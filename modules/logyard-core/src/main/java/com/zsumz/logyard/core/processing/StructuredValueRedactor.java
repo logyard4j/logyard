@@ -12,6 +12,7 @@ import java.util.Map;
 final class StructuredValueRedactor {
     private final PathMatcher matcher;
     private final Object replacement;
+    private final StringBuilder path = new StringBuilder(CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
     private int remaining = CaptureLimits.MAX_EVENT_ENTRIES;
     private boolean truncated;
 
@@ -21,18 +22,20 @@ final class StructuredValueRedactor {
     }
 
     Result redactChildren(Object value, String path) {
+        this.path.setLength(0);
+        this.path.append(path);
         Object redacted;
         if (value instanceof Map<?, ?> map) {
-            redacted = redactMap(map, path, 0);
+            redacted = redactMap(map, 0);
         } else if (value instanceof List<?> list) {
-            redacted = redactList(list, path, 0);
+            redacted = redactList(list, 0);
         } else {
             redacted = value;
         }
         return new Result(redacted, truncated);
     }
 
-    private Object redactMap(Map<?, ?> source, String path, int depth) {
+    private Object redactMap(Map<?, ?> source, int depth) {
         if (depth >= CaptureLimits.MAX_NESTING_DEPTH) {
             truncated = true;
             return replacement;
@@ -46,11 +49,20 @@ final class StructuredValueRedactor {
                 return replacement;
             }
             String key = String.valueOf(entry.getKey());
-            String childPath = path.isEmpty() ? key : path + '.' + key;
+            int parentLength = path.length();
+            if (parentLength > 0) {
+                path.append('.');
+            }
+            path.append(key);
             Object current = entry.getValue();
-            Object redacted = matcher.matches(childPath, key)
-                    ? replacement
-                    : redactChildren(current, childPath, depth + 1);
+            Object redacted;
+            try {
+                redacted = matcher.matches(path, key)
+                        ? replacement
+                        : redactChildren(current, depth + 1);
+            } finally {
+                path.setLength(parentLength);
+            }
             if (redacted != current && copy == null) {
                 copy = new LinkedHashMap<>(source);
             }
@@ -61,7 +73,7 @@ final class StructuredValueRedactor {
         return copy == null ? source : Collections.unmodifiableMap(copy);
     }
 
-    private Object redactList(List<?> source, String path, int depth) {
+    private Object redactList(List<?> source, int depth) {
         if (depth >= CaptureLimits.MAX_NESTING_DEPTH) {
             truncated = true;
             return replacement;
@@ -75,10 +87,16 @@ final class StructuredValueRedactor {
                 return replacement;
             }
             Object current = source.get(index);
-            String childPath = path + '[' + index + ']';
-            Object redacted = matcher.matches(childPath, "")
-                    ? replacement
-                    : redactChildren(current, childPath, depth + 1);
+            int parentLength = path.length();
+            path.append('[').append(index).append(']');
+            Object redacted;
+            try {
+                redacted = matcher.matches(path, "")
+                        ? replacement
+                        : redactChildren(current, depth + 1);
+            } finally {
+                path.setLength(parentLength);
+            }
             if (redacted != current && copy == null) {
                 copy = new ArrayList<>(source);
             }
@@ -89,12 +107,12 @@ final class StructuredValueRedactor {
         return copy == null ? source : Collections.unmodifiableList(copy);
     }
 
-    private Object redactChildren(Object value, String path, int depth) {
+    private Object redactChildren(Object value, int depth) {
         if (value instanceof Map<?, ?> map) {
-            return redactMap(map, path, depth);
+            return redactMap(map, depth);
         }
         if (value instanceof List<?> list) {
-            return redactList(list, path, depth);
+            return redactList(list, depth);
         }
         return value;
     }
@@ -121,6 +139,6 @@ final class StructuredValueRedactor {
 
     @FunctionalInterface
     interface PathMatcher {
-        boolean matches(String path, String leaf);
+        boolean matches(CharSequence path, String leaf);
     }
 }

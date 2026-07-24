@@ -54,6 +54,17 @@ public final class Assertions {
         }
     }
 
+    public static <T> T assertInstanceOf(Class<T> expectedType, Object actual) {
+        Objects.requireNonNull(expectedType, "expectedType");
+        if (!expectedType.isInstance(actual)) {
+            throw new AssertionError(
+                    "expected instance of " + expectedType.getName()
+                            + " but was "
+                            + (actual == null ? "null" : actual.getClass().getName()));
+        }
+        return expectedType.cast(actual);
+    }
+
     public static void assertEquals(Object expected, Object actual) {
         if (!Objects.equals(expected, actual)) {
             throw unequal(expected, actual);

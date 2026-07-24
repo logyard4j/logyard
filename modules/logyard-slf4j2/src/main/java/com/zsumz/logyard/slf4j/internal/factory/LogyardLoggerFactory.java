@@ -2,22 +2,31 @@ package com.zsumz.logyard.slf4j.internal.factory;
 
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.event.CaptureLimits;
+import com.zsumz.logyard.runtime.adapter.AdapterRuntimeAccess;
 import com.zsumz.logyard.slf4j.internal.event.Slf4jEventMapper;
 import com.zsumz.logyard.slf4j.internal.logger.LogyardSlf4jLogger;
 
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 
 /** Concurrent identity-preserving logger registry. */
 public final class LogyardLoggerFactory implements ILoggerFactory {
-    private final LogyardRuntime runtime;
+    private final Function<String, com.zsumz.logyard.api.LogyardLogger> loggerResolver;
     private final Slf4jEventMapper mapper;
     private final ConcurrentHashMap<String, Logger> loggers = new ConcurrentHashMap<>();
 
     public LogyardLoggerFactory(LogyardRuntime runtime, Slf4jEventMapper mapper) {
-        this.runtime = Objects.requireNonNull(runtime, "runtime");
+        LogyardRuntime resolved = Objects.requireNonNull(runtime, "runtime");
+        loggerResolver = resolved::logger;
+        this.mapper = Objects.requireNonNull(mapper, "mapper");
+    }
+
+    public LogyardLoggerFactory(AdapterRuntimeAccess runtime, Slf4jEventMapper mapper) {
+        AdapterRuntimeAccess resolved = Objects.requireNonNull(runtime, "runtime");
+        loggerResolver = name -> resolved.runtime().logger(name);
         this.mapper = Objects.requireNonNull(mapper, "mapper");
     }
 
@@ -33,7 +42,7 @@ public final class LogyardLoggerFactory implements ILoggerFactory {
         }
         return loggers.computeIfAbsent(
                 name,
-                key -> new LogyardSlf4jLogger(runtime.logger(key), mapper));
+                key -> new LogyardSlf4jLogger(key, () -> loggerResolver.apply(key), mapper));
     }
 
     public int cachedLoggerCount() {

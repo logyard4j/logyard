@@ -21,25 +21,27 @@ final class ActiveLogBuilder implements LogBuilder {
         this.level = level;
     }
 
-    @Override public LogBuilder event(String value) { eventName = value; return this; }
-    @Override public LogBuilder message(String value) { messageTemplate = value; return this; }
-    @Override public LogBuilder argument(Object value) { addArgument(value); return this; }
+    @Override public LogBuilder event(String value) { ensureUnpublished(); eventName = value; return this; }
+    @Override public LogBuilder message(String value) { ensureUnpublished(); messageTemplate = value; return this; }
+    @Override public LogBuilder argument(Object value) { ensureUnpublished(); addArgument(value); return this; }
 
     @Override
     public LogBuilder argument(Supplier<?> supplier) {
+        ensureUnpublished();
         arguments.add(Objects.requireNonNull(supplier, "valueSupplier"));
         return this;
     }
 
-    @Override public LogBuilder add(String key, Object value) { attributes.add(key, value); return this; }
+    @Override public LogBuilder add(String key, Object value) { ensureUnpublished(); attributes.add(key, value); return this; }
 
     @Override
     public LogBuilder add(String key, Supplier<?> supplier) {
+        ensureUnpublished();
         attributes.add(key, supplier);
         return this;
     }
 
-    @Override public LogBuilder cause(Throwable value) { throwable = value; return this; }
+    @Override public LogBuilder cause(Throwable value) { ensureUnpublished(); throwable = value; return this; }
     @Override public void log() { publish(messageTemplate); }
     @Override public void log(String value) { publish(value); }
 
@@ -57,12 +59,24 @@ final class ActiveLogBuilder implements LogBuilder {
     private void publish(String template) {
         ensureUnpublished();
         logged = true;
-        logger.publish(level, eventName, template, new PendingEventFields(arguments, attributes), throwable);
+        try {
+            logger.publish(level, eventName, template, new PendingEventFields(arguments, attributes), throwable);
+        } finally {
+            clearCapturedState();
+        }
     }
 
     private void ensureUnpublished() {
         if (logged) {
             throw new IllegalStateException("a Logyard LogBuilder can only publish once");
         }
+    }
+
+    private void clearCapturedState() {
+        arguments.clear();
+        attributes.clear();
+        eventName = null;
+        messageTemplate = null;
+        throwable = null;
     }
 }

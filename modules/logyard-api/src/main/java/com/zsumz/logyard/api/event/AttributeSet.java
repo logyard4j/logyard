@@ -11,22 +11,16 @@ import java.util.function.Supplier;
 /** Compact insertion-ordered immutable attributes with typed values. */
 public final class AttributeSet {
     /** Shared empty attribute set. */
-    public static final AttributeSet EMPTY = new AttributeSet(new String[0], new Object[0]);
-
-    final String[] keys;
+    public static final AttributeSet EMPTY = new AttributeSet(new String[0], null, new Object[0], false);
+    final String[] keys, normalizedKeyIdentities;
     final Object[] values;
     final boolean captureTruncated;
-
-    AttributeSet(String[] keys, Object[] values) {
-        this(keys, values, false);
-    }
-
-    AttributeSet(String[] keys, Object[] values, boolean captureTruncated) {
+    AttributeSet(String[] keys, String[] normalizedKeyIdentities, Object[] values, boolean captureTruncated) {
         this.keys = keys;
+        this.normalizedKeyIdentities = normalizedKeyIdentities;
         this.values = values;
         this.captureTruncated = captureTruncated;
     }
-
     /**
      * Returns the number of attributes.
      *
@@ -101,6 +95,9 @@ public final class AttributeSet {
 
     /**
      * Returns the right-biased merge of this set and another set.
+     *
+     * <p>Exact literal keys are replaced by the right-hand value. Ambiguous normalized keys retain
+     * both values under deterministic bounded collision suffixes rather than silently erasing one.</p>
      *
      * @param other attributes to append or replace
      * @return immutable merged attributes
@@ -246,7 +243,10 @@ public final class AttributeSet {
         public Builder putAll(AttributeSet attributes) {
             Objects.requireNonNull(attributes, "attributes");
             for (int index = 0; index < attributes.size(); index++) {
-                this.attributes.putCaptured(attributes.keyAt(index), attributes.valueAt(index));
+                this.attributes.putCaptured(
+                        attributes.keyAt(index),
+                        attributes.normalizedKeyIdentities == null ? null : attributes.normalizedKeyIdentities[index],
+                        attributes.valueAt(index));
             }
             if (attributes.captureTruncated) {
                 this.attributes.markCaptureTruncated();

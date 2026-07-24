@@ -38,6 +38,7 @@ final class JulCapture {
     }
 
     void close() {
+        LogyardHandler closing = null;
         synchronized (MONITOR) {
             if (!active) {
                 return;
@@ -45,8 +46,12 @@ final class JulCapture {
             active = false;
             leaseCount--;
             if (leaseCount == 0) {
-                restore();
+                closing = restore();
             }
+        }
+        if (closing != null) {
+            LogyardHandler handler = closing;
+            SpringLifecycleBoundary.invoke("Spring JUL handler close", handler::close);
         }
     }
 
@@ -74,7 +79,7 @@ final class JulCapture {
         displacedRootLevel = currentLevel;
     }
 
-    private static void restore() {
+    private static LogyardHandler restore() {
         Logger root = rootLogger();
         LogyardHandler handler = installedHandler;
         if (handler != null) {
@@ -82,13 +87,11 @@ final class JulCapture {
         }
         Arrays.stream(displacedHandlers).forEach(root::addHandler);
         root.setLevel(displacedRootLevel);
-        if (handler != null) {
-            SpringLifecycleBoundary.invoke("Spring JUL handler close", handler::close);
-        }
         capturedRuntime = null;
         installedHandler = null;
         displacedHandlers = new Handler[0];
         displacedRootLevel = null;
+        return handler;
     }
 
     private static Logger rootLogger() {
