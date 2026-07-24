@@ -12,6 +12,7 @@ import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.routing.RouteDefinition;
+import com.zsumz.logyard.core.routing.RouteResolver;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -160,6 +161,21 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     public RuntimeLevelOverride effectiveLevelOverride(String loggerName) {
         return state.levelOverrides().resolve(loggerName);
+    }
+
+    /**
+     * Resolves one logger's management thresholds from a single immutable runtime generation.
+     *
+     * @param loggerName normalized logger name
+     * @return point-in-time logger threshold snapshot
+     */
+    public RuntimeLoggerLevelSnapshot loggerLevelSnapshot(String loggerName) {
+        Objects.requireNonNull(loggerName, "loggerName");
+        RuntimeState snapshot = state;
+        Level effectiveBase = RouteResolver.resolve(loggerName, snapshot.plan().root(), snapshot.plan().loggers()).definition().level();
+        return new RuntimeLoggerLevelSnapshot(
+                snapshot.plan().configuredLevels().get(loggerName), snapshot.levelOverrides().exactLevel(loggerName),
+                Objects.requireNonNull(effectiveBase, "effective logger level"), snapshot.levelOverrides().resolve(loggerName));
     }
 
     public synchronized RuntimeManagementSnapshot managementSnapshot() {

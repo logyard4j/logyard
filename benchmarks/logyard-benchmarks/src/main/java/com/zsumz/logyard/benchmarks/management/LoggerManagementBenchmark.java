@@ -70,4 +70,14 @@ public class LoggerManagementBenchmark {
     public Map<String, LoggerLevelSnapshot> listAllLevels() {
         return management.listLoggerLevels();
     }
+
+    /**
+     * Resolves one logger without materializing complete management maps or known-name sets.
+     *
+     * @return point logger-level view
+     */
+    @Benchmark
+    public LoggerLevelSnapshot pointLevel() {
+        return management.getLoggerLevel("com.example.service.500.child");
+    }
 }

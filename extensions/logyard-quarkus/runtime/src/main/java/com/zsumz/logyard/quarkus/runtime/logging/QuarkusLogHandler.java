@@ -4,17 +4,21 @@ import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.runtime.adapter.AdapterReentryGuard;
 import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
 import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
+import com.zsumz.logyard.runtime.adapter.PublicationGate;
 
 import java.util.Objects;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
 /** Non-owning JBoss Log Manager handler installed by the Quarkus recorder. */
 public final class QuarkusLogHandler extends Handler {
+    private static final Duration PUBLICATION_DRAIN_TIMEOUT = Duration.ofSeconds(5);
     private final LogyardRuntime runtime;
     private final QuarkusEventMapper mapper;
     private final AdapterReentryGuard reentry = new AdapterReentryGuard();
+    private final PublicationGate publications = new PublicationGate();
     private final AtomicBoolean closed = new AtomicBoolean();
 
     /**
@@ -33,12 +37,17 @@ public final class QuarkusLogHandler extends Handler {
         if (record == null || closed.get() || !isLoggable(record) || !reentry.enter()) {
             return;
         }
+        if (!publications.tryEnter()) {
+            reentry.exit();
+            return;
+        }
         try {
             mapper.publish(runtime, record);
         } catch (Throwable failure) {
             AdapterDiagnostics.rethrowIfFatal(failure);
             AdapterDiagnostics.adapterFailure("quarkus", "event capture", failure);
         } finally {
+            publications.exit();
             reentry.exit();
         }
     }
@@ -62,6 +71,13 @@ public final class QuarkusLogHandler extends Handler {
      */
     @Override
     public void close() {
-        closed.set(true);
+        if (closed.compareAndSet(false, true)) {
+            if (!publications.retireAndAwaitDrain(PUBLICATION_DRAIN_TIMEOUT)) {
+                AdapterDiagnostics.adapterFailure(
+                        "quarkus",
+                        "handler retirement",
+                        new IllegalStateException("Quarkus publication drain timed out"));
+            }
+        }
     }
 }

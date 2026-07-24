@@ -6,9 +6,11 @@ import com.zsumz.logyard.runtime.adapter.AdapterReentryGuard;
 import com.zsumz.logyard.runtime.adapter.AdapterRuntimeAccess;
 import com.zsumz.logyard.runtime.adapter.BorrowedAdapterRuntime;
 import com.zsumz.logyard.runtime.adapter.LazyAdapterRuntime;
+import com.zsumz.logyard.runtime.adapter.PublicationGate;
 import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
 
 import java.util.Objects;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.ErrorManager;
 import java.util.logging.Handler;
@@ -16,9 +18,11 @@ import java.util.logging.LogRecord;
 
 /** Bounded JUL handler that maps records directly into Logyard. */
 public final class LogyardHandler extends Handler {
+    private static final Duration PUBLICATION_DRAIN_TIMEOUT = Duration.ofSeconds(5);
     private final AdapterRuntimeAccess runtime;
     private final JulEventMapper mapper;
     private final AdapterReentryGuard reentry = new AdapterReentryGuard();
+    private final PublicationGate publications = new PublicationGate();
     private final AtomicBoolean closed = new AtomicBoolean();
 
     /** Logging-properties-compatible constructor with lazy process bootstrap. */
@@ -42,12 +46,17 @@ public final class LogyardHandler extends Handler {
         if (record == null || closed.get() || !isLoggable(record) || !reentry.enter()) {
             return;
         }
+        if (!publications.tryEnter()) {
+            reentry.exit();
+            return;
+        }
         try {
             mapper.publish(runtime.runtime(), record);
         } catch (Throwable failure) {
             AdapterDiagnostics.rethrowIfFatal(failure);
             report("Logyard JUL event capture failed", failure, ErrorManager.WRITE_FAILURE);
         } finally {
+            publications.exit();
             reentry.exit();
         }
     }
@@ -69,6 +78,12 @@ public final class LogyardHandler extends Handler {
     public void close() {
         if (!closed.compareAndSet(false, true)) {
             return;
+        }
+        if (!publications.retireAndAwaitDrain(PUBLICATION_DRAIN_TIMEOUT)) {
+            report(
+                    "Logyard JUL close timed out waiting for in-flight publication",
+                    new IllegalStateException("JUL publication drain timed out"),
+                    ErrorManager.CLOSE_FAILURE);
         }
         try {
             runtime.close();

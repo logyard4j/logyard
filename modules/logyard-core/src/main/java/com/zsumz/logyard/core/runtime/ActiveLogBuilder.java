@@ -45,6 +45,7 @@ final class ActiveLogBuilder implements LogBuilder {
 
     @Override
     public void log(String value, Object... values) {
+        ensureUnpublished();
         arguments.addAll(values);
         publish(value);
     }
@@ -54,10 +55,14 @@ final class ActiveLogBuilder implements LogBuilder {
     }
 
     private void publish(String template) {
+        ensureUnpublished();
+        logged = true;
+        logger.publish(level, eventName, template, new PendingEventFields(arguments, attributes), throwable);
+    }
+
+    private void ensureUnpublished() {
         if (logged) {
             throw new IllegalStateException("a Logyard LogBuilder can only publish once");
         }
-        logged = true;
-        logger.publish(level, eventName, template, new PendingEventFields(arguments, attributes), throwable);
     }
 }

@@ -20,12 +20,14 @@ final class PendingArguments {
     }
 
     void addAll(Object[] supplied) {
-        if (supplied == null) {
+        if (supplied == null || supplied.length == 0) {
             return;
         }
-        for (Object value : supplied) {
-            add(value);
+        int retained = Math.min(supplied.length, CaptureLimits.MAX_ARGUMENTS - values.size());
+        for (int index = 0; index < retained; index++) {
+            values.add(PendingValue.direct(supplied[index]));
         }
+        addOmitted(supplied.length - retained);
     }
 
     boolean isEmpty() {
@@ -34,6 +36,10 @@ final class PendingArguments {
 
     int omitted() {
         return omitted;
+    }
+
+    int suppliedCount() {
+        return (int) Math.min(Integer.MAX_VALUE, (long) values.size() + omitted);
     }
 
     Object[] capture() {
@@ -48,7 +54,12 @@ final class PendingArguments {
         if (values.size() < CaptureLimits.MAX_ARGUMENTS) {
             values.add(value);
         } else {
-            omitted++;
+            addOmitted(1);
         }
+    }
+
+    private void addOmitted(int additional) {
+        long total = (long) omitted + additional;
+        omitted = (int) Math.min(Integer.MAX_VALUE, total);
     }
 }

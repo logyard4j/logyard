@@ -23,6 +23,21 @@ public final class CaptureLimits {
     /** Maximum UTF-16 characters retained from an attribute key. */
     public static final int MAX_ATTRIBUTE_KEY_CHARS = 256;
 
+    /** Maximum distinct non-scalar values captured across one event. */
+    public static final int MAX_EVENT_NODES = 2_048;
+
+    /** Maximum container entries, arguments, attributes, and frames captured across one event. */
+    public static final int MAX_EVENT_ENTRIES = 4_096;
+
+    /** Maximum UTF-16 characters retained across all captured and rendered text in one event. */
+    public static final int MAX_EVENT_TEXT_CHARS = 262_144;
+
+    /** Maximum throwable nodes captured across one event. */
+    public static final int MAX_EVENT_EXCEPTION_NODES = 64;
+
+    /** Maximum stack frames captured across one event. */
+    public static final int MAX_EVENT_STACK_FRAMES = 1_024;
+
     private CaptureLimits() {
     }
 
@@ -72,6 +87,9 @@ public final class CaptureLimits {
     static String truncate(String value, int maximum) {
         if (value == null || value.length() <= maximum) {
             return value;
+        }
+        if (maximum <= 0) {
+            return "";
         }
         return safePrefix(value, maximum - 1) + '…';
     }

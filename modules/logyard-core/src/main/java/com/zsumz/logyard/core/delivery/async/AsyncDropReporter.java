@@ -25,7 +25,7 @@ final class AsyncDropReporter {
         }
         nextReportNanos = now + REPORT_INTERVAL_NANOS;
 
-        AttributeSet.Builder attributes = AttributeSet.builder();
+        AttributeSet.Builder attributes = AttributeSet.systemBuilder();
         long total = 0L;
         for (Map.Entry<Level, Long> dropped : metrics.drainPendingDropReport().entrySet()) {
             attributes.put("logyard.dropped." + dropped.getKey().name().toLowerCase(java.util.Locale.ROOT), dropped.getValue());

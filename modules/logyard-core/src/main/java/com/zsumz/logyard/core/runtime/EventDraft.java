@@ -76,9 +76,6 @@ final class EventDraft {
     }
 
     LogEvent capture() {
-        PendingEventFields.CapturedEventFields captured = pendingFields == null
-                ? new PendingEventFields.CapturedEventFields(arguments, attributes)
-                : pendingFields.capture();
         Thread currentThread = Thread.currentThread();
         Instant observedAt = Instant.now();
         long timestampMillis = ingressMetadata.hasSourceTimestamp()
@@ -89,6 +86,21 @@ final class EventDraft {
                 : ingressMetadata.sourceThreadName() == null ? currentThread.threadId() : -1L;
         String threadName = ingressMetadata.sourceThreadName() == null ? currentThread.getName() : ingressMetadata.sourceThreadName();
 
+        if (pendingFields != null) {
+            return LogEvent.captureDeferred(
+                    timestampMillis,
+                    unixNanos(observedAt),
+                    level,
+                    loggerName,
+                    eventName,
+                    messageTemplate,
+                    pendingFields::captureArguments,
+                    pendingFields::captureAttributes,
+                    pendingFields.suppliedArgumentCount(),
+                    throwable,
+                    threadId,
+                    threadName);
+        }
         return new LogEvent(
                 timestampMillis,
                 unixNanos(observedAt),
@@ -96,8 +108,8 @@ final class EventDraft {
                 loggerName,
                 eventName,
                 messageTemplate,
-                captured.arguments(),
-                captured.attributes(),
+                arguments,
+                attributes,
                 throwable,
                 threadId,
                 threadName);

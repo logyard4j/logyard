@@ -59,8 +59,8 @@ public final class FrameworkRuntimeLifecycle {
         if (closing == null) {
             return;
         }
-        SpringLifecycleBoundary.invoke("Spring shutdown flush", () -> closing.runtime().flush());
         SpringLifecycleBoundary.invoke("Spring JUL capture release", julCapture::close);
+        SpringLifecycleBoundary.invoke("Spring shutdown flush", () -> closing.runtime().flush());
         SpringLifecycleBoundary.invoke("Spring runtime lease release", closing::close);
     }
 }

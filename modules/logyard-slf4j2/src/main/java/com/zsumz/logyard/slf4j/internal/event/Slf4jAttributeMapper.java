@@ -55,10 +55,10 @@ final class Slf4jAttributeMapper {
             attributes.put("slf4j.markers", names);
         }
         if (markers.truncated()) {
-            attributes.put("logyard.slf4j.markers.truncated", true);
+            attributes.putSystem("logyard.slf4j.markers.truncated", true);
         }
         if (markers.captureFailures() > 0) {
-            attributes.put("logyard.slf4j.marker_capture_failures", markers.captureFailures());
+            attributes.putSystem("logyard.slf4j.marker_capture_failures", markers.captureFailures());
         }
         return markers;
     }

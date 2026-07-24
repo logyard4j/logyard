@@ -1,6 +1,7 @@
 package com.zsumz.logyard.api.event;
 
-import java.util.Arrays;
+import com.zsumz.logyard.api.annotation.InternalApi;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -12,8 +13,8 @@ public final class AttributeSet {
     /** Shared empty attribute set. */
     public static final AttributeSet EMPTY = new AttributeSet(new String[0], new Object[0]);
 
-    private final String[] keys;
-    private final Object[] values;
+    final String[] keys;
+    final Object[] values;
 
     AttributeSet(String[] keys, Object[] values) {
         this.keys = keys;
@@ -25,18 +26,14 @@ public final class AttributeSet {
      *
      * @return attribute count
      */
-    public int size() {
-        return keys.length;
-    }
+    public int size() { return keys.length; }
 
     /**
      * Returns whether this set contains no attributes.
      *
      * @return {@code true} when empty
      */
-    public boolean isEmpty() {
-        return keys.length == 0;
-    }
+    public boolean isEmpty() { return keys.length == 0; }
 
     /**
      * Returns the key at an insertion-order index.
@@ -44,9 +41,7 @@ public final class AttributeSet {
      * @param index zero-based attribute index
      * @return attribute key
      */
-    public String keyAt(int index) {
-        return keys[index];
-    }
+    public String keyAt(int index) { return keys[index]; }
 
     /**
      * Returns the value at an insertion-order index.
@@ -54,9 +49,7 @@ public final class AttributeSet {
      * @param index zero-based attribute index
      * @return captured attribute value
      */
-    public Object valueAt(int index) {
-        return values[index];
-    }
+    public Object valueAt(int index) { return values[index]; }
 
     /**
      * Returns the value associated with a key.
@@ -97,35 +90,7 @@ public final class AttributeSet {
     }
 
     AttributeSet withSystemAttribute(String key, Object value) {
-        Objects.requireNonNull(key, "key");
-        String normalized = CaptureLimits.attributeKey(key);
-        Object capturedValue = ValueCapture.capture(value);
-        for (int index = 0; index < keys.length; index++) {
-            if (keys[index].equals(normalized)) {
-                Object[] nextValues = values.clone();
-                nextValues[index] = capturedValue;
-                return new AttributeSet(keys.clone(), nextValues);
-            }
-        }
-        if (keys.length < CaptureLimits.MAX_ATTRIBUTES) {
-            String[] nextKeys = Arrays.copyOf(keys, keys.length + 1);
-            Object[] nextValues = Arrays.copyOf(values, values.length + 1);
-            nextKeys[keys.length] = normalized;
-            nextValues[values.length] = capturedValue;
-            return new AttributeSet(nextKeys, nextValues);
-        }
-        String[] nextKeys = keys.clone();
-        Object[] nextValues = values.clone();
-        int replacement = keys.length - 1;
-        for (int index = keys.length - 1; index >= 0; index--) {
-            if (!keys[index].startsWith("logyard.")) {
-                replacement = index;
-                break;
-            }
-        }
-        nextKeys[replacement] = normalized;
-        nextValues[replacement] = capturedValue;
-        return new AttributeSet(nextKeys, nextValues);
+        return AttributeSetOperations.withSystemAttribute(this, key, value);
     }
 
     /**
@@ -150,9 +115,7 @@ public final class AttributeSet {
      *
      * @return new bounded builder
      */
-    public static Builder builder() {
-        return new Builder(8);
-    }
+    public static Builder builder() { return new Builder(8, false); }
 
     /**
      * Returns a builder sized for an expected number of attributes.
@@ -160,9 +123,27 @@ public final class AttributeSet {
      * @param expectedSize expected attribute count
      * @return new bounded builder
      */
-    public static Builder builder(int expectedSize) {
-        return new Builder(expectedSize);
-    }
+    public static Builder builder(int expectedSize) { return new Builder(expectedSize, false); }
+
+    /**
+     * Returns a builder authorized to emit Logyard-owned diagnostic attributes.
+     *
+     * <p>This is an implementation contract for Logyard modules. Applications must use
+     * {@link #builder()} and cannot write the reserved {@code logyard.*} namespace.</p>
+     *
+     * @return trusted system-attribute builder
+     */
+    @InternalApi
+    public static Builder systemBuilder() { return new Builder(8, true); }
+
+    /**
+     * Returns a sized builder authorized to emit Logyard-owned diagnostic attributes.
+     *
+     * @param expectedSize expected attribute count
+     * @return trusted system-attribute builder
+     */
+    @InternalApi
+    public static Builder systemBuilder(int expectedSize) { return new Builder(expectedSize, true); }
 
     /**
      * Creates a set containing one attribute.
@@ -171,16 +152,26 @@ public final class AttributeSet {
      * @param value attribute value
      * @return one-entry immutable set
      */
-    public static AttributeSet of(String key, Object value) {
-        return builder(1).put(key, value).build();
+    public static AttributeSet of(String key, Object value) { return builder(1).put(key, value).build(); }
+
+    /**
+     * Returns whether a key belongs to Logyard's reserved system-diagnostic namespace.
+     *
+     * @param key attribute key
+     * @return {@code true} for a case-insensitive {@code logyard.*} prefix
+     */
+    public static boolean isReservedKey(String key) {
+        return key != null && key.regionMatches(true, 0, "logyard.", 0, "logyard.".length());
     }
 
     /** Mutable, bounded assembler for an immutable {@link AttributeSet}. */
     public static final class Builder {
         private final AttributeAccumulator attributes;
+        private final boolean systemAttributesAllowed;
 
-        private Builder(int expectedSize) {
+        private Builder(int expectedSize, boolean systemAttributesAllowed) {
             attributes = new AttributeAccumulator(expectedSize);
+            this.systemAttributesAllowed = systemAttributesAllowed;
         }
 
         /**
@@ -191,7 +182,7 @@ public final class AttributeSet {
          * @return this builder
          */
         public Builder put(String key, Object value) {
-            attributes.put(normalizeKey(key), value, false);
+            attributes.put(normalizeKey(key), value);
             return this;
         }
 
@@ -247,7 +238,7 @@ public final class AttributeSet {
         public Builder putAll(AttributeSet attributes) {
             Objects.requireNonNull(attributes, "attributes");
             for (int index = 0; index < attributes.size(); index++) {
-                this.attributes.put(attributes.keyAt(index), attributes.valueAt(index), true);
+                this.attributes.put(attributes.keyAt(index), attributes.valueAt(index));
             }
             return this;
         }
@@ -278,12 +269,24 @@ public final class AttributeSet {
             return attributes.build();
         }
 
-        private static String normalizeKey(String key) {
+        private String normalizeKey(String key) {
+            return normalizeKey(key, systemAttributesAllowed);
+        }
+
+        private static String normalizeKey(String key, boolean systemAttributesAllowed) {
             Objects.requireNonNull(key, "attribute key");
             if (key.isBlank()) {
                 throw new IllegalArgumentException("attribute key must not be blank");
             }
+            if (!systemAttributesAllowed && isReservedKey(key)) {
+                throw new IllegalArgumentException("attribute keys in the logyard.* namespace are reserved");
+            }
             return CaptureLimits.attributeKey(key);
         }
     }
+
+    AttributeSet recapture(CaptureContext context) {
+        return AttributeSetOperations.recapture(this, context);
+    }
+
 }

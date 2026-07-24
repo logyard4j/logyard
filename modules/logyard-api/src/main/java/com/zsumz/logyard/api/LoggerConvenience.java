@@ -23,7 +23,11 @@ final class LoggerConvenience {
 
     static void log(LogyardLogger logger, Level level, String message, Object first, Object second) {
         if (logger.isEnabled(level)) {
-            logger.log(level, null, message, new Object[] {first, second}, AttributeSet.EMPTY, null);
+            if (second instanceof Throwable throwable) {
+                logger.log(level, null, message, new Object[] {first}, AttributeSet.EMPTY, throwable);
+            } else {
+                logger.log(level, null, message, new Object[] {first, second}, AttributeSet.EMPTY, null);
+            }
         }
     }
 
@@ -46,7 +50,7 @@ final class LoggerConvenience {
             int retained = Math.min(supplied, CaptureLimits.MAX_ARGUMENTS);
             actual = Arrays.copyOf(arguments, retained);
             if (supplied > retained) {
-                attributes = AttributeSet.of("logyard.arguments.omitted", supplied - retained);
+                attributes = AttributeSet.systemBuilder(1).put("logyard.arguments.omitted", supplied - retained).build();
             }
         }
         logger.log(level, null, message, actual, attributes, throwable);

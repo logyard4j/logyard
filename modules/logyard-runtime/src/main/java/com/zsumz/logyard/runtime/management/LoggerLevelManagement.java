@@ -29,7 +29,7 @@ public final class LoggerLevelManagement {
 
     public LoggerLevel getEffectiveLevel(String loggerName) {
         String normalized = normalize(loggerName);
-        return state().logger(normalized).effectiveLevel();
+        return LoggerManagementState.logger(runtime.loggerLevelSnapshot(normalized)).effectiveLevel();
     }
 
     public Map<String, LoggerLevel> listConfiguredLevels() {
@@ -44,7 +44,7 @@ public final class LoggerLevelManagement {
     /** Returns a complete management snapshot for one logger name. */
     public LoggerLevelSnapshot getLoggerLevel(String loggerName) {
         String normalized = normalize(loggerName);
-        return state().logger(normalized);
+        return LoggerManagementState.logger(runtime.loggerLevelSnapshot(normalized));
     }
 
     public Map<String, LoggerLevelSnapshot> listLoggerLevels() {

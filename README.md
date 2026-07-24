@@ -177,13 +177,19 @@ Closing `RuntimeBundle` releases that owner’s lease. Configuration watching, b
 
 Every accepted event has a timestamp, level, logger name, message template and arguments, structured attributes, resource metadata, thread metadata, and an optional captured exception. Outputs receive the same immutable event.
 
-Values are captured defensively with depth, collection-size, string-length, and exception limits. Redaction is applied before outputs see an event:
+Values are captured defensively with per-value limits and one event-wide budget shared by arguments, attributes, nested values, exception graphs, stack frames, and lazy message rendering. Completed object and exception snapshots are reused by identity, so shared graphs are captured once. When the aggregate budget is exhausted, Logyard stops traversing and sets `logyard.capture.truncated=true`.
+
+The `logyard.*` attribute namespace is reserved for these system diagnostics. Application attributes, SLF4J key values, and captured context must use application-owned names.
+
+Redaction is recursive and runs before outputs see an event. Map keys extend a dot-separated path; zero-based list indexes use brackets, so the first token below `request.users` has the path `request.users[0].token`. Globs can match either the complete path or a map-key leaf:
 
 ```toml
 [context]
 mdc = ["request.id", "trace.id"]
 redact = ["authorization", "cookie", "password", "*.secret", "*.token"]
 ```
+
+Finite MDC allowlists are the recommended policy. `mdc = ["*"]` asks Quarkus/JBoss Log Manager for a complete MDC copy on every accepted event, so its capture cost grows with the source MDC even though the resulting Logyard event remains bounded.
 
 Supplier arguments and attributes are evaluated only when an enabled event enters the protected publication boundary:
 
@@ -359,7 +365,7 @@ EffectiveRoute route = logyard.runtime().explain("com.example.checkout");
 | `logyard-system-logger` | `System.LoggerFinder` provider |
 | `logyard-api` | Native API and extension SPI |
 
-The supported public surface is every package in `logyard-api`, `com.zsumz.logyard.runtime.bootstrap`, `com.zsumz.logyard.jul`, and the public Spring Boot integration packages. Other packages are implementation details marked `@InternalApi`; do not import them. Every published JAR has a stable `Automatic-Module-Name`, source JAR, and Javadoc JAR.
+The supported public surface is every package in `logyard-api`, `com.zsumz.logyard.runtime.bootstrap`, `com.zsumz.logyard.runtime.management`, `com.zsumz.logyard.jul`, the public Spring Boot integration packages, and `com.zsumz.logyard.quarkus.runtime.*`. Other packages are implementation details marked `@InternalApi`; do not import them. Every published JAR has a stable `Automatic-Module-Name`, source JAR, and Javadoc JAR.
 
 All Logyard artifacts use the same version. Java 21 is the minimum runtime, SLF4J 2.x is supported, and no compatibility claim is made for SLF4J 1.x.
 
@@ -367,7 +373,7 @@ Published-shaped CI consumers certify plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.1
 
 Compatibility checks cover the public API, runtime bootstrap and management packages, JUL bridge, Spring Boot integration, and Quarkus runtime integration. No documented framework surface is treated as implicitly stable without appearing in that check.
 
-Allocation gates use observable sinks so accepted events escape JIT scalar replacement. They separately measure an intentionally elidable pipeline, real native and SLF4J ingress, fanout, and representative small, structured, and exception-bearing events. The management benchmark enforces near-linear time and allocation growth from 1,000 to 10,000 configured logger rules.
+Allocation gates use observable sinks so accepted events escape JIT scalar replacement. They separately measure an intentionally elidable pipeline, real native and SLF4J ingress, fanout, and representative small, structured, and exception-bearing events. Management benchmarks enforce near-linear complete listings and configuration-size-independent point queries from 1,000 to 10,000 configured logger rules.
 
 ## Build and verify
 

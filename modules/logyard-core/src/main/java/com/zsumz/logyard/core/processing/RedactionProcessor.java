@@ -8,7 +8,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Case-insensitive glob redaction over complete attribute paths and their leaf keys. */
+/**
+ * Case-insensitive glob redaction over complete attribute paths and leaf keys.
+ *
+ * <p>Nested maps use dot-separated paths. List positions use zero-based bracket segments such as
+ * {@code request.users[0].token}; a {@code *} glob may match an index segment. Leaf matching
+ * applies to map and attribute keys, never to a numeric list index.</p>
+ */
 public final class RedactionProcessor implements EventProcessor {
     private static final String REDACTED = "[REDACTED]";
     private final List<String> patterns;
@@ -29,27 +35,45 @@ public final class RedactionProcessor implements EventProcessor {
             return event;
         }
         AttributeSet attributes = event.attributes();
+        StructuredValueRedactor nested = null;
         AttributeSet.Builder redacted = null;
         for (int index = 0; index < attributes.size(); index++) {
             String key = attributes.keyAt(index);
-            if (matches(key)) {
-                if (redacted == null) {
-                    redacted = AttributeSet.builder(attributes.size()).putAll(attributes);
+            Object current = attributes.valueAt(index);
+            Object replacement;
+            if (matchesAttribute(key)) {
+                replacement = REDACTED;
+            } else if (current instanceof java.util.Map<?, ?> || current instanceof java.util.List<?>) {
+                if (nested == null) {
+                    nested = new StructuredValueRedactor(this::matches, REDACTED, event.remainingTraversalEntries());
                 }
-                redacted.put(key, REDACTED);
+                replacement = nested.redactChildren(current, key);
+            } else {
+                replacement = current;
+            }
+            if (replacement != current) {
+                if (redacted == null) {
+                    redacted = AttributeSet.systemBuilder(attributes.size()).putAll(attributes);
+                }
+                redacted.put(key, replacement);
             }
         }
         return redacted == null ? event : event.withAttributes(redacted.build());
     }
 
-    private boolean matches(String key) {
+    private boolean matches(String path, String leaf) {
+        if (matchesCandidate(path, 0)) {
+            return true;
+        }
+        return !leaf.isEmpty() && !leaf.equals(path) && matchesCandidate(leaf, 0);
+    }
+
+    private boolean matchesAttribute(String key) {
         if (matchesCandidate(key, 0)) {
             return true;
         }
         int separator = key.lastIndexOf('.');
-        return separator >= 0
-                && separator + 1 < key.length()
-                && matchesCandidate(key, separator + 1);
+        return separator >= 0 && separator + 1 < key.length() && matchesCandidate(key, separator + 1);
     }
 
     private boolean matchesCandidate(String candidate, int start) {

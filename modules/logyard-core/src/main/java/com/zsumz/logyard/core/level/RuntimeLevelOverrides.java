@@ -68,6 +68,17 @@ public final class RuntimeLevelOverrides {
         return resolved;
     }
 
+    /**
+     * Returns the exact override for one normalized logger name without resolving inheritance.
+     *
+     * @param loggerName logger name or {@value #ROOT_LOGGER_NAME}
+     * @return exact override, or {@code null}
+     */
+    public RuntimeLevelOverride exactLevel(String loggerName) {
+        String normalized = loggerName(loggerName);
+        return ROOT_LOGGER_NAME.equals(normalized) ? root : loggers.get(normalized);
+    }
+
     public Map<String, RuntimeLevelOverride> configuredLevels() {
         if (root == null) {
             return loggers;

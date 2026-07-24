@@ -9,13 +9,24 @@ import java.util.Objects;
 final class DeferredAttributes {
     private final AttributeSet initial;
     private AttributeSet.Builder builder;
+    private AttributeSet.Builder systemBuilder;
 
     DeferredAttributes(AttributeSet initial) {
         this.initial = Objects.requireNonNull(initial, "initial");
     }
 
     void put(String key, Object value) {
+        if (AttributeSet.isReservedKey(key)) {
+            return;
+        }
         builder().put(key, value);
+    }
+
+    void putSystem(String key, Object value) {
+        if (systemBuilder == null) {
+            systemBuilder = AttributeSet.systemBuilder(4);
+        }
+        systemBuilder.put(key, value);
     }
 
     boolean isFull() {
@@ -25,7 +36,8 @@ final class DeferredAttributes {
     }
 
     AttributeSet build() {
-        return builder == null ? initial : builder.build();
+        AttributeSet userAttributes = builder == null ? initial : builder.build();
+        return systemBuilder == null ? userAttributes : userAttributes.mergedWith(systemBuilder.build());
     }
 
     private AttributeSet.Builder builder() {

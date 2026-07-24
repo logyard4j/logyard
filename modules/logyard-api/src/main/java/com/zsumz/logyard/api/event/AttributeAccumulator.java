@@ -7,7 +7,6 @@ import java.util.function.Supplier;
 final class AttributeAccumulator {
     private String[] keys;
     private Object[] values;
-    private boolean[] captured;
     private int size;
     private boolean truncated;
 
@@ -15,7 +14,6 @@ final class AttributeAccumulator {
         int capacity = Math.max(1, Math.min(expectedSize, CaptureLimits.MAX_ATTRIBUTES));
         keys = new String[capacity];
         values = new Object[capacity];
-        captured = new boolean[capacity];
     }
 
     int size() {
@@ -34,11 +32,10 @@ final class AttributeAccumulator {
         truncated = true;
     }
 
-    void put(String key, Object value, boolean alreadyCaptured) {
+    void put(String key, Object value) {
         int existing = indexOf(key);
         if (existing >= 0) {
             values[existing] = value;
-            captured[existing] = alreadyCaptured;
             return;
         }
         if (isFull()) {
@@ -48,7 +45,6 @@ final class AttributeAccumulator {
         ensureCapacity(size + 1);
         keys[size] = key;
         values[size] = value;
-        captured[size] = alreadyCaptured;
         size++;
     }
 
@@ -56,14 +52,13 @@ final class AttributeAccumulator {
         int existing = indexOf(key);
         if (existing >= 0) {
             values[existing] = supplier.get();
-            captured[existing] = false;
             return;
         }
         if (isFull()) {
             truncated = true;
             return;
         }
-        put(key, supplier.get(), false);
+        put(key, supplier.get());
     }
 
     AttributeSet build() {
@@ -73,11 +68,22 @@ final class AttributeAccumulator {
         if (size == 0) {
             return AttributeSet.EMPTY;
         }
-        Object[] snapshot = new Object[size];
+        CaptureContext context = CaptureContext.currentOrCreate();
+        String[] snapshotKeys = new String[size];
+        Object[] snapshotValues = new Object[size];
+        int retained = 0;
         for (int index = 0; index < size; index++) {
-            snapshot[index] = captured[index] ? values[index] : ValueCapture.capture(values[index]);
+            if (!context.claimEntry()) {
+                break;
+            }
+            snapshotKeys[retained] = context.captureText(keys[index], CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
+            snapshotValues[retained] = ValueCapture.capture(values[index], context);
+            retained++;
         }
-        return new AttributeSet(Arrays.copyOf(keys, size), snapshot);
+        if (retained == 0) {
+            return AttributeSet.EMPTY;
+        }
+        return new AttributeSet(Arrays.copyOf(snapshotKeys, retained), Arrays.copyOf(snapshotValues, retained));
     }
 
     private int indexOf(String key) {
@@ -96,7 +102,6 @@ final class AttributeAccumulator {
         int next = Math.min(CaptureLimits.MAX_ATTRIBUTES, Math.max(needed, keys.length << 1));
         keys = Arrays.copyOf(keys, next);
         values = Arrays.copyOf(values, next);
-        captured = Arrays.copyOf(captured, next);
     }
 
     private void putTruncationMarker() {
@@ -104,14 +109,12 @@ final class AttributeAccumulator {
         int existing = indexOf(key);
         if (existing >= 0) {
             values[existing] = true;
-            captured[existing] = true;
             return;
         }
         if (size < CaptureLimits.MAX_ATTRIBUTES) {
             ensureCapacity(size + 1);
             keys[size] = key;
             values[size] = true;
-            captured[size] = true;
             size++;
         }
     }

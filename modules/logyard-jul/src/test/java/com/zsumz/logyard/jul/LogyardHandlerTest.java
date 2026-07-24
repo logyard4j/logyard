@@ -16,6 +16,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.LogRecord;
 import org.junit.jupiter.api.Test;
 
@@ -64,12 +66,64 @@ final class LogyardHandlerTest {
         assertTrue(event.timestampMillis() > 0L);
     }
 
+    @Test
+    void closeStopsAdmissionAndWaitsForAnInflightPublication() throws Exception {
+        BlockingSink sink = new BlockingSink();
+        try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(sink)) {
+            LogyardHandler handler = new LogyardHandler(runtime);
+            Thread publisher = Thread.ofPlatform().start(
+                    () -> handler.publish(new LogRecord(java.util.logging.Level.INFO, "first")));
+            assertTrue(sink.entered.await(1, TimeUnit.SECONDS));
+
+            CountDownLatch closed = new CountDownLatch(1);
+            Thread closer = Thread.ofPlatform().start(() -> {
+                handler.close();
+                closed.countDown();
+            });
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
+            while (!waiting(closer) && System.nanoTime() < deadline) {
+                Thread.onSpinWait();
+            }
+            assertTrue(waiting(closer));
+            handler.publish(new LogRecord(java.util.logging.Level.INFO, "rejected"));
+            assertEquals(1L, closed.getCount());
+
+            sink.release.countDown();
+            assertTrue(closed.await(1, TimeUnit.SECONDS));
+            publisher.join();
+            closer.join();
+            assertEquals(1, sink.events.size());
+        }
+    }
+
+    private static boolean waiting(Thread thread) {
+        return thread.getState() == Thread.State.WAITING || thread.getState() == Thread.State.TIMED_WAITING;
+    }
+
     private static final class RecordingSink implements EventSink {
         private final List<LogEvent> events = new ArrayList<>();
 
         @Override
         public void accept(LogEvent event) {
             events.add(event);
+        }
+    }
+
+    private static final class BlockingSink implements EventSink {
+        private final List<LogEvent> events = new ArrayList<>();
+        private final CountDownLatch entered = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        @Override
+        public void accept(LogEvent event) {
+            events.add(event);
+            entered.countDown();
+            try {
+                assertTrue(release.await(2, TimeUnit.SECONDS));
+            } catch (InterruptedException failure) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(failure);
+            }
         }
     }
 

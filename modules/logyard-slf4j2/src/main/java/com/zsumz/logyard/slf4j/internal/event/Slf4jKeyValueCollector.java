@@ -1,6 +1,7 @@
 package com.zsumz.logyard.slf4j.internal.event;
 
 import com.zsumz.logyard.api.event.MessageFormatter;
+import com.zsumz.logyard.api.event.AttributeSet;
 import org.slf4j.event.KeyValuePair;
 
 import java.util.Iterator;
@@ -30,7 +31,7 @@ final class Slf4jKeyValueCollector {
             while (visited < MAX_PAIRS && iterator.hasNext()) {
                 KeyValuePair pair = iterator.next();
                 visited++;
-                if (pair == null || pair.key == null || pair.key.isBlank()) {
+                if (pair == null || pair.key == null || pair.key.isBlank() || AttributeSet.isReservedKey(pair.key)) {
                     invalid++;
                 } else if (EVENT_NAME_KEY.equals(pair.key)) {
                     if (pair.value != null) {
@@ -47,10 +48,10 @@ final class Slf4jKeyValueCollector {
             failures.record(failure);
         }
         if (invalid > 0) {
-            attributes.put("logyard.slf4j.invalid_key_values", invalid);
+            attributes.putSystem("logyard.slf4j.invalid_key_values", invalid);
         }
         if (truncated) {
-            attributes.put("logyard.slf4j.key_values.truncated", true);
+            attributes.putSystem("logyard.slf4j.key_values.truncated", true);
         }
         return eventName;
     }

@@ -96,10 +96,12 @@ public final class LogyardSystemLogger implements System.Logger {
             if (rendered.template() != null && !Objects.equals(rendered.template(), rendered.message())) {
                 attributes.put("system.logger.message_template", rendered.template());
             }
+            AttributeSet captured = attributes.build();
             if (rendered.formatFailed()) {
-                attributes.put("logyard.system_logger.message_format_failed", true);
+                captured = captured.mergedWith(
+                        AttributeSet.systemBuilder(1).put("logyard.system_logger.message_format_failed", true).build());
             }
-            logger.log(logyardLevel, null, rendered.message(), null, attributes.build(), thrown);
+            logger.log(logyardLevel, null, rendered.message(), null, captured, thrown);
         } catch (Throwable failure) {
             AdapterDiagnostics.rethrowIfFatal(failure);
             AdapterDiagnostics.adapterFailure("system-logger", "event capture", failure);

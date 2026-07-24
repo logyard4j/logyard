@@ -44,8 +44,10 @@ public final class JulEventMapper {
         if (record.getResourceBundleName() != null) {
             attributes.put("jul.resource_bundle", record.getResourceBundleName());
         }
+        AttributeSet captured = attributes.build();
         if (rendered.formatFailed()) {
-            attributes.put("logyard.jul.message_format_failed", true);
+            captured = captured.mergedWith(
+                    AttributeSet.systemBuilder(1).put("logyard.jul.message_format_failed", true).build());
         }
         Instant instant = record.getInstant();
         logger.log(
@@ -53,7 +55,7 @@ public final class JulEventMapper {
                 null,
                 rendered.message(),
                 null,
-                attributes.build(),
+                captured,
                 record.getThrown(),
                 IngressMetadata.source(
                         instant.toEpochMilli(),

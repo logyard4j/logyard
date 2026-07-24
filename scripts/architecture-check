@@ -198,7 +198,10 @@ ARTIFACT_CONTRACTS = {
     "modules/logyard-output-json": ("com.zsumz.logyard.output.json", set()),
     "modules/logyard-runtime": (
         "com.zsumz.logyard.runtime",
-        {"com.zsumz.logyard.runtime.bootstrap"},
+        {
+            "com.zsumz.logyard.runtime.bootstrap",
+            "com.zsumz.logyard.runtime.management",
+        },
     ),
     "modules/logyard-slf4j2": ("com.zsumz.logyard.slf4j2", set()),
     "modules/logyard-spring-boot": (

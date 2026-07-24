@@ -47,7 +47,8 @@ final class ActiveLogBuilderTest {
                 throw new AssertionError("supplier boom");
             }).log("supplier"));
             assertDoesNotThrow(() -> logger.atInfo().add("hostile", hostileMap()).log("map"));
-            assertTrue(events.isEmpty());
+            assertEquals(1, events.size());
+            assertEquals(java.util.Map.of(), events.getFirst().attributes().get("hostile"));
         }
     }
 

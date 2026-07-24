@@ -74,6 +74,16 @@
       "maxBytesPerOperation": 15728640
     },
     {
+      "benchmark": "com.zsumz.logyard.benchmarks.management.LoggerManagementBenchmark.pointLevel",
+      "params": {"loggerCount": "1000"},
+      "maxBytesPerOperation": 4096
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.management.LoggerManagementBenchmark.pointLevel",
+      "params": {"loggerCount": "10000"},
+      "maxBytesPerOperation": 4096
+    },
+    {
       "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
       "params": {"mdcEntries": "0"},
       "maxBytesPerOperation": 5120
@@ -111,6 +121,13 @@
       "largeParams": {"loggerCount": "10000"},
       "maxAllocationRatio": 12,
       "maxTimeRatio": 15
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.management.LoggerManagementBenchmark.pointLevel",
+      "smallParams": {"loggerCount": "1000"},
+      "largeParams": {"loggerCount": "10000"},
+      "maxAllocationRatio": 2,
+      "maxTimeRatio": 2
     }
   ]
 }

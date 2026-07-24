@@ -12,10 +12,15 @@ final class PendingEventFields {
         this.attributes = attributes;
     }
 
-    CapturedEventFields capture() {
-        return new CapturedEventFields(arguments.capture(), attributes.capture(arguments.omitted()));
+    Object[] captureArguments() {
+        return arguments.capture();
     }
 
-    record CapturedEventFields(Object[] arguments, AttributeSet attributes) {
+    AttributeSet captureAttributes() {
+        return attributes.capture();
+    }
+
+    int suppliedArgumentCount() {
+        return arguments.suppliedCount();
     }
 }

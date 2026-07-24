@@ -47,14 +47,14 @@ public final class QuarkusRuntimeLifecycle implements AutoCloseable {
         return handler;
     }
 
-    /** Flushes capture, retires the handler, and releases the framework lease exactly once. */
+    /** Retires the handler, flushes captured events, and releases the framework lease exactly once. */
     @Override
     public void close() {
         if (!closed.compareAndSet(false, true)) {
             return;
         }
-        closeBoundary("shutdown flush", () -> bundle.runtime().flush());
         closeBoundary("handler retirement", handler::close);
+        closeBoundary("shutdown flush", () -> bundle.runtime().flush());
         closeBoundary("runtime lease release", bundle::close);
     }
 

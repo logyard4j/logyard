@@ -32,6 +32,7 @@ public final class ContextEnrichmentProcessor implements EventProcessor {
     public LogEvent process(LogEvent event) {
         Objects.requireNonNull(event, "event");
         AttributeSet.Builder captured = AttributeSet.builder();
+        AttributeSet.Builder diagnostics = AttributeSet.systemBuilder();
         int failures = 0;
         for (ProviderBinding binding : providers) {
             try {
@@ -42,15 +43,15 @@ public final class ContextEnrichmentProcessor implements EventProcessor {
             } catch (Throwable failure) {
                 FailureIsolation.prepareForRecovery(failure);
                 failures++;
-                captured.put(
+                diagnostics.put(
                         "logyard.context.failure." + binding.name(),
                         failure.getClass().getName());
             }
         }
         if (failures > 0) {
-            captured.put("logyard.context.capture_failures", failures);
+            diagnostics.put("logyard.context.capture_failures", failures);
         }
-        AttributeSet enrichment = captured.build();
+        AttributeSet enrichment = captured.build().mergedWith(diagnostics.build());
         return enrichment.isEmpty()
                 ? event
                 : event.withAttributes(event.attributes().mergedWith(enrichment));

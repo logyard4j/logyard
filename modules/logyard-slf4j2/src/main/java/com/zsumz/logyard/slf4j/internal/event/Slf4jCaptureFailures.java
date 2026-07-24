@@ -34,7 +34,7 @@ final class Slf4jCaptureFailures {
 
     void annotate(DeferredAttributes attributes) {
         if (count > 0) {
-            attributes.put("logyard.slf4j.capture_failures", count);
+            attributes.putSystem("logyard.slf4j.capture_failures", count);
         }
     }
 

@@ -4,6 +4,7 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.core.level.RuntimeLevelOverride;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.core.runtime.RuntimeManagementSnapshot;
+import com.zsumz.logyard.core.runtime.RuntimeLoggerLevelSnapshot;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -43,6 +44,27 @@ record LoggerManagementState(
                 ? LoggerLevelOrigin.RUNTIME_OVERRIDE
                 : baseConfigured == null ? LoggerLevelOrigin.INHERITED : LoggerLevelOrigin.BASE_CONFIGURATION;
         return new LoggerLevelSnapshot(configured, effective, baseConfigured, runtimeOverride, origin);
+    }
+
+    static LoggerLevelSnapshot logger(RuntimeLoggerLevelSnapshot runtime) {
+        LoggerLevel baseConfigured = from(runtime.baseConfiguredLevel());
+        LoggerLevel runtimeOverride = from(runtime.runtimeOverride());
+        LoggerLevel configured = runtimeOverride == null ? baseConfigured : runtimeOverride;
+        LoggerLevel effective = runtime.effectiveRuntimeOverride() == null
+                ? LoggerLevel.from(runtime.effectiveBaseLevel())
+                : LoggerLevel.from(runtime.effectiveRuntimeOverride());
+        LoggerLevelOrigin origin = runtime.effectiveRuntimeOverride() != null
+                ? LoggerLevelOrigin.RUNTIME_OVERRIDE
+                : baseConfigured == null ? LoggerLevelOrigin.INHERITED : LoggerLevelOrigin.BASE_CONFIGURATION;
+        return new LoggerLevelSnapshot(configured, effective, baseConfigured, runtimeOverride, origin);
+    }
+
+    private static LoggerLevel from(Level level) {
+        return level == null ? null : LoggerLevel.from(level);
+    }
+
+    private static LoggerLevel from(RuntimeLevelOverride override) {
+        return override == null ? null : LoggerLevel.from(override);
     }
 
     private static Map<String, LoggerLevel> levels(Map<String, Level> source) {

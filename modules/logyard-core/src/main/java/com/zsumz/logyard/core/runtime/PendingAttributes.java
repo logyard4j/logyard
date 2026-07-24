@@ -21,11 +21,8 @@ final class PendingAttributes {
         add(requireKey(key), PendingValue.supplied(supplier));
     }
 
-    AttributeSet capture(int omittedArguments) {
-        AttributeSet.Builder captured = AttributeSet.builder(values.size() + (omittedArguments > 0 ? 1 : 0));
-        if (omittedArguments > 0) {
-            captured.put("logyard.arguments.omitted", omittedArguments);
-        }
+    AttributeSet capture() {
+        AttributeSet.Builder captured = AttributeSet.builder(values.size());
         for (Map.Entry<String, PendingValue> entry : values.entrySet()) {
             if (captured.isFull()) {
                 captured.markTruncated();
@@ -51,6 +48,9 @@ final class PendingAttributes {
         String value = Objects.requireNonNull(key, "attribute key");
         if (value.isBlank()) {
             throw new IllegalArgumentException("attribute key must not be blank");
+        }
+        if (AttributeSet.isReservedKey(value)) {
+            throw new IllegalArgumentException("attribute keys in the logyard.* namespace are reserved");
         }
         return CaptureLimits.attributeKey(value);
     }
