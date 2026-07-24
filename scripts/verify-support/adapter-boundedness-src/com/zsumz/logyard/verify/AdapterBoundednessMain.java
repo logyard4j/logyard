@@ -10,7 +10,10 @@ import com.zsumz.logyard.systemlogger.internal.factory.LogyardSystemLogger;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.LogRecord;
 
 /** Constrained-heap probe that exercises the actual JUL and System.Logger adapter entry points. */
@@ -19,7 +22,7 @@ public final class AdapterBoundednessMain {
     }
 
     public static void main(String[] arguments) {
-        List<LogEvent> events = new ArrayList<>();
+        List<LogEvent> events = Collections.synchronizedList(new ArrayList<>());
         BigDecimal extremeDecimal = new BigDecimal(BigInteger.ONE, -100_000_000);
         BigInteger hugeInteger = BigInteger.ONE.shiftLeft(10_000_000);
         Object hostile = new Object() {
@@ -42,10 +45,22 @@ public final class AdapterBoundednessMain {
                     new BorrowedAdapterRuntime(runtime));
             system.log(System.Logger.Level.INFO, "{0}", extremeDecimal);
             system.log(System.Logger.Level.INFO, "x".repeat(100_000) + "{0}", "tail");
+
+            LogRecord repeatedJul = new LogRecord(
+                    java.util.logging.Level.INFO,
+                    "{0}".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 3));
+            repeatedJul.setLoggerName("boundedness.jul.repeated");
+            repeatedJul.setParameters(new Object[] {"x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)});
+            handler.publish(repeatedJul);
+            system.log(
+                    System.Logger.Level.INFO,
+                    "{0}".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 3),
+                    "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS));
+            verifyConcurrentRepeatedSubstitutions(handler, system);
             handler.close();
         }
 
-        require(events.size() == 3, "adapter events were not delivered");
+        require(events.size() == 21, "adapter events were not delivered");
         for (LogEvent event : events) {
             require(event.renderedMessage().length() <= CaptureLimits.MAX_RENDERED_MESSAGE_CHARS, "adapter message exceeded its cap");
         }
@@ -54,7 +69,64 @@ public final class AdapterBoundednessMain {
         require(events.get(0).renderedMessage().contains("FAILED toString()"), "JUL ran a hostile toString");
         require(events.get(1).renderedMessage().contains("1E+100000000"), "System.Logger expanded an extreme decimal");
         require(Boolean.TRUE.equals(events.get(2).attributes().get("logyard.capture.truncated")), "huge adapter template was not marked");
+        require(events.get(3).renderedMessage().contains("format expansion omitted"), "JUL repeated expansion was not work-bounded");
+        require(events.get(4).renderedMessage().contains("format expansion omitted"), "System.Logger repeated expansion was not work-bounded");
         System.out.println("Adapter boundedness verification passed under constrained heap");
+    }
+
+    private static void verifyConcurrentRepeatedSubstitutions(LogyardHandler handler, System.Logger system) {
+        int callerCount = 16;
+        CountDownLatch ready = new CountDownLatch(callerCount);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        List<Thread> callers = new ArrayList<>(callerCount);
+        for (int index = 0; index < callerCount; index++) {
+            int callerIndex = index;
+            Thread caller = new Thread(() -> {
+                ready.countDown();
+                await(start);
+                try {
+                    String pattern = "{0}".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 3);
+                    String parameter = "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS);
+                    if ((callerIndex & 1) == 0) {
+                        LogRecord record = new LogRecord(java.util.logging.Level.INFO, pattern);
+                        record.setLoggerName("boundedness.jul.concurrent");
+                        record.setParameters(new Object[] {parameter});
+                        handler.publish(record);
+                    } else {
+                        system.log(System.Logger.Level.INFO, pattern, parameter);
+                    }
+                } catch (Throwable caught) {
+                    failure.compareAndSet(null, caught);
+                }
+            }, "adapter-boundary-" + callerIndex);
+            callers.add(caller);
+            caller.start();
+        }
+        await(ready);
+        start.countDown();
+        for (Thread caller : callers) {
+            join(caller);
+        }
+        require(failure.get() == null, "concurrent formatting failed: " + failure.get());
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("adapter boundedness barrier interrupted", interrupted);
+        }
+    }
+
+    private static void join(Thread thread) {
+        try {
+            thread.join();
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("adapter boundedness caller interrupted", interrupted);
+        }
     }
 
     private static void require(boolean condition, String message) {

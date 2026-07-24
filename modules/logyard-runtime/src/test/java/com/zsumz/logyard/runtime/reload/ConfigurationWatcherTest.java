@@ -1,6 +1,5 @@
 package com.zsumz.logyard.runtime.reload;
 
-import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import org.junit.jupiter.api.Test;
 
@@ -13,6 +12,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ConfigurationWatcherTest {
@@ -36,7 +37,7 @@ final class ConfigurationWatcherTest {
                 Duration.ofSeconds(2L),
                 () -> {
                     reloaded.countDown();
-                    return ReloadResult.APPLIED;
+                    return WatcherReloadOutcome.APPLIED;
                 },
                 diagnostics);
         try {
@@ -72,7 +73,7 @@ final class ConfigurationWatcherTest {
                         throw new AssertionError("hostile reload callback");
                     }
                     recovered.countDown();
-                    return ReloadResult.APPLIED;
+                    return WatcherReloadOutcome.APPLIED;
                 },
                 diagnostics);
         try {
@@ -106,11 +107,11 @@ final class ConfigurationWatcherTest {
                         rejectedAttemptEntered.countDown();
                         await(allowRejectedAttempt);
                         active.set(observed);
-                        return ReloadResult.REJECTED;
+                        return WatcherReloadOutcome.BUSY_RETRY;
                     }
                     active.set(observed);
                     latestApplied.countDown();
-                    return ReloadResult.APPLIED;
+                    return WatcherReloadOutcome.APPLIED;
                 },
                 ReloadDiagnostics.silent());
         try {
@@ -123,6 +124,38 @@ final class ConfigurationWatcherTest {
             assertTrue(active.get().contains("version = 3"), () -> "active configuration was " + active.get());
         } finally {
             allowRejectedAttempt.countDown();
+            watcher.close();
+        }
+    }
+
+    @Test
+    void invalidCandidateIsReportedOnceAndWaitsForAnotherFileEvent() throws Exception {
+        Path directory = Files.createTempDirectory("logyard-invalid-configuration-watcher-");
+        Path source = directory.resolve("logyard.toml");
+        Files.writeString(source, "schema = 1\n", StandardCharsets.UTF_8);
+        CountDownLatch firstAttempt = new CountDownLatch(1);
+        CountDownLatch unexpectedRetry = new CountDownLatch(1);
+        AtomicInteger attempts = new AtomicInteger();
+
+        ConfigurationWatcher watcher = ConfigurationWatcher.start(
+                source,
+                Duration.ofMillis(25L),
+                Duration.ofSeconds(2L),
+                () -> {
+                    if (attempts.incrementAndGet() == 1) {
+                        firstAttempt.countDown();
+                    } else {
+                        unexpectedRetry.countDown();
+                    }
+                    return WatcherReloadOutcome.WAIT_FOR_CHANGE;
+                },
+                ReloadDiagnostics.silent());
+        try {
+            Files.writeString(source, "invalid = true\n", StandardCharsets.UTF_8);
+            assertTrue(firstAttempt.await(5L, TimeUnit.SECONDS), "invalid configuration was not observed");
+            assertFalse(unexpectedRetry.await(300L, TimeUnit.MILLISECONDS), "invalid configuration retried without another event");
+            assertEquals(1, attempts.get());
+        } finally {
             watcher.close();
         }
     }

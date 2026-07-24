@@ -2,19 +2,16 @@ package com.zsumz.logyard.runtime.installation;
 
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.reload.ReloadResult;
-import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.failure.ComponentFailureCollector;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
+import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -40,26 +37,31 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
     static ManagedRuntimeInstallation open(
             ConfigurationInstallationRequest request,
             Map<String, String> environment) {
-        ConfigurationSnapshot snapshot = read(request);
-        LogyardConfig config = snapshot.parse(environment);
-        RuntimeAssembly assembly = LogyardRuntimeFactory.assemble(config, null);
-        DefaultLogyardRuntime runtime = new DefaultLogyardRuntime(assembly.plan());
-        ManagedRuntimeInstallation installation = new ManagedRuntimeInstallation(runtime, environment);
+        DeferredWatcherReload reload = new DeferredWatcherReload();
+        PreparedRuntimeConfiguration prepared = PreparedRuntimeConfiguration.prepare(
+                request,
+                PreparedRuntimeConfiguration.read(request),
+                null,
+                environment,
+                reload);
+        DefaultLogyardRuntime runtime = null;
         try {
-            LogyardRuntimeFactory.attach(runtime, assembly);
-            ActiveRuntimeConfiguration active = ActiveRuntimeConfiguration.prepare(
-                    request,
-                    runtime,
-                    snapshot,
-                    assembly,
-                    installation.environment,
-                    installation::reloadNow);
-            installation.active = active;
-            active.activateWatcher();
+            runtime = new DefaultLogyardRuntime(prepared.assembly().plan());
+            ManagedRuntimeInstallation installation = new ManagedRuntimeInstallation(runtime, environment);
+            reload.bind(installation::reloadFromWatcher);
+            LogyardRuntimeFactory.attach(runtime, prepared.assembly());
+            installation.active = prepared.activate(runtime);
+            installation.active.activateWatcher();
             return installation;
         } catch (RuntimeException | Error failure) {
+            prepared.closeWatcher(failure);
             ComponentFailureCollector cleanupFailures = new ComponentFailureCollector();
-            ComponentInvocationBoundary.invoke("failed installation runtime close", runtime::close, cleanupFailures);
+            DefaultLogyardRuntime failedRuntime = runtime;
+            if (failedRuntime == null) {
+                prepared.assembly().closeCandidateOutputs(null, failure);
+            } else {
+                ComponentInvocationBoundary.invoke("failed installation runtime close", failedRuntime::close, cleanupFailures);
+            }
             cleanupFailures.suppressInto(failure);
             throw failure;
         }
@@ -77,19 +79,18 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
         ActiveRuntimeConfiguration replacement = null;
         boolean currentWatcherClosed = false;
         try {
-            ConfigurationSnapshot snapshot = read(request);
+            ConfigurationSnapshot snapshot = PreparedRuntimeConfiguration.read(request);
             if (current.sameSourceAndDigest(request, snapshot)) {
                 return finishUnchanged(State.RECONFIGURING);
             }
-            LogyardConfig config = snapshot.parse(environment);
-            candidate = LogyardRuntimeFactory.assemble(config, currentAssembly);
-            replacement = ActiveRuntimeConfiguration.prepare(
+            PreparedRuntimeConfiguration prepared = PreparedRuntimeConfiguration.prepare(
                     request,
-                    runtime,
                     snapshot,
-                    candidate,
+                    currentAssembly,
                     environment,
-                    this::reloadNow);
+                    this::reloadFromWatcher);
+            candidate = prepared.assembly();
+            replacement = prepared.activate(runtime);
             replacement.activateWatcher();
             current.closeWatcher();
             currentWatcherClosed = true;
@@ -112,6 +113,28 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
         }
         try {
             return current.coordinator().reloadIfChanged();
+        } finally {
+            finishFailed(State.RELOADING);
+        }
+    }
+
+    private WatcherReloadOutcome reloadFromWatcher() {
+        ActiveRuntimeConfiguration current;
+        transition.lock();
+        try {
+            if (state == State.CLOSED) {
+                return WatcherReloadOutcome.WAIT_FOR_CHANGE;
+            }
+            if (state != State.OPEN) {
+                return WatcherReloadOutcome.BUSY_RETRY;
+            }
+            state = State.RELOADING;
+            current = active;
+        } finally {
+            transition.unlock();
+        }
+        try {
+            return current.coordinator().reloadForWatcher();
         } finally {
             finishFailed(State.RELOADING);
         }
@@ -161,7 +184,7 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
                 }
             }
         }, failures);
-        return completionWithFailures(runtime.retirementCompletion(), failures);
+        return RuntimeInstallationClosure.withFailures(runtime.retirementCompletion(), failures);
     }
 
     private ActiveRuntimeConfiguration begin(State requested) {
@@ -232,7 +255,7 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
 
     private void restartCurrentWatcher(ActiveRuntimeConfiguration current, Throwable primaryFailure) {
         try {
-            ActiveRuntimeConfiguration restarted = current.restartWatcher(this::reloadNow);
+            ActiveRuntimeConfiguration restarted = current.restartWatcher(this::reloadFromWatcher);
             boolean accepted;
             transition.lock();
             try {
@@ -268,27 +291,4 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
         }
     }
 
-    private static ConfigurationSnapshot read(ConfigurationInstallationRequest request) {
-        try {
-            return request.snapshot();
-        } catch (IOException failure) {
-            throw new IllegalStateException("failed to read Logyard configuration " + request.description(), failure);
-        }
-    }
-
-    private static CompletionStage<Void> completionWithFailures(
-            CompletionStage<Void> retirement,
-            ComponentFailureCollector failures) {
-        try {
-            failures.throwIfPresent("runtime installation close");
-            return retirement;
-        } catch (RuntimeException failure) {
-            return retirement.handle((ignored, retirementFailure) -> {
-                if (retirementFailure != null) {
-                    failure.addSuppressed(retirementFailure);
-                }
-                throw new CompletionException(failure);
-            });
-        }
-    }
 }

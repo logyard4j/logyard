@@ -8,7 +8,8 @@ record AcquisitionPlan(
         RuntimeInstallation installation,
         LogyardRuntime borrowedRuntime,
         long generation,
-        boolean installShutdownHook) {
+        boolean installShutdownHook,
+        RuntimeStartTransaction startTransaction) {
 
     enum Action {
         BORROW,
@@ -19,22 +20,22 @@ record AcquisitionPlan(
     }
 
     static AcquisitionPlan borrowed(LogyardRuntime runtime) {
-        return new AcquisitionPlan(Action.BORROW, null, runtime, 0, false);
+        return new AcquisitionPlan(Action.BORROW, null, runtime, 0, false, null);
     }
 
     static AcquisitionPlan shared(RuntimeInstallation installation) {
-        return new AcquisitionPlan(Action.SHARE, installation, null, 0, false);
+        return new AcquisitionPlan(Action.SHARE, installation, null, 0, false, null);
     }
 
-    static AcquisitionPlan start(long generation, boolean installShutdownHook) {
-        return new AcquisitionPlan(Action.START, null, null, generation, installShutdownHook);
+    static AcquisitionPlan start(RuntimeStartTransaction transaction, boolean installShutdownHook) {
+        return new AcquisitionPlan(Action.START, null, null, transaction.generation(), installShutdownHook, transaction);
     }
 
     static AcquisitionPlan reconfigure(RuntimeInstallation installation, long generation) {
-        return new AcquisitionPlan(Action.RECONFIGURE, installation, null, generation, false);
+        return new AcquisitionPlan(Action.RECONFIGURE, installation, null, generation, false, null);
     }
 
     static AcquisitionPlan closeStale(RuntimeInstallation installation, long generation) {
-        return new AcquisitionPlan(Action.CLOSE_STALE, installation, null, generation, false);
+        return new AcquisitionPlan(Action.CLOSE_STALE, installation, null, generation, false, null);
     }
 }

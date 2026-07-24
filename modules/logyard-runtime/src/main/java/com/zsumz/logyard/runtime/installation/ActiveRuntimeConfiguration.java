@@ -1,16 +1,12 @@
 package com.zsumz.logyard.runtime.installation;
 
-import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.api.reload.ReloadResult;
-import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
-import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
-import com.zsumz.logyard.runtime.diagnostics.StderrReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
 import com.zsumz.logyard.runtime.reload.ReloadCoordinator;
+import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
-import java.util.Map;
+import java.io.IOException;
 import java.util.function.Supplier;
 
 final class ActiveRuntimeConfiguration {
@@ -19,7 +15,7 @@ final class ActiveRuntimeConfiguration {
     private final ReloadDiagnostics diagnostics;
     private final ConfigurationWatcher watcher;
 
-    private ActiveRuntimeConfiguration(
+    ActiveRuntimeConfiguration(
             ConfigurationInstallationRequest request,
             ReloadCoordinator coordinator,
             ReloadDiagnostics diagnostics,
@@ -30,47 +26,13 @@ final class ActiveRuntimeConfiguration {
         this.watcher = watcher;
     }
 
-    static ActiveRuntimeConfiguration prepare(
-            ConfigurationInstallationRequest request,
-            DefaultLogyardRuntime runtime,
-            ConfigurationSnapshot snapshot,
-            RuntimeAssembly assembly,
-            Map<String, String> environment,
-            Supplier<ReloadResult> reload) {
-        LogyardConfig config = assembly.config();
-        ReloadDiagnostics diagnostics = "off".equals(config.runtime().internalStatus())
-                ? ReloadDiagnostics.silent()
-                : new StderrReloadDiagnostics(System.err);
-        ReloadCoordinator coordinator = new ReloadCoordinator(
-                request.description(),
-                request.watchPath(),
-                request.snapshotReader(),
-                runtime,
-                snapshot,
-                assembly,
-                diagnostics,
-                environment);
-        ConfigurationWatcher watcher = config.runtime().watch() && request.watchPath() != null
-                ? ConfigurationWatcher.prepare(
-                        request.watchPath(),
-                        config.runtime().reloadDebounce(),
-                        config.runtime().shutdownTimeout(),
-                        reload,
-                        diagnostics)
-                : null;
-        return new ActiveRuntimeConfiguration(request, coordinator, diagnostics, watcher);
-    }
-
-    ActiveRuntimeConfiguration restartWatcher(Supplier<ReloadResult> reload) {
-        LogyardConfig config = coordinator.currentConfig();
-        ConfigurationWatcher replacement = config.runtime().watch() && request.watchPath() != null
-                ? ConfigurationWatcher.prepare(
-                        request.watchPath(),
-                        config.runtime().reloadDebounce(),
-                        config.runtime().shutdownTimeout(),
-                        reload,
-                        diagnostics)
-                : null;
+    ActiveRuntimeConfiguration restartWatcher(Supplier<WatcherReloadOutcome> reload) {
+        ConfigurationWatcher replacement = PreparedRuntimeConfiguration.prepareWatcher(
+                request,
+                coordinator.currentConfig(),
+                reload,
+                diagnostics);
+        markDirtyWhenRegistrationMissedAChange(replacement);
         ActiveRuntimeConfiguration restarted = new ActiveRuntimeConfiguration(request, coordinator, diagnostics, replacement);
         restarted.activateWatcher();
         return restarted;
@@ -98,5 +60,18 @@ final class ActiveRuntimeConfiguration {
 
     ReloadCoordinator coordinator() {
         return coordinator;
+    }
+
+    private void markDirtyWhenRegistrationMissedAChange(ConfigurationWatcher replacement) {
+        if (replacement == null) {
+            return;
+        }
+        try {
+            if (!coordinator.currentDigest().equals(request.snapshot().sha256())) {
+                replacement.markDirtyBeforeActivation();
+            }
+        } catch (IOException | RuntimeException readFailure) {
+            replacement.markDirtyBeforeActivation();
+        }
     }
 }

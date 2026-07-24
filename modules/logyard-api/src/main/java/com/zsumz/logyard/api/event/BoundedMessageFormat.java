@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.util.Date;
+import java.util.Formatter;
 import java.util.IllegalFormatException;
 import java.util.Locale;
 
@@ -41,6 +42,9 @@ public final class BoundedMessageFormat {
             int capturedLength = Math.min(parameters.length, CaptureLimits.MAX_ARGUMENTS);
             Object[] captured = new Object[capturedLength];
             boolean parametersTruncated = capture(parameters, captured);
+            if (!MessageFormatWorkBudget.permits(template, captured)) {
+                return workLimited(template);
+            }
             String rendered = MessageFormat.format(template, captured);
             return success(template, rendered, template != pattern || parametersTruncated);
         } catch (Throwable failure) {
@@ -66,8 +70,17 @@ public final class BoundedMessageFormat {
             int capturedLength = Math.min(parameters.length, CaptureLimits.MAX_ARGUMENTS);
             Object[] captured = new Object[capturedLength];
             boolean parametersTruncated = capture(parameters, captured);
-            String rendered = String.format(Locale.getDefault(Locale.Category.FORMAT), safePattern, captured);
-            return success(template, rendered, template != pattern || !safePattern.equals(template) || parametersTruncated);
+            BoundedFormatBuffer output = new BoundedFormatBuffer(CaptureLimits.MAX_RENDERED_MESSAGE_CHARS);
+            try (Formatter formatter = new Formatter(output, Locale.getDefault(Locale.Category.FORMAT))) {
+                formatter.format(safePattern, captured);
+            } catch (BoundedFormatBuffer.LimitReached exhausted) {
+                return new Result(template, output.value(), false, true);
+            }
+            return new Result(
+                    template,
+                    output.value(),
+                    false,
+                    template != pattern || !safePattern.equals(template) || parametersTruncated);
         } catch (IllegalFormatException failure) {
             return failed(template, template != pattern);
         } catch (Throwable failure) {
@@ -143,6 +156,11 @@ public final class BoundedMessageFormat {
 
     private static Result failed(String template, boolean truncated) {
         return new Result(template, template, true, truncated);
+    }
+
+    private static Result workLimited(String template) {
+        String marker = "[format expansion omitted] ";
+        return new Result(template, boundedMessage(marker + template), false, true);
     }
 
     private static Result literal(String message, boolean truncated) {

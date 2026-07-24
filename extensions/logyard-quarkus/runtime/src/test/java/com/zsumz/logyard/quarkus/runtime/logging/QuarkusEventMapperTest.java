@@ -106,17 +106,36 @@ final class QuarkusEventMapperTest {
                 ExtLogRecord.FormatStyle.PRINTF,
                 QuarkusEventMapperTest.class.getName());
         printf.setParameters(new Object[] {"bounded"});
+        ExtLogRecord repeatedMessageFormat = new ExtLogRecord(
+                java.util.logging.Level.INFO,
+                "{0}".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 3),
+                ExtLogRecord.FormatStyle.MESSAGE_FORMAT,
+                QuarkusEventMapperTest.class.getName());
+        repeatedMessageFormat.setParameters(new Object[] {"x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)});
+        ExtLogRecord repeatedPrintf = new ExtLogRecord(
+                java.util.logging.Level.INFO,
+                "%1$s".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 4),
+                ExtLogRecord.FormatStyle.PRINTF,
+                QuarkusEventMapperTest.class.getName());
+        repeatedPrintf.setParameters(new Object[] {"x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)});
 
         List<LogEvent> events = new ArrayList<>();
         try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
             new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, messageFormat);
             new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, printf);
+            new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, repeatedMessageFormat);
+            new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, repeatedPrintf);
         }
 
         assertTrue(events.get(0).renderedMessage().contains("1E+100000000"));
         assertTrue((Boolean) events.get(0).attributes().get("logyard.capture.truncated"));
         assertTrue(events.get(1).renderedMessage().length() <= CaptureLimits.MAX_CAPTURED_NUMBER_CHARS);
         assertTrue((Boolean) events.get(1).attributes().get("logyard.capture.truncated"));
+        assertTrue(events.get(2).renderedMessage().contains("format expansion omitted"));
+        assertTrue((Boolean) events.get(2).attributes().get("logyard.capture.truncated"));
+        assertTrue(events.get(3).renderedMessage().length() <= CaptureLimits.MAX_RENDERED_MESSAGE_CHARS);
+        assertTrue(events.get(3).renderedMessage().endsWith("…"));
+        assertTrue((Boolean) events.get(3).attributes().get("logyard.capture.truncated"));
     }
 
     private static final class TrackingRecord extends ExtLogRecord {

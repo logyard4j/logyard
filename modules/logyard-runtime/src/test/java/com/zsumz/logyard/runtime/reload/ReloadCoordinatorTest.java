@@ -15,6 +15,7 @@ import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
 import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,6 +54,40 @@ final class ReloadCoordinatorTest {
                     + "\ninvalid_key = true\n", StandardCharsets.UTF_8);
             assertEquals(ReloadResult.REJECTED, bundle.reloadNow());
             assertEquals(Level.ERROR, bundle.runtime().explain("test.Logger").level());
+        }
+    }
+
+    @Test
+    void watcherWaitsForAnotherFileEventAfterAnInvalidCandidate() throws Exception {
+        Fixture fixture = Fixture.create();
+        try (ReloadHarness harness = ReloadHarness.start(fixture, ReloadDiagnostics.silent())) {
+            Files.writeString(fixture.source(), fixture.config("debug", "4KiB")
+                    + "\ninvalid_key = true\n", StandardCharsets.UTF_8);
+
+            assertEquals(WatcherReloadOutcome.WAIT_FOR_CHANGE, harness.coordinator().reloadForWatcher());
+            assertEquals(Level.INFO, harness.coordinator().currentConfig().rootLogger().level());
+        }
+    }
+
+    @Test
+    void watcherClassifiesSnapshotReadFailuresAsTransient() throws Exception {
+        Fixture fixture = Fixture.create();
+        try (ReloadHarness harness = ReloadHarness.start(fixture, ReloadDiagnostics.silent())) {
+            ConfigurationSnapshot snapshot = ConfigurationSnapshot.read(fixture.source());
+            ReloadCoordinator failingReader = new ReloadCoordinator(
+                    fixture.source().toString(),
+                    fixture.source(),
+                    () -> {
+                        throw new IOException("temporarily unavailable");
+                    },
+                    harness.runtime(),
+                    snapshot,
+                    harness.coordinator().currentAssembly(),
+                    ReloadDiagnostics.silent(),
+                    Map.of());
+
+            assertEquals(WatcherReloadOutcome.TRANSIENT_RETRY, failingReader.reloadForWatcher());
+            assertEquals(Level.INFO, failingReader.currentConfig().rootLogger().level());
         }
     }
 

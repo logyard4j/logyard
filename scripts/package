@@ -3,16 +3,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
-ZOLT_JAVA_HOME="${ZOLT_JAVA_HOME:-${JAVA_HOME:-}}"
+ZOLT_JAVA_HOME="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.jdk_home)"
 members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli zolt-members "$ROOT")"
 STAGING="$ROOT/target/maven-build-repository"
 MAVEN_CACHE="$ROOT/target/maven-package-repository"
 STAGING_URI="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.path_cli "$STAGING")"
-
-[[ -n "$ZOLT_JAVA_HOME" && -x "$ZOLT_JAVA_HOME/bin/javadoc" ]] || {
-  printf 'package failed: set ZOLT_JAVA_HOME or JAVA_HOME to a JDK with javadoc\n' >&2
-  exit 1
-}
 
 "$ZOLT" "-Djava.home=$ZOLT_JAVA_HOME" package \
   --directory "$ROOT" \

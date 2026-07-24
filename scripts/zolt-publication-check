@@ -3,15 +3,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
-ZOLT_JAVA_HOME="${ZOLT_JAVA_HOME:-${JAVA_HOME:-}}"
+ZOLT_JAVA_HOME="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.jdk_home)"
 VERSION="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli version "$ROOT")"
 mkdir -p "$ROOT/target"
 REPORT="$(mktemp "$ROOT/target/zolt-central-readiness.XXXXXX")"
-
-[[ -n "$ZOLT_JAVA_HOME" && -x "$ZOLT_JAVA_HOME/bin/javadoc" ]] || {
-  printf 'Zolt publication check failed: set ZOLT_JAVA_HOME or JAVA_HOME to a JDK with javadoc\n' >&2
-  exit 1
-}
 
 cleanup() {
   rm -f "$REPORT"

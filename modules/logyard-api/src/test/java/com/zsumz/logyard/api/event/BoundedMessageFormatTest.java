@@ -2,6 +2,7 @@ package com.zsumz.logyard.api.event;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
@@ -60,5 +61,48 @@ final class BoundedMessageFormatTest {
         assertTrue(messageFormat.truncated());
         assertTrue(printf.message().length() <= CaptureLimits.MAX_CAPTURED_NUMBER_CHARS);
         assertTrue(printf.truncated());
+    }
+
+    @Test
+    void rejectsRepeatedMessageFormatExpansionBeforeTheJdkFormatterAllocatesIt() {
+        String pattern = "{0}".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 3);
+
+        BoundedMessageFormat.Result result =
+                BoundedMessageFormat.messageFormat(pattern, new Object[] {"x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)});
+
+        assertTrue(result.message().contains("format expansion omitted"));
+        assertTrue(result.truncated());
+        assertFalse(result.formatFailed());
+    }
+
+    @Test
+    void streamsRepeatedPrintfExpansionDirectlyIntoTheOutputAllowance() {
+        String pattern = "%1$s".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 4);
+
+        BoundedMessageFormat.Result result =
+                BoundedMessageFormat.printf(pattern, new Object[] {"x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)});
+
+        assertEquals(CaptureLimits.MAX_RENDERED_MESSAGE_CHARS, result.message().length());
+        assertTrue(result.message().endsWith("…"));
+        assertTrue(result.truncated());
+    }
+
+    @Test
+    void repeatedMessageFormattingStaysWithinAOneMegabyteAllocationEnvelope() {
+        java.lang.management.ThreadMXBean platformBean = ManagementFactory.getThreadMXBean();
+        if (!(platformBean instanceof com.sun.management.ThreadMXBean allocationBean)
+                || !allocationBean.isThreadAllocatedMemorySupported()) {
+            return;
+        }
+        allocationBean.setThreadAllocatedMemoryEnabled(true);
+        String pattern = "{0}".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 3);
+        Object[] parameters = {"x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)};
+        BoundedMessageFormat.messageFormat(pattern, parameters);
+
+        long before = allocationBean.getThreadAllocatedBytes(Thread.currentThread().threadId());
+        BoundedMessageFormat.messageFormat(pattern, parameters);
+        long allocated = allocationBean.getThreadAllocatedBytes(Thread.currentThread().threadId()) - before;
+
+        assertTrue(allocated < 1_000_000L, () -> "repeated MessageFormat allocated " + allocated + " bytes");
     }
 }

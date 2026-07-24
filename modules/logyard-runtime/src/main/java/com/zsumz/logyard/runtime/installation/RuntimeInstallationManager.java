@@ -1,14 +1,14 @@
 package com.zsumz.logyard.runtime.installation;
 
-import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.reload.ReloadResult;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-/** Process-wide state machine for runtime identity, configuration handoff, and ownership. */
+/** Process-wide coordinator for runtime identity, configuration handoff, and ownership. */
 public final class RuntimeInstallationManager {
     private static final RuntimeInstallationManager PROCESS =
             new RuntimeInstallationManager(new LogyardGlobalRuntimeAccess(), new InstallationShutdownHook(), System::getenv);
@@ -18,22 +18,17 @@ public final class RuntimeInstallationManager {
     private final Supplier<Map<String, String>> environment;
     private final RuntimeInstallationFactory installations;
     private final RuntimeInstallationRetirements retirements = new RuntimeInstallationRetirements();
-    private final RuntimeLeaseCounts leaseCounts = new RuntimeLeaseCounts();
-
-    private InstallationPhase phase = InstallationPhase.EMPTY;
-    private RuntimeInstallation installation;
-    private volatile RuntimeInstallation publishedInstallation;
-    private RuntimeOwner configurationAuthority;
-    private long generation;
-    private boolean shutdownHookInstalled;
-    private boolean terminating;
+    private final RuntimeInstallationState state = new RuntimeInstallationState();
 
     RuntimeInstallationManager(GlobalRuntimeAccess globalRuntime, RuntimeShutdownHookRegistrar shutdownHooks, Supplier<Map<String, String>> environment) {
         this(globalRuntime, shutdownHooks, environment, ManagedRuntimeInstallation::open);
     }
 
-    RuntimeInstallationManager(GlobalRuntimeAccess globalRuntime, RuntimeShutdownHookRegistrar shutdownHooks,
-            Supplier<Map<String, String>> environment, RuntimeInstallationFactory installations) {
+    RuntimeInstallationManager(
+            GlobalRuntimeAccess globalRuntime,
+            RuntimeShutdownHookRegistrar shutdownHooks,
+            Supplier<Map<String, String>> environment,
+            RuntimeInstallationFactory installations) {
         this.globalRuntime = Objects.requireNonNull(globalRuntime, "globalRuntime");
         this.shutdownHooks = Objects.requireNonNull(shutdownHooks, "shutdownHooks");
         this.environment = Objects.requireNonNull(environment, "environment");
@@ -57,122 +52,75 @@ public final class RuntimeInstallationManager {
     }
 
     boolean isActive(RuntimeInstallation candidate) {
-        return publishedInstallation == candidate;
+        return state.isActive(candidate);
     }
 
-    synchronized int leaseCount(RuntimeOwner owner) {
-        return leaseCounts.get(owner);
+    int leaseCount(RuntimeOwner owner) {
+        return state.leaseCount(owner);
+    }
+
+    boolean startCancellationPending() {
+        return state.startCancellationPending();
     }
 
     void release(RuntimeOwner owner, RuntimeInstallation candidate) {
-        RuntimeInstallation closing = null;
-        long closingGeneration = 0;
-        synchronized (this) {
-            if (installation != candidate || phase == InstallationPhase.CLOSING || phase == InstallationPhase.TERMINATED) {
-                return;
-            }
-            leaseCounts.decrement(owner);
-            if (leaseCounts.total() == 0) {
-                phase = InstallationPhase.CLOSING;
-                publishedInstallation = null;
-                configurationAuthority = null;
-                closing = candidate;
-                closingGeneration = ++generation;
-            }
-        }
-        if (closing != null) {
-            beginClosing(closing, closingGeneration);
-        }
+        retire(state.release(owner, candidate));
     }
 
     private RuntimeInstallationLease acquire(RuntimeOwner owner, ConfigurationInstallationRequest request) {
         Objects.requireNonNull(owner, "owner");
         Objects.requireNonNull(request, "request");
-        AcquisitionPlan plan;
-        synchronized (this) {
-            plan = reserveAcquisition(owner, globalRuntime.current());
-        }
+        AcquisitionPlan plan = state.reserve(owner, globalRuntime::current);
         return switch (plan.action()) {
             case BORROW -> RuntimeInstallationLease.borrowed(globalRuntime, plan.borrowedRuntime());
-            case SHARE -> RuntimeInstallationLease.managed(this, globalRuntime, owner, plan.installation());
+            case SHARE -> managedLease(owner, plan.installation());
             case START -> start(owner, request, plan);
             case RECONFIGURE -> reconfigure(owner, request, plan);
             case CLOSE_STALE -> {
-                beginClosing(plan.installation(), plan.generation());
+                retire(RuntimeRetirementPlan.close(plan.installation(), plan.generation()));
                 throw InstallationTransitionFailures.forPhase(InstallationPhase.CLOSING);
             }
         };
     }
 
-    private AcquisitionPlan reserveAcquisition(RuntimeOwner owner, LogyardRuntime observedGlobal) {
-        if (phase == InstallationPhase.STARTING || phase == InstallationPhase.RECONFIGURING
-                || phase == InstallationPhase.CLOSING || phase == InstallationPhase.TERMINATED) {
-            throw InstallationTransitionFailures.forPhase(phase);
-        }
-        if (phase == InstallationPhase.ACTIVE) {
-            if (observedGlobal != installation.runtime()) {
-                phase = InstallationPhase.CLOSING;
-                publishedInstallation = null;
-                leaseCounts.clear();
-                configurationAuthority = null;
-                return AcquisitionPlan.closeStale(installation, ++generation);
-            }
-            if (owner.canReplace(configurationAuthority)) {
-                phase = InstallationPhase.RECONFIGURING;
-                leaseCounts.increment(owner);
-                return AcquisitionPlan.reconfigure(installation, ++generation);
-            }
-            leaseCounts.increment(owner);
-            return AcquisitionPlan.shared(installation);
-        }
-        if (observedGlobal != null) {
-            if (owner == RuntimeOwner.ADAPTER) {
-                return AcquisitionPlan.borrowed(observedGlobal);
-            }
-            throw new IllegalStateException("Logyard is already initialized outside the runtime installation manager");
-        }
-        phase = InstallationPhase.STARTING;
-        return AcquisitionPlan.start(++generation, !shutdownHookInstalled);
-    }
-
-    private RuntimeInstallationLease start(
-            RuntimeOwner owner,
-            ConfigurationInstallationRequest request,
-            AcquisitionPlan plan) {
+    private RuntimeInstallationLease start(RuntimeOwner owner, ConfigurationInstallationRequest request, AcquisitionPlan plan) {
         RuntimeInstallation candidate = null;
+        RuntimeStartTransaction transaction = Objects.requireNonNull(plan.startTransaction(), "start transaction");
         try {
             candidate = installations.open(request, Map.copyOf(environment.get()));
+            state.registerStartCandidate(transaction, candidate);
             RuntimeInstallation starting = candidate;
-            synchronized (this) {
-                if (phase != InstallationPhase.STARTING || generation != plan.generation()) {
-                    throw InstallationTransitionFailures.forPhase(phase);
-                }
-                installation = candidate;
-            }
             globalRuntime.install(candidate.runtime(), () -> shutdownManaged(starting));
-            if (plan.installShutdownHook()) {
-                boolean installed = shutdownHooks.install(this::shutdownAtExit);
-                if (installed) {
-                    synchronized (this) {
-                        shutdownHookInstalled = true;
-                    }
-                }
-            }
-            synchronized (this) {
-                if (phase != InstallationPhase.STARTING || generation != plan.generation()) {
-                    throw InstallationTransitionFailures.forPhase(phase);
-                }
-                installation = candidate;
-                configurationAuthority = owner;
-                leaseCounts.increment(owner);
-                phase = InstallationPhase.ACTIVE;
-                publishedInstallation = candidate;
-            }
-            return RuntimeInstallationLease.managed(this, globalRuntime, owner, candidate);
+            state.requireActiveStart(transaction);
+            installShutdownHook(plan);
+            state.commitStart(transaction, candidate, owner);
+            transaction.complete();
+            return managedLease(owner, candidate);
         } catch (RuntimeException | Error failure) {
-            failStart(candidate, plan.generation(), failure);
+            abortStart(transaction, candidate, failure);
             throw failure;
         }
+    }
+
+    private void installShutdownHook(AcquisitionPlan plan) {
+        if (plan.installShutdownHook() && shutdownHooks.install(this::shutdownAtExit)) {
+            state.shutdownHookInstalled();
+        }
+    }
+
+    private void abortStart(RuntimeStartTransaction transaction, RuntimeInstallation candidate, Throwable primaryFailure) {
+        RuntimeRetirementPlan retirement = state.abortStart(transaction, candidate);
+        if (!retirement.required()) {
+            transaction.complete();
+            return;
+        }
+        retire(retirement, cleanupFailure -> {
+            if (cleanupFailure != null) {
+                primaryFailure.addSuppressed(cleanupFailure);
+            }
+            state.completeStartRetirement(transaction);
+            transaction.complete();
+        });
     }
 
     private RuntimeInstallationLease reconfigure(
@@ -184,80 +132,20 @@ public final class RuntimeInstallationManager {
             if (result == ReloadResult.REJECTED) {
                 throw InstallationTransitionFailures.rejectedHandoff();
             }
-            synchronized (this) {
-                if (phase != InstallationPhase.RECONFIGURING || generation != plan.generation()) {
-                    throw InstallationTransitionFailures.forPhase(phase);
-                }
-                configurationAuthority = owner;
-                phase = InstallationPhase.ACTIVE;
-            }
-            return RuntimeInstallationLease.managed(this, globalRuntime, owner, plan.installation());
+            state.commitReconfiguration(owner, plan);
+            return managedLease(owner, plan.installation());
         } catch (RuntimeException | Error failure) {
-            RuntimeInstallation closing = null;
-            long closingGeneration = 0;
-            synchronized (this) {
-                if (phase == InstallationPhase.RECONFIGURING && generation == plan.generation()) {
-                    leaseCounts.decrement(owner);
-                    if (leaseCounts.total() == 0) {
-                        phase = InstallationPhase.CLOSING;
-                        publishedInstallation = null;
-                        configurationAuthority = null;
-                        closing = plan.installation();
-                        closingGeneration = ++generation;
-                    } else {
-                        phase = InstallationPhase.ACTIVE;
-                    }
-                }
-            }
-            if (closing != null) {
-                beginClosing(closing, closingGeneration);
-            }
+            retire(state.rollbackReconfiguration(owner, plan));
             throw failure;
         }
     }
 
-    private void failStart(RuntimeInstallation candidate, long expectedGeneration, Throwable primaryFailure) {
-        RuntimeInstallation closing = null;
-        long closingGeneration = 0;
-        synchronized (this) {
-            if (phase != InstallationPhase.STARTING || generation != expectedGeneration) {
-                return;
-            }
-            if (candidate == null) {
-                installation = null;
-                phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
-            } else {
-                installation = candidate;
-                publishedInstallation = null;
-                leaseCounts.clear();
-                configurationAuthority = null;
-                phase = InstallationPhase.CLOSING;
-                closing = candidate;
-                closingGeneration = ++generation;
-            }
-        }
-        if (closing != null) {
-            beginClosing(closing, closingGeneration).whenComplete((ignored, cleanupFailure) -> {
-                if (cleanupFailure != null) {
-                    primaryFailure.addSuppressed(cleanupFailure);
-                }
-            });
-        }
+    private RuntimeInstallationLease managedLease(RuntimeOwner owner, RuntimeInstallation installation) {
+        return RuntimeInstallationLease.managed(this, globalRuntime, owner, installation);
     }
 
     private void shutdownAtExit() {
         requestShutdown(null, true);
-    }
-
-    private CompletionStage<Void> beginClosing(RuntimeInstallation candidate, long expectedGeneration) {
-        return retirements.close(candidate, globalRuntime, failure -> {
-            synchronized (this) {
-                if (phase == InstallationPhase.CLOSING && generation == expectedGeneration && installation == candidate) {
-                    installation = null;
-                    phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
-                }
-            }
-        });
     }
 
     private boolean shutdownManaged(RuntimeInstallation candidate) {
@@ -265,35 +153,26 @@ public final class RuntimeInstallationManager {
     }
 
     private boolean requestShutdown(RuntimeInstallation expected, boolean terminateProcess) {
-        RuntimeInstallation closing;
-        long closingGeneration;
-        synchronized (this) {
-            if (terminateProcess) {
-                terminating = true;
-            }
-            if (expected != null && installation != expected) {
-                return false;
-            }
-            if (phase == InstallationPhase.CLOSING) {
-                return true;
-            }
-            if (phase == InstallationPhase.TERMINATED) {
-                return false;
-            }
-            if (phase == InstallationPhase.EMPTY) {
-                phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
-                return terminateProcess;
-            }
-            phase = InstallationPhase.CLOSING;
-            publishedInstallation = null;
-            leaseCounts.clear();
-            configurationAuthority = null;
-            closing = installation;
-            closingGeneration = ++generation;
+        RuntimeShutdownPlan shutdown = state.shutdown(expected, terminateProcess);
+        retire(shutdown.retirement());
+        if (terminateProcess && shutdown.cancelledStart() != null) {
+            shutdown.cancelledStart().awaitCompletion();
         }
-        if (closing != null) {
-            beginClosing(closing, closingGeneration);
+        return shutdown.accepted();
+    }
+
+    private void retire(RuntimeRetirementPlan retirement) {
+        retire(retirement, ignored -> {
+        });
+    }
+
+    private CompletionStage<Void> retire(RuntimeRetirementPlan retirement, Consumer<Throwable> completion) {
+        if (!retirement.required()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
-        return true;
+        return retirements.close(retirement.installation(), globalRuntime, failure -> {
+            state.completeRetirement(retirement.installation(), retirement.generation());
+            completion.accept(failure);
+        });
     }
 }

@@ -1,7 +1,6 @@
 package com.zsumz.logyard.runtime.reload;
 
 import com.zsumz.logyard.api.failure.FailureIsolation;
-import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
@@ -25,14 +24,14 @@ final class ConfigurationWatchLoop implements Runnable {
     private final Path filename;
     private final WatchService watchService;
     private final ReloadDebouncer debouncer;
-    private final Supplier<ReloadResult> reload;
+    private final Supplier<WatcherReloadOutcome> reload;
     private final ReloadDiagnosticBoundary diagnostics;
     private final AtomicBoolean stopped = new AtomicBoolean();
 
     ConfigurationWatchLoop(
             ConfigurationWatchRegistration registration,
             Duration debounce,
-            Supplier<ReloadResult> reload,
+            Supplier<WatcherReloadOutcome> reload,
             ReloadDiagnostics diagnostics) {
         source = registration.source();
         filename = registration.filename();
@@ -84,6 +83,10 @@ final class ConfigurationWatchLoop implements Runnable {
         } catch (IOException failure) {
             throw new UncheckedIOException("failed to close Logyard configuration watcher", failure);
         }
+    }
+
+    void markDirty() {
+        debouncer.signalChange();
     }
 
     private boolean consume(WatchKey key) {

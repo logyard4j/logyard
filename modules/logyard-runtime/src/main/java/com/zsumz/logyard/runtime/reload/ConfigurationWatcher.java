@@ -1,7 +1,6 @@
 package com.zsumz.logyard.runtime.reload;
 
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
-import com.zsumz.logyard.api.reload.ReloadResult;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -25,7 +24,7 @@ public final class ConfigurationWatcher implements AutoCloseable {
             ConfigurationWatchRegistration registration,
             Duration debounce,
             Duration closeTimeout,
-            Supplier<ReloadResult> reload,
+            Supplier<WatcherReloadOutcome> reload,
             ReloadDiagnostics diagnostics) {
         source = registration.source();
         this.closeTimeout = Objects.requireNonNull(closeTimeout, "closeTimeout");
@@ -45,14 +44,14 @@ public final class ConfigurationWatcher implements AutoCloseable {
             ReloadCoordinator coordinator,
             ReloadDiagnostics diagnostics) {
         Objects.requireNonNull(coordinator, "coordinator");
-        return start(source, debounce, closeTimeout, coordinator::reloadIfChanged, diagnostics);
+        return start(source, debounce, closeTimeout, coordinator::reloadForWatcher, diagnostics);
     }
 
     static ConfigurationWatcher start(
             Path source,
             Duration debounce,
             Duration closeTimeout,
-            Supplier<ReloadResult> reload,
+            Supplier<WatcherReloadOutcome> reload,
             ReloadDiagnostics diagnostics) {
         ConfigurationWatcher watcher = prepare(source, debounce, closeTimeout, reload, diagnostics);
         watcher.activate();
@@ -63,7 +62,7 @@ public final class ConfigurationWatcher implements AutoCloseable {
             Path source,
             Duration debounce,
             Duration closeTimeout,
-            Supplier<ReloadResult> reload,
+            Supplier<WatcherReloadOutcome> reload,
             ReloadDiagnostics diagnostics) {
         ConfigurationWatcher watcher;
         try {
@@ -93,6 +92,14 @@ public final class ConfigurationWatcher implements AutoCloseable {
             }
             throw failure;
         }
+    }
+
+    /** Marks a change observed by the registration handshake before the worker starts. */
+    public void markDirtyBeforeActivation() {
+        if (activated.get()) {
+            throw new IllegalStateException("configuration watcher is already active");
+        }
+        watchLoop.markDirty();
     }
 
     @Override

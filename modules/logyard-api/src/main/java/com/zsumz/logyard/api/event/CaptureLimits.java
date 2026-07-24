@@ -53,6 +53,9 @@ public final class CaptureLimits {
     /** Reserved event-wide allowance for the lazily rendered primary message. */
     public static final int MAX_RENDERED_MESSAGE_CHARS = 16_384;
 
+    /** Maximum estimated characters a JDK-style adapter formatter may construct before bounded capture. */
+    public static final int MAX_FORMATTER_WORK_CHARS = 65_536;
+
     /** Reserved event-wide allowance for exception types, messages, and stack-frame fields. */
     public static final int MAX_EVENT_EXCEPTION_TEXT_CHARS = 16_384;
 

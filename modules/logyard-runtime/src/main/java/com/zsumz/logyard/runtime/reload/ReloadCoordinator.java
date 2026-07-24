@@ -61,16 +61,25 @@ public final class ReloadCoordinator {
     }
 
     public synchronized ReloadResult reloadIfChanged() {
+        return reload().publicResult();
+    }
+
+    /** Reloads for a file watcher while preserving whether a rejection is transient or candidate-specific. */
+    public synchronized WatcherReloadOutcome reloadForWatcher() {
+        return reload();
+    }
+
+    private WatcherReloadOutcome reload() {
         ConfigurationSnapshot candidateSnapshot;
         try {
             candidateSnapshot = snapshotReader.read();
         } catch (IOException | RuntimeException readFailure) {
             rejected(readFailure);
-            return ReloadResult.REJECTED;
+            return WatcherReloadOutcome.TRANSIENT_RETRY;
         }
         if (candidateSnapshot.sameContent(snapshot)) {
             unchanged();
-            return ReloadResult.UNCHANGED;
+            return WatcherReloadOutcome.UNCHANGED;
         }
 
         RuntimeAssembly candidate = null;
@@ -83,13 +92,13 @@ public final class ReloadCoordinator {
             snapshot = candidateSnapshot;
             LogyardRuntimeFactory.attach(runtime, candidate);
             applied(previousDigest, candidateSnapshot.sha256());
-            return ReloadResult.APPLIED;
+            return WatcherReloadOutcome.APPLIED;
         } catch (RuntimeException reloadFailure) {
             if (candidate != null) {
                 candidate.closeCandidateOutputs(assembly, reloadFailure);
             }
             rejected(reloadFailure);
-            return ReloadResult.REJECTED;
+            return WatcherReloadOutcome.WAIT_FOR_CHANGE;
         }
     }
 
