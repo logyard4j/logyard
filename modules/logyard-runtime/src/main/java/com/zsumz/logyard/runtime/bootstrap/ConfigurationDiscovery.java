@@ -42,13 +42,30 @@ public final class ConfigurationDiscovery {
      * @return selected configuration source
      */
     public static LogyardConfigurationSource resolve(LogyardConfigurationSource frameworkSource) {
+        return resolve(frameworkSource, false);
+    }
+
+    /**
+     * Resolves configuration with a framework-provided source and framework-level strictness.
+     *
+     * <p>System properties and environment variables retain precedence. The framework flag is
+     * combined with the process-wide strict setting and only changes the final no-source fallback.</p>
+     *
+     * @param frameworkSource optional framework-provided source
+     * @param frameworkRequired whether absence of every explicit or conventional source is an error
+     * @return selected configuration source
+     */
+    public static LogyardConfigurationSource resolve(
+            LogyardConfigurationSource frameworkSource,
+            boolean frameworkRequired) {
         return resolve(
                 System.getProperty(SYSTEM_PROPERTY),
                 System.getProperty(REQUIRED_SYSTEM_PROPERTY),
                 System.getenv(),
                 contextClassLoader(),
                 Path.of("."),
-                frameworkSource);
+                frameworkSource,
+                frameworkRequired);
     }
 
     /**
@@ -92,6 +109,24 @@ public final class ConfigurationDiscovery {
             ClassLoader classLoader,
             Path workingDirectory,
             LogyardConfigurationSource frameworkSource) {
+        return resolve(
+                property,
+                requiredProperty,
+                environment,
+                classLoader,
+                workingDirectory,
+                frameworkSource,
+                false);
+    }
+
+    static LogyardConfigurationSource resolve(
+            String property,
+            String requiredProperty,
+            Map<String, String> environment,
+            ClassLoader classLoader,
+            Path workingDirectory,
+            LogyardConfigurationSource frameworkSource,
+            boolean frameworkRequired) {
         Objects.requireNonNull(environment, "environment");
         ClassLoader loader = Objects.requireNonNull(classLoader, "classLoader");
         Path base = normalizedDirectory(workingDirectory);
@@ -114,7 +149,7 @@ public final class ConfigurationDiscovery {
             return LogyardConfigurationSource.file(conventional);
         }
         String requiredVariable = environment.get(REQUIRED_ENVIRONMENT_VARIABLE);
-        if (required(requiredProperty, requiredVariable)) {
+        if (frameworkRequired || required(requiredProperty, requiredVariable)) {
             throw new IllegalStateException(
                     "Logyard configuration is required but none was found in explicit settings, framework handoff, classpath:"
                             + CONVENTIONAL_RESOURCE + ", or " + conventional);

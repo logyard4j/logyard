@@ -55,6 +55,13 @@ ALLOWED_IMPORT_PREFIXES = {
         "java.", "org.slf4j.", PREFIX + "api.", PREFIX + "runtime.",
         PREFIX + "slf4j."
     ),
+    "logyard-spring-boot": (
+        "java.", "org.springframework.", PREFIX + "api.", PREFIX + "jul.",
+        PREFIX + "runtime.", PREFIX + "spring.boot."
+    ),
+    "logyard-spring-boot-starter": (
+        "java.", PREFIX + "api.", PREFIX + "spring.boot.starter."
+    ),
     "logyard-jul": (
         "java.", PREFIX + "api.", PREFIX + "runtime.", PREFIX + "jul."
     ),
@@ -90,6 +97,18 @@ EXPECTED_DEPENDENCIES = {
         "com.zsumz.logyard:logyard-api",
         "com.zsumz.logyard:logyard-runtime",
         "org.slf4j:slf4j-api",
+    },
+    "modules/logyard-spring-boot": {
+        "com.zsumz.logyard:logyard-api",
+        "com.zsumz.logyard:logyard-jul",
+        "com.zsumz.logyard:logyard-runtime",
+        "org.springframework.boot:spring-boot",
+        "org.springframework.boot:spring-boot-autoconfigure",
+    },
+    "modules/logyard-spring-boot-starter": {
+        "com.zsumz.logyard:logyard-slf4j2",
+        "com.zsumz.logyard:logyard-spring-boot",
+        "org.springframework.boot:spring-boot-starter",
     },
     "modules/logyard-jul": {
         "com.zsumz.logyard:logyard-api",
@@ -151,6 +170,18 @@ ARTIFACT_CONTRACTS = {
         {"com.zsumz.logyard.runtime.bootstrap"},
     ),
     "modules/logyard-slf4j2": ("com.zsumz.logyard.slf4j2", set()),
+    "modules/logyard-spring-boot": (
+        "com.zsumz.logyard.spring.boot",
+        {
+            "com.zsumz.logyard.spring.boot.autoconfigure",
+            "com.zsumz.logyard.spring.boot.logging",
+            "com.zsumz.logyard.spring.boot.nativeimage",
+        },
+    ),
+    "modules/logyard-spring-boot-starter": (
+        "com.zsumz.logyard.spring.boot.starter",
+        set(),
+    ),
     "modules/logyard-jul": (
         "com.zsumz.logyard.jul",
         {"com.zsumz.logyard.jul"},

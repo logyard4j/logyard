@@ -39,7 +39,11 @@ class RepositoryPublicationTest(unittest.TestCase):
         self.assertEqual("pom", bom.packaging)
         self.assertEqual(("pom",), bom.artifacts)
         self.assertEqual(
-            {publication.coordinate for publication in jar_publications(publications)},
+            {
+                publication.coordinate
+                for publication in publications
+                if publication.artifact_id != "logyard-bom"
+            },
             {dependency.coordinate for dependency in bom.managed_dependencies},
         )
 

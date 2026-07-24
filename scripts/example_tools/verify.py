@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .events import EventExpectation, EventLog
 from .maven import MavenExample, MavenExampleRunner
-from .server import HttpExample, HttpExampleRunner
+from .server import HttpExample, HttpExampleRunner, HttpRequestExpectation
 
 
 def main() -> None:
@@ -46,7 +46,58 @@ def main() -> None:
             )
         ),
     )
-    print("Published-shaped example verification passed: plain SLF4J, Vert.x, and Micronaut.")
+    http_runner = HttpExampleRunner(runner, root / "target" / "examples-verify")
+    verify_spring_boot(
+        http_runner,
+        spring_boot_example(root, "3-mvc", "3.5.16", "spring-boot-starter-web"),
+        expected_jul_logger="org.apache.catalina",
+    )
+    verify_spring_boot(
+        http_runner,
+        spring_boot_example(root, "4-mvc", "4.1.0", "spring-boot-starter-webmvc"),
+        expected_jul_logger="org.apache.catalina",
+    )
+    verify_spring_boot(
+        http_runner,
+        spring_boot_example(root, "3-webflux", "3.5.16", "spring-boot-starter-webflux"),
+    )
+    verify_spring_boot(
+        http_runner,
+        spring_boot_example(root, "4-webflux", "4.1.0", "spring-boot-starter-webflux"),
+    )
+    verify_spring_boot(
+        http_runner,
+        spring_boot_example(root, "4-no-actuator", "4.1.0", "spring-boot-starter-webmvc", actuator=False),
+        actuator=False,
+        expected_jul_logger="org.apache.catalina",
+    )
+    external = spring_boot_example(
+        root,
+        "4-external-config",
+        "4.1.0",
+        "spring-boot-starter-webmvc",
+        runtime_arguments=(f"-Dlogyard.config={root / 'examples' / 'spring-boot' / 'external-logyard.toml'}",),
+    )
+    external_events = verify_spring_boot(http_runner, external, expected_jul_logger="org.apache.catalina")
+    external_events.require_resource("deployment.environment.name", "external-verification")
+    verify_spring_boot_defaults(
+        http_runner,
+        spring_boot_example(
+            root,
+            "4-safe-defaults",
+            "4.1.0",
+            "spring-boot-starter-webmvc",
+            actuator=False,
+            build_profiles=("no-logyard-config",),
+            runtime_arguments=(),
+        ),
+    )
+    runner.build_aot(spring_boot_example(root, "3-aot", "3.5.16", "spring-boot-starter-web").maven)
+    runner.build_aot(spring_boot_example(root, "4-aot", "4.1.0", "spring-boot-starter-webmvc").maven)
+    print(
+        "Published-shaped example verification passed: plain SLF4J, Vert.x, Micronaut, "
+        "and Spring Boot 3/4 MVC, WebFlux, no-Actuator, external/default configuration, and AOT."
+    )
 
 
 def verify_plain_slf4j(runner: MavenExampleRunner, example: MavenExample) -> None:
@@ -96,6 +147,103 @@ def verify_vertx(runner: HttpExampleRunner, example: HttpExample) -> None:
 
 def verify_micronaut(runner: HttpExampleRunner, example: HttpExample) -> None:
     require_micronaut_events(EventLog.read(runner.build_run_and_exercise(example)))
+
+
+def spring_boot_example(
+    root: Path,
+    variant: str,
+    version: str,
+    web_starter: str,
+    actuator: bool = True,
+    build_profiles: tuple[str, ...] = (),
+    runtime_arguments: tuple[str, ...] | None = None,
+) -> HttpExample:
+    controller = "com.zsumz.logyard.examples.springboot.SpringBootExampleController"
+    profiles = (*build_profiles, *(("no-actuator",) if not actuator else ()))
+    actuator_requests = (
+        HttpRequestExpectation("/actuator/health", 200, '"logyard"', body_contains=True),
+        HttpRequestExpectation(
+            f"/actuator/loggers/{controller}",
+            204,
+            "",
+            method="POST",
+            request_body='{"configuredLevel":"DEBUG"}',
+        ),
+        HttpRequestExpectation("/debug", 200, "debug"),
+    )
+    return HttpExample(
+        MavenExample(
+            name=f"spring-boot-{variant}",
+            project_directory=root / "examples" / "spring-boot",
+            main_class="com.zsumz.logyard.examples.springboot.SpringBootExampleApplication",
+            build_arguments=(
+                f"-Dspring-boot.version={version}",
+                f"-Dspring-boot.web-starter={web_starter}",
+                *((f"-P{','.join(profiles)}",) if profiles else ()),
+            ),
+            runtime_arguments=runtime_arguments
+            if runtime_arguments is not None
+            else ("-Dlogyard.config=classpath:logyard.toml",),
+        ),
+        executable_jar_name="logyard-spring-boot-example-1.0.0-SNAPSHOT.jar",
+        additional_requests=actuator_requests if actuator else (),
+    )
+
+
+def verify_spring_boot(
+    runner: HttpExampleRunner,
+    example: HttpExample,
+    actuator: bool = True,
+    expected_jul_logger: str | None = None,
+) -> EventLog:
+    events = EventLog.read(runner.build_run_and_exercise(example))
+    require_spring_boot_events(
+        events,
+        actuator=actuator,
+        expected_jul_logger=expected_jul_logger,
+    )
+    return events
+
+
+def verify_spring_boot_defaults(runner: HttpExampleRunner, example: HttpExample) -> None:
+    runner.build_run_and_exercise(example)
+    process_output = runner.process_log_path(example.maven.name).read_text(encoding="utf-8")
+    for expected in (
+        "Spring Boot application started",
+        "Spring Boot request succeeded",
+        "Spring Boot request failed",
+        "Spring Boot shutdown flush",
+    ):
+        if expected not in process_output:
+            raise AssertionError(f"safe-default Spring Boot output did not contain {expected!r}")
+
+
+def require_spring_boot_events(
+    events: EventLog,
+    actuator: bool = True,
+    expected_jul_logger: str | None = None,
+) -> None:
+    events.require_real_timestamps()
+    events.require_logger_prefix("org.springframework")
+    if expected_jul_logger is not None:
+        events.require_logger_prefix(expected_jul_logger)
+    application_logger = "com.zsumz.logyard.examples.springboot.SpringBootExampleApplication"
+    controller_logger = "com.zsumz.logyard.examples.springboot.SpringBootExampleController"
+    shutdown_logger = "com.zsumz.logyard.examples.springboot.SpringBootExampleShutdown"
+    events.require(EventExpectation("Spring Boot application started", application_logger, "INFO", (("phase", "startup"),)))
+    events.require(EventExpectation("Spring Boot request succeeded", controller_logger, "INFO", (("request.id", "request-success"),)))
+    events.require(
+        EventExpectation(
+            "Spring Boot request failed",
+            controller_logger,
+            "ERROR",
+            (("request.id", "request-failure"),),
+            "expected Spring Boot example failure",
+        )
+    )
+    if actuator:
+        events.require(EventExpectation("Spring Boot dynamic debug", controller_logger, "DEBUG", (("request.id", "request-debug"),)))
+    events.require(EventExpectation("Spring Boot shutdown flush", shutdown_logger, "INFO", (("phase", "shutdown"),)))
 
 
 def require_micronaut_events(events: EventLog, final_bodies: tuple[str, ...] = ("Micronaut shutdown flush", "Embedded Application shutting down")) -> None:

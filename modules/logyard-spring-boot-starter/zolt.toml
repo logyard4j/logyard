@@ -1,0 +1,44 @@
+[project]
+name = "logyard-spring-boot-starter"
+version = "0.7.0-SNAPSHOT"
+group = "com.zsumz.logyard"
+java = "21"
+
+[repositories]
+central = "https://repo.maven.apache.org/maven2"
+
+[dependencies]
+"com.zsumz.logyard:logyard-slf4j2" = { workspace = "modules/logyard-slf4j2" }
+"com.zsumz.logyard:logyard-spring-boot" = { workspace = "modules/logyard-spring-boot" }
+"org.springframework.boot:spring-boot-starter" = { version = "3.5.16", exclusions = [
+    { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" },
+] }
+
+[build]
+source = "src/main/java"
+test = "src/test/java"
+output = "target/classes"
+testOutput = "target/test-classes"
+
+[build.metadata]
+reproducible = true
+
+[package]
+mode = "thin"
+sources = true
+javadoc = true
+
+[package.metadata]
+name = "Logyard Spring Boot Starter"
+description = "Opinionated Spring Boot starter with Logyard as the sole SLF4J 2 logging provider."
+url = "https://github.com/zsumz/logyard"
+license = "Apache-2.0"
+developers = ["zsumz <shawn@zsumz.com>"]
+scm = "https://github.com/zsumz/logyard"
+issues = "https://github.com/zsumz/logyard/issues"
+
+[package.manifest]
+"Automatic-Module-Name" = "com.zsumz.logyard.spring.boot.starter"
+
+[publish]
+artifacts = ["main", "sources", "javadoc"]

@@ -10,3 +10,4 @@
 *.gif binary
 *.zip binary
 *.jar binary
+zolt.lock -whitespace

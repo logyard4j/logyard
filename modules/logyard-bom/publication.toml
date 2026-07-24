@@ -27,4 +27,6 @@ artifacts = ["pom"]
 "com.zsumz.logyard:logyard-output-json" = { workspace = "modules/logyard-output-json" }
 "com.zsumz.logyard:logyard-runtime" = { workspace = "modules/logyard-runtime" }
 "com.zsumz.logyard:logyard-slf4j2" = { workspace = "modules/logyard-slf4j2" }
+"com.zsumz.logyard:logyard-spring-boot" = { workspace = "modules/logyard-spring-boot" }
+"com.zsumz.logyard:logyard-spring-boot-starter" = { workspace = "modules/logyard-spring-boot-starter" }
 "com.zsumz.logyard:logyard-system-logger" = { workspace = "modules/logyard-system-logger" }

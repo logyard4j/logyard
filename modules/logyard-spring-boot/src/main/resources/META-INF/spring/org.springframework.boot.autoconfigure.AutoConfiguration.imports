@@ -1,0 +1,2 @@
+com.zsumz.logyard.spring.boot.autoconfigure.LogyardAutoConfiguration
+com.zsumz.logyard.spring.boot.autoconfigure.LogyardActuatorAutoConfiguration

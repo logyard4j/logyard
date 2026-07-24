@@ -8,6 +8,8 @@ members = [
     "modules/logyard-output-json",
     "modules/logyard-runtime",
     "modules/logyard-slf4j2",
+    "modules/logyard-spring-boot",
+    "modules/logyard-spring-boot-starter",
     "modules/logyard-jul",
     "modules/logyard-system-logger",
     "tests/logyard-integration-tests",

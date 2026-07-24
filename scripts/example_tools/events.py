@@ -63,6 +63,10 @@ class EventLog:
         if not any(str(event.get("logger", "")).startswith(prefix) for event in self._events):
             raise AssertionError(f"no structured event was emitted by a logger under {prefix}")
 
+    def require_resource(self, name: str, expected: Any) -> None:
+        if not any(event.get("resource", {}).get(name) == expected for event in self._events):
+            raise AssertionError(f"no structured event had resource attribute {name}={expected!r}")
+
     @staticmethod
     def _equal(expected: Any, actual: Any, body: str, field: str) -> None:
         if actual != expected:

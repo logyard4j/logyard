@@ -14,9 +14,11 @@ import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
@@ -142,6 +144,12 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     public Map<String, RuntimeLevelOverride> levelOverrides() {
         return state.levelOverrides().configuredLevels();
+    }
+
+    public Set<String> knownLoggerNames() {
+        LinkedHashSet<String> names = new LinkedHashSet<>(controls.keySet());
+        names.addAll(state.levelOverrides().configuredLevels().keySet());
+        return Set.copyOf(names);
     }
 
     public RuntimeLevelOverride effectiveLevelOverride(String loggerName) {

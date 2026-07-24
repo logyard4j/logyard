@@ -1,0 +1,31 @@
+schema = 1
+
+[service]
+name = "logyard-spring-boot-example"
+environment = "external-verification"
+
+[runtime]
+watch = false
+internal_status = "warn"
+
+[delivery]
+mode = "async"
+capacity = 256
+
+[delivery.overflow]
+trace = "drop"
+debug = "drop"
+info = "drop"
+warn = "stderr"
+error = "stderr"
+
+[loggers]
+root = { level = "info", outputs = ["json"] }
+"org.springframework" = { level = "info" }
+
+[outputs.json]
+type = "file"
+path = "${LOGYARD_EXAMPLE_OUTPUT}"
+append = false
+buffer = "4KiB"
+flush = "1s"

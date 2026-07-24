@@ -42,6 +42,15 @@ final class LoggerLevelManagementTest {
             assertEquals(
                     Map.of("com.acme", LoggerLevel.DEBUG, "com.acme.noisy", LoggerLevel.OFF),
                     levels.listConfiguredLevels());
+            assertEquals(
+                    new LoggerLevelSnapshot(null, LoggerLevel.DEBUG),
+                    levels.listLoggerLevels().get("com.acme.Service"));
+            assertEquals(
+                    new LoggerLevelSnapshot(LoggerLevel.DEBUG, LoggerLevel.DEBUG),
+                    levels.listLoggerLevels().get("com.acme"));
+            assertEquals(
+                    new LoggerLevelSnapshot(null, LoggerLevel.INFO),
+                    levels.listLoggerLevels().get(LoggerLevelManagement.ROOT_LOGGER_NAME));
             assertThrows(
                     UnsupportedOperationException.class,
                     () -> levels.listConfiguredLevels().put("other", LoggerLevel.ERROR));

@@ -12,6 +12,8 @@ class MavenExample:
     name: str
     project_directory: Path
     main_class: str
+    build_arguments: tuple[str, ...] = ()
+    runtime_arguments: tuple[str, ...] = ("-Dlogyard.config=classpath:logyard.toml",)
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,7 @@ class MavenExampleRunner:
                 "package",
                 "org.apache.maven.plugins:maven-dependency-plugin:3.7.0:build-classpath",
                 f"-Dmdep.outputFile={classpath_file}",
+                *example.build_arguments,
             ),
             project,
         )
@@ -61,6 +64,36 @@ class MavenExampleRunner:
         executable = example.project_directory / "target" / executable_name
         if not executable.is_file():
             raise AssertionError(f"native example did not produce {executable}")
+        return executable
+
+    def build_aot(self, example: MavenExample) -> None:
+        output = self._target / f"{example.name}.jsonl"
+        self._run(
+            self._command("clean", "package", "spring-boot:process-aot", *example.build_arguments),
+            example.project_directory,
+            self.environment(output),
+        )
+        generated_sources = example.project_directory / "target" / "spring-aot" / "main" / "sources"
+        if not any(generated_sources.rglob("*.java")):
+            raise AssertionError(f"AOT example did not produce generated Java sources under {generated_sources}")
+
+    def build_spring_native(self, example: MavenExample, executable_name: str) -> Path:
+        output = self._target / f"{example.name}-build.jsonl"
+        self._run(
+            self._command(
+                "clean",
+                "package",
+                "spring-boot:process-aot",
+                "org.graalvm.buildtools:native-maven-plugin:1.1.1:add-reachability-metadata",
+                "org.graalvm.buildtools:native-maven-plugin:1.1.1:compile-no-fork",
+                *example.build_arguments,
+            ),
+            example.project_directory,
+            self.environment(output),
+        )
+        executable = example.project_directory / "target" / executable_name
+        if not executable.is_file():
+            raise AssertionError(f"Spring native example did not produce {executable}")
         return executable
 
     def output_path(self, example: MavenExample) -> Path:
@@ -88,7 +121,7 @@ class MavenExampleRunner:
     def java_command(built: BuiltMavenExample) -> tuple[str, ...]:
         return (
             "java",
-            "-Dlogyard.config=classpath:logyard.toml",
+            *built.example.runtime_arguments,
             "-cp",
             os.pathsep.join(
                 (
@@ -97,6 +130,15 @@ class MavenExampleRunner:
                 )
             ),
             built.example.main_class,
+        )
+
+    @staticmethod
+    def executable_jar_command(built: BuiltMavenExample, jar_name: str) -> tuple[str, ...]:
+        return (
+            "java",
+            *built.example.runtime_arguments,
+            "-jar",
+            str(built.example.project_directory / "target" / jar_name),
         )
 
     @staticmethod

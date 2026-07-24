@@ -9,6 +9,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 
 /** Framework-neutral control plane for temporary hierarchical logger-level overrides. */
 public final class LoggerLevelManagement {
@@ -38,6 +40,19 @@ public final class LoggerLevelManagement {
     public Map<String, LoggerLevel> listConfiguredLevels() {
         LinkedHashMap<String, LoggerLevel> levels = new LinkedHashMap<>();
         runtime.levelOverrides().forEach((logger, override) -> levels.put(logger, LoggerLevel.from(override)));
+        return Collections.unmodifiableMap(levels);
+    }
+
+    public Map<String, LoggerLevelSnapshot> listLoggerLevels() {
+        Map<String, LoggerLevel> configured = listConfiguredLevels();
+        Set<String> names = new TreeSet<>(runtime.knownLoggerNames());
+        names.add(ROOT_LOGGER_NAME);
+        LinkedHashMap<String, LoggerLevelSnapshot> levels = new LinkedHashMap<>();
+        for (String name : names) {
+            levels.put(name, new LoggerLevelSnapshot(
+                    configured.get(name),
+                    getEffectiveLevel(name)));
+        }
         return Collections.unmodifiableMap(levels);
     }
 

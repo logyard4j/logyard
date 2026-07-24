@@ -24,6 +24,42 @@ implementation("com.zsumz.logyard:logyard-slf4j2:0.7.0-SNAPSHOT")
 
 Use `logyard-runtime` instead when the application calls Logyard's native API directly. Both artifacts include the runtime, TOML configuration, console output, and JSON file output.
 
+Spring Boot 3.5 and 4.1 applications should use the starter:
+
+```xml
+<dependency>
+  <groupId>com.zsumz.logyard</groupId>
+  <artifactId>logyard-spring-boot-starter</artifactId>
+  <version>0.7.0-SNAPSHOT</version>
+</dependency>
+```
+
+Exclude Boot's default logging starter from every higher-level starter that brings it. For MVC:
+
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-web</artifactId> <!-- spring-boot-starter-webmvc on Boot 4 -->
+  <exclusions>
+    <exclusion>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-logging</artifactId>
+    </exclusion>
+  </exclusions>
+</dependency>
+```
+
+Apply the same exclusion to `spring-boot-starter-webflux`, `spring-boot-starter-actuator`, and any other Boot starter that brings Logback. Startup fails with exact remediation if Logyard is missing or another SLF4J provider remains.
+
+The equivalent Gradle dependency replacement is:
+
+```kotlin
+implementation("org.springframework.boot:spring-boot-starter-web") {
+    exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
+}
+implementation("com.zsumz.logyard:logyard-spring-boot-starter:0.7.0-SNAPSHOT")
+```
+
 ## Configure
 
 Create `logyard.toml` in the process working directory:
@@ -72,6 +108,8 @@ try (RuntimeBundle logyard = LogyardBootstrap.acquire(RuntimeOwner.FRAMEWORK, so
     // use logyard.runtime()
 }
 ```
+
+Spring Boot keeps the TOML model intact. `logyard.config` selects a classpath or filesystem source, `logyard.required=true` disables the safe fallback, and `logging.config` is accepted as an alias when it does not conflict with `logyard.config`. Set `-Dlogyard.enabled=false` or `LOGYARD_ENABLED=false` to opt out before Boot selects its logging system.
 
 ## Log
 
@@ -285,16 +323,18 @@ EffectiveRoute route = logyard.runtime().explain("com.example.checkout");
 | Artifact | Use |
 | --- | --- |
 | `logyard-slf4j2` | SLF4J 2 provider and the normal application dependency |
+| `logyard-spring-boot-starter` | Opinionated Boot starter without Logback |
+| `logyard-spring-boot` | Early logging, lifecycle, level controls, Actuator, and native hints |
 | `logyard-runtime` | Native runtime, bootstrap, configuration, console, and JSON |
 | `logyard-jul` | JUL handler |
 | `logyard-system-logger` | `System.LoggerFinder` provider |
 | `logyard-api` | Native API and extension SPI |
 
-The supported public surface is every package in `logyard-api`, `com.zsumz.logyard.runtime.bootstrap`, and `com.zsumz.logyard.jul`. Other packages are implementation details marked `@InternalApi`; do not import them. Every published JAR has a stable `Automatic-Module-Name`, source JAR, and Javadoc JAR.
+The supported public surface is every package in `logyard-api`, `com.zsumz.logyard.runtime.bootstrap`, `com.zsumz.logyard.jul`, and the public Spring Boot integration packages. Other packages are implementation details marked `@InternalApi`; do not import them. Every published JAR has a stable `Automatic-Module-Name`, source JAR, and Javadoc JAR.
 
 All Logyard artifacts use the same version. Java 21 is the minimum runtime, SLF4J 2.x is supported, and no compatibility claim is made for SLF4J 1.x.
 
-Published-shaped CI consumers certify plain SLF4J 2, Vert.x 5.1.5, and Micronaut 4.10.9 on the JVM. Micronaut is also built and exercised as a GraalVM 21 native image. Spring Boot and Quarkus integrations are not supported yet.
+Published-shaped CI consumers certify plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16, and Spring Boot 4.1.0 on the JVM. Spring Boot verification covers executable JAR startup, MVC, WebFlux, Actuator present and absent, AOT generation, framework and application events, structured fields, exceptions, dynamic level controls, JUL capture, context restart, and shutdown flush. Micronaut and Spring Boot 4 are also built and exercised as GraalVM 21 native images. Quarkus integration is not supported yet.
 
 ## Build and verify
 

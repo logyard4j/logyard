@@ -94,6 +94,16 @@ final class ConfigurationDiscoveryTest {
                     () -> ConfigurationDiscovery.resolve(
                             null,
                             null,
+                            Map.of(),
+                            loader,
+                            directory,
+                            null,
+                            true));
+            assertThrows(
+                    IllegalStateException.class,
+                    () -> ConfigurationDiscovery.resolve(
+                            null,
+                            null,
                             Map.of(ConfigurationDiscovery.REQUIRED_ENVIRONMENT_VARIABLE, "yes"),
                             loader,
                             directory,

@@ -84,7 +84,7 @@ jobs:
           zolt test --workspace --all --no-progress --color never
 
   native-example:
-    name: Micronaut native consumer
+    name: Framework native consumers
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

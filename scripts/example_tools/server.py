@@ -11,11 +11,23 @@ from .maven import MavenExample, MavenExampleRunner
 
 
 @dataclass(frozen=True)
+class HttpRequestExpectation:
+    path: str
+    expected_status: int
+    expected_body: str
+    method: str = "GET"
+    request_body: str | None = None
+    body_contains: bool = False
+
+
+@dataclass(frozen=True)
 class HttpExample:
     maven: MavenExample
     success_path: str = "/success"
     failure_path: str = "/failure"
     shutdown_path: str = "/shutdown"
+    executable_jar_name: str | None = None
+    additional_requests: tuple[HttpRequestExpectation, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -27,6 +39,7 @@ class ExecutableHttpExample:
     success_path: str = "/success"
     failure_path: str = "/failure"
     shutdown_path: str = "/shutdown"
+    additional_requests: tuple[HttpRequestExpectation, ...] = ()
 
 
 class HttpExampleRunner:
@@ -40,12 +53,18 @@ class HttpExampleRunner:
             ExecutableHttpExample(
                 name=example.maven.name,
                 project_directory=example.maven.project_directory,
-                command=self._maven.java_command(built),
+                command=self._maven.java_command(built)
+                if example.executable_jar_name is None
+                else self._maven.executable_jar_command(built, example.executable_jar_name),
                 success_path=example.success_path,
                 failure_path=example.failure_path,
                 shutdown_path=example.shutdown_path,
+                additional_requests=example.additional_requests,
             )
         )
+
+    def process_log_path(self, name: str) -> Path:
+        return self._target / f"{name}.process.log"
 
     def run_and_exercise(self, example: ExecutableHttpExample) -> Path:
         output = self._target / f"{example.name}.jsonl"
@@ -71,9 +90,11 @@ class HttpExampleRunner:
             )
             try:
                 port = self._await_port(process, port_file, process_log)
-                self._request(port, example.success_path, 200, "success")
-                self._request(port, example.failure_path, 500, "failure")
-                self._request(port, example.shutdown_path, 202, "stopping", method="POST")
+                self._request(port, HttpRequestExpectation(example.success_path, 200, "success"))
+                self._request(port, HttpRequestExpectation(example.failure_path, 500, "failure"))
+                for request in example.additional_requests:
+                    self._request(port, request)
+                self._request(port, HttpRequestExpectation(example.shutdown_path, 202, "stopping", method="POST"))
                 exit_code = process.wait(timeout=30)
                 if exit_code != 0:
                     self._fail(f"server exited with {exit_code}", process_log)
@@ -94,11 +115,16 @@ class HttpExampleRunner:
         HttpExampleRunner._fail("server did not publish its port within 30 seconds", process_log)
 
     @staticmethod
-    def _request(port: int, path: str, expected_status: int, expected_body: str, method: str = "GET") -> None:
+    def _request(port: int, expectation: HttpRequestExpectation) -> None:
+        data = expectation.request_body.encode("utf-8") if expectation.request_body is not None else None
+        headers = {"X-Request-Id": f"request-{expectation.path.strip('/').replace('/', '-')}"}
+        if data is not None:
+            headers["Content-Type"] = "application/json"
         request = urllib.request.Request(
-            f"http://127.0.0.1:{port}{path}",
-            headers={"X-Request-Id": f"request-{path.strip('/')}"},
-            method=method,
+            f"http://127.0.0.1:{port}{expectation.path}",
+            data=data,
+            headers=headers,
+            method=expectation.method,
         )
         try:
             with urllib.request.urlopen(request, timeout=10) as response:
@@ -107,8 +133,13 @@ class HttpExampleRunner:
         except urllib.error.HTTPError as failure:
             status = failure.code
             body = failure.read().decode("utf-8")
-        if status != expected_status or body != expected_body:
-            raise AssertionError(f"{method} {path} returned {status} {body!r}; expected {expected_status} {expected_body!r}")
+        body_matches = expectation.expected_body in body if expectation.body_contains else body == expectation.expected_body
+        if status != expectation.expected_status or not body_matches:
+            mode = "containing" if expectation.body_contains else "equal to"
+            raise AssertionError(
+                f"{expectation.method} {expectation.path} returned {status} {body!r}; expected "
+                f"{expectation.expected_status} with body {mode} {expectation.expected_body!r}"
+            )
 
     @staticmethod
     def _stop(process: subprocess.Popen[bytes]) -> None:

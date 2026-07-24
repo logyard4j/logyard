@@ -60,9 +60,13 @@ required_files=(
   scripts/release-bundle
   scripts/release-verify
   modules/logyard-bom/publication.toml
+  modules/logyard-spring-boot-starter/zolt.toml
+  modules/logyard-spring-boot/src/main/resources/META-INF/spring.factories
+  modules/logyard-spring-boot/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
   examples/slf4j/pom.xml
   examples/vertx/pom.xml
   examples/micronaut/pom.xml
+  examples/spring-boot/pom.xml
   scripts/examples-native-verify
   scripts/verify
   scripts/architecture-check
