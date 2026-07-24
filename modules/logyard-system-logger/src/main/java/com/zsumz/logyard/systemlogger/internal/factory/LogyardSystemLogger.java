@@ -101,6 +101,10 @@ public final class LogyardSystemLogger implements System.Logger {
                 captured = captured.mergedWith(
                         AttributeSet.systemBuilder(1).put("logyard.system_logger.message_format_failed", true).build());
             }
+            if (rendered.truncated()) {
+                captured = captured.mergedWith(
+                        AttributeSet.systemBuilder(1).put("logyard.capture.truncated", true).build());
+            }
             logger.log(logyardLevel, null, rendered.message(), null, captured, thrown);
         } catch (Throwable failure) {
             AdapterDiagnostics.rethrowIfFatal(failure);

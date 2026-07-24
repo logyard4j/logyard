@@ -10,10 +10,8 @@ import java.util.function.Supplier;
 
 /** Process-wide state machine for runtime identity, configuration handoff, and ownership. */
 public final class RuntimeInstallationManager {
-    private static final RuntimeInstallationManager PROCESS = new RuntimeInstallationManager(
-            new LogyardGlobalRuntimeAccess(),
-            new InstallationShutdownHook(),
-            System::getenv);
+    private static final RuntimeInstallationManager PROCESS =
+            new RuntimeInstallationManager(new LogyardGlobalRuntimeAccess(), new InstallationShutdownHook(), System::getenv);
 
     private final GlobalRuntimeAccess globalRuntime;
     private final RuntimeShutdownHookRegistrar shutdownHooks;
@@ -24,23 +22,18 @@ public final class RuntimeInstallationManager {
 
     private InstallationPhase phase = InstallationPhase.EMPTY;
     private RuntimeInstallation installation;
+    private volatile RuntimeInstallation publishedInstallation;
     private RuntimeOwner configurationAuthority;
     private long generation;
     private boolean shutdownHookInstalled;
     private boolean terminating;
 
-    RuntimeInstallationManager(
-            GlobalRuntimeAccess globalRuntime,
-            RuntimeShutdownHookRegistrar shutdownHooks,
-            Supplier<Map<String, String>> environment) {
+    RuntimeInstallationManager(GlobalRuntimeAccess globalRuntime, RuntimeShutdownHookRegistrar shutdownHooks, Supplier<Map<String, String>> environment) {
         this(globalRuntime, shutdownHooks, environment, ManagedRuntimeInstallation::open);
     }
 
-    RuntimeInstallationManager(
-            GlobalRuntimeAccess globalRuntime,
-            RuntimeShutdownHookRegistrar shutdownHooks,
-            Supplier<Map<String, String>> environment,
-            RuntimeInstallationFactory installations) {
+    RuntimeInstallationManager(GlobalRuntimeAccess globalRuntime, RuntimeShutdownHookRegistrar shutdownHooks,
+            Supplier<Map<String, String>> environment, RuntimeInstallationFactory installations) {
         this.globalRuntime = Objects.requireNonNull(globalRuntime, "globalRuntime");
         this.shutdownHooks = Objects.requireNonNull(shutdownHooks, "shutdownHooks");
         this.environment = Objects.requireNonNull(environment, "environment");
@@ -64,13 +57,7 @@ public final class RuntimeInstallationManager {
     }
 
     boolean isActive(RuntimeInstallation candidate) {
-        synchronized (this) {
-            if ((phase != InstallationPhase.ACTIVE && phase != InstallationPhase.RECONFIGURING)
-                    || installation != candidate) {
-                return false;
-            }
-        }
-        return globalRuntime.current() == candidate.runtime();
+        return publishedInstallation == candidate;
     }
 
     synchronized int leaseCount(RuntimeOwner owner) {
@@ -81,14 +68,13 @@ public final class RuntimeInstallationManager {
         RuntimeInstallation closing = null;
         long closingGeneration = 0;
         synchronized (this) {
-            if (installation != candidate
-                    || phase == InstallationPhase.CLOSING
-                    || phase == InstallationPhase.TERMINATED) {
+            if (installation != candidate || phase == InstallationPhase.CLOSING || phase == InstallationPhase.TERMINATED) {
                 return;
             }
             leaseCounts.decrement(owner);
             if (leaseCounts.total() == 0) {
                 phase = InstallationPhase.CLOSING;
+                publishedInstallation = null;
                 configurationAuthority = null;
                 closing = candidate;
                 closingGeneration = ++generation;
@@ -119,15 +105,14 @@ public final class RuntimeInstallationManager {
     }
 
     private AcquisitionPlan reserveAcquisition(RuntimeOwner owner, LogyardRuntime observedGlobal) {
-        if (phase == InstallationPhase.STARTING
-                || phase == InstallationPhase.RECONFIGURING
-                || phase == InstallationPhase.CLOSING
-                || phase == InstallationPhase.TERMINATED) {
+        if (phase == InstallationPhase.STARTING || phase == InstallationPhase.RECONFIGURING
+                || phase == InstallationPhase.CLOSING || phase == InstallationPhase.TERMINATED) {
             throw InstallationTransitionFailures.forPhase(phase);
         }
         if (phase == InstallationPhase.ACTIVE) {
             if (observedGlobal != installation.runtime()) {
                 phase = InstallationPhase.CLOSING;
+                publishedInstallation = null;
                 leaseCounts.clear();
                 configurationAuthority = null;
                 return AcquisitionPlan.closeStale(installation, ++generation);
@@ -157,7 +142,14 @@ public final class RuntimeInstallationManager {
         RuntimeInstallation candidate = null;
         try {
             candidate = installations.open(request, Map.copyOf(environment.get()));
-            globalRuntime.install(candidate.runtime());
+            RuntimeInstallation starting = candidate;
+            synchronized (this) {
+                if (phase != InstallationPhase.STARTING || generation != plan.generation()) {
+                    throw InstallationTransitionFailures.forPhase(phase);
+                }
+                installation = candidate;
+            }
+            globalRuntime.install(candidate.runtime(), () -> shutdownManaged(starting));
             if (plan.installShutdownHook()) {
                 boolean installed = shutdownHooks.install(this::shutdownAtExit);
                 if (installed) {
@@ -174,6 +166,7 @@ public final class RuntimeInstallationManager {
                 configurationAuthority = owner;
                 leaseCounts.increment(owner);
                 phase = InstallationPhase.ACTIVE;
+                publishedInstallation = candidate;
             }
             return RuntimeInstallationLease.managed(this, globalRuntime, owner, candidate);
         } catch (RuntimeException | Error failure) {
@@ -207,6 +200,7 @@ public final class RuntimeInstallationManager {
                     leaseCounts.decrement(owner);
                     if (leaseCounts.total() == 0) {
                         phase = InstallationPhase.CLOSING;
+                        publishedInstallation = null;
                         configurationAuthority = null;
                         closing = plan.installation();
                         closingGeneration = ++generation;
@@ -223,47 +217,75 @@ public final class RuntimeInstallationManager {
     }
 
     private void failStart(RuntimeInstallation candidate, long expectedGeneration, Throwable primaryFailure) {
-        if (candidate == null) {
+        RuntimeInstallation closing = null;
+        long closingGeneration = 0;
+        synchronized (this) {
+            if (phase != InstallationPhase.STARTING || generation != expectedGeneration) {
+                return;
+            }
+            if (candidate == null) {
+                installation = null;
+                phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
+            } else {
+                installation = candidate;
+                publishedInstallation = null;
+                leaseCounts.clear();
+                configurationAuthority = null;
+                phase = InstallationPhase.CLOSING;
+                closing = candidate;
+                closingGeneration = ++generation;
+            }
+        }
+        if (closing != null) {
+            beginClosing(closing, closingGeneration).whenComplete((ignored, cleanupFailure) -> {
+                if (cleanupFailure != null) {
+                    primaryFailure.addSuppressed(cleanupFailure);
+                }
+            });
+        }
+    }
+
+    private void shutdownAtExit() {
+        requestShutdown(null, true);
+    }
+
+    private CompletionStage<Void> beginClosing(RuntimeInstallation candidate, long expectedGeneration) {
+        return retirements.close(candidate, globalRuntime, failure -> {
             synchronized (this) {
-                if (phase == InstallationPhase.STARTING && generation == expectedGeneration) {
-                    phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
-                } else if (phase == InstallationPhase.CLOSING && installation == null) {
+                if (phase == InstallationPhase.CLOSING && generation == expectedGeneration && installation == candidate) {
+                    installation = null;
                     phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
                 }
-            }
-            return;
-        }
-        long closingGeneration;
-        synchronized (this) {
-            installation = candidate;
-            leaseCounts.clear();
-            configurationAuthority = null;
-            phase = InstallationPhase.CLOSING;
-            closingGeneration = ++generation;
-        }
-        beginClosing(candidate, closingGeneration).whenComplete((ignored, cleanupFailure) -> {
-            if (cleanupFailure != null) {
-                primaryFailure.addSuppressed(cleanupFailure);
             }
         });
     }
 
-    private void shutdownAtExit() {
+    private boolean shutdownManaged(RuntimeInstallation candidate) {
+        return requestShutdown(candidate, false);
+    }
+
+    private boolean requestShutdown(RuntimeInstallation expected, boolean terminateProcess) {
         RuntimeInstallation closing;
         long closingGeneration;
         synchronized (this) {
-            terminating = true;
-            if (phase == InstallationPhase.TERMINATED) {
-                return;
+            if (terminateProcess) {
+                terminating = true;
             }
-            if (phase == InstallationPhase.EMPTY) {
-                phase = InstallationPhase.TERMINATED;
-                return;
+            if (expected != null && installation != expected) {
+                return false;
             }
             if (phase == InstallationPhase.CLOSING) {
-                return;
+                return true;
+            }
+            if (phase == InstallationPhase.TERMINATED) {
+                return false;
+            }
+            if (phase == InstallationPhase.EMPTY) {
+                phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
+                return terminateProcess;
             }
             phase = InstallationPhase.CLOSING;
+            publishedInstallation = null;
             leaseCounts.clear();
             configurationAuthority = null;
             closing = installation;
@@ -272,18 +294,6 @@ public final class RuntimeInstallationManager {
         if (closing != null) {
             beginClosing(closing, closingGeneration);
         }
-    }
-
-    private CompletionStage<Void> beginClosing(RuntimeInstallation candidate, long expectedGeneration) {
-        return retirements.close(candidate, globalRuntime, failure -> {
-            synchronized (this) {
-                if (phase == InstallationPhase.CLOSING
-                        && generation == expectedGeneration
-                        && installation == candidate) {
-                    installation = null;
-                    phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
-                }
-            }
-        });
+        return true;
     }
 }

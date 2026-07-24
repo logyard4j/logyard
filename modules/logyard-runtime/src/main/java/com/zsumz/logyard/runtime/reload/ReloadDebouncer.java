@@ -1,8 +1,11 @@
 package com.zsumz.logyard.runtime.reload;
 
+import com.zsumz.logyard.api.reload.ReloadResult;
+
 import java.time.Duration;
 import java.util.Objects;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 final class ReloadDebouncer {
     private final long delayNanos;
@@ -24,11 +27,13 @@ final class ReloadDebouncer {
         deadline = candidate < 0L && now > 0L ? Long.MAX_VALUE - 1L : candidate;
     }
 
-    void runIfDue(Runnable reload) {
+    void runIfDue(Supplier<ReloadResult> reload) {
         Objects.requireNonNull(reload, "reload");
         if (deadline != Long.MAX_VALUE && nanoTime.getAsLong() - deadline >= 0L) {
             deadline = Long.MAX_VALUE;
-            reload.run();
+            if (Objects.requireNonNull(reload.get(), "reload result") == ReloadResult.REJECTED) {
+                signalChange();
+            }
         }
     }
 

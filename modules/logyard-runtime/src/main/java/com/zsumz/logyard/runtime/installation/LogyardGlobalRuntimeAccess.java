@@ -3,6 +3,8 @@ package com.zsumz.logyard.runtime.installation;
 import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardRuntime;
 
+import java.util.function.BooleanSupplier;
+
 final class LogyardGlobalRuntimeAccess implements GlobalRuntimeAccess {
     @Override
     public LogyardRuntime current() {
@@ -15,7 +17,16 @@ final class LogyardGlobalRuntimeAccess implements GlobalRuntimeAccess {
     }
 
     @Override
+    public void install(LogyardRuntime runtime, BooleanSupplier managedShutdown) {
+        if (managedShutdown == null) {
+            Logyard.initialize(runtime);
+        } else {
+            Logyard.initializeManaged(runtime, managedShutdown);
+        }
+    }
+
+    @Override
     public boolean shutdownIfCurrent(LogyardRuntime runtime) {
-        return Logyard.shutdownIfCurrent(runtime);
+        return Logyard.releaseManagedIfCurrent(runtime);
     }
 }

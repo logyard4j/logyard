@@ -25,5 +25,8 @@ central = "https://repo.maven.apache.org/maven2"
 source = "src/main/java"
 output = "target/classes"
 
+[resources]
+main = ["src/main/resources"]
+
 [build.metadata]
 reproducible = true

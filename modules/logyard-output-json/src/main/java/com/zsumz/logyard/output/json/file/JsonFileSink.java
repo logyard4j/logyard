@@ -17,18 +17,24 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Exclusive UTF-8 JSONL file output with optional record-boundary rotation. */
+/**
+ * Exclusive UTF-8 JSONL file output with optional record-boundary rotation.
+ *
+ * <p>Encoding happens outside the writer-state monitor. Concurrent records are written atomically
+ * in encoding-completion order, which keeps extension callbacks free to invoke other sink methods.</p>
+ */
 public final class JsonFileSink implements EventSink, HealthContributor {
     public static final int MIN_BUFFER_BYTES = 1_024;
     public static final int MAX_BUFFER_BYTES = 16 * 1_024 * 1_024;
 
+    private final Object writerState = new Object();
     private final Path path;
     private final EventEncoder encoder;
     private final RotatingFileWriter writer;
     private final RotationPolicy rotationPolicy;
     private final long flushIntervalNanos;
     private long nextFlushNanos;
-    private boolean closed;
+    private volatile boolean closed;
 
     public JsonFileSink(
             Path path,
@@ -86,34 +92,41 @@ public final class JsonFileSink implements EventSink, HealthContributor {
     }
 
     @Override
-    public synchronized void accept(LogEvent event) {
+    public void accept(LogEvent event) {
         ensureOpen();
         byte[] json = encoder.encode(Objects.requireNonNull(event, "event")).getBytes(StandardCharsets.UTF_8);
-        writer.writeRecord(json, (byte) '\n');
-        long now = System.nanoTime();
-        if (flushIntervalNanos == 0 || now >= nextFlushNanos) {
+        synchronized (writerState) {
+            ensureOpen();
+            writer.writeRecord(json, (byte) '\n');
+            long now = System.nanoTime();
+            if (flushIntervalNanos == 0 || now >= nextFlushNanos) {
+                writer.flush();
+                nextFlushNanos = now + flushIntervalNanos;
+            }
+        }
+    }
+
+    @Override
+    public void flush() {
+        synchronized (writerState) {
+            ensureOpen();
             writer.flush();
-            nextFlushNanos = now + flushIntervalNanos;
         }
     }
 
     @Override
-    public synchronized void flush() {
-        ensureOpen();
-        writer.flush();
-    }
-
-    @Override
-    public synchronized void close() {
-        if (closed) {
-            return;
+    public void close() {
+        synchronized (writerState) {
+            if (closed) {
+                return;
+            }
+            closed = true;
+            writer.close();
         }
-        closed = true;
-        writer.close();
     }
 
     @Override
-    public synchronized ComponentHealth health(String componentName) {
+    public ComponentHealth health(String componentName) {
         String failureType = writer.maintenanceFailureType();
         HealthStatus status;
         if (closed || writer.closed()) {

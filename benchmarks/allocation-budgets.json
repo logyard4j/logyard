@@ -56,6 +56,26 @@
       "maxBytesPerOperation": 512
     },
     {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderBenchmark.disabled",
+      "maxBytesPerOperation": 64
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderBenchmark.enabledOneProducer",
+      "maxBytesPerOperation": 1536
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderBenchmark.enabledFourProducers",
+      "maxBytesPerOperation": 1536
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderBenchmark.enabledSixteenProducers",
+      "maxBytesPerOperation": 1536
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderBenchmark.enabledPopulatedMdc",
+      "maxBytesPerOperation": 2048
+    },
+    {
       "benchmark": "com.zsumz.logyard.benchmarks.ingress.CapturedEventAllocationBenchmark.smallEvent",
       "maxBytesPerOperation": 512
     },
@@ -105,7 +125,7 @@
     {
       "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "0"},
-      "maxBytesPerOperation": 2048
+      "maxBytesPerOperation": 2176
     },
     {
       "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",

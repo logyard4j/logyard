@@ -1,6 +1,7 @@
 package com.zsumz.logyard.jul.internal.event;
 
-import java.text.MessageFormat;
+import com.zsumz.logyard.api.event.BoundedMessageFormat;
+
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.logging.LogRecord;
@@ -12,15 +13,8 @@ public final class JulMessageRenderer {
 
     public static Result render(LogRecord record) {
         String pattern = localize(record.getMessage(), record.getResourceBundle());
-        Object[] parameters = record.getParameters();
-        if (pattern == null || parameters == null || parameters.length == 0) {
-            return new Result(pattern, pattern, false);
-        }
-        try {
-            return new Result(pattern, MessageFormat.format(pattern, parameters), false);
-        } catch (IllegalArgumentException failure) {
-            return new Result(pattern, pattern, true);
-        }
+        BoundedMessageFormat.Result result = BoundedMessageFormat.messageFormat(pattern, record.getParameters());
+        return new Result(result.template(), result.message(), result.formatFailed(), result.truncated());
     }
 
     private static String localize(String message, ResourceBundle bundle) {
@@ -35,6 +29,6 @@ public final class JulMessageRenderer {
         }
     }
 
-    public record Result(String template, String message, boolean formatFailed) {
+    public record Result(String template, String message, boolean formatFailed, boolean truncated) {
     }
 }

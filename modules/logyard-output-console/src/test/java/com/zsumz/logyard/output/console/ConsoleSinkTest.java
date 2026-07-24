@@ -12,11 +12,17 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ConsoleSinkTest {
@@ -93,6 +99,30 @@ final class ConsoleSinkTest {
         assertFalse(rendered.contains("\u0000"));
     }
 
+    @Test
+    void customFormatterCanInvokeAcceptFlushAndCloseAcrossThreadsWithoutDeadlock() {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        ExecutorService callbacks = Executors.newSingleThreadExecutor();
+        AtomicReference<ConsoleSink> sinkReference = new AtomicReference<>();
+        AtomicBoolean outer = new AtomicBoolean(true);
+        TextFormatter formatter = event -> {
+            if (outer.compareAndSet(true, false)) {
+                invoke(callbacks, () -> sinkReference.get().accept(event("nested", null, AttributeSet.EMPTY, null)));
+                invoke(callbacks, () -> sinkReference.get().flush());
+                invoke(callbacks, () -> sinkReference.get().close());
+            }
+            return event.messageTemplate();
+        };
+        ConsoleSink sink = sink(bytes, true, false, formatter);
+        sinkReference.set(sink);
+        try {
+            assertThrows(IllegalStateException.class, () -> sink.accept(event("outer", null, AttributeSet.EMPTY, null)));
+        } finally {
+            callbacks.shutdownNow();
+        }
+        assertEquals("nested\n", bytes.toString(StandardCharsets.UTF_8));
+    }
+
     private static ConsoleSink sink(
             ByteArrayOutputStream bytes,
             boolean compactExceptions,
@@ -123,5 +153,13 @@ final class ConsoleSinkTest {
                 exception,
                 1,
                 "main");
+    }
+
+    private static void invoke(ExecutorService executor, Runnable operation) {
+        try {
+            executor.submit(operation).get(2L, TimeUnit.SECONDS);
+        } catch (Exception failure) {
+            throw new AssertionError("cross-thread sink operation did not complete", failure);
+        }
     }
 }

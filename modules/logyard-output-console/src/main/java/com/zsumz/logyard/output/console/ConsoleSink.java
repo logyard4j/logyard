@@ -12,15 +12,24 @@ import com.zsumz.logyard.output.console.terminal.ColorCapability;
 
 import java.io.PrintStream;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Thread-safe lifecycle and delivery boundary for semantic console output. */
+/**
+ * Thread-safe lifecycle and delivery boundary for semantic console output.
+ *
+ * <p>Rendering happens outside the stream-state monitor so an extension formatter may call another
+ * sink operation without deadlocking. Completed renders are serialized atomically; concurrent
+ * events therefore appear in render-completion order, with every event's physical lines contiguous.</p>
+ */
 public final class ConsoleSink implements EventSink, HealthContributor {
+    private final Object streamState = new Object();
     private final PrintStream stream;
     private final boolean closeStream;
     private final ConsoleEventRenderer renderer;
-    private boolean closed;
+    private volatile boolean closed;
 
     public ConsoleSink(PrintStream stream, boolean colors, ConsoleTheme theme) {
         this(stream, colors, theme, ColorCapability.TRUECOLOR, ZoneId.systemDefault(), true, true, false, null);
@@ -72,32 +81,41 @@ public final class ConsoleSink implements EventSink, HealthContributor {
     }
 
     @Override
-    public synchronized void accept(LogEvent event) {
+    public void accept(LogEvent event) {
         ensureOpen();
-        renderer.render(Objects.requireNonNull(event, "event"), stream::println);
-    }
-
-    @Override
-    public synchronized void flush() {
-        ensureOpen();
-        stream.flush();
-    }
-
-    @Override
-    public synchronized void close() {
-        if (closed) {
-            return;
+        List<String> lines = new ArrayList<>();
+        renderer.render(Objects.requireNonNull(event, "event"), lines::add);
+        synchronized (streamState) {
+            ensureOpen();
+            lines.forEach(stream::println);
         }
-        closed = true;
-        if (closeStream) {
-            stream.close();
-        } else {
+    }
+
+    @Override
+    public void flush() {
+        synchronized (streamState) {
+            ensureOpen();
             stream.flush();
         }
     }
 
     @Override
-    public synchronized ComponentHealth health(String componentName) {
+    public void close() {
+        synchronized (streamState) {
+            if (closed) {
+                return;
+            }
+            closed = true;
+            if (closeStream) {
+                stream.close();
+            } else {
+                stream.flush();
+            }
+        }
+    }
+
+    @Override
+    public ComponentHealth health(String componentName) {
         return new ComponentHealth(
                 componentName,
                 "console-output",

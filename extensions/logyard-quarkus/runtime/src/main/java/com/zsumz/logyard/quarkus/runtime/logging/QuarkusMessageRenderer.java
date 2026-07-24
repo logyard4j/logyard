@@ -1,21 +1,30 @@
 package com.zsumz.logyard.quarkus.runtime.logging;
 
-import org.jboss.logmanager.ExtFormatter;
+import com.zsumz.logyard.api.event.BoundedMessageFormat;
 import org.jboss.logmanager.ExtLogRecord;
 
-/** Uses JBoss Log Manager's supported format-style-aware message rendering path. */
+/** Bounded format-style-aware rendering for JBoss Log Manager records. */
 final class QuarkusMessageRenderer {
-    private static final ExtFormatter FORMATTER = new ExtFormatter() {
-        @Override
-        public String format(ExtLogRecord record) {
-            return formatMessage(record);
-        }
-    };
-
     private QuarkusMessageRenderer() {
     }
 
-    static String render(ExtLogRecord record) {
-        return FORMATTER.formatMessage(record);
+    static BoundedMessageFormat.Result render(ExtLogRecord record) {
+        String message = localize(record);
+        return switch (record.getFormatStyle()) {
+            case MESSAGE_FORMAT -> BoundedMessageFormat.messageFormat(message, record.getParameters());
+            case PRINTF -> BoundedMessageFormat.printf(message, record.getParameters());
+            case NO_FORMAT -> BoundedMessageFormat.literal(message);
+        };
+    }
+
+    private static String localize(ExtLogRecord record) {
+        if (record.getResourceBundle() == null || record.getMessage() == null) {
+            return record.getMessage();
+        }
+        try {
+            return record.getResourceBundle().getString(record.getMessage());
+        } catch (java.util.MissingResourceException ignored) {
+            return record.getMessage();
+        }
     }
 }

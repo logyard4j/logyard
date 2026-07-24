@@ -1,6 +1,7 @@
 package com.zsumz.logyard.runtime.reload;
 
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
+import com.zsumz.logyard.api.reload.ReloadResult;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -8,6 +9,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /** Lifecycle façade for a parent-directory configuration watch. */
 public final class ConfigurationWatcher implements AutoCloseable {
@@ -23,7 +25,7 @@ public final class ConfigurationWatcher implements AutoCloseable {
             ConfigurationWatchRegistration registration,
             Duration debounce,
             Duration closeTimeout,
-            Runnable reload,
+            Supplier<ReloadResult> reload,
             ReloadDiagnostics diagnostics) {
         source = registration.source();
         this.closeTimeout = Objects.requireNonNull(closeTimeout, "closeTimeout");
@@ -50,7 +52,7 @@ public final class ConfigurationWatcher implements AutoCloseable {
             Path source,
             Duration debounce,
             Duration closeTimeout,
-            Runnable reload,
+            Supplier<ReloadResult> reload,
             ReloadDiagnostics diagnostics) {
         ConfigurationWatcher watcher = prepare(source, debounce, closeTimeout, reload, diagnostics);
         watcher.activate();
@@ -61,7 +63,7 @@ public final class ConfigurationWatcher implements AutoCloseable {
             Path source,
             Duration debounce,
             Duration closeTimeout,
-            Runnable reload,
+            Supplier<ReloadResult> reload,
             ReloadDiagnostics diagnostics) {
         ConfigurationWatcher watcher;
         try {

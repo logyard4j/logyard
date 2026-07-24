@@ -14,7 +14,7 @@ import org.slf4j.spi.MDCAdapter;
 import org.slf4j.spi.SLF4JServiceProvider;
 
 /** ServiceLoader entry point for SLF4J 2.x. */
-public final class LogyardServiceProvider implements SLF4JServiceProvider {
+public final class LogyardServiceProvider implements SLF4JServiceProvider, AutoCloseable {
     /** Non-final by SLF4J convention so the API can inspect the compatibility line. */
     public static String REQUESTED_API_VERSION = "2.0.99";
 
@@ -95,6 +95,20 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider {
     /** Exposed for diagnostics and provider tests; SLF4J itself has no shutdown callback. */
     public synchronized boolean ownsRuntime() {
         return runtime != null && runtime.ownsRuntime();
+    }
+
+    /**
+     * Releases the provider's adapter lease for embedded containers and lifecycle benchmarks.
+     *
+     * <p>SLF4J does not define a shutdown callback, so ordinary applications rely on Logyard's
+     * process lifecycle instead.</p>
+     */
+    @Override
+    public synchronized void close() {
+        if (runtime != null) {
+            runtime.close();
+            runtime = null;
+        }
     }
 
     private enum State {

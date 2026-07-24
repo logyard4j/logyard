@@ -3,6 +3,7 @@ package com.zsumz.logyard.quarkus.runtime.logging;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.event.BoundedMessageFormat;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
 import com.zsumz.logyard.api.ingress.LogEventIngress;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
@@ -43,16 +44,15 @@ final class QuarkusEventMapper {
             return;
         }
 
-        String template = record.getMessage();
-        String rendered = QuarkusMessageRenderer.render(record);
+        BoundedMessageFormat.Result rendered = QuarkusMessageRenderer.render(record);
         AttributeSet.Builder attributes = AttributeSet.builder(18)
                 .put("quarkus.level", sourceLevel.getName())
                 .put("quarkus.sequence_number", record.getSequenceNumber());
         addSource(attributes, record);
         addProcess(attributes, record);
         addContext(attributes, record, Objects.requireNonNull(contextPolicySource.get(), "context policy snapshot"));
-        if (template != null && !Objects.equals(template, rendered)) {
-            attributes.put("quarkus.message_template", template);
+        if (rendered.template() != null && !Objects.equals(rendered.template(), rendered.message())) {
+            attributes.put("quarkus.message_template", rendered.template());
         }
         if (record.getResourceBundleName() != null) {
             attributes.put("quarkus.resource_bundle", record.getResourceBundleName());
@@ -60,14 +60,23 @@ final class QuarkusEventMapper {
         if (record.getMarker() != null) {
             attributes.put("quarkus.marker", String.valueOf(record.getMarker()));
         }
+        AttributeSet captured = attributes.build();
+        if (rendered.formatFailed()) {
+            captured = captured.mergedWith(
+                    AttributeSet.systemBuilder(1).put("logyard.quarkus.message_format_failed", true).build());
+        }
+        if (rendered.truncated()) {
+            captured = captured.mergedWith(
+                    AttributeSet.systemBuilder(1).put("logyard.capture.truncated", true).build());
+        }
 
         Instant instant = record.getInstant();
         logger.log(
                 level,
                 null,
-                rendered,
+                rendered.message(),
                 null,
-                attributes.build(),
+                captured,
                 record.getThrown(),
                 IngressMetadata.source(instant.toEpochMilli(), record.getLongThreadID(), record.getThreadName()));
     }

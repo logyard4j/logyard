@@ -1,5 +1,6 @@
 package com.zsumz.logyard.runtime.reload;
 
+import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +34,10 @@ final class ConfigurationWatcherTest {
                 source,
                 Duration.ofMillis(25L),
                 Duration.ofSeconds(2L),
-                reloaded::countDown,
+                () -> {
+                    reloaded.countDown();
+                    return ReloadResult.APPLIED;
+                },
                 diagnostics);
         try {
             Files.writeString(source, "schema = 1\n# changed\n", StandardCharsets.UTF_8);
@@ -68,6 +72,7 @@ final class ConfigurationWatcherTest {
                         throw new AssertionError("hostile reload callback");
                     }
                     recovered.countDown();
+                    return ReloadResult.APPLIED;
                 },
                 diagnostics);
         try {
@@ -77,6 +82,65 @@ final class ConfigurationWatcherTest {
             assertTrue(recovered.await(5L, TimeUnit.SECONDS), "watcher did not recover after callback failure");
         } finally {
             watcher.close();
+        }
+    }
+
+    @Test
+    void rejectedReloadRetainsTheDirtyFileUntilTheLatestContentIsApplied() throws Exception {
+        Path directory = Files.createTempDirectory("logyard-durable-configuration-watcher-");
+        Path source = directory.resolve("logyard.toml");
+        Files.writeString(source, "version = 1\n", StandardCharsets.UTF_8);
+        CountDownLatch rejectedAttemptEntered = new CountDownLatch(1);
+        CountDownLatch allowRejectedAttempt = new CountDownLatch(1);
+        CountDownLatch latestApplied = new CountDownLatch(1);
+        AtomicInteger attempts = new AtomicInteger();
+        AtomicReference<String> active = new AtomicReference<>("version = 1\n");
+
+        ConfigurationWatcher watcher = ConfigurationWatcher.start(
+                source,
+                Duration.ofMillis(25L),
+                Duration.ofSeconds(2L),
+                () -> {
+                    String observed = read(source);
+                    if (attempts.getAndIncrement() == 0) {
+                        rejectedAttemptEntered.countDown();
+                        await(allowRejectedAttempt);
+                        active.set(observed);
+                        return ReloadResult.REJECTED;
+                    }
+                    active.set(observed);
+                    latestApplied.countDown();
+                    return ReloadResult.APPLIED;
+                },
+                ReloadDiagnostics.silent());
+        try {
+            Files.writeString(source, "version = 2\n", StandardCharsets.UTF_8);
+            assertTrue(rejectedAttemptEntered.await(5L, TimeUnit.SECONDS), "rejected reload did not start");
+            Files.writeString(source, "version = 3\n", StandardCharsets.UTF_8);
+            allowRejectedAttempt.countDown();
+
+            assertTrue(latestApplied.await(5L, TimeUnit.SECONDS), "dirty configuration was not retried");
+            assertTrue(active.get().contains("version = 3"), () -> "active configuration was " + active.get());
+        } finally {
+            allowRejectedAttempt.countDown();
+            watcher.close();
+        }
+    }
+
+    private static String read(Path source) {
+        try {
+            return Files.readString(source, StandardCharsets.UTF_8);
+        } catch (java.io.IOException failure) {
+            throw new IllegalStateException("failed to read test configuration", failure);
+        }
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("test barrier interrupted", interrupted);
         }
     }
 }

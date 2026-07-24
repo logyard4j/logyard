@@ -7,6 +7,8 @@ import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 import org.jboss.logmanager.ExtLogRecord;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -88,6 +90,33 @@ final class QuarkusEventMapperTest {
         }
 
         assertEquals(true, events.getFirst().attributes().get("logyard.capture.truncated"));
+    }
+
+    @Test
+    void boundsMessageFormatNumbersAndPrintfWidthsBeforeMapping() {
+        ExtLogRecord messageFormat = new ExtLogRecord(
+                java.util.logging.Level.INFO,
+                "{0}",
+                ExtLogRecord.FormatStyle.MESSAGE_FORMAT,
+                QuarkusEventMapperTest.class.getName());
+        messageFormat.setParameters(new Object[] {new BigDecimal(BigInteger.ONE, -100_000_000)});
+        ExtLogRecord printf = new ExtLogRecord(
+                java.util.logging.Level.INFO,
+                "%100000000s",
+                ExtLogRecord.FormatStyle.PRINTF,
+                QuarkusEventMapperTest.class.getName());
+        printf.setParameters(new Object[] {"bounded"});
+
+        List<LogEvent> events = new ArrayList<>();
+        try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
+            new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, messageFormat);
+            new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, printf);
+        }
+
+        assertTrue(events.get(0).renderedMessage().contains("1E+100000000"));
+        assertTrue((Boolean) events.get(0).attributes().get("logyard.capture.truncated"));
+        assertTrue(events.get(1).renderedMessage().length() <= CaptureLimits.MAX_CAPTURED_NUMBER_CHARS);
+        assertTrue((Boolean) events.get(1).attributes().get("logyard.capture.truncated"));
     }
 
     private static final class TrackingRecord extends ExtLogRecord {

@@ -1,7 +1,6 @@
 package com.zsumz.logyard.runtime.adapter;
 
 import com.zsumz.logyard.api.LogyardRuntime;
-import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
 import java.util.Objects;
@@ -38,7 +37,7 @@ public final class LazyAdapterRuntime implements AdapterRuntimeAccess {
 
     /** Returns a lazy context-policy source that follows whichever runtime is currently resolved. */
     public Supplier<ContextPolicySnapshot> contextPolicySource() {
-        return () -> ContextPolicyRegistry.sourceFor(runtime()).get();
+        return () -> handle().contextPolicySource().get();
     }
 
     @Override

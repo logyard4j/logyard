@@ -1,6 +1,7 @@
 package com.zsumz.logyard.runtime.installation;
 
 import com.zsumz.logyard.config.LogyardConfig;
+import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
@@ -10,6 +11,7 @@ import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
 import com.zsumz.logyard.runtime.reload.ReloadCoordinator;
 
 import java.util.Map;
+import java.util.function.Supplier;
 
 final class ActiveRuntimeConfiguration {
     private final ConfigurationInstallationRequest request;
@@ -34,7 +36,7 @@ final class ActiveRuntimeConfiguration {
             ConfigurationSnapshot snapshot,
             RuntimeAssembly assembly,
             Map<String, String> environment,
-            Runnable reload) {
+            Supplier<ReloadResult> reload) {
         LogyardConfig config = assembly.config();
         ReloadDiagnostics diagnostics = "off".equals(config.runtime().internalStatus())
                 ? ReloadDiagnostics.silent()
@@ -59,7 +61,7 @@ final class ActiveRuntimeConfiguration {
         return new ActiveRuntimeConfiguration(request, coordinator, diagnostics, watcher);
     }
 
-    ActiveRuntimeConfiguration restartWatcher(Runnable reload) {
+    ActiveRuntimeConfiguration restartWatcher(Supplier<ReloadResult> reload) {
         LogyardConfig config = coordinator.currentConfig();
         ConfigurationWatcher replacement = config.runtime().watch() && request.watchPath() != null
                 ? ConfigurationWatcher.prepare(

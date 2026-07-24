@@ -4,6 +4,7 @@ import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.jul.LogyardHandler;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
@@ -19,31 +20,22 @@ final class JulCapture {
     private static Handler[] displacedHandlers = {};
     private static Level displacedRootLevel;
 
-    private boolean active;
-
-    void start(LogyardRuntime runtime) {
+    Lease acquire(LogyardRuntime runtime) {
         Objects.requireNonNull(runtime, "runtime");
         synchronized (MONITOR) {
-            if (active) {
-                return;
-            }
             if (leaseCount == 0) {
                 install(runtime);
             } else if (capturedRuntime != runtime) {
                 throw new IllegalStateException("Spring JUL capture cannot bridge two Logyard runtime identities");
             }
             leaseCount++;
-            active = true;
+            return new Lease();
         }
     }
 
-    void close() {
+    private static void release() {
         LogyardHandler closing = null;
         synchronized (MONITOR) {
-            if (!active) {
-                return;
-            }
-            active = false;
             leaseCount--;
             if (leaseCount == 0) {
                 closing = restore();
@@ -100,5 +92,17 @@ final class JulCapture {
             throw new IllegalStateException("JUL root logger is unavailable");
         }
         return root;
+    }
+
+    /** Operation-owned claim on the process JUL bridge. */
+    static final class Lease implements AutoCloseable {
+        private final AtomicBoolean closed = new AtomicBoolean();
+
+        @Override
+        public void close() {
+            if (closed.compareAndSet(false, true)) {
+                release();
+            }
+        }
     }
 }

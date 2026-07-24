@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.spi.encoding.EventEncoder;
 import com.zsumz.logyard.output.json.encoding.ResourceAttributes;
 import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
 
@@ -19,6 +20,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPInputStream;
 import org.junit.jupiter.api.Test;
 
@@ -114,6 +120,30 @@ final class JsonFileSinkTest {
         });
     }
 
+    @Test
+    void customEncoderCanInvokeAcceptFlushAndCloseAcrossThreadsWithoutDeadlock() throws Exception {
+        Path output = Files.createTempDirectory("logyard-json-reentrant-").resolve("events.jsonl");
+        ExecutorService callbacks = Executors.newSingleThreadExecutor();
+        AtomicReference<JsonFileSink> sinkReference = new AtomicReference<>();
+        AtomicBoolean outer = new AtomicBoolean(true);
+        EventEncoder encoder = event -> {
+            if (outer.compareAndSet(true, false)) {
+                invoke(callbacks, () -> sinkReference.get().accept(event(2)));
+                invoke(callbacks, () -> sinkReference.get().flush());
+                invoke(callbacks, () -> sinkReference.get().close());
+            }
+            return "{\"sequence\":" + event.attributes().get("sequence") + "}";
+        };
+        JsonFileSink sink = new JsonFileSink(output, encoder, 1_024, Duration.ZERO, false, null);
+        sinkReference.set(sink);
+        try {
+            assertThrows(IllegalStateException.class, () -> sink.accept(event(1)));
+        } finally {
+            callbacks.shutdownNow();
+        }
+        assertEquals("{\"sequence\":2}\n", Files.readString(output, StandardCharsets.UTF_8));
+    }
+
     private static void writeRotating(
             Path output,
             int records,
@@ -180,6 +210,14 @@ final class JsonFileSinkTest {
                     })
                     .sorted()
                     .toList();
+        }
+    }
+
+    private static void invoke(ExecutorService executor, Runnable operation) {
+        try {
+            executor.submit(operation).get(2L, TimeUnit.SECONDS);
+        } catch (Exception failure) {
+            throw new AssertionError("cross-thread sink operation did not complete", failure);
         }
     }
 }

@@ -18,10 +18,20 @@ public final class FrameworkRuntimeLifecycle {
         CLOSING
     }
 
+    private final FrameworkRuntimeAcquirer runtimeAcquirer;
     private final JulCapture julCapture = new JulCapture();
     private RuntimeBundle bundle;
+    private JulCapture.Lease julLease;
     private Phase phase = Phase.IDLE;
     private long generation;
+
+    public FrameworkRuntimeLifecycle() {
+        this(LogyardBootstrap::acquire);
+    }
+
+    FrameworkRuntimeLifecycle(FrameworkRuntimeAcquirer runtimeAcquirer) {
+        this.runtimeAcquirer = Objects.requireNonNull(runtimeAcquirer, "runtimeAcquirer");
+    }
 
     public void startEarly() {
         long reservedGeneration;
@@ -35,19 +45,20 @@ public final class FrameworkRuntimeLifecycle {
         }
 
         RuntimeBundle acquired = null;
-        boolean captureStarted = false;
+        JulCapture.Lease acquiredCapture = null;
         try {
-            acquired = LogyardBootstrap.acquire(RuntimeOwner.FRAMEWORK, ConfigurationDiscovery.resolve());
-            julCapture.start(acquired.runtime());
-            captureStarted = true;
+            acquired = runtimeAcquirer.acquire(RuntimeOwner.FRAMEWORK, ConfigurationDiscovery.resolve());
+            acquiredCapture = julCapture.acquire(acquired.runtime());
             synchronized (this) {
                 requireReservation(Phase.STARTING, reservedGeneration);
                 bundle = acquired;
+                julLease = acquiredCapture;
                 phase = Phase.ACTIVE;
             }
         } catch (Throwable failure) {
-            if (captureStarted) {
-                SpringLifecycleBoundary.invoke("failed early JUL capture release", julCapture::close);
+            if (acquiredCapture != null) {
+                JulCapture.Lease rejectedCapture = acquiredCapture;
+                SpringLifecycleBoundary.invoke("failed early JUL capture release", rejectedCapture::close);
             }
             if (acquired != null) {
                 RuntimeBundle rejected = acquired;
@@ -61,30 +72,33 @@ public final class FrameworkRuntimeLifecycle {
     public void configure(LogyardConfigurationSource source) {
         Objects.requireNonNull(source, "source");
         RuntimeBundle previous;
+        JulCapture.Lease previousCapture;
         long reservedGeneration;
         synchronized (this) {
             if (phase != Phase.IDLE && phase != Phase.ACTIVE) {
                 throw lifecycleFailure(phase);
             }
             previous = bundle;
+            previousCapture = julLease;
             phase = Phase.CONFIGURING;
             reservedGeneration = ++generation;
         }
 
         RuntimeBundle replacement = null;
-        boolean captureStarted = false;
+        JulCapture.Lease replacementCapture = null;
         try {
-            replacement = LogyardBootstrap.acquire(RuntimeOwner.FRAMEWORK, source);
-            julCapture.start(replacement.runtime());
-            captureStarted = previous == null;
+            replacement = runtimeAcquirer.acquire(RuntimeOwner.FRAMEWORK, source);
+            replacementCapture = julCapture.acquire(replacement.runtime());
             synchronized (this) {
                 requireReservation(Phase.CONFIGURING, reservedGeneration);
                 bundle = replacement;
+                julLease = replacementCapture;
                 phase = Phase.ACTIVE;
             }
         } catch (Throwable failure) {
-            if (captureStarted) {
-                SpringLifecycleBoundary.invoke("failed configured JUL capture release", julCapture::close);
+            if (replacementCapture != null) {
+                JulCapture.Lease rejectedCapture = replacementCapture;
+                SpringLifecycleBoundary.invoke("failed configured JUL capture release", rejectedCapture::close);
             }
             if (replacement != null) {
                 RuntimeBundle rejected = replacement;
@@ -94,6 +108,7 @@ public final class FrameworkRuntimeLifecycle {
             throw failure;
         }
         if (previous != null) {
+            SpringLifecycleBoundary.invoke("early JUL capture release", previousCapture::close);
             SpringLifecycleBoundary.invoke("early runtime lease release", previous::close);
         }
     }
@@ -119,6 +134,7 @@ public final class FrameworkRuntimeLifecycle {
 
     public void close() {
         RuntimeBundle closing;
+        JulCapture.Lease closingCapture;
         long reservedGeneration;
         synchronized (this) {
             if (phase == Phase.IDLE) {
@@ -130,10 +146,14 @@ public final class FrameworkRuntimeLifecycle {
             phase = Phase.CLOSING;
             reservedGeneration = ++generation;
             closing = bundle;
+            closingCapture = julLease;
             bundle = null;
+            julLease = null;
+        }
+        if (closingCapture != null) {
+            SpringLifecycleBoundary.invoke("Spring JUL capture release", closingCapture::close);
         }
         if (closing != null) {
-            SpringLifecycleBoundary.invoke("Spring JUL capture release", julCapture::close);
             SpringLifecycleBoundary.invoke("Spring shutdown flush", () -> closing.runtime().flush());
             SpringLifecycleBoundary.invoke("Spring runtime lease release", closing::close);
         }
@@ -150,6 +170,9 @@ public final class FrameworkRuntimeLifecycle {
             RuntimeBundle previous) {
         if (phase == expected && generation == expectedGeneration) {
             bundle = previous;
+            if (previous == null) {
+                julLease = null;
+            }
             phase = previous == null ? Phase.IDLE : Phase.ACTIVE;
         }
     }

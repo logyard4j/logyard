@@ -1,6 +1,7 @@
 package com.zsumz.logyard.runtime.reload;
 
 import com.zsumz.logyard.api.failure.FailureIsolation;
+import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
@@ -15,6 +16,7 @@ import java.nio.file.WatchService;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 final class ConfigurationWatchLoop implements Runnable {
     private static final long POLL_MILLIS = 100L;
@@ -23,14 +25,14 @@ final class ConfigurationWatchLoop implements Runnable {
     private final Path filename;
     private final WatchService watchService;
     private final ReloadDebouncer debouncer;
-    private final Runnable reload;
+    private final Supplier<ReloadResult> reload;
     private final ReloadDiagnosticBoundary diagnostics;
     private final AtomicBoolean stopped = new AtomicBoolean();
 
     ConfigurationWatchLoop(
             ConfigurationWatchRegistration registration,
             Duration debounce,
-            Runnable reload,
+            Supplier<ReloadResult> reload,
             ReloadDiagnostics diagnostics) {
         source = registration.source();
         filename = registration.filename();

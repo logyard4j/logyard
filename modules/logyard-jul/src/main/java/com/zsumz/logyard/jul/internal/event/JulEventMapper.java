@@ -49,6 +49,10 @@ public final class JulEventMapper {
             captured = captured.mergedWith(
                     AttributeSet.systemBuilder(1).put("logyard.jul.message_format_failed", true).build());
         }
+        if (rendered.truncated()) {
+            captured = captured.mergedWith(
+                    AttributeSet.systemBuilder(1).put("logyard.capture.truncated", true).build());
+        }
         Instant instant = record.getInstant();
         logger.log(
                 level,

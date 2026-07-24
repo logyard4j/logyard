@@ -12,10 +12,14 @@ import java.util.function.Supplier;
 /** One ownership-aware lease on the runtime selected for a compatibility adapter. */
 public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
     private final RuntimeBundle bundle;
+    private final LogyardRuntime runtime;
+    private final Supplier<ContextPolicySnapshot> contextPolicySource;
     private final AtomicBoolean closed = new AtomicBoolean();
 
     AdapterRuntimeHandle(RuntimeBundle bundle) {
         this.bundle = Objects.requireNonNull(bundle, "bundle");
+        runtime = bundle.runtime();
+        contextPolicySource = ContextPolicyRegistry.sourceFor(runtime);
     }
 
     @Override
@@ -23,7 +27,7 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
         if (!initialized()) {
             throw new IllegalStateException("Logyard adapter runtime lease is closed or stale");
         }
-        return bundle.runtime();
+        return runtime;
     }
 
     public boolean ownsRuntime() {
@@ -32,7 +36,7 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
 
     /** Stable context-policy source for event adapters; obtaining it is a control-plane operation. */
     public Supplier<ContextPolicySnapshot> contextPolicySource() {
-        return ContextPolicyRegistry.sourceFor(runtime());
+        return contextPolicySource;
     }
 
     @Override

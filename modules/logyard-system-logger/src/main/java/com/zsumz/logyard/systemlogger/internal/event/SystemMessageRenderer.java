@@ -1,6 +1,7 @@
 package com.zsumz.logyard.systemlogger.internal.event;
 
-import java.text.MessageFormat;
+import com.zsumz.logyard.api.event.BoundedMessageFormat;
+
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
@@ -11,14 +12,8 @@ public final class SystemMessageRenderer {
 
     public static Result render(ResourceBundle bundle, String message, Object[] parameters) {
         String localized = localize(bundle, message);
-        if (localized == null || parameters == null || parameters.length == 0) {
-            return new Result(localized, localized, false);
-        }
-        try {
-            return new Result(localized, MessageFormat.format(localized, parameters), false);
-        } catch (IllegalArgumentException failure) {
-            return new Result(localized, localized, true);
-        }
+        BoundedMessageFormat.Result result = BoundedMessageFormat.messageFormat(localized, parameters);
+        return new Result(result.template(), result.message(), result.formatFailed(), result.truncated());
     }
 
     private static String localize(ResourceBundle bundle, String message) {
@@ -32,6 +27,6 @@ public final class SystemMessageRenderer {
         }
     }
 
-    public record Result(String template, String message, boolean formatFailed) {
+    public record Result(String template, String message, boolean formatFailed, boolean truncated) {
     }
 }

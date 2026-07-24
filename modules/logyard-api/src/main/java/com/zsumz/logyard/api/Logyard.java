@@ -1,11 +1,14 @@
 package com.zsumz.logyard.api;
 
+import com.zsumz.logyard.api.annotation.InternalApi;
+
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 
 /** Optional process-global access for application code and façade adapters. */
 public final class Logyard {
-    private static final AtomicReference<LogyardRuntime> RUNTIME = new AtomicReference<>();
+    private static final AtomicReference<RuntimeSlot> RUNTIME = new AtomicReference<>();
 
     private Logyard() {
     }
@@ -17,8 +20,24 @@ public final class Logyard {
      * @throws IllegalStateException if a runtime is already installed
      */
     public static void initialize(LogyardRuntime runtime) {
-        Objects.requireNonNull(runtime, "runtime");
-        if (!RUNTIME.compareAndSet(null, runtime)) {
+        install(new RuntimeSlot(Objects.requireNonNull(runtime, "runtime"), null));
+    }
+
+    /**
+     * Installs a process-global runtime whose shutdown is coordinated by its lifecycle owner.
+     *
+     * @param runtime runtime to install
+     * @param managedShutdown callback that atomically retires the owning lifecycle
+     */
+    @InternalApi
+    public static void initializeManaged(LogyardRuntime runtime, BooleanSupplier managedShutdown) {
+        install(new RuntimeSlot(
+                Objects.requireNonNull(runtime, "runtime"),
+                Objects.requireNonNull(managedShutdown, "managedShutdown")));
+    }
+
+    private static void install(RuntimeSlot slot) {
+        if (!RUNTIME.compareAndSet(null, slot)) {
             throw new IllegalStateException("Logyard is already initialized");
         }
     }
@@ -38,7 +57,8 @@ public final class Logyard {
      * @return installed runtime, or {@code null}
      */
     public static LogyardRuntime runtimeOrNull() {
-        return RUNTIME.get();
+        RuntimeSlot slot = RUNTIME.get();
+        return slot == null ? null : slot.runtime();
     }
 
     /**
@@ -48,11 +68,11 @@ public final class Logyard {
      * @throws IllegalStateException if no runtime is installed
      */
     public static LogyardRuntime runtime() {
-        LogyardRuntime runtime = RUNTIME.get();
-        if (runtime == null) {
+        RuntimeSlot slot = RUNTIME.get();
+        if (slot == null) {
             throw new IllegalStateException("Logyard is not initialized");
         }
-        return runtime;
+        return slot.runtime();
     }
 
     /**
@@ -77,9 +97,11 @@ public final class Logyard {
 
     /** Removes and closes the process-global runtime, if one is installed. */
     public static void shutdown() {
-        LogyardRuntime runtime = RUNTIME.getAndSet(null);
-        if (runtime != null) {
-            runtime.close();
+        while (true) {
+            RuntimeSlot slot = RUNTIME.get();
+            if (slot == null || shutdown(slot)) {
+                return;
+            }
         }
     }
 
@@ -91,10 +113,42 @@ public final class Logyard {
      */
     public static boolean shutdownIfCurrent(LogyardRuntime expected) {
         Objects.requireNonNull(expected, "expected");
-        if (!RUNTIME.compareAndSet(expected, null)) {
+        RuntimeSlot slot = RUNTIME.get();
+        if (slot == null || slot.runtime() != expected) {
+            return false;
+        }
+        return shutdown(slot);
+    }
+
+    /**
+     * Removes and closes an expected manager-owned runtime after the manager has retired its leases.
+     *
+     * @param expected managed runtime expected to occupy the global slot
+     * @return {@code true} when the expected runtime was removed and closed
+     */
+    @InternalApi
+    public static boolean releaseManagedIfCurrent(LogyardRuntime expected) {
+        Objects.requireNonNull(expected, "expected");
+        RuntimeSlot slot = RUNTIME.get();
+        if (slot == null || slot.runtime() != expected || slot.managedShutdown() == null
+                || !RUNTIME.compareAndSet(slot, null)) {
             return false;
         }
         expected.close();
         return true;
+    }
+
+    private static boolean shutdown(RuntimeSlot slot) {
+        if (slot.managedShutdown() != null) {
+            return slot.managedShutdown().getAsBoolean();
+        }
+        if (!RUNTIME.compareAndSet(slot, null)) {
+            return false;
+        }
+        slot.runtime().close();
+        return true;
+    }
+
+    private record RuntimeSlot(LogyardRuntime runtime, BooleanSupplier managedShutdown) {
     }
 }
