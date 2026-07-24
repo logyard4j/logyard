@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+test_members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli test-members "$ROOT")"
 cd "$ROOT"
 
 ./scripts/repository-check
@@ -11,13 +12,13 @@ cd "$ROOT"
 
 if [[ -x "$ZOLT" ]]; then
   if [[ -f zolt.lock ]]; then
-    "$ZOLT" resolve --workspace --locked
+    "$ZOLT" resolve --directory "$ROOT" --workspace --locked
   else
-    "$ZOLT" resolve --workspace
+    "$ZOLT" resolve --directory "$ROOT" --workspace
   fi
-  "$ZOLT" build --workspace --all
-  "$ZOLT" test --workspace --all
-  "$ZOLT" run --workspace --member tests/logyard-integration-tests
+  "$ZOLT" build --directory "$ROOT" --workspace --all
+  "$ZOLT" test --directory "$ROOT" --workspace --members "$test_members"
+  "$ZOLT" run --directory "$ROOT" --workspace --member tests/logyard-integration-tests
 else
   echo "NOTE: Zolt is not installed at $ZOLT; the JDK-only verification completed successfully."
 fi

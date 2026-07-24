@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .dependencies import dependencies, dependency_table
-from .types import Metadata, Publication, PublicationError, SUPPORTED_ARTIFACTS, SUPPORTED_PACKAGING
+from .types import Dependency, Metadata, Publication, PublicationError, SUPPORTED_ARTIFACTS, SUPPORTED_PACKAGING
 
 
 def discover_publications(root: Path) -> tuple[Publication, ...]:
@@ -47,6 +47,24 @@ def zolt_jar_publications(publications: Iterable[Publication]) -> tuple[Publicat
     )
 
 
+def zolt_publications(publications: Iterable[Publication]) -> tuple[Publication, ...]:
+    return tuple(publication for publication in publications if publication.build_system == "zolt")
+
+
+def zolt_test_members(root: Path) -> tuple[str, ...]:
+    workspace = _required_table(_read_toml(root / "zolt.toml"), "workspace", root / "zolt.toml")
+    members = workspace.get("members")
+    if not isinstance(members, list):
+        raise PublicationError(f"{root / 'zolt.toml'} must declare [workspace].members")
+    testable_members: list[str] = []
+    for member in members:
+        if not isinstance(member, str) or not member.strip():
+            raise PublicationError(f"{root / 'zolt.toml'} has an invalid workspace member {member!r}")
+        if not isinstance(_read_toml(root / member / "zolt.toml").get("bom"), dict):
+            testable_members.append(member)
+    return tuple(testable_members)
+
+
 def release_version(publications: Iterable[Publication]) -> str:
     versions = {publication.version for publication in publications}
     if len(versions) != 1:
@@ -56,7 +74,7 @@ def release_version(publications: Iterable[Publication]) -> str:
 
 def _is_publishable_zolt_manifest(path: Path) -> bool:
     manifest = _read_toml(path)
-    return bool(manifest.get("package", {}).get("metadata") and manifest.get("publish", {}).get("artifacts"))
+    return bool(manifest.get("package", {}).get("metadata") and manifest.get("publish"))
 
 
 def _read_toml(path: Path) -> dict[str, Any]:
@@ -71,10 +89,20 @@ def _zolt_publication(root: Path, path: Path, manifest: dict[str, Any], workspac
     project = _required_table(manifest, "project", path)
     package = _required_table(manifest, "package", path)
     metadata = _metadata(_required_table(package, "metadata", path), path)
-    artifacts = tuple(str(value) for value in _required_table(manifest, "publish", path).get("artifacts", ()))
-    for artifact, package_field in (("sources", "sources"), ("javadoc", "javadoc")):
-        if (artifact in artifacts) != bool(package.get(package_field, False)):
-            raise PublicationError(f"{path} must keep [publish].artifacts and [package].{package_field} aligned")
+    bom = manifest.get("bom")
+    packaging = "pom" if isinstance(bom, dict) else "jar"
+    selectors = tuple(str(value) for value in _required_table(manifest, "publish", path).get("artifacts", ("main",)))
+    if packaging == "jar" and (len(selectors) != 1 or selectors[0] not in {"main", "thin"}):
+        raise PublicationError(f"{path} must select exactly one Zolt package output: main or thin")
+    artifacts = ("pom",) if packaging == "pom" else (
+        "main",
+        *(("sources",) if bool(package.get("sources", False)) else ()),
+        *(("javadoc",) if bool(package.get("javadoc", False)) else ()),
+    )
+    if packaging == "jar":
+        for artifact, package_field in (("sources", "sources"), ("javadoc", "javadoc")):
+            if (artifact in artifacts) != bool(package.get(package_field, False)):
+                raise PublicationError(f"{path} must derive {artifact} publication from [package].{package_field}")
     automatic_module_name = package.get("manifest", {}).get("Automatic-Module-Name")
     return Publication(
         module_directory=path.parent.relative_to(root),
@@ -82,14 +110,88 @@ def _zolt_publication(root: Path, path: Path, manifest: dict[str, Any], workspac
         group_id=_required_string(project, "group", path),
         artifact_id=_required_string(project, "name", path),
         version=_required_string(project, "version", path),
-        packaging="jar",
+        packaging=packaging,
         artifacts=artifacts,
         metadata=metadata,
         automatic_module_name=str(automatic_module_name) if automatic_module_name else None,
         build_system="zolt",
-        dependencies=dependencies(manifest, workspace_version, path),
-        managed_dependencies=(),
+        dependencies=() if packaging == "pom" else dependencies(manifest, workspace_version, path),
+        managed_dependencies=_zolt_bom_dependencies(root, path, manifest, workspace_version)
+        if packaging == "pom"
+        else (),
     )
+
+
+def _zolt_bom_dependencies(
+    root: Path,
+    path: Path,
+    manifest: dict[str, Any],
+    workspace_version: str,
+) -> tuple[Dependency, ...]:
+    bom = _required_table(manifest, "bom", path)
+    members = bom.get("members", ())
+    if members is True:
+        member_paths = tuple(
+            candidate.parent.relative_to(root).as_posix()
+            for candidate in sorted((root / "modules").glob("*/zolt.toml"))
+            if candidate != path and _is_publishable_zolt_manifest(candidate)
+        )
+    elif isinstance(members, list):
+        member_paths = tuple(str(member) for member in members)
+    else:
+        member_paths = ()
+
+    managed: list[Dependency] = []
+    for member_path in member_paths:
+        member_manifest_path = root / member_path / "zolt.toml"
+        member_project = _required_table(_read_toml(member_manifest_path), "project", member_manifest_path)
+        managed.append(
+            Dependency(
+                group_id=_required_string(member_project, "group", member_manifest_path),
+                artifact_id=_required_string(member_project, "name", member_manifest_path),
+                version=_required_string(member_project, "version", member_manifest_path),
+                workspace_path=member_path,
+            )
+        )
+    managed.extend(
+        dependency_table(
+            bom.get("versions", {}),
+            "compile",
+            workspace_version,
+            path,
+            include_all=True,
+            version_aliases=manifest.get("versions", {}),
+        )
+    )
+    imports = {
+        coordinate: {"version": declaration, "type": "pom", "scope": "import"}
+        if isinstance(declaration, str)
+        else {**declaration, "type": "pom", "scope": "import"}
+        for coordinate, declaration in bom.get("imports", {}).items()
+    }
+    managed.extend(
+        dependency_table(
+            imports,
+            "import",
+            workspace_version,
+            path,
+            include_all=True,
+            version_aliases=manifest.get("versions", {}),
+        )
+    )
+    overlay_path = path.parent / "publication-overlay.toml"
+    if overlay_path.is_file():
+        overlay = _read_toml(overlay_path)
+        managed.extend(
+            dependency_table(
+                overlay.get("dependencyManagement", {}),
+                "compile",
+                workspace_version,
+                overlay_path,
+                include_all=True,
+            )
+        )
+    return tuple(sorted(managed, key=lambda dependency: (dependency.coordinate, dependency.classifier or "")))
 
 
 def _standalone_publication(root: Path, path: Path, manifest: dict[str, Any], workspace_version: str) -> Publication:

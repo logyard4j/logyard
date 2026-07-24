@@ -378,10 +378,10 @@ zolt resolve
 ./scripts/examples-native-verify
 ```
 
-`scripts/ci` runs architecture checks, strict Javadocs, dependency-free verification, and the complete Zolt test suite. `scripts/package` also runs the official Quarkus extension tests. Packaged verification uses only produced JARs to check module names, sources, Javadocs, generated extension descriptors, `ServiceLoader` contracts, native logging, SLF4J, and `System.Logger`. CI runs on Linux, macOS, and Windows with Java 21, plus a forward-compatibility lane on Java 25.
+`scripts/ci` runs architecture checks, strict Javadocs, dependency-free verification, and the complete Zolt test suite. `scripts/package` also runs the official Quarkus extension tests. `scripts/zolt-publication-check` combines Zolt's atomic workspace-family Central preflight with packaged-artifact verification. Packaged verification uses only produced JARs to check module names, sources, Javadocs, generated extension descriptors, `ServiceLoader` contracts, native logging, SLF4J, and `System.Logger`. CI runs on Linux, macOS, and Windows with Java 21, plus a forward-compatibility lane on Java 25.
 
-Zolt remains the repository build model. `extensions/logyard-quarkus` is the single isolated Maven reactor because Quarkus requires its official extension descriptor and augmentation tooling; its runtime and deployment artifacts still flow through the same BOM, release bundle, checksums, signatures, source JARs, and Javadocs.
+Zolt remains the repository build model and owns the native `logyard-bom` plus the eleven Java library publications. `extensions/logyard-quarkus` is the single isolated Maven reactor because Quarkus requires its official extension descriptor and augmentation tooling. A small explicit BOM overlay adds those two Maven-built artifacts to the final fourteen-publication family; they still flow through the same Central bundle, checksums, signatures, source JARs, and Javadocs.
 
-Tagged releases additionally assemble a Maven Central layout with complete POM metadata, dependency declarations, detached PGP signatures, and MD5, SHA-1, and SHA-256 checksums. `scripts/release-verify --require-signatures` verifies that complete bundle before GitHub release creation.
+Tagged releases assemble one Maven Central layout with complete POM metadata, dependency declarations, detached PGP signatures, and MD5, SHA-1, and SHA-256 checksums. Zolt proves that its native workspace family is Central-ready; `scripts/release-verify --require-signatures` proves the complete hybrid bundle before the sole upload path, `scripts/central-publish`, sends it to the Portal.
 
 Apache-2.0 licensed.

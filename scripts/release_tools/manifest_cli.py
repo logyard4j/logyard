@@ -3,12 +3,15 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .model import discover_publications, jar_publications, release_version, zolt_jar_publications
+from .model import discover_publications, jar_publications, release_version, zolt_jar_publications, zolt_publications, zolt_test_members
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Inspect Logyard publication manifests.")
-    parser.add_argument("command", choices=("jar-members", "jar-records", "maven-records", "summary", "version"))
+    parser.add_argument(
+        "command",
+        choices=("jar-members", "jar-records", "maven-records", "summary", "test-members", "version", "zolt-members"),
+    )
     parser.add_argument("root", type=Path)
     arguments = parser.parse_args()
 
@@ -17,6 +20,10 @@ def main() -> None:
     zolt_jars = zolt_jar_publications(publications)
     if arguments.command == "jar-members":
         print(",".join(publication.relative_module_path for publication in zolt_jars))
+    elif arguments.command == "zolt-members":
+        print(",".join(publication.relative_module_path for publication in zolt_publications(publications)))
+    elif arguments.command == "test-members":
+        print(",".join(zolt_test_members(arguments.root)))
     elif arguments.command == "jar-records":
         for publication in zolt_jars:
             print(

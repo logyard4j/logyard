@@ -51,7 +51,7 @@ install_japicmp() {
 }
 
 build_current_jars() {
-  "$ZOLT" build --workspace --members modules/logyard-api,modules/logyard-runtime --no-progress --color never
+  "$ZOLT" build --directory "$ROOT" --workspace --members modules/logyard-api,modules/logyard-runtime --no-progress --color never
   mkdir -p "$CURRENT_DIR"
   jar --create --file "$CURRENT_DIR/logyard-api-current.jar" -C "$ROOT/modules/logyard-api/target/classes" .
   jar --create --file "$CURRENT_DIR/logyard-runtime-current.jar" -C "$ROOT/modules/logyard-runtime/target/classes" .

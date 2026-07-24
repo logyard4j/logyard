@@ -3,11 +3,12 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
-members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli jar-members "$ROOT")"
+members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli zolt-members "$ROOT")"
 STAGING="$ROOT/target/maven-build-repository"
 STAGING_URI="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.path_cli "$STAGING")"
 
 "$ZOLT" package \
+  --directory "$ROOT" \
   --workspace \
   --members "$members" \
   --no-progress \

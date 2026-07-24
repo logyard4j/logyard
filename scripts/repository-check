@@ -40,6 +40,9 @@ if ! diff -u \
 fi
 
 for member in "${actual_members[@]}"; do
+  if grep -Fq '[bom]' "$member/zolt.toml"; then
+    continue
+  fi
   [[ -d "$member/src/main/java" ]] || fail "$member has no src/main/java directory"
 done
 
@@ -56,10 +59,12 @@ required_files=(
   scripts/package-verify
   scripts/package
   scripts/central-publish
+  scripts/zolt-publication-check
   scripts/examples-verify
   scripts/release-bundle
   scripts/release-verify
-  modules/logyard-bom/publication.toml
+  modules/logyard-bom/zolt.toml
+  modules/logyard-bom/publication-overlay.toml
   modules/logyard-spring-boot-starter/zolt.toml
   modules/logyard-spring-boot/src/main/resources/META-INF/spring.factories
   modules/logyard-spring-boot/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports

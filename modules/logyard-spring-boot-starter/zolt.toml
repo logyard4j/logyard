@@ -33,12 +33,23 @@ name = "Logyard Spring Boot Starter"
 description = "Opinionated Spring Boot starter with Logyard as the sole SLF4J 2 logging provider."
 url = "https://github.com/zsumz/logyard"
 license = "Apache-2.0"
+licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
 developers = ["zsumz <shawn@zsumz.com>"]
 scm = "https://github.com/zsumz/logyard"
+scmConnection = "scm:git:https://github.com/zsumz/logyard.git"
+scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"
 issues = "https://github.com/zsumz/logyard/issues"
 
 [package.manifest]
 "Automatic-Module-Name" = "com.zsumz.logyard.spring.boot.starter"
 
 [publish]
-artifacts = ["main", "sources", "javadoc"]
+artifacts = ["main"]
+
+[publish.signing]
+enabled = true
+keyId = "EC8E4D26598A0373"
+
+[publish.central]
+tokenEnv = "ZOLT_CENTRAL_TOKEN"
+publishingType = "user-managed"

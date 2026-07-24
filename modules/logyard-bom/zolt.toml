@@ -1,32 +1,27 @@
 [project]
-name = "logyard-api"
+name = "logyard-bom"
 version = "0.7.0-SNAPSHOT"
 group = "com.zsumz.logyard"
 java = "21"
 
-[repositories]
-central = "https://repo.maven.apache.org/maven2"
-
-[test.dependencies]
-"org.junit.platform:junit-platform-console-standalone" = "1.11.4"
-
-[build]
-source = "src/main/java"
-test = "src/test/java"
-output = "target/classes"
-testOutput = "target/test-classes"
-
-[build.metadata]
-reproducible = true
-
-[package]
-mode = "thin"
-sources = true
-javadoc = true
+[bom]
+members = [
+    "modules/logyard-api",
+    "modules/logyard-core",
+    "modules/logyard-config-toml",
+    "modules/logyard-output-console",
+    "modules/logyard-output-json",
+    "modules/logyard-runtime",
+    "modules/logyard-slf4j2",
+    "modules/logyard-spring-boot",
+    "modules/logyard-spring-boot-starter",
+    "modules/logyard-jul",
+    "modules/logyard-system-logger",
+]
 
 [package.metadata]
-name = "Logyard API"
-description = "Stable native logging API and extension contracts for Logyard."
+name = "Logyard Bill of Materials"
+description = "Dependency management for the complete Logyard module family."
 url = "https://github.com/zsumz/logyard"
 license = "Apache-2.0"
 licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
@@ -35,12 +30,6 @@ scm = "https://github.com/zsumz/logyard"
 scmConnection = "scm:git:https://github.com/zsumz/logyard.git"
 scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"
 issues = "https://github.com/zsumz/logyard/issues"
-
-[package.manifest]
-"Automatic-Module-Name" = "com.zsumz.logyard.api"
-
-[publish]
-artifacts = ["main"]
 
 [publish.signing]
 enabled = true

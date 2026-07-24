@@ -32,12 +32,23 @@ name = "Logyard Core"
 description = "Routing, processing, and bounded delivery mechanics for Logyard."
 url = "https://github.com/zsumz/logyard"
 license = "Apache-2.0"
+licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
 developers = ["zsumz <shawn@zsumz.com>"]
 scm = "https://github.com/zsumz/logyard"
+scmConnection = "scm:git:https://github.com/zsumz/logyard.git"
+scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"
 issues = "https://github.com/zsumz/logyard/issues"
 
 [package.manifest]
 "Automatic-Module-Name" = "com.zsumz.logyard.core"
 
 [publish]
-artifacts = ["main", "sources", "javadoc"]
+artifacts = ["main"]
+
+[publish.signing]
+enabled = true
+keyId = "EC8E4D26598A0373"
+
+[publish.central]
+tokenEnv = "ZOLT_CENTRAL_TOKEN"
+publishingType = "user-managed"

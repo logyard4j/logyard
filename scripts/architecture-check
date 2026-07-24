@@ -548,9 +548,19 @@ for project_path, (expected_module, supported_packages) in ARTIFACT_CONTRACTS.it
         "sources = true",
         "javadoc = true",
         'license = "Apache-2.0"',
+        'licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"',
+        'developers = ["zsumz <shawn@zsumz.com>"]',
         'url = "https://github.com/zsumz/logyard"',
         'scm = "https://github.com/zsumz/logyard"',
+        'scmConnection = "scm:git:https://github.com/zsumz/logyard.git"',
+        'scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"',
         'issues = "https://github.com/zsumz/logyard/issues"',
+        'artifacts = ["main"]',
+        '[publish.signing]',
+        'keyId = "EC8E4D26598A0373"',
+        '[publish.central]',
+        'tokenEnv = "ZOLT_CENTRAL_TOKEN"',
+        'publishingType = "user-managed"',
     ):
         if fragment not in manifest_text:
             errors.append(f"{manifest.relative_to(ROOT)}: missing publication contract {fragment!r}")

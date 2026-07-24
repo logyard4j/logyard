@@ -87,6 +87,10 @@ def _dependency_list(parent: ElementTree.Element, dependencies: tuple[Dependency
         _element(dependency_element, "artifactId", dependency.artifact_id)
         if dependency.version:
             _element(dependency_element, "version", dependency.version)
+        if dependency.artifact_type:
+            _element(dependency_element, "type", dependency.artifact_type)
+        if dependency.classifier:
+            _element(dependency_element, "classifier", dependency.classifier)
         if dependency.scope != "compile":
             _element(dependency_element, "scope", dependency.scope)
         if dependency.optional:

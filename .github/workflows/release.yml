@@ -50,6 +50,7 @@ jobs:
           zolt resolve --workspace
           ./scripts/ci
           ./scripts/release-bundle --sign
+          ./scripts/zolt-publication-check
       - name: Create the Central Portal archive
         env:
           LOGYARD_GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}

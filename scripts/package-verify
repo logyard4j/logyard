@@ -87,6 +87,12 @@ for index in "${!members[@]}"; do
   main_jars+=("$main")
 done
 
+bom_pom="$ROOT/modules/logyard-bom/target/publish/logyard-bom-$VERSION.pom"
+[[ -s "$bom_pom" ]] || fail "missing or empty Zolt-native BOM artifact: $bom_pom"
+grep -Fq '<dependencyManagement>' "$bom_pom" || fail "Zolt-native BOM has no dependency management"
+grep -Fq '<artifactId>logyard-runtime</artifactId>' "$bom_pom" || fail "Zolt-native BOM does not manage its workspace family"
+release_artifact_count=$((release_artifact_count + 1))
+
 maven_module_count=0
 while IFS=$'\t' read -r module_path member module_name version artifact_count; do
   [[ -n "$module_path" ]] || continue

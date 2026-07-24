@@ -29,6 +29,8 @@ class Dependency:
     group_id: str
     artifact_id: str
     version: str | None
+    classifier: str | None = None
+    artifact_type: str | None = None
     scope: str = "compile"
     optional: bool = False
     exclusions: tuple[Exclusion, ...] = ()

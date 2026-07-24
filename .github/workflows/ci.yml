@@ -28,6 +28,8 @@ jobs:
         run: ./scripts/ci
       - name: Package and verify the published Maven surface
         run: ./scripts/release-bundle
+      - name: Verify the Zolt workspace publication family
+        run: ./scripts/zolt-publication-check
       - name: Build and run published-shaped consumer examples
         env:
           LOGYARD_EXAMPLES_SKIP_RELEASE: '1'
@@ -58,8 +60,9 @@ jobs:
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Exercise file locking, reload, rotation, and packaged services
         run: |
+          test_members="$(PYTHONPATH="$GITHUB_WORKSPACE/scripts" python3 -m release_tools.manifest_cli test-members "$GITHUB_WORKSPACE")"
           zolt resolve --workspace
-          zolt test --workspace --all --no-progress --color never
+          zolt test --workspace --members "$test_members" --no-progress --color never
           ./scripts/package
           ./scripts/package-verify
 
@@ -79,9 +82,10 @@ jobs:
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Build and test the Java 21 surface on JDK 25
         run: |
+          test_members="$(PYTHONPATH="$GITHUB_WORKSPACE/scripts" python3 -m release_tools.manifest_cli test-members "$GITHUB_WORKSPACE")"
           zolt resolve --workspace
           zolt build --workspace --all --no-progress --color never
-          zolt test --workspace --all --no-progress --color never
+          zolt test --workspace --members "$test_members" --no-progress --color never
 
   native-example:
     name: Framework native consumers

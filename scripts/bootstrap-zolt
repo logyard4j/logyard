@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-readonly ZOLT_COMMIT="${ZOLT_BOOTSTRAP_COMMIT:-515e81c821e05ecee52a9c2f4a53c5b6d0bab37e}"
+readonly ZOLT_COMMIT="${ZOLT_BOOTSTRAP_COMMIT:-d92be78b494621fb7aef7c39b4e311e127e8c3c4}"
 readonly ZOLT_REPOSITORY="${ZOLT_BOOTSTRAP_REPOSITORY:-https://github.com/zsumz/zolt.git}"
 readonly INSTALL_ROOT="${ZOLT_HOME:-$HOME/.zolt}"
 readonly SOURCE_ROOT="$INSTALL_ROOT/source"
@@ -33,10 +33,13 @@ if [[ -x "$BIN_ROOT/zolt" ]]; then
     printf 'Using installed Zolt %s at %s.\n' "$installed_version" "$BIN_ROOT/zolt"
     exit 0
   fi
-  if [[ "$installed_version" != *"${ZOLT_COMMIT:0:12}"* ]]; then
-    fail "Zolt $installed_version is installed at $BIN_ROOT/zolt; expected commit ${ZOLT_COMMIT:0:12}"
+  if [[ -n "$installed_source_commit" ]] && grep -aq 'zolt-bootstrap.jar' "$BIN_ROOT/zolt"; then
+    printf 'Upgrading project-managed Zolt from commit %s to %s.\n' "$installed_source_commit" "$ZOLT_COMMIT"
+  elif [[ "$installed_version" != *"${ZOLT_COMMIT:0:12}"* ]]; then
+    fail "Zolt $installed_version is installed at $BIN_ROOT/zolt but is not managed by this bootstrap; expected commit ${ZOLT_COMMIT:0:12}"
+  else
+    printf 'Replacing the matching native Zolt launcher with the pinned JVM launcher.\n'
   fi
-  printf 'Replacing the matching native Zolt launcher with the pinned JVM launcher.\n'
 fi
 
 javac_version="$(javac -version 2>&1 | awk '{print $2}')"

@@ -7,7 +7,7 @@ RESULT="${LOGYARD_BENCHMARK_RESULT:-$ROOT/target/benchmarks/results.json}"
 
 mkdir -p "$(dirname "$RESULT")"
 cd "$ROOT"
-"$ZOLT" run --workspace --member benchmarks/logyard-benchmarks -- \
+"$ZOLT" run --directory "$ROOT" --workspace --member benchmarks/logyard-benchmarks -- \
   'com.zsumz.logyard.benchmarks.*' \
   -bm thrpt,sample \
   -prof gc \

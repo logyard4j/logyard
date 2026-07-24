@@ -53,6 +53,8 @@ def dependency_table(
                 group_id=group_id,
                 artifact_id=artifact_id,
                 version=_dependency_version(declaration, workspace_version, path, str(coordinate), version_aliases or {}),
+                classifier=str(values["classifier"]) if "classifier" in values else None,
+                artifact_type=str(values["type"]) if "type" in values else None,
                 scope=dependency_scope,
                 optional=bool(values.get("optional", False)),
                 exclusions=exclusions,

@@ -12,6 +12,7 @@ members = [
     "modules/logyard-spring-boot-starter",
     "modules/logyard-jul",
     "modules/logyard-system-logger",
+    "modules/logyard-bom",
     "tests/logyard-integration-tests",
     "benchmarks/logyard-benchmarks",
 ]
