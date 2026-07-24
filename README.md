@@ -60,6 +60,31 @@ implementation("org.springframework.boot:spring-boot-starter-web") {
 implementation("com.zsumz.logyard:logyard-spring-boot-starter:0.7.0-SNAPSHOT")
 ```
 
+Quarkus 3.37 applications use the conventional runtime extension:
+
+```xml
+<dependency>
+  <groupId>com.zsumz.logyard</groupId>
+  <artifactId>logyard-quarkus</artifactId>
+  <version>0.7.0-SNAPSHOT</version>
+</dependency>
+```
+
+Keep Quarkus and JBoss Log Manager as the application logging API. Disable the built-in console handler to avoid duplicate delivery, then point the extension at TOML:
+
+```properties
+quarkus.log.console.enabled=false
+quarkus.logyard.config=classpath:logyard.toml
+```
+
+`quarkus.logyard.enabled=false` disables handler installation and `quarkus.logyard.required=true` makes a missing source fatal. When `quarkus-smallrye-health` is present, Logyard contributes the `logyard` readiness check without acquiring another runtime lease.
+
+Quarkus build-time minimum levels remain an upstream ceiling. A category removed during augmentation never reaches Logyard, regardless of its TOML level. Preserve the required floor explicitly:
+
+```properties
+quarkus.log.category."com.example.checkout".min-level=DEBUG
+```
+
 ## Configure
 
 Create `logyard.toml` in the process working directory:
@@ -325,6 +350,8 @@ EffectiveRoute route = logyard.runtime().explain("com.example.checkout");
 | `logyard-slf4j2` | SLF4J 2 provider and the normal application dependency |
 | `logyard-spring-boot-starter` | Opinionated Boot starter without Logback |
 | `logyard-spring-boot` | Early logging, lifecycle, level controls, Actuator, and native hints |
+| `logyard-quarkus` | Quarkus runtime handler, configuration, lifecycle, and optional readiness |
+| `logyard-quarkus-deployment` | Quarkus augmentation artifact selected by the runtime descriptor |
 | `logyard-runtime` | Native runtime, bootstrap, configuration, console, and JSON |
 | `logyard-jul` | JUL handler |
 | `logyard-system-logger` | `System.LoggerFinder` provider |
@@ -334,7 +361,7 @@ The supported public surface is every package in `logyard-api`, `com.zsumz.logya
 
 All Logyard artifacts use the same version. Java 21 is the minimum runtime, SLF4J 2.x is supported, and no compatibility claim is made for SLF4J 1.x.
 
-Published-shaped CI consumers certify plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16, and Spring Boot 4.1.0 on the JVM. Spring Boot verification covers executable JAR startup, MVC, WebFlux, Actuator present and absent, AOT generation, framework and application events, structured fields, exceptions, dynamic level controls, JUL capture, context restart, and shutdown flush. Micronaut and Spring Boot 4 are also built and exercised as GraalVM 21 native images. Quarkus integration is not supported yet.
+Published-shaped CI consumers certify plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16 and 4.1.0, and Quarkus 3.37.3. Spring Boot verification covers executable JAR startup, MVC, WebFlux, Actuator present and absent, AOT generation, structured events, dynamic levels, JUL capture, context restart, and shutdown flush. Quarkus verification covers test mode, packaged JVM startup, dev-mode hot reload, complete JBoss record mapping, duplicate-handler prevention, SmallRye Health, and shutdown flush. Micronaut, Spring Boot 4, and Quarkus are also built and exercised as GraalVM 21 native images.
 
 ## Build and verify
 
@@ -351,7 +378,9 @@ zolt resolve
 ./scripts/examples-native-verify
 ```
 
-`scripts/ci` runs architecture checks and the full test suite. Packaged verification uses only produced JARs to check module names, sources, Javadocs, extension `ServiceLoader` contracts, native logging, SLF4J, and `System.Logger`. CI runs on Linux, macOS, and Windows with Java 21, plus a forward-compatibility lane on Java 25.
+`scripts/ci` runs architecture checks, strict Javadocs, dependency-free verification, and the complete Zolt test suite. `scripts/package` also runs the official Quarkus extension tests. Packaged verification uses only produced JARs to check module names, sources, Javadocs, generated extension descriptors, `ServiceLoader` contracts, native logging, SLF4J, and `System.Logger`. CI runs on Linux, macOS, and Windows with Java 21, plus a forward-compatibility lane on Java 25.
+
+Zolt remains the repository build model. `extensions/logyard-quarkus` is the single isolated Maven reactor because Quarkus requires its official extension descriptor and augmentation tooling; its runtime and deployment artifacts still flow through the same BOM, release bundle, checksums, signatures, source JARs, and Javadocs.
 
 Tagged releases additionally assemble a Maven Central layout with complete POM metadata, dependency declarations, detached PGP signatures, and MD5, SHA-1, and SHA-256 checksums. `scripts/release-verify --require-signatures` verifies that complete bundle before GitHub release creation.
 

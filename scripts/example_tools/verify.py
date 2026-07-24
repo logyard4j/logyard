@@ -94,9 +94,35 @@ def main() -> None:
     )
     runner.build_aot(spring_boot_example(root, "3-aot", "3.5.16", "spring-boot-starter-web").maven)
     runner.build_aot(spring_boot_example(root, "4-aot", "4.1.0", "spring-boot-starter-webmvc").maven)
+    verify_quarkus(
+        http_runner,
+        HttpExample(
+            MavenExample(
+                name="quarkus",
+                project_directory=root / "examples" / "quarkus",
+                main_class="io.quarkus.bootstrap.runner.QuarkusEntryPoint",
+                runtime_arguments=(),
+            ),
+            executable_jar_name="quarkus-app/quarkus-run.jar",
+            random_port_environment="QUARKUS_HTTP_PORT",
+            additional_requests=(
+                HttpRequestExpectation("/q/health/ready", 200, '"logyard"', body_contains=True),
+            ),
+        ),
+    )
+    runner.build(
+        MavenExample(
+            name="quarkus-no-health",
+            project_directory=root / "examples" / "quarkus",
+            main_class="io.quarkus.bootstrap.runner.QuarkusEntryPoint",
+            build_arguments=("-DnoHealth",),
+            runtime_arguments=(),
+        )
+    )
     print(
         "Published-shaped example verification passed: plain SLF4J, Vert.x, Micronaut, "
-        "and Spring Boot 3/4 MVC, WebFlux, no-Actuator, external/default configuration, and AOT."
+        "Spring Boot 3/4 MVC, WebFlux, no-Actuator, external/default configuration, AOT, "
+        "and Quarkus test/packaged JVM modes with health present and absent."
     )
 
 
@@ -264,6 +290,48 @@ def require_micronaut_events(events: EventLog, final_bodies: tuple[str, ...] = (
     )
     events.require(EventExpectation("Micronaut shutdown flush", "com.zsumz.logyard.examples.micronaut.DeferredShutdown", "INFO", (("phase", "shutdown"),)))
     events.require_last_one_of(final_bodies)
+
+
+def verify_quarkus(runner: HttpExampleRunner, example: HttpExample) -> None:
+    events = EventLog.read(runner.build_run_and_exercise(example))
+    require_quarkus_events(events)
+    process_output = runner.process_log_path(example.maven.name).read_text(encoding="utf-8")
+    for application_message in (
+        "Quarkus application started",
+        "Quarkus request succeeded",
+        "Quarkus request failed",
+        "Quarkus shutdown flush",
+    ):
+        if application_message in process_output:
+            raise AssertionError(
+                f"Quarkus console handler was not disabled; process output duplicated {application_message!r}"
+            )
+
+
+def require_quarkus_events(events: EventLog) -> None:
+    events.require_real_timestamps()
+    events.require_logger_prefix("io.quarkus")
+    lifecycle_logger = "com.zsumz.logyard.examples.quarkus.QuarkusExampleLifecycle"
+    resource_logger = "com.zsumz.logyard.examples.quarkus.QuarkusExampleResource"
+    events.require(EventExpectation("Quarkus application started", lifecycle_logger, "INFO"))
+    events.require(
+        EventExpectation(
+            "Quarkus request succeeded",
+            resource_logger,
+            "INFO",
+            (("quarkus.mdc", {"request.id": "request-success"}),),
+        )
+    )
+    events.require(
+        EventExpectation(
+            "Quarkus request failed",
+            resource_logger,
+            "ERROR",
+            (("quarkus.mdc", {"request.id": "request-failure"}),),
+            "expected Quarkus example failure",
+        )
+    )
+    events.require(EventExpectation("Quarkus shutdown flush", resource_logger, "INFO"))
 
 
 if __name__ == "__main__":

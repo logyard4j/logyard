@@ -1,0 +1,28 @@
+[project]
+name = "logyard-quarkus-deployment"
+version = "0.7.0-SNAPSHOT"
+group = "com.zsumz.logyard"
+
+[package]
+
+[package.metadata]
+name = "Logyard Quarkus Deployment"
+description = "Quarkus build-time registration for the Logyard logging handler."
+url = "https://github.com/zsumz/logyard"
+license = "Apache-2.0"
+developers = ["zsumz <shawn@zsumz.com>"]
+scm = "https://github.com/zsumz/logyard"
+issues = "https://github.com/zsumz/logyard/issues"
+
+[package.manifest]
+"Automatic-Module-Name" = "com.zsumz.logyard.quarkus.deployment"
+
+[publication]
+packaging = "jar"
+artifacts = ["main", "sources", "javadoc"]
+buildSystem = "maven"
+
+[dependencies]
+"com.zsumz.logyard:logyard-quarkus" = { workspace = "extensions/logyard-quarkus/runtime" }
+"io.quarkus:quarkus-arc-deployment" = "3.37.3"
+"io.quarkus:quarkus-core-deployment" = "3.37.3"

@@ -1,0 +1,31 @@
+[project]
+name = "logyard-quarkus"
+version = "0.7.0-SNAPSHOT"
+group = "com.zsumz.logyard"
+
+[package]
+
+[package.metadata]
+name = "Logyard Quarkus Runtime"
+description = "JBoss Log Manager capture, configuration, and lifecycle integration for Quarkus."
+url = "https://github.com/zsumz/logyard"
+license = "Apache-2.0"
+developers = ["zsumz <shawn@zsumz.com>"]
+scm = "https://github.com/zsumz/logyard"
+issues = "https://github.com/zsumz/logyard/issues"
+
+[package.manifest]
+"Automatic-Module-Name" = "com.zsumz.logyard.quarkus"
+
+[publication]
+packaging = "jar"
+artifacts = ["main", "sources", "javadoc"]
+buildSystem = "maven"
+
+[dependencies]
+"com.zsumz.logyard:logyard-api" = { workspace = "modules/logyard-api" }
+"com.zsumz.logyard:logyard-runtime" = { workspace = "modules/logyard-runtime" }
+"io.quarkus:quarkus-arc" = "3.37.3"
+"io.quarkus:quarkus-core" = "3.37.3"
+"org.jboss.logmanager:jboss-logmanager" = "3.2.2.Final"
+"org.eclipse.microprofile.health:microprofile-health-api" = { version = "4.0.1", optional = true }

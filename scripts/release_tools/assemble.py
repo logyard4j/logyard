@@ -10,11 +10,15 @@ from .pom import generate_pom
 from .types import Publication
 
 
-def assemble(root: Path, target: Path) -> tuple[Publication, ...]:
+def assemble(root: Path, target: Path, excluded_build_systems: frozenset[str] = frozenset()) -> tuple[Publication, ...]:
     root = root.resolve()
     target = target.resolve()
     _validate_target(root, target)
-    publications = discover_publications(root)
+    publications = tuple(
+        publication
+        for publication in discover_publications(root)
+        if publication.build_system not in excluded_build_systems
+    )
     if target.exists():
         shutil.rmtree(target)
     target.mkdir(parents=True)
@@ -46,8 +50,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Assemble Logyard's Maven-layout release bundle.")
     parser.add_argument("root", type=Path)
     parser.add_argument("target", type=Path)
+    parser.add_argument("--exclude-build-system", action="append", default=[])
     arguments = parser.parse_args()
-    publications = assemble(arguments.root, arguments.target)
+    publications = assemble(
+        arguments.root,
+        arguments.target,
+        frozenset(arguments.exclude_build_system),
+    )
     print(
         f"Release bundle assembled: {len(publications)} publications and "
         f"{sum(len(publication.primary_filenames) for publication in publications)} primary artifacts."

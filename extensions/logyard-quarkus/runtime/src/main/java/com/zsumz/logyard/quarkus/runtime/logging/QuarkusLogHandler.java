@@ -1,0 +1,65 @@
+package com.zsumz.logyard.quarkus.runtime.logging;
+
+import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.runtime.adapter.AdapterReentryGuard;
+import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
+
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+
+/** Non-owning JBoss Log Manager handler installed by the Quarkus recorder. */
+public final class QuarkusLogHandler extends Handler {
+    private final LogyardRuntime runtime;
+    private final QuarkusEventMapper mapper = new QuarkusEventMapper();
+    private final AdapterReentryGuard reentry = new AdapterReentryGuard();
+    private final AtomicBoolean closed = new AtomicBoolean();
+
+    /**
+     * Creates a handler that borrows a framework-owned runtime.
+     *
+     * @param runtime shared Logyard runtime
+     */
+    public QuarkusLogHandler(LogyardRuntime runtime) {
+        this.runtime = Objects.requireNonNull(runtime, "runtime");
+        setLevel(java.util.logging.Level.ALL);
+    }
+
+    @Override
+    public void publish(LogRecord record) {
+        if (record == null || closed.get() || !isLoggable(record) || !reentry.enter()) {
+            return;
+        }
+        try {
+            mapper.publish(runtime, record);
+        } catch (Throwable failure) {
+            AdapterDiagnostics.rethrowIfFatal(failure);
+            AdapterDiagnostics.adapterFailure("quarkus", "event capture", failure);
+        } finally {
+            reentry.exit();
+        }
+    }
+
+    @Override
+    public void flush() {
+        if (closed.get()) {
+            return;
+        }
+        try {
+            runtime.flush();
+        } catch (Throwable failure) {
+            AdapterDiagnostics.rethrowIfFatal(failure);
+            AdapterDiagnostics.adapterFailure("quarkus", "flush", failure);
+        }
+    }
+
+    /**
+     * Retires this handler without closing the shared runtime; the recorder's lifecycle owns the
+     * corresponding framework lease.
+     */
+    @Override
+    public void close() {
+        closed.set(true);
+    }
+}

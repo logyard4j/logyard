@@ -87,6 +87,46 @@ for index in "${!members[@]}"; do
   main_jars+=("$main")
 done
 
+maven_module_count=0
+while IFS=$'\t' read -r module_path member module_name version artifact_count; do
+  [[ -n "$module_path" ]] || continue
+  [[ "$VERSION" == "$version" ]] || fail "Maven publication versions do not match"
+  maven_module_count=$((maven_module_count + 1))
+  release_artifact_count=$((release_artifact_count + artifact_count))
+  target="$ROOT/$module_path/target"
+  main="$target/$member-$VERSION.jar"
+  sources="$target/$member-$VERSION-sources.jar"
+  javadoc="$target/$member-$VERSION-javadoc.jar"
+  for artifact in "$main" "$sources" "$javadoc"; do
+    [[ -s "$artifact" ]] || fail "missing or empty Maven artifact: $artifact"
+  done
+  module_description="$("$JAR" --describe-module --file "$main")"
+  printf '%s\n' "$module_description" | grep -Eq "^${module_name}@${VERSION} automatic$" \
+    || fail "$member does not expose automatic module name $module_name"
+  "$JAR" tf "$main" | grep -qE '\.class$' || fail "$member main jar has no classes"
+  "$JAR" tf "$sources" | grep -qE '\.java$' || fail "$member sources jar has no Java sources"
+  require_entry "$javadoc" "index.html"
+  if "$JAR" tf "$main" | grep -qE '(^|/)test(s)?/|Test\\.class$'; then
+    fail "$member main jar contains test classes"
+  fi
+done < <(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli maven-records "$ROOT")
+
+[[ "$maven_module_count" -gt 0 ]] || fail "no Maven-built extension publications were discovered"
+quarkus_runtime="$ROOT/extensions/logyard-quarkus/runtime/target/logyard-quarkus-$VERSION.jar"
+require_entry "$quarkus_runtime" "META-INF/quarkus-extension.yaml"
+require_entry "$quarkus_runtime" "META-INF/quarkus-extension.properties"
+descriptor_target="$TARGET/quarkus-descriptor"
+rm -rf "$descriptor_target"
+mkdir -p "$descriptor_target"
+(
+  cd "$descriptor_target"
+  "$JAR" xf "$quarkus_runtime" META-INF/quarkus-extension.properties
+)
+deployment_coordinate="$(sed -n 's/^deployment-artifact=//p' \
+  "$descriptor_target/META-INF/quarkus-extension.properties" | tr -d '\\')"
+[[ "$deployment_coordinate" == "com.zsumz.logyard:logyard-quarkus-deployment:$VERSION" ]] \
+  || fail "Quarkus descriptor names unexpected deployment artifact: $deployment_coordinate"
+
 require_entry "$ROOT/modules/logyard-slf4j2/target/logyard-slf4j2-$VERSION.jar" \
   "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"
 require_entry "$ROOT/modules/logyard-system-logger/target/logyard-system-logger-$VERSION.jar" \
@@ -181,4 +221,4 @@ for message in "native packaged canary" "slf4j packaged canary" "system packaged
 done
 
 printf 'Packaged-JAR verification passed: %d release artifacts, %d module names, extension SPIs, SLF4J, and System.Logger.\n' \
-  "$release_artifact_count" "${#members[@]}"
+  "$release_artifact_count" "$(( ${#members[@]} + maven_module_count ))"

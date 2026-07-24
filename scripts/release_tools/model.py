@@ -24,7 +24,11 @@ def discover_publications(root: Path) -> tuple[Publication, ...]:
     ]
     publications.extend(
         _standalone_publication(root, path, _read_toml(path), workspace_version)
-        for path in sorted((root / "modules").glob("*/publication.toml"))
+        for path in sorted(root.glob("modules/*/publication.toml"))
+    )
+    publications.extend(
+        _standalone_publication(root, path, _read_toml(path), workspace_version)
+        for path in sorted(root.glob("extensions/**/publication.toml"))
     )
     result = tuple(sorted(publications, key=lambda publication: publication.coordinate))
     _validate_publications(root, result)
@@ -33,6 +37,14 @@ def discover_publications(root: Path) -> tuple[Publication, ...]:
 
 def jar_publications(publications: Iterable[Publication]) -> tuple[Publication, ...]:
     return tuple(publication for publication in publications if publication.packaging == "jar")
+
+
+def zolt_jar_publications(publications: Iterable[Publication]) -> tuple[Publication, ...]:
+    return tuple(
+        publication
+        for publication in publications
+        if publication.packaging == "jar" and publication.build_system == "zolt"
+    )
 
 
 def release_version(publications: Iterable[Publication]) -> str:
@@ -74,6 +86,7 @@ def _zolt_publication(root: Path, path: Path, manifest: dict[str, Any], workspac
         artifacts=artifacts,
         metadata=metadata,
         automatic_module_name=str(automatic_module_name) if automatic_module_name else None,
+        build_system="zolt",
         dependencies=dependencies(manifest, workspace_version, path),
         managed_dependencies=(),
     )
@@ -86,6 +99,7 @@ def _standalone_publication(root: Path, path: Path, manifest: dict[str, Any], wo
     packaging = _required_string(publication, "packaging", path)
     default_artifacts = ("pom",) if packaging == "pom" else ("main",)
     artifacts = tuple(str(value) for value in publication.get("artifacts", default_artifacts))
+    automatic_module_name = package.get("manifest", {}).get("Automatic-Module-Name")
     return Publication(
         module_directory=path.parent.relative_to(root),
         manifest_path=path.relative_to(root),
@@ -95,7 +109,8 @@ def _standalone_publication(root: Path, path: Path, manifest: dict[str, Any], wo
         packaging=packaging,
         artifacts=artifacts,
         metadata=_metadata(_required_table(package, "metadata", path), path),
-        automatic_module_name=None,
+        automatic_module_name=str(automatic_module_name) if automatic_module_name else None,
+        build_system=str(publication.get("buildSystem", "metadata")),
         dependencies=dependencies(manifest, workspace_version, path),
         managed_dependencies=dependency_table(
             manifest.get("dependencyManagement", {}),
@@ -141,6 +156,14 @@ def _validate_publications(root: Path, publications: tuple[Publication, ...]) ->
             raise PublicationError(f"{publication.manifest_path} must publish a main JAR")
         if publication.packaging == "jar" and "pom" in publication.artifacts:
             raise PublicationError(f"{publication.manifest_path} must not declare the generated POM as a JAR artifact")
+        if publication.build_system not in {"metadata", "maven", "zolt"}:
+            raise PublicationError(
+                f"{publication.manifest_path} has unsupported build system {publication.build_system!r}"
+            )
+        if publication.packaging == "jar" and publication.build_system == "metadata":
+            raise PublicationError(f"{publication.manifest_path} must declare the JAR build system")
+        if publication.packaging == "jar" and not publication.automatic_module_name:
+            raise PublicationError(f"{publication.manifest_path} must declare Automatic-Module-Name")
         if not (root / publication.module_directory).is_dir():
             raise PublicationError(f"publication module directory is missing: {publication.module_directory}")
         for dependency in publication.dependencies + publication.managed_dependencies:

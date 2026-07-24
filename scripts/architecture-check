@@ -15,16 +15,33 @@ ROOT = Path.cwd()
 PREFIX = "com.zsumz.logyard."
 MAX_JAVA_SOURCE_LINES = 300
 SOURCE_ROOTS = sorted(
-    path
-    for group in ("modules", "tests", "benchmarks")
-    for path in (ROOT / group).glob("*/src/main/java")
-    if path.is_dir()
+    {
+        path
+        for group in ("modules", "tests", "benchmarks")
+        for path in (ROOT / group).glob("*/src/main/java")
+        if path.is_dir()
+    } | {
+        path
+        for path in (ROOT / "extensions").glob("**/src/main/java")
+        if path.is_dir()
+    }
 )
 TEST_ROOTS = sorted(
+    {
+        path
+        for group in ("modules", "tests", "benchmarks")
+        for path in (ROOT / group).glob("*/src/test/java")
+        if path.is_dir()
+    } | {
+        path
+        for path in (ROOT / "extensions").glob("**/src/test/java")
+        if path.is_dir()
+    }
+)
+EXAMPLE_JAVA_SOURCES = sorted(
     path
-    for group in ("modules", "tests", "benchmarks")
-    for path in (ROOT / group).glob("*/src/test/java")
-    if path.is_dir()
+    for path in (ROOT / "examples").glob("**/*.java")
+    if path.is_file() and "target" not in path.relative_to(ROOT / "examples").parts
 )
 
 PACKAGE = re.compile(r"(?m)^package\s+([A-Za-z_][\w.]*)\s*;")
@@ -77,6 +94,13 @@ ALLOWED_IMPORT_PREFIXES = {
         "java.", "org.openjdk.jmh.", "org.slf4j.", PREFIX + "api.",
         PREFIX + "core.", PREFIX + "output.console.", PREFIX + "output.json.",
         PREFIX + "runtime.", PREFIX + "slf4j.", PREFIX + "benchmarks."
+    ),
+    "runtime": (
+        "java.", "io.quarkus.", "io.smallrye.config.", "org.eclipse.microprofile.health.",
+        "org.jboss.logmanager.", PREFIX + "api.", PREFIX + "quarkus.", PREFIX + "runtime."
+    ),
+    "deployment": (
+        "java.", "io.quarkus.", PREFIX + "quarkus."
     ),
 }
 
@@ -438,6 +462,9 @@ for source_root in TEST_ROOTS:
         for imported in IMPORT.findall(text):
             if imported.endswith(".*"):
                 errors.append(f"{source.relative_to(ROOT)}: wildcard imports are forbidden")
+
+for source in EXAMPLE_JAVA_SOURCES:
+    java_sources.add(source.relative_to(ROOT).as_posix())
 
 for relative in sorted(java_sources):
     source = ROOT / relative

@@ -1,0 +1,10 @@
+name: Logyard
+description: Routes Quarkus JBoss Log Manager events through the shared Logyard runtime.
+metadata:
+  keywords:
+    - logging
+    - structured-logging
+    - observability
+  categories:
+    - observability
+  status: preview

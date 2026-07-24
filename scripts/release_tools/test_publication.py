@@ -5,7 +5,8 @@ import unittest
 from pathlib import Path
 from xml.etree import ElementTree
 
-from .model import discover_publications, jar_publications
+from .model import discover_publications, jar_publications, zolt_jar_publications
+from .path_cli import file_uri
 from .pom import POM_NAMESPACE, generate_pom
 
 
@@ -23,6 +24,14 @@ issues = "https://example.test/project/issues"
 
 
 class RepositoryPublicationTest(unittest.TestCase):
+    def test_file_uri_is_absolute_and_maven_compatible(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            uri = file_uri(Path(directory) / "repository")
+
+        self.assertTrue(uri.startswith("file:"))
+        self.assertNotIn("\\", uri)
+        self.assertTrue(uri.endswith("/repository"))
+
     def test_repository_publication_surface_is_discovered_from_manifests(self) -> None:
         root = Path(__file__).resolve().parents[2]
         publications = discover_publications(root)
@@ -32,9 +41,14 @@ class RepositoryPublicationTest(unittest.TestCase):
             if "[publish]" in path.read_text(encoding="utf-8")
         ]
         standalone_manifests = list((root / "modules").glob("*/publication.toml"))
+        extension_manifests = list(root.glob("extensions/**/publication.toml"))
 
-        self.assertEqual(len(expected_jar_manifests) + len(standalone_manifests), len(publications))
-        self.assertEqual(len(expected_jar_manifests), len(jar_publications(publications)))
+        self.assertEqual(
+            len(expected_jar_manifests) + len(standalone_manifests) + len(extension_manifests),
+            len(publications),
+        )
+        self.assertEqual(len(expected_jar_manifests), len(zolt_jar_publications(publications)))
+        self.assertGreaterEqual(len(jar_publications(publications)), len(expected_jar_manifests))
         bom = next(publication for publication in publications if publication.artifact_id == "logyard-bom")
         self.assertEqual("pom", bom.packaging)
         self.assertEqual(("pom",), bom.artifacts)

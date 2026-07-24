@@ -67,6 +67,16 @@ required_files=(
   examples/vertx/pom.xml
   examples/micronaut/pom.xml
   examples/spring-boot/pom.xml
+  examples/quarkus/pom.xml
+  examples/quarkus/src/main/resources/application.properties
+  extensions/logyard-quarkus/pom.xml
+  extensions/logyard-quarkus/runtime/pom.xml
+  extensions/logyard-quarkus/runtime/publication.toml
+  extensions/logyard-quarkus/runtime/src/main/resources/META-INF/quarkus-extension.yaml
+  extensions/logyard-quarkus/deployment/pom.xml
+  extensions/logyard-quarkus/deployment/publication.toml
+  extensions/logyard-quarkus/deployment/src/main/java/com/zsumz/logyard/quarkus/deployment/LogyardQuarkusProcessor.java
+  scripts/example_tools/quarkus_dev.py
   scripts/examples-native-verify
   scripts/verify
   scripts/architecture-check
@@ -84,9 +94,10 @@ done
 if find . -path './.git' -prune -o -path './.zolt' -prune -o \
     -path './target' -prune -o \
     -path './examples' -prune -o \
+    -path './extensions/logyard-quarkus' -prune -o \
     \( -name pom.xml -o -name build.gradle -o -name build.gradle.kts \
        -o -name settings.gradle -o -name settings.gradle.kts \) -print | grep -q .; then
-  fail 'Maven or Gradle project files are checked in; Zolt is the project model'
+  fail 'Maven or Gradle project files are checked in outside the Quarkus extension reactor; Zolt is the default project model'
 fi
 
 for script in scripts/*; do

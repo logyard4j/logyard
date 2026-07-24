@@ -10,3 +10,4 @@ fi
 "$ROOT/scripts/release-verify"
 version="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli version "$ROOT")"
 PYTHONPATH="$ROOT/scripts" python3 -m example_tools.verify "$ROOT" "$RELEASE_REPOSITORY" "$version"
+PYTHONPATH="$ROOT/scripts" python3 -m example_tools.quarkus_dev "$ROOT" "$RELEASE_REPOSITORY" "$version"

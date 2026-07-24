@@ -4,9 +4,21 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
 members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli jar-members "$ROOT")"
+STAGING="$ROOT/target/maven-build-repository"
+STAGING_URI="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.path_cli "$STAGING")"
 
 "$ZOLT" package \
   --workspace \
   --members "$members" \
   --no-progress \
   --color never
+
+PYTHONPATH="$ROOT/scripts" python3 -m release_tools.assemble \
+  "$ROOT" \
+  "$STAGING" \
+  --exclude-build-system maven
+
+mvn --batch-mode --no-transfer-progress \
+  -f "$ROOT/extensions/logyard-quarkus/pom.xml" \
+  -Dlogyard.repository="$STAGING_URI" \
+  package

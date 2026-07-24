@@ -96,6 +96,18 @@ class MavenExampleRunner:
             raise AssertionError(f"Spring native example did not produce {executable}")
         return executable
 
+    def build_quarkus_native(self, example: MavenExample, executable_name: str) -> Path:
+        output = self._target / f"{example.name}-build.jsonl"
+        self._run(
+            self._command("clean", "package", "-Dnative", "-DskipTests"),
+            example.project_directory,
+            self.environment(output),
+        )
+        executable = example.project_directory / "target" / executable_name
+        if not executable.is_file():
+            raise AssertionError(f"Quarkus native example did not produce {executable}")
+        return executable
+
     def output_path(self, example: MavenExample) -> Path:
         return self._target / f"{example.name}.jsonl"
 

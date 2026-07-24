@@ -50,6 +50,7 @@ class Publication:
     artifacts: tuple[str, ...]
     metadata: Metadata
     automatic_module_name: str | None
+    build_system: str
     dependencies: tuple[Dependency, ...]
     managed_dependencies: tuple[Dependency, ...]
 

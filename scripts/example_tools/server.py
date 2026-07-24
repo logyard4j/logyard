@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 import subprocess
 import time
 import urllib.error
@@ -27,6 +28,7 @@ class HttpExample:
     failure_path: str = "/failure"
     shutdown_path: str = "/shutdown"
     executable_jar_name: str | None = None
+    random_port_environment: str | None = None
     additional_requests: tuple[HttpRequestExpectation, ...] = ()
 
 
@@ -36,6 +38,7 @@ class ExecutableHttpExample:
     project_directory: Path
     command: tuple[str, ...]
     additional_environment: tuple[tuple[str, str], ...] = ()
+    random_port_environment: str | None = None
     success_path: str = "/success"
     failure_path: str = "/failure"
     shutdown_path: str = "/shutdown"
@@ -59,6 +62,7 @@ class HttpExampleRunner:
                 success_path=example.success_path,
                 failure_path=example.failure_path,
                 shutdown_path=example.shutdown_path,
+                random_port_environment=example.random_port_environment,
                 additional_requests=example.additional_requests,
             )
         )
@@ -72,12 +76,15 @@ class HttpExampleRunner:
         process_log = self._target / f"{example.name}.process.log"
         for stale in (output, port_file, process_log):
             stale.unlink(missing_ok=True)
+        additional_environment = {
+            "LOGYARD_EXAMPLE_PORT_FILE": str(port_file),
+            **dict(example.additional_environment),
+        }
+        if example.random_port_environment is not None:
+            additional_environment[example.random_port_environment] = str(self._available_port())
         environment = self._maven.environment(
             output,
-            {
-                "LOGYARD_EXAMPLE_PORT_FILE": str(port_file),
-                **dict(example.additional_environment),
-            },
+            additional_environment,
         )
 
         with process_log.open("wb") as log:
@@ -126,13 +133,21 @@ class HttpExampleRunner:
             headers=headers,
             method=expectation.method,
         )
-        try:
-            with urllib.request.urlopen(request, timeout=10) as response:
-                status = response.status
-                body = response.read().decode("utf-8")
-        except urllib.error.HTTPError as failure:
-            status = failure.code
-            body = failure.read().decode("utf-8")
+        deadline = time.monotonic() + 10
+        while True:
+            try:
+                with urllib.request.urlopen(request, timeout=10) as response:
+                    status = response.status
+                    body = response.read().decode("utf-8")
+                break
+            except urllib.error.HTTPError as failure:
+                status = failure.code
+                body = failure.read().decode("utf-8")
+                break
+            except urllib.error.URLError:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.05)
         body_matches = expectation.expected_body in body if expectation.body_contains else body == expectation.expected_body
         if status != expectation.expected_status or not body_matches:
             mode = "containing" if expectation.body_contains else "equal to"
@@ -151,6 +166,12 @@ class HttpExampleRunner:
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
+
+    @staticmethod
+    def _available_port() -> int:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.bind(("127.0.0.1", 0))
+            return int(listener.getsockname()[1])
 
     @staticmethod
     def _fail(message: str, process_log: Path) -> None:

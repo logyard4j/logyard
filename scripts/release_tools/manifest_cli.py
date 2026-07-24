@@ -3,21 +3,22 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .model import discover_publications, jar_publications, release_version
+from .model import discover_publications, jar_publications, release_version, zolt_jar_publications
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Inspect Logyard publication manifests.")
-    parser.add_argument("command", choices=("jar-members", "jar-records", "summary", "version"))
+    parser.add_argument("command", choices=("jar-members", "jar-records", "maven-records", "summary", "version"))
     parser.add_argument("root", type=Path)
     arguments = parser.parse_args()
 
     publications = discover_publications(arguments.root)
     jars = jar_publications(publications)
+    zolt_jars = zolt_jar_publications(publications)
     if arguments.command == "jar-members":
-        print(",".join(publication.relative_module_path for publication in jars))
+        print(",".join(publication.relative_module_path for publication in zolt_jars))
     elif arguments.command == "jar-records":
-        for publication in jars:
+        for publication in zolt_jars:
             print(
                 "\t".join(
                     (
@@ -28,6 +29,20 @@ def main() -> None:
                     )
                 )
             )
+    elif arguments.command == "maven-records":
+        for publication in jars:
+            if publication.build_system == "maven":
+                print(
+                    "\t".join(
+                        (
+                            publication.relative_module_path,
+                            publication.artifact_id,
+                            publication.automatic_module_name or "",
+                            publication.version,
+                            str(len(publication.artifacts)),
+                        )
+                    )
+                )
     elif arguments.command == "version":
         print(release_version(publications))
     else:
