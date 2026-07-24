@@ -2,6 +2,7 @@ package com.zsumz.logyard.runtime.management;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,15 +43,20 @@ final class LoggerLevelManagementTest {
             assertEquals(
                     Map.of("com.acme", LoggerLevel.DEBUG, "com.acme.noisy", LoggerLevel.OFF),
                     levels.listConfiguredLevels());
-            assertEquals(
-                    new LoggerLevelSnapshot(null, LoggerLevel.DEBUG),
-                    levels.listLoggerLevels().get("com.acme.Service"));
-            assertEquals(
-                    new LoggerLevelSnapshot(LoggerLevel.DEBUG, LoggerLevel.DEBUG),
-                    levels.listLoggerLevels().get("com.acme"));
-            assertEquals(
-                    new LoggerLevelSnapshot(null, LoggerLevel.INFO),
-                    levels.listLoggerLevels().get(LoggerLevelManagement.ROOT_LOGGER_NAME));
+            LoggerLevelSnapshot serviceSnapshot = levels.listLoggerLevels().get("com.acme.Service");
+            assertNull(serviceSnapshot.configuredLevel());
+            assertEquals(LoggerLevel.DEBUG, serviceSnapshot.effectiveLevel());
+            assertEquals(LoggerLevelOrigin.RUNTIME_OVERRIDE, serviceSnapshot.origin());
+
+            LoggerLevelSnapshot overrideSnapshot = levels.listLoggerLevels().get("com.acme");
+            assertEquals(LoggerLevel.DEBUG, overrideSnapshot.configuredLevel());
+            assertEquals(LoggerLevel.DEBUG, overrideSnapshot.runtimeOverride());
+            assertEquals(LoggerLevelOrigin.RUNTIME_OVERRIDE, overrideSnapshot.origin());
+
+            LoggerLevelSnapshot rootSnapshot = levels.listLoggerLevels().get(LoggerLevelManagement.ROOT_LOGGER_NAME);
+            assertEquals(LoggerLevel.INFO, rootSnapshot.configuredLevel());
+            assertEquals(LoggerLevel.INFO, rootSnapshot.baseConfiguredLevel());
+            assertEquals(LoggerLevelOrigin.BASE_CONFIGURATION, rootSnapshot.origin());
             assertThrows(
                     UnsupportedOperationException.class,
                     () -> levels.listConfiguredLevels().put("other", LoggerLevel.ERROR));
@@ -80,6 +86,50 @@ final class LoggerLevelManagementTest {
             assertEquals(LoggerLevel.TRACE, levels.getEffectiveLevel("anything"));
             assertTrue(bundle.runtime().logger("anything").isTraceEnabled());
             assertEquals(Map.of(LoggerLevelManagement.ROOT_LOGGER_NAME, LoggerLevel.TRACE), levels.listConfiguredLevels());
+        }
+    }
+
+    @Test
+    void exposesExactBaseRulesBeforeLoggerInstantiationAndRestoresThemAfterOverrides() {
+        LogyardConfigurationSource source = LogyardConfigurationSource.text(
+                "configured-levels",
+                configuredCategory(),
+                Path.of("."));
+
+        try (RuntimeBundle bundle = LogyardBootstrap.start(source)) {
+            LoggerLevelManagement levels = LoggerLevelManagement.forRuntime(bundle.runtime());
+
+            assertEquals(
+                    Map.of(
+                            LoggerLevelManagement.ROOT_LOGGER_NAME, LoggerLevel.INFO,
+                            "com.acme.orders", LoggerLevel.DEBUG),
+                    levels.listBaseConfiguredLevels());
+            LoggerLevelSnapshot base = levels.getLoggerLevel("com.acme.orders");
+            assertEquals(LoggerLevel.DEBUG, base.configuredLevel());
+            assertEquals(LoggerLevel.DEBUG, base.baseConfiguredLevel());
+            assertNull(base.runtimeOverride());
+            assertEquals(LoggerLevelOrigin.BASE_CONFIGURATION, base.origin());
+
+            LoggerLevelSnapshot inherited = levels.getLoggerLevel("com.acme.orders.Repository");
+            assertNull(inherited.configuredLevel());
+            assertEquals(LoggerLevel.DEBUG, inherited.effectiveLevel());
+            assertEquals(LoggerLevelOrigin.INHERITED, inherited.origin());
+
+            LoggerLevelSnapshot explicitlyInherited = levels.listLoggerLevels().get("com.acme.inherited");
+            assertNull(explicitlyInherited.configuredLevel());
+            assertNull(explicitlyInherited.baseConfiguredLevel());
+            assertEquals(LoggerLevel.INFO, explicitlyInherited.effectiveLevel());
+            assertEquals(LoggerLevelOrigin.INHERITED, explicitlyInherited.origin());
+
+            levels.setLevel("com.acme.orders", LoggerLevel.ERROR);
+            LoggerLevelSnapshot overridden = levels.getLoggerLevel("com.acme.orders");
+            assertEquals(LoggerLevel.ERROR, overridden.configuredLevel());
+            assertEquals(LoggerLevel.DEBUG, overridden.baseConfiguredLevel());
+            assertEquals(LoggerLevel.ERROR, overridden.runtimeOverride());
+            assertEquals(LoggerLevelOrigin.RUNTIME_OVERRIDE, overridden.origin());
+
+            levels.clearLevel("com.acme.orders");
+            assertEquals(base, levels.getLoggerLevel("com.acme.orders"));
         }
     }
 
@@ -116,5 +166,24 @@ final class LoggerLevelManagementTest {
                 stream = "stderr"
                 color = { mode = "never" }
                 """.formatted(level);
+    }
+
+    private static String configuredCategory() {
+        return """
+                schema = 1
+                [runtime]
+                internal_status = "off"
+                [delivery]
+                mode = "sync"
+                capacity = 16
+                [loggers]
+                root = { level = "info", outputs = ["console"] }
+                "com.acme.orders" = { level = "debug" }
+                "com.acme.inherited" = { outputs = ["console"] }
+                [outputs.console]
+                type = "console"
+                stream = "stderr"
+                color = { mode = "never" }
+                """;
     }
 }

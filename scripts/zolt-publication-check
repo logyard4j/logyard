@@ -35,29 +35,21 @@ if [[ "$status" -eq 0 ]]; then
 fi
 
 expected_members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli zolt-members "$ROOT" | tr ',' '\n' | wc -l | tr -d ' ')"
-expected_jars="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli jar-members "$ROOT" | tr ',' '\n' | wc -l | tr -d ' ')"
 blockers="$(awk '/^Blockers:$/ { inside = 1; next } inside && /^- / { print }' "$REPORT")"
 actual_blockers="$(printf '%s\n' "$blockers" | sed '/^$/d' | wc -l | tr -d ' ')"
 version_blockers="$(printf '%s\n' "$blockers" | grep -Fc ': release version —' || true)"
-sources_blockers="$(printf '%s\n' "$blockers" | grep -Fc ': sources jar —' || true)"
-javadoc_blockers="$(printf '%s\n' "$blockers" | grep -Fc ': javadoc jar —' || true)"
-unexpected_blockers="$(printf '%s\n' "$blockers" | sed '/^$/d' | grep -Ev ': (release version|sources jar|javadoc jar) —' || true)"
+unexpected_blockers="$(printf '%s\n' "$blockers" | sed '/^$/d' | grep -Ev ': release version —' || true)"
 expected_version_blockers=0
 if [[ "$VERSION" == *-SNAPSHOT ]]; then
   expected_version_blockers="$expected_members"
 fi
-expected_blockers=$((expected_version_blockers + expected_jars * 2))
 
-[[ "$actual_blockers" -eq "$expected_blockers" ]] || {
-  printf 'Expected %s known blockers from Zolt %s; found %s.\n' "$expected_blockers" "$VERSION" "$actual_blockers" >&2
+[[ "$actual_blockers" -eq "$expected_version_blockers" ]] || {
+  printf 'Expected %s release-version blockers from Zolt %s; found %s.\n' "$expected_version_blockers" "$VERSION" "$actual_blockers" >&2
   exit 1
 }
 [[ "$version_blockers" -eq "$expected_version_blockers" ]] || {
   printf 'Expected %s release-version blockers; found %s.\n' "$expected_version_blockers" "$version_blockers" >&2
-  exit 1
-}
-[[ "$sources_blockers" -eq "$expected_jars" && "$javadoc_blockers" -eq "$expected_jars" ]] || {
-  printf 'Expected the pinned Zolt family planner to report its known supplemental-planning limitation for %s JAR members; found %s sources and %s Javadocs blockers.\n' "$expected_jars" "$sources_blockers" "$javadoc_blockers" >&2
   exit 1
 }
 [[ -z "$unexpected_blockers" ]] || {
@@ -65,7 +57,7 @@ expected_blockers=$((expected_version_blockers + expected_jars * 2))
   exit 1
 }
 
-printf 'Zolt family metadata is Central-ready for all %s members; package verification independently proved all %s sources and Javadoc pairs omitted by this pinned family planner.\n' "$expected_members" "$expected_jars"
+printf 'Zolt planned the complete Central artifact set for all %s native workspace publications.\n' "$expected_members"
 if [[ "$VERSION" == *-SNAPSHOT ]]; then
   printf '%s remains correctly blocked as a Central release version.\n' "$VERSION"
 fi

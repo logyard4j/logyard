@@ -10,7 +10,12 @@ from .pom import generate_pom
 from .types import Publication
 
 
-def assemble(root: Path, target: Path, excluded_build_systems: frozenset[str] = frozenset()) -> tuple[Publication, ...]:
+def assemble(
+    root: Path,
+    target: Path,
+    excluded_build_systems: frozenset[str] = frozenset(),
+    metadata_only_build_systems: frozenset[str] = frozenset(),
+) -> tuple[Publication, ...]:
     root = root.resolve()
     target = target.resolve()
     _validate_target(root, target)
@@ -26,7 +31,7 @@ def assemble(root: Path, target: Path, excluded_build_systems: frozenset[str] = 
     for publication in publications:
         destination = target / publication.group_path / publication.artifact_id / publication.version
         destination.mkdir(parents=True)
-        if publication.packaging == "jar":
+        if publication.packaging == "jar" and publication.build_system not in metadata_only_build_systems:
             source_directory = root / publication.module_directory / "target"
             for filename in publication.primary_filenames[:-1]:
                 source = source_directory / filename
@@ -51,15 +56,22 @@ def main() -> None:
     parser.add_argument("root", type=Path)
     parser.add_argument("target", type=Path)
     parser.add_argument("--exclude-build-system", action="append", default=[])
+    parser.add_argument("--metadata-only-build-system", action="append", default=[])
     arguments = parser.parse_args()
     publications = assemble(
         arguments.root,
         arguments.target,
         frozenset(arguments.exclude_build_system),
+        frozenset(arguments.metadata_only_build_system),
+    )
+    metadata_only_build_systems = frozenset(arguments.metadata_only_build_system)
+    artifact_count = sum(
+        1 if publication.build_system in metadata_only_build_systems else len(publication.primary_filenames)
+        for publication in publications
     )
     print(
         f"Release bundle assembled: {len(publications)} publications and "
-        f"{sum(len(publication.primary_filenames) for publication in publications)} primary artifacts."
+        f"{artifact_count} primary artifacts."
     )
 
 

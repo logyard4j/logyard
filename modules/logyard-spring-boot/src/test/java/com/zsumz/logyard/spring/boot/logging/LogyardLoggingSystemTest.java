@@ -99,6 +99,29 @@ final class LogyardLoggingSystemTest {
     }
 
     @Test
+    void reportsTomlCategoriesBeforeInstantiationAndRestoresThemAfterAnOverride() throws Exception {
+        system = new LogyardLoggingSystem(getClass().getClassLoader());
+        system.beforeInitialize();
+        Path source = writeCategoryConfig();
+        system.initialize(initialization(Map.of("logyard.config", source.toString())), null, null);
+
+        LoggerConfiguration category = system.getLoggerConfiguration("example.orders");
+        assertEquals(LogLevel.DEBUG, category.getConfiguredLevel());
+        assertEquals(LogLevel.DEBUG, category.getEffectiveLevel());
+        assertTrue(system.getLoggerConfigurations().stream()
+                .anyMatch(configuration -> configuration.getName().equals("example.orders")));
+
+        LoggerConfiguration child = system.getLoggerConfiguration("example.orders.Repository");
+        assertNull(child.getConfiguredLevel());
+        assertEquals(LogLevel.DEBUG, child.getEffectiveLevel());
+
+        system.setLogLevel("example.orders", LogLevel.ERROR);
+        assertEquals(LogLevel.ERROR, system.getLoggerConfiguration("example.orders").getConfiguredLevel());
+        system.setLogLevel("example.orders", null);
+        assertEquals(LogLevel.DEBUG, system.getLoggerConfiguration("example.orders").getConfiguredLevel());
+    }
+
+    @Test
     void rejectsConflictingLogyardAndBootConfigurationLocations() throws Exception {
         system = new LogyardLoggingSystem(getClass().getClassLoader());
         system.beforeInitialize();
@@ -161,6 +184,26 @@ final class LogyardLoggingSystemTest {
                 stream = "stderr"
                 color = { mode = "never" }
                 """.formatted(level), StandardCharsets.UTF_8);
+        return source;
+    }
+
+    private static Path writeCategoryConfig() throws Exception {
+        Path source = Files.createTempFile("logyard-spring-category-", ".toml");
+        Files.writeString(source, """
+                schema = 1
+                [runtime]
+                internal_status = "off"
+                [delivery]
+                mode = "sync"
+                capacity = 16
+                [loggers]
+                root = { level = "info", outputs = ["console"] }
+                "example.orders" = { level = "debug" }
+                [outputs.console]
+                type = "console"
+                stream = "stderr"
+                color = { mode = "never" }
+                """, StandardCharsets.UTF_8);
         return source;
     }
 }

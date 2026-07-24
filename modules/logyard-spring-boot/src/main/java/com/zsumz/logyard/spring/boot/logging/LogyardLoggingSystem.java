@@ -101,11 +101,7 @@ public final class LogyardLoggingSystem extends LoggingSystem {
     @Override
     public LoggerConfiguration getLoggerConfiguration(String loggerName) {
         String normalized = normalizeLoggerName(loggerName);
-        LoggerLevel configured = levels().listConfiguredLevels().get(normalized);
-        return new LoggerConfiguration(
-                normalized,
-                toSpring(configured),
-                toSpring(levels().getEffectiveLevel(normalized)));
+        return toSpring(normalized, levels().getLoggerLevel(normalized));
     }
 
     private LoggerLevelManagement levels() {

@@ -12,11 +12,11 @@ CURRENT_DIR="$ROOT/target/api-compatibility"
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/api-compatibility OLD_API_JAR OLD_RUNTIME_JAR
+  scripts/api-compatibility OLD_API_JAR OLD_RUNTIME_JAR OLD_JUL_JAR OLD_SPRING_JAR OLD_QUARKUS_JAR
   scripts/api-compatibility --self-test
 
-Compares the supported Logyard API and runtime-bootstrap packages with japicmp.
-Release verification supplies the two jars from the previous published version.
+Compares every documented public library and framework surface with japicmp.
+Release verification supplies the five jars from the previous published version.
 USAGE
 }
 
@@ -51,10 +51,20 @@ install_japicmp() {
 }
 
 build_current_jars() {
-  "$ZOLT" build --directory "$ROOT" --workspace --members modules/logyard-api,modules/logyard-runtime --no-progress --color never
+  "$ZOLT" build --directory "$ROOT" --workspace \
+    --members modules/logyard-api,modules/logyard-runtime,modules/logyard-jul,modules/logyard-spring-boot \
+    --no-progress --color never
+  "$ROOT/scripts/package"
   mkdir -p "$CURRENT_DIR"
   jar --create --file "$CURRENT_DIR/logyard-api-current.jar" -C "$ROOT/modules/logyard-api/target/classes" .
   jar --create --file "$CURRENT_DIR/logyard-runtime-current.jar" -C "$ROOT/modules/logyard-runtime/target/classes" .
+  jar --create --file "$CURRENT_DIR/logyard-jul-current.jar" -C "$ROOT/modules/logyard-jul/target/classes" .
+  jar --create --file "$CURRENT_DIR/logyard-spring-boot-current.jar" -C "$ROOT/modules/logyard-spring-boot/target/classes" .
+  local quarkus_jar
+  quarkus_jar="$(find "$ROOT/extensions/logyard-quarkus/runtime/target" -maxdepth 1 -type f \
+    -name 'logyard-quarkus-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' -print -quit)"
+  require_file "$quarkus_jar"
+  cp "$quarkus_jar" "$CURRENT_DIR/logyard-quarkus-current.jar"
 }
 
 compare() {
@@ -75,11 +85,18 @@ if [[ "$#" -eq 1 && "$1" == "--self-test" ]]; then
   build_current_jars
   old_api="$CURRENT_DIR/logyard-api-current.jar"
   old_runtime="$CURRENT_DIR/logyard-runtime-current.jar"
-elif [[ "$#" -eq 2 ]]; then
+  old_jul="$CURRENT_DIR/logyard-jul-current.jar"
+  old_spring="$CURRENT_DIR/logyard-spring-boot-current.jar"
+  old_quarkus="$CURRENT_DIR/logyard-quarkus-current.jar"
+elif [[ "$#" -eq 5 ]]; then
   old_api="$1"
   old_runtime="$2"
-  require_file "$old_api"
-  require_file "$old_runtime"
+  old_jul="$3"
+  old_spring="$4"
+  old_quarkus="$5"
+  for old_jar in "$old_api" "$old_runtime" "$old_jul" "$old_spring" "$old_quarkus"; do
+    require_file "$old_jar"
+  done
   build_current_jars
 else
   usage >&2
@@ -89,4 +106,10 @@ fi
 install_japicmp
 compare "$old_api" "$CURRENT_DIR/logyard-api-current.jar" "com.zsumz.logyard.api.*"
 compare "$old_runtime" "$CURRENT_DIR/logyard-runtime-current.jar" "com.zsumz.logyard.runtime.bootstrap.*"
-printf 'API compatibility passed for the supported Logyard API and runtime bootstrap packages.\n'
+compare "$old_runtime" "$CURRENT_DIR/logyard-runtime-current.jar" "com.zsumz.logyard.runtime.management.*"
+compare "$old_jul" "$CURRENT_DIR/logyard-jul-current.jar" "com.zsumz.logyard.jul.*"
+compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.zsumz.logyard.spring.boot.autoconfigure.*"
+compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.zsumz.logyard.spring.boot.logging.*"
+compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.zsumz.logyard.spring.boot.nativeimage.*"
+compare "$old_quarkus" "$CURRENT_DIR/logyard-quarkus-current.jar" "com.zsumz.logyard.quarkus.runtime.*"
+printf 'API compatibility passed for Logyard API, bootstrap, management, JUL, Spring Boot, and Quarkus surfaces.\n'

@@ -9,7 +9,7 @@ scripts/release-bundle --sign
 scripts/zolt-publication-check
 ```
 
-The publication check runs Zolt's whole-workspace Central preflight and the packaged-artifact verifier together. The pinned enterprise revision's family planner does not yet carry the sources and Javadoc supplementals that its package command produces, so the gate accepts exactly those known planner blockers only after independently proving every supplemental artifact. A snapshot additionally requires the release version to be the only other blocker. Any metadata, POM, signing, routing, family, or artifact failure is fatal.
+The publication check runs Zolt's complete whole-workspace Central planner and the packaged-artifact verifier together. Zolt must plan every native workspace member’s main artifact, sources, Javadocs, checksums, signatures, and atomic family metadata. A snapshot requires the release version to be the only blocker. Any metadata, POM, signing, routing, family, or artifact failure is fatal.
 
 Build the signed, deterministic Central Portal ZIP without uploading it:
 

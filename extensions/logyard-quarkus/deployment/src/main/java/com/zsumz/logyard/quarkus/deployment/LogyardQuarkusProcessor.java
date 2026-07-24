@@ -27,7 +27,9 @@ final class LogyardQuarkusProcessor {
     NativeImageResourcePatternsBuildItem tomlResources() {
         return NativeImageResourcePatternsBuildItem.builder()
                 .includeGlob("logyard.toml")
-                .includeGlob("**/*.toml")
+                .includeGlob("logyard-*.toml")
+                .includeGlob("**/logyard.toml")
+                .includeGlob("**/logyard-*.toml")
                 .build();
     }
 

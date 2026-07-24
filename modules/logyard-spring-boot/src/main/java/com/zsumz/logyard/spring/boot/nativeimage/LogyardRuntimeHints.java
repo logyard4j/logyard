@@ -10,6 +10,9 @@ public final class LogyardRuntimeHints implements RuntimeHintsRegistrar {
     @Override
     public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
         hints.resources().registerPattern("logyard.toml");
+        hints.resources().registerPattern("logyard-*.toml");
+        hints.resources().registerPattern("**/logyard.toml");
+        hints.resources().registerPattern("**/logyard-*.toml");
         hints.resources().registerPattern("META-INF/services/org.slf4j.spi.SLF4JServiceProvider");
         hints.resources().registerPattern("META-INF/services/java.lang.System$LoggerFinder");
         hints.resources().registerPattern("META-INF/services/com.zsumz.logyard.api.spi.context.CallerContextProvider");

@@ -3,8 +3,32 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+TARGET="$ROOT/target/benchmark-smoke"
+MAVEN_REPOSITORY="$TARGET/maven-repository"
+CORE_RESULTS="$TARGET/core.json"
+QUARKUS_RESULTS="$TARGET/quarkus.json"
 
 cd "$ROOT"
+mkdir -p "$TARGET"
 "$ZOLT" run --directory "$ROOT" --workspace --member benchmarks/logyard-benchmarks -- \
-  '.*(ContextPolicyBenchmark|NativeIngressBenchmark.enabledOneArgument).*' \
-  -wi 1 -i 1 -f 1 -w 100ms -r 100ms
+  '.*(AsyncDeliveryBenchmark\.oneProducer|CompositeSinkBenchmark\.success|ContextPolicyBenchmark|EncodingBenchmark\.(jsonEncoding|redactionWithoutMatch)|NativeIngressBenchmark\.(disabled|enabledOneArgument|twoOutputFanout)|Slf4jIngressBenchmark\.enabledEmptyMdc).*' \
+  -wi 1 -i 2 -f 1 -w 200ms -r 200ms -prof gc -rf json -rff "$CORE_RESULTS"
+
+mvn --batch-mode --no-transfer-progress \
+  -Dmaven.repo.local="$MAVEN_REPOSITORY" \
+  -Dlogyard.repository="file://$ROOT/target/release-bundle" \
+  -DskipTests \
+  -f extensions/logyard-quarkus/pom.xml \
+  -Pbenchmarks \
+  -pl benchmarks \
+  -am \
+  package
+
+java -jar extensions/logyard-quarkus/benchmarks/target/logyard-quarkus-benchmarks.jar \
+  '.*QuarkusEventMappingBenchmark\.mapCompleteRecord.*' \
+  -wi 1 -i 2 -f 1 -w 200ms -r 200ms -prof gc -rf json -rff "$QUARKUS_RESULTS"
+
+PYTHONPATH="$ROOT/scripts" python3 -m release_tools.benchmark_allocations \
+  benchmarks/allocation-budgets.json \
+  "$CORE_RESULTS" \
+  "$QUARKUS_RESULTS"

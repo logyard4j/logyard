@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Case-insensitive glob redaction over attribute keys. */
+/** Case-insensitive glob redaction over complete attribute paths and their leaf keys. */
 public final class RedactionProcessor implements EventProcessor {
     private static final String REDACTED = "[REDACTED]";
     private final List<String> patterns;
@@ -43,17 +43,27 @@ public final class RedactionProcessor implements EventProcessor {
     }
 
     private boolean matches(String key) {
+        if (matchesCandidate(key, 0)) {
+            return true;
+        }
+        int separator = key.lastIndexOf('.');
+        return separator >= 0
+                && separator + 1 < key.length()
+                && matchesCandidate(key, separator + 1);
+    }
+
+    private boolean matchesCandidate(String candidate, int start) {
         for (String pattern : patterns) {
-            if (glob(pattern, key)) {
+            if (glob(pattern, candidate, start)) {
                 return true;
             }
         }
         return false;
     }
 
-    private static boolean glob(String pattern, String value) {
+    private static boolean glob(String pattern, String value, int start) {
         int p = 0;
-        int v = 0;
+        int v = start;
         int star = -1;
         int checkpoint = -1;
         while (v < value.length()) {

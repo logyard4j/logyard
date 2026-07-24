@@ -67,6 +67,10 @@ class EventLog:
         if not any(event.get("resource", {}).get(name) == expected for event in self._events):
             raise AssertionError(f"no structured event had resource attribute {name}={expected!r}")
 
+    def require_no_attribute_value(self, name: str, forbidden: Any) -> None:
+        if any(event.get("attributes", {}).get(name) == forbidden for event in self._events):
+            raise AssertionError(f"structured event leaked forbidden attribute {name}={forbidden!r}")
+
     @staticmethod
     def _equal(expected: Any, actual: Any, body: str, field: str) -> None:
         if actual != expected:

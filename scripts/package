@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
 members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli zolt-members "$ROOT")"
 STAGING="$ROOT/target/maven-build-repository"
+MAVEN_CACHE="$ROOT/target/maven-package-repository"
 STAGING_URI="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.path_cli "$STAGING")"
 
 "$ZOLT" package \
@@ -17,9 +18,13 @@ STAGING_URI="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.path_cli "$ST
 PYTHONPATH="$ROOT/scripts" python3 -m release_tools.assemble \
   "$ROOT" \
   "$STAGING" \
-  --exclude-build-system maven
+  --metadata-only-build-system maven
+
+mkdir -p "$MAVEN_CACHE"
+cp -R "$STAGING/." "$MAVEN_CACHE/"
 
 mvn --batch-mode --no-transfer-progress \
   -f "$ROOT/extensions/logyard-quarkus/pom.xml" \
+  -Dmaven.repo.local="$MAVEN_CACHE" \
   -Dlogyard.repository="$STAGING_URI" \
   package

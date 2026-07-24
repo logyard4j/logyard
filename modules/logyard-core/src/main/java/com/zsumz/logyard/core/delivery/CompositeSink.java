@@ -1,8 +1,8 @@
 package com.zsumz.logyard.core.delivery;
 
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.api.spi.output.EventSink;
-import com.zsumz.logyard.core.failure.ComponentFailureCollector;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.List;
@@ -23,27 +23,44 @@ public final class CompositeSink implements EventSink {
 
     @Override
     public void accept(LogEvent event) {
-        ComponentFailureCollector failures = new ComponentFailureCollector();
-        for (int index = 0; index < sinks.length; index++) {
-            EventSink sink = sinks[index];
-            ComponentInvocationBoundary.invoke(
-                    "fanout sink " + index + " accept",
-                    () -> sink.accept(event),
-                    failures);
+        Throwable failure = null;
+        for (EventSink sink : sinks) {
+            try {
+                sink.accept(event);
+            } catch (Throwable current) {
+                failure = collect(failure, current);
+            }
         }
-        failures.throwIfPresent("fanout accept");
+        throwIfPresent("fanout accept", failure);
     }
 
     @Override
     public void flush() {
-        ComponentFailureCollector failures = new ComponentFailureCollector();
-        for (int index = 0; index < sinks.length; index++) {
-            EventSink sink = sinks[index];
-            ComponentInvocationBoundary.invoke(
-                    "fanout sink " + index + " flush",
-                    sink::flush,
-                    failures);
+        Throwable failure = null;
+        for (EventSink sink : sinks) {
+            try {
+                sink.flush();
+            } catch (Throwable current) {
+                failure = collect(failure, current);
+            }
         }
-        failures.throwIfPresent("fanout flush");
+        throwIfPresent("fanout flush", failure);
+    }
+
+    private static Throwable collect(Throwable first, Throwable current) {
+        FailureIsolation.prepareForRecovery(current);
+        if (first == null) {
+            return current;
+        }
+        if (first != current) {
+            first.addSuppressed(current);
+        }
+        return first;
+    }
+
+    private static void throwIfPresent(String operation, Throwable failure) {
+        if (failure != null) {
+            throw ComponentInvocationBoundary.exception(operation, failure);
+        }
     }
 }

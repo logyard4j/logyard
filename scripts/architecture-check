@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import re
 import sys
+import tomllib
 from pathlib import Path
 
 ROOT = Path.cwd()
+with (ROOT / "framework-versions.toml").open("rb") as source:
+    FRAMEWORK_VERSIONS = tomllib.load(source)["frameworks"]
 PREFIX = "com.zsumz.logyard."
 MAX_JAVA_SOURCE_LINES = 300
 SOURCE_ROOTS = sorted(
@@ -96,11 +99,15 @@ ALLOWED_IMPORT_PREFIXES = {
         PREFIX + "runtime.", PREFIX + "slf4j.", PREFIX + "benchmarks."
     ),
     "runtime": (
-        "java.", "io.quarkus.", "io.smallrye.config.", "org.eclipse.microprofile.health.",
+        "java.", "io.quarkus.", "io.smallrye.config.", "jakarta.inject.", "org.eclipse.microprofile.health.",
         "org.jboss.logmanager.", PREFIX + "api.", PREFIX + "quarkus.", PREFIX + "runtime."
     ),
     "deployment": (
         "java.", "io.quarkus.", PREFIX + "quarkus."
+    ),
+    "benchmarks": (
+        "java.", "org.jboss.logmanager.", "org.openjdk.jmh.", PREFIX + "api.",
+        PREFIX + "core.", PREFIX + "quarkus."
     ),
 }
 
@@ -586,8 +593,8 @@ for manifest in sorted(
     for coordinate, expected_version in {
         "org.junit.platform:junit-platform-console-standalone": "1.11.4",
         "org.slf4j:slf4j-api": "2.0.18",
-        "org.openjdk.jmh:jmh-core": "1.37",
-        "org.openjdk.jmh:jmh-generator-annprocess": "1.37",
+        "org.openjdk.jmh:jmh-core": FRAMEWORK_VERSIONS["jmh"],
+        "org.openjdk.jmh:jmh-generator-annprocess": FRAMEWORK_VERSIONS["jmh"],
     }.items():
         match = re.search(rf'(?m)^"{re.escape(coordinate)}"\s*=\s*"([^"]+)"', text)
         if match is not None and match.group(1) != expected_version:
@@ -678,8 +685,6 @@ if any(index < 0 for index in processor_order) or list(processor_order) != sorte
     errors.append("processor order must remain context, filters, enrichers, redaction")
 
 FAILURE_BOUNDARY_CONTRACTS = {
-    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/CompositeSink.java":
-        "ComponentInvocationBoundary.invoke(",
     "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/async/AsyncDelegateDelivery.java":
         "ComponentInvocationBoundary.invoke(",
     "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/async/AsyncSinkHealth.java":
@@ -713,6 +718,10 @@ for relative, required_fragment in FAILURE_BOUNDARY_CONTRACTS.items():
         )
 
 BOUND_CONTRACTS = {
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/CompositeSink.java": (
+        "FailureIsolation.prepareForRecovery(",
+        "ComponentInvocationBoundary.exception(",
+    ),
     "modules/logyard-api/src/main/java/com/zsumz/logyard/api/format/TextTemplate.java": (
         "MAX_TEMPLATE_CHARS = 4_096",
         "MAX_PLACEHOLDERS = 64",

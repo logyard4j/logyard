@@ -1,0 +1,70 @@
+{
+  "budgets": [
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.delivery.AsyncDeliveryBenchmark.oneProducer",
+      "maxBytesPerOperation": 96
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.delivery.CompositeSinkBenchmark.success",
+      "params": {"sinkCount": "1"},
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.delivery.CompositeSinkBenchmark.success",
+      "params": {"sinkCount": "2"},
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.delivery.CompositeSinkBenchmark.success",
+      "params": {"sinkCount": "4"},
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.jsonEncoding",
+      "maxBytesPerOperation": 2048
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.redactionWithoutMatch",
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.ContextPolicyBenchmark.fixedConfiguration",
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.ContextPolicyBenchmark.reloadAwareConfiguration",
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.NativeIngressBenchmark.disabled",
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.NativeIngressBenchmark.enabledOneArgument",
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.NativeIngressBenchmark.twoOutputFanout",
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jIngressBenchmark.enabledEmptyMdc",
+      "maxBytesPerOperation": 128
+    },
+    {
+      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCompleteRecord",
+      "params": {"mdcEntries": "0"},
+      "maxBytesPerOperation": 2048
+    },
+    {
+      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCompleteRecord",
+      "params": {"mdcEntries": "1"},
+      "maxBytesPerOperation": 2304
+    },
+    {
+      "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCompleteRecord",
+      "params": {"mdcEntries": "4"},
+      "maxBytesPerOperation": 3072
+    }
+  ]
+}

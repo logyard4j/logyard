@@ -7,6 +7,7 @@ from .events import EventLog
 from .maven import MavenExample, MavenExampleRunner
 from .server import ExecutableHttpExample, HttpExampleRunner, HttpRequestExpectation
 from .verify import require_micronaut_events, require_quarkus_events, require_spring_boot_events, spring_boot_example
+from .versions import framework_versions
 
 
 def main() -> None:
@@ -55,14 +56,19 @@ def verify_micronaut(root: Path, maven: MavenExampleRunner, http: HttpExampleRun
 
 
 def verify_spring_boot(root: Path, maven: MavenExampleRunner, http: HttpExampleRunner) -> None:
-    spring = spring_boot_example(root, "4-native", "4.1.0", "spring-boot-starter-webmvc")
+    spring = spring_boot_example(
+        root,
+        "4-native",
+        framework_versions(root)["spring_boot_current"],
+        "spring-boot-starter-webmvc",
+    )
     spring_executable = maven.build_spring_native(spring.maven, "logyard-spring-boot-example")
     spring_output = http.run_and_exercise(
         ExecutableHttpExample(
             name=spring.maven.name,
             project_directory=spring.maven.project_directory,
             command=(str(spring_executable),),
-            additional_environment=(("LOGYARD_CONFIG", "classpath:logyard.toml"),),
+            additional_environment=(("LOGYARD_CONFIG", "classpath:logging/logyard-prod.toml"),),
             additional_requests=spring.additional_requests,
         )
     )
@@ -89,6 +95,7 @@ def verify_quarkus(root: Path, maven: MavenExampleRunner, http: HttpExampleRunne
             project_directory=quarkus.project_directory,
             command=(str(quarkus_executable),),
             random_port_environment="QUARKUS_HTTP_PORT",
+            additional_environment=(("QUARKUS_LOGYARD_CONFIG", "classpath:logging/logyard-prod.toml"),),
             additional_requests=(
                 HttpRequestExpectation("/q/health/ready", 200, '"logyard"', body_contains=True),
             ),

@@ -50,10 +50,14 @@ public final class QuarkusExampleResource {
 
     private static void withRequest(String requestId, Runnable action) {
         MDC.put("request.id", requestId);
+        MDC.put("authorization", "Bearer quarkus-example-secret");
+        MDC.put("session.token", "quarkus-example-token");
         try {
             action.run();
         } finally {
             MDC.remove("request.id");
+            MDC.remove("authorization");
+            MDC.remove("session.token");
         }
     }
 }

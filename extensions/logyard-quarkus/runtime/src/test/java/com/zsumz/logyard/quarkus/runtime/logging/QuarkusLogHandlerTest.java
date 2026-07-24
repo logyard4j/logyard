@@ -46,7 +46,12 @@ final class QuarkusLogHandlerTest {
         assertTrue(events.contains("\"logger\":\"example.quarkus\""));
         assertTrue(events.contains("\"severity_text\":\"WARN\""));
         assertTrue(events.contains("\"quarkus.message_template\":\"Quarkus mapped event %s\""));
-        assertTrue(events.contains("\"request.id\":\"request-7\""));
+        assertTrue(events.contains("\"mdc.request.id\":\"request-7\""), events);
+        assertTrue(events.contains("\"mdc.authorization\":\"[REDACTED]\""), events);
+        assertTrue(events.contains("\"mdc.session.token\":\"[REDACTED]\""), events);
+        assertFalse(events.contains("\"quarkus.mdc\""));
+        assertFalse(events.contains("Bearer private-token"));
+        assertFalse(events.contains("session-secret"));
         assertTrue(events.contains("\"quarkus.ndc\":\"operation\""));
         assertTrue(events.contains("\"code.namespace\":\"example.Source\""));
         assertTrue(events.contains("\"thread\":{\"id\":91,\"name\":\"quarkus-worker\"}"));
@@ -77,6 +82,8 @@ final class QuarkusLogHandlerTest {
         record.setProcessName("test-process");
         record.setProcessId(73L);
         record.putMdc("request.id", "request-7");
+        record.putMdc("authorization", "Bearer private-token");
+        record.putMdc("session.token", "session-secret");
         record.setNdc("operation");
         return record;
     }
@@ -92,6 +99,9 @@ final class QuarkusLogHandlerTest {
                 [delivery]
                 mode = "sync"
                 capacity = 16
+
+                [context]
+                redact = ["authorization", "mdc.*token"]
 
                 [loggers]
                 root = { level = "trace", outputs = ["json"] }

@@ -13,6 +13,7 @@ import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.routing.RouteDefinition;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -146,8 +147,22 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         return state.levelOverrides().configuredLevels();
     }
 
+    /** Returns exact logger thresholds from the currently active immutable plan. */
+    public Map<String, Level> baseConfiguredLevels() {
+        RuntimePlan plan = state.plan();
+        LinkedHashMap<String, Level> levels = new LinkedHashMap<>();
+        levels.put(RuntimeLevelOverrides.ROOT_LOGGER_NAME, plan.root().level());
+        plan.loggers().forEach((name, definition) -> {
+            if (definition.level() != null) {
+                levels.put(name, definition.level());
+            }
+        });
+        return Collections.unmodifiableMap(levels);
+    }
+
     public Set<String> knownLoggerNames() {
         LinkedHashSet<String> names = new LinkedHashSet<>(controls.keySet());
+        names.addAll(baseConfiguredLevels().keySet());
         names.addAll(state.levelOverrides().configuredLevels().keySet());
         return Set.copyOf(names);
     }

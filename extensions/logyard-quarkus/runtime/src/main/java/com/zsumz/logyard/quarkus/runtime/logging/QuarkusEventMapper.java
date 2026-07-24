@@ -10,6 +10,7 @@ import org.jboss.logmanager.ExtLogRecord;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.logging.LogRecord;
 
 /** Captures one JBoss Log Manager record at the Logyard ingress boundary. */
@@ -96,8 +97,11 @@ final class QuarkusEventMapper {
 
     private static void addContext(AttributeSet.Builder attributes, ExtLogRecord record) {
         Map<String, String> mdc = record.getMdcCopy();
-        if (!mdc.isEmpty()) {
-            attributes.put("quarkus.mdc", mdc);
+        for (Map.Entry<String, String> entry : new TreeMap<>(mdc).entrySet()) {
+            if (attributes.isFull()) {
+                break;
+            }
+            attributes.put("mdc." + entry.getKey(), entry.getValue());
         }
         if (record.getNdc() != null && !record.getNdc().isBlank()) {
             attributes.put("quarkus.ndc", record.getNdc());

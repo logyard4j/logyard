@@ -26,7 +26,7 @@ public final class LogyardConfigurationSource {
 
             [delivery]
             mode = "async"
-            capacity = 65536
+            capacity = 16384
 
             [delivery.overflow]
             trace = "drop"

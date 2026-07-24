@@ -85,7 +85,7 @@ final class CoreSectionDecoder {
 
     static DeliveryConfig delivery(ConfigReader reader) {
         String mode = reader.string("mode", "async");
-        int capacity = reader.integer("capacity", 65_536);
+        int capacity = reader.integer("capacity", DeliveryConfig.DEFAULT_CAPACITY);
         Map<String, Object> rawOverflow = reader.dynamicObject("overflow");
         EnumMap<Level, OverflowRuleConfig> rules = defaultOverflow();
         for (Map.Entry<String, Object> entry : rawOverflow.entrySet()) {

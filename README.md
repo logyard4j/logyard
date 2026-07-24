@@ -51,6 +51,8 @@ Exclude Boot's default logging starter from every higher-level starter that brin
 
 Apply the same exclusion to `spring-boot-starter-webflux`, `spring-boot-starter-actuator`, and any other Boot starter that brings Logback. Startup fails with exact remediation if Logyard is missing or another SLF4J provider remains.
 
+Logyard is process-global, including under Spring. Multiple application contexts, embedded applications, DevTools restarts, and test contexts in one JVM share the same runtime identity and reference-counted ownership; closing one context releases only its lease. They should not run incompatible Logyard configurations concurrently, and parallel tests that require independent logging state should use separate JVMs until a dedicated `logyard-test` isolation module exists.
+
 The equivalent Gradle dependency replacement is:
 
 ```kotlin
@@ -114,7 +116,7 @@ Configuration discovery is deterministic, in this order:
 5. `./logyard.toml`
 6. Built-in safe defaults
 
-The built-in default is root `INFO` to a color-aware stderr console through bounded, nonblocking asynchronous delivery. It has no file output or watcher. Set `-Dlogyard.config.required=true` when configuration must exist. Explicit locations may be filesystem paths or `classpath:resource/name.toml`; a missing or invalid explicit source always fails.
+The built-in default is root `INFO` to a color-aware stderr console through bounded, nonblocking asynchronous delivery. It has no file output or watcher. Set `-Dlogyard.config.required=true` when configuration must exist. Explicit locations may be filesystem paths or classpath resources named `logyard.toml` or `logyard-*.toml`, including paths such as `classpath:logging/logyard-prod.toml`; those names are included automatically in Spring and Quarkus native images. A missing or invalid explicit source always fails.
 
 Native and framework integrations can also supply bounded configuration directly:
 
@@ -200,7 +202,7 @@ Delivery is asynchronous by default. Each output has an isolated queue and worke
 ```toml
 [delivery]
 mode = "async"
-capacity = 65536
+capacity = 16384
 
 [delivery.overflow]
 trace = "drop"
@@ -217,7 +219,7 @@ Overflow actions are:
 - `sync`: wait for the optional timeout, then deliver on the caller thread.
 - `stderr`: wait for the optional timeout, then write the emergency representation directly to standard error.
 
-The default policy drops trace, debug, and info events; gives warnings a bounded two-millisecond wait before emergency stderr delivery; and sends errors immediately to emergency stderr. Runtime health exposes queue capacity, depth, dropped-event counts, and failure state.
+The default policy drops trace, debug, and info events; sends warnings and errors immediately to emergency stderr; and uses 16,384 slots per async output. The queue itself reserves one reference array per output—about 64 KiB with compressed references or 128 KiB with eight-byte references—before accounting for events already retained by the application. Runtime health exposes queue capacity, depth, dropped-event counts, and failure state.
 
 ## Outputs
 
@@ -362,6 +364,8 @@ The supported public surface is every package in `logyard-api`, `com.zsumz.logya
 All Logyard artifacts use the same version. Java 21 is the minimum runtime, SLF4J 2.x is supported, and no compatibility claim is made for SLF4J 1.x.
 
 Published-shaped CI consumers certify plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16 and 4.1.0, and Quarkus 3.37.3. Spring Boot verification covers executable JAR startup, MVC, WebFlux, Actuator present and absent, AOT generation, structured events, dynamic levels, JUL capture, context restart, and shutdown flush. Quarkus verification covers test mode, packaged JVM startup, dev-mode hot reload, complete JBoss record mapping, duplicate-handler prevention, SmallRye Health, and shutdown flush. Micronaut, Spring Boot 4, and Quarkus are also built and exercised as GraalVM 21 native images.
+
+Compatibility checks cover the public API, runtime bootstrap and management packages, JUL bridge, Spring Boot integration, and Quarkus runtime integration. No documented framework surface is treated as implicitly stable without appearing in that check.
 
 ## Build and verify
 

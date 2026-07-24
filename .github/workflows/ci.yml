@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
           java-version: '21'
@@ -26,8 +26,15 @@ jobs:
         run: zolt resolve --workspace
       - name: Repository, Javadoc, build, and test checks
         run: ./scripts/ci
+      - name: Force the dependency-free verification path
+        env:
+          LOGYARD_VERIFY_FORCE_FALLBACK: '1'
+          LOGYARD_VERIFY_TARGET: ${{ runner.temp }}/logyard-offline-verify
+        run: ./scripts/verify
       - name: Package and verify the published Maven surface
         run: ./scripts/release-bundle
+      - name: Verify every documented public compatibility surface
+        run: ./scripts/api-compatibility --self-test
       - name: Verify the Zolt workspace publication family
         run: ./scripts/zolt-publication-check
       - name: Build and run published-shaped consumer examples
@@ -49,8 +56,8 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
           java-version: '21'
@@ -71,8 +78,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
           java-version: '25'
@@ -92,8 +99,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: graalvm/setup-graalvm@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: graalvm/setup-graalvm@bef4b0e916c7dd079bf60fb95d49139f67e32c5f # v1.5.3
         with:
           java-version: '21'
           distribution: graalvm

@@ -6,6 +6,8 @@ TARGET="${LOGYARD_VERIFY_TARGET:-$ROOT/target/verify}"
 JAVAC="${JAVAC:-javac}"
 JAVA="${JAVA:-java}"
 DEADLINE="${LOGYARD_VERIFY_COMMAND_TIMEOUT_SECONDS:-180}"
+FORCE_FALLBACK="${LOGYARD_VERIFY_FORCE_FALLBACK:-0}"
+verification_mode="full JUnit"
 
 phase() {
   printf '\n==> %s\n' "$1"
@@ -126,6 +128,9 @@ run_bounded "$JAVA" -cp "$PRODUCT_CP:$TARGET/integration" \
 phase "Compile and run JUnit tests"
 JUNIT_JAR="$(find_artifact "${JUNIT_PLATFORM_JAR:-}" \
   'junit-platform-console-standalone-1.11.4.jar')"
+if [[ "$FORCE_FALLBACK" == "1" ]]; then
+  JUNIT_JAR=""
+fi
 base_test_roots=(
   "$ROOT/modules/logyard-api/src/test/java"
   "$ROOT/modules/logyard-core/src/test/java"
@@ -143,10 +148,11 @@ if [[ -n "$JUNIT_JAR" ]]; then
     --disable-banner --details=summary \
     --class-path "$TARGET/tests:$TEST_CP" --scan-class-path
 else
+  verification_mode="offline fallback"
   cat <<'NOTE'
-NOTE: JUnit Platform 1.11.4 was not found locally. Running every dependency-free
-      @Test method with the sealed-environment fallback runner. A resolved Zolt
-      build uses the real JUnit engine.
+NOTE: Running the dependency-free @Test subset with the sealed-environment
+      fallback runner. Parameterized methods are reported and skipped; a resolved
+      Zolt build remains the authoritative full JUnit execution.
 NOTE
   mkdir -p "$TARGET/junit-stub-src/org/junit/jupiter/api"
   cat > "$TARGET/junit-stub-src/org/junit/jupiter/api/Test.java" <<'JAVA'
@@ -208,6 +214,12 @@ public final class Assertions {
     public static void assertTrue(boolean condition) {
         if (!condition) {
             throw new AssertionError("expected true");
+        }
+    }
+
+    public static void assertTrue(boolean condition, String message) {
+        if (!condition) {
+            throw new AssertionError(message);
         }
     }
 
@@ -432,6 +444,6 @@ run_bounded "$JAVA" -cp \
 
 main_count="$(find "$ROOT/modules" "$ROOT/tests" -path '*/src/main/java/*' -type f -name '*.java' | wc -l)"
 test_count="$(find "$ROOT/modules" -path '*/src/test/java/*' -type f -name '*.java' | wc -l)"
-printf '\nVerification passed: %s main Java files, %s JUnit source files.\n' \
-  "$main_count" "$test_count"
+printf '\nVerification passed (%s): %s main Java files, %s JUnit source files.\n' \
+  "$verification_mode" "$main_count" "$test_count"
 printf 'Artifacts: %s\n' "$TARGET"

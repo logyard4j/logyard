@@ -3,6 +3,8 @@ package com.zsumz.logyard.quarkus.runtime.health;
 import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
+import com.zsumz.logyard.quarkus.runtime.configuration.LogyardQuarkusRuntimeConfig;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.Readiness;
@@ -10,8 +12,16 @@ import org.eclipse.microprofile.health.Readiness;
 /** Optional SmallRye Health readiness view of the already-installed Logyard runtime. */
 @Readiness
 public final class LogyardReadinessCheck implements HealthCheck {
-    /** Creates a readiness contributor for CDI registration when SmallRye Health is present. */
-    public LogyardReadinessCheck() {
+    private final LogyardQuarkusRuntimeConfig configuration;
+
+    /**
+     * Creates a readiness contributor for CDI registration when SmallRye Health is present.
+     *
+     * @param configuration extension runtime configuration
+     */
+    @Inject
+    public LogyardReadinessCheck(LogyardQuarkusRuntimeConfig configuration) {
+        this.configuration = configuration;
     }
 
     /**
@@ -21,6 +31,12 @@ public final class LogyardReadinessCheck implements HealthCheck {
      */
     @Override
     public HealthCheckResponse call() {
+        if (!configuration.enabled()) {
+            return HealthCheckResponse.named("logyard")
+                    .up()
+                    .withData("status", "DISABLED")
+                    .build();
+        }
         LogyardRuntime runtime = Logyard.runtimeOrNull();
         if (runtime == null) {
             return HealthCheckResponse.named("logyard")

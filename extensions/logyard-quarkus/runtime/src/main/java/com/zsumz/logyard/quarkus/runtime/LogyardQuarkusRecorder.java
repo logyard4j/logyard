@@ -1,5 +1,6 @@
 package com.zsumz.logyard.quarkus.runtime;
 
+import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.quarkus.runtime.configuration.LogyardQuarkusRuntimeConfig;
 import com.zsumz.logyard.quarkus.runtime.configuration.QuarkusConfigurationResolver;
 import com.zsumz.logyard.quarkus.runtime.lifecycle.QuarkusRuntimeLifecycle;
@@ -37,7 +38,26 @@ public class LogyardQuarkusRecorder {
         }
         QuarkusRuntimeLifecycle lifecycle = QuarkusRuntimeLifecycle.start(
                 QuarkusConfigurationResolver.resolve(configuration));
-        shutdown.addShutdownTask(lifecycle::close);
+        try {
+            shutdown.addShutdownTask(lifecycle::close);
+        } catch (Throwable registrationFailure) {
+            FailureIsolation.prepareForRecovery(registrationFailure);
+            closeAfterRegistrationFailure(lifecycle, registrationFailure);
+            throw new IllegalStateException("Quarkus rejected the Logyard shutdown task", registrationFailure);
+        }
         return new RuntimeValue<>(Optional.of(lifecycle.handler()));
+    }
+
+    private static void closeAfterRegistrationFailure(
+            QuarkusRuntimeLifecycle lifecycle,
+            Throwable registrationFailure) {
+        try {
+            lifecycle.close();
+        } catch (Throwable closeFailure) {
+            FailureIsolation.prepareForRecovery(closeFailure);
+            if (closeFailure != registrationFailure) {
+                registrationFailure.addSuppressed(closeFailure);
+            }
+        }
     }
 }

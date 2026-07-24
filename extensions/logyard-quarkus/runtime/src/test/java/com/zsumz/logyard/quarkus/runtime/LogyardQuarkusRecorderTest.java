@@ -1,5 +1,6 @@
 package com.zsumz.logyard.quarkus.runtime;
 
+import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.quarkus.runtime.configuration.LogyardQuarkusRuntimeConfig;
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.ShutdownContext;
@@ -11,6 +12,8 @@ import java.util.Optional;
 import java.util.logging.Handler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class LogyardQuarkusRecorderTest {
@@ -34,6 +37,16 @@ final class LogyardQuarkusRecorderTest {
         assertEquals(1, shutdown.tasks.size());
         shutdown.tasks.getFirst().run();
         shutdown.tasks.getFirst().run();
+    }
+
+    @Test
+    void rejectedShutdownRegistrationClosesTheRuntimeLease() {
+        IllegalStateException failure = assertThrows(
+                IllegalStateException.class,
+                () -> recorder(true).initialize(new RejectingShutdown()));
+
+        assertEquals("Quarkus rejected the Logyard shutdown task", failure.getMessage());
+        assertNull(Logyard.runtimeOrNull());
     }
 
     private static LogyardQuarkusRuntimeConfig configuration(boolean enabled) {
@@ -70,6 +83,18 @@ final class LogyardQuarkusRecorderTest {
         @Override
         public void addLastShutdownTask(Runnable task) {
             tasks.add(task);
+        }
+    }
+
+    private static final class RejectingShutdown implements ShutdownContext {
+        @Override
+        public void addShutdownTask(Runnable task) {
+            throw new IllegalArgumentException("shutdown registration rejected");
+        }
+
+        @Override
+        public void addLastShutdownTask(Runnable task) {
+            throw new IllegalArgumentException("last shutdown registration rejected");
         }
     }
 }

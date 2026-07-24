@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-readonly ZOLT_COMMIT="${ZOLT_BOOTSTRAP_COMMIT:-d92be78b494621fb7aef7c39b4e311e127e8c3c4}"
+readonly ZOLT_COMMIT="${ZOLT_BOOTSTRAP_COMMIT:-ce2c8aed5e5991e0846e5afc5a6bd9c0f462a881}"
 readonly ZOLT_REPOSITORY="${ZOLT_BOOTSTRAP_REPOSITORY:-https://github.com/zsumz/zolt.git}"
 readonly INSTALL_ROOT="${ZOLT_HOME:-$HOME/.zolt}"
 readonly SOURCE_ROOT="$INSTALL_ROOT/source"

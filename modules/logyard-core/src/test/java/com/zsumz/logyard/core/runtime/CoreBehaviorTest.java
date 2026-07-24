@@ -140,11 +140,18 @@ public final class CoreBehaviorTest {
     @Test
     void fansOutPastFailingSinksAndRejectsInvalidPlans() {
         RecordingSink recording = new RecordingSink();
+        AssertionError first = new AssertionError("first failed");
+        AssertionError second = new AssertionError("second failed");
         CompositeSink composite = new CompositeSink(List.<EventSink>of(
-                ignored -> { throw new AssertionError("first failed"); },
-                recording));
-        expect(ComponentInvocationException.class, () -> composite.accept(event(AttributeSet.EMPTY)));
+                ignored -> { throw first; },
+                recording,
+                ignored -> { throw second; }));
+        ComponentInvocationException fanoutFailure = expect(
+                ComponentInvocationException.class,
+                () -> composite.accept(event(AttributeSet.EMPTY)));
         equal(1, recording.events.size());
+        check(fanoutFailure.getCause() == first, "the first fanout failure must remain primary");
+        equal(List.of(second), List.of(first.getSuppressed()));
 
         expect(IllegalArgumentException.class, () -> new RuntimePlan(
                 RouteDefinition.root(Level.INFO, List.of("capture", "capture"), List.of()),
@@ -199,15 +206,23 @@ public final class CoreBehaviorTest {
 
     @Test
     void redactsMatchingAttributesCaseInsensitively() {
-        RedactionProcessor processor = new RedactionProcessor(List.of("*.token", "authorization"));
+        RedactionProcessor processor = new RedactionProcessor(List.of("*.token", "authorization", "password"));
         LogEvent redacted = processor.process(event(
                 AttributeSet.builder()
                         .put("payment.token", "secret")
                         .put("Authorization", "bearer")
+                        .put("mdc.authorization", "nested-bearer")
+                        .put("mdc.credentials.password", "nested-password")
+                        .put("request.id", "application-request")
+                        .put("mdc.request.id", "mdc-request")
                         .put("order.id", "7")
                         .build()));
         equal("[REDACTED]", redacted.attributes().get("payment.token"));
         equal("[REDACTED]", redacted.attributes().get("Authorization"));
+        equal("[REDACTED]", redacted.attributes().get("mdc.authorization"));
+        equal("[REDACTED]", redacted.attributes().get("mdc.credentials.password"));
+        equal("application-request", redacted.attributes().get("request.id"));
+        equal("mdc-request", redacted.attributes().get("mdc.request.id"));
         equal("7", redacted.attributes().get("order.id"));
 
         LogEvent unchanged = event(AttributeSet.builder().put("order.id", "8").build());
@@ -225,12 +240,12 @@ public final class CoreBehaviorTest {
     }
 
 
-    private static void expect(Class<? extends Throwable> expected, Runnable action) {
+    private static <T extends Throwable> T expect(Class<T> expected, Runnable action) {
         try {
             action.run();
         } catch (Throwable failure) {
             if (expected.isInstance(failure)) {
-                return;
+                return expected.cast(failure);
             }
             throw new AssertionError("expected " + expected.getName() + " but caught " + failure, failure);
         }

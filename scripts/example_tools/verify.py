@@ -6,6 +6,7 @@ from pathlib import Path
 from .events import EventExpectation, EventLog
 from .maven import MavenExample, MavenExampleRunner
 from .server import HttpExample, HttpExampleRunner, HttpRequestExpectation
+from .versions import framework_versions
 
 
 def main() -> None:
@@ -16,6 +17,7 @@ def main() -> None:
     arguments = parser.parse_args()
 
     root = arguments.root.resolve()
+    versions = framework_versions(root)
     runner = MavenExampleRunner(arguments.release_repository.resolve(), arguments.version, root / "target" / "examples-verify")
     runner.prepare()
     verify_plain_slf4j(
@@ -49,32 +51,32 @@ def main() -> None:
     http_runner = HttpExampleRunner(runner, root / "target" / "examples-verify")
     verify_spring_boot(
         http_runner,
-        spring_boot_example(root, "3-mvc", "3.5.16", "spring-boot-starter-web"),
+        spring_boot_example(root, "3-mvc", versions["spring_boot_baseline"], "spring-boot-starter-web"),
         expected_jul_logger="org.apache.catalina",
     )
     verify_spring_boot(
         http_runner,
-        spring_boot_example(root, "4-mvc", "4.1.0", "spring-boot-starter-webmvc"),
+        spring_boot_example(root, "4-mvc", versions["spring_boot_current"], "spring-boot-starter-webmvc"),
         expected_jul_logger="org.apache.catalina",
     )
     verify_spring_boot(
         http_runner,
-        spring_boot_example(root, "3-webflux", "3.5.16", "spring-boot-starter-webflux"),
+        spring_boot_example(root, "3-webflux", versions["spring_boot_baseline"], "spring-boot-starter-webflux"),
     )
     verify_spring_boot(
         http_runner,
-        spring_boot_example(root, "4-webflux", "4.1.0", "spring-boot-starter-webflux"),
+        spring_boot_example(root, "4-webflux", versions["spring_boot_current"], "spring-boot-starter-webflux"),
     )
     verify_spring_boot(
         http_runner,
-        spring_boot_example(root, "4-no-actuator", "4.1.0", "spring-boot-starter-webmvc", actuator=False),
+        spring_boot_example(root, "4-no-actuator", versions["spring_boot_current"], "spring-boot-starter-webmvc", actuator=False),
         actuator=False,
         expected_jul_logger="org.apache.catalina",
     )
     external = spring_boot_example(
         root,
         "4-external-config",
-        "4.1.0",
+        versions["spring_boot_current"],
         "spring-boot-starter-webmvc",
         runtime_arguments=(f"-Dlogyard.config={root / 'examples' / 'spring-boot' / 'external-logyard.toml'}",),
     )
@@ -85,15 +87,15 @@ def main() -> None:
         spring_boot_example(
             root,
             "4-safe-defaults",
-            "4.1.0",
+            versions["spring_boot_current"],
             "spring-boot-starter-webmvc",
             actuator=False,
             build_profiles=("no-logyard-config",),
             runtime_arguments=(),
         ),
     )
-    runner.build_aot(spring_boot_example(root, "3-aot", "3.5.16", "spring-boot-starter-web").maven)
-    runner.build_aot(spring_boot_example(root, "4-aot", "4.1.0", "spring-boot-starter-webmvc").maven)
+    runner.build_aot(spring_boot_example(root, "3-aot", versions["spring_boot_baseline"], "spring-boot-starter-web").maven)
+    runner.build_aot(spring_boot_example(root, "4-aot", versions["spring_boot_current"], "spring-boot-starter-webmvc").maven)
     verify_quarkus(
         http_runner,
         HttpExample(
@@ -110,14 +112,22 @@ def main() -> None:
             ),
         ),
     )
-    runner.build(
-        MavenExample(
-            name="quarkus-no-health",
-            project_directory=root / "examples" / "quarkus",
-            main_class="io.quarkus.bootstrap.runner.QuarkusEntryPoint",
-            build_arguments=("-DnoHealth",),
-            runtime_arguments=(),
-        )
+    verify_quarkus(
+        http_runner,
+        HttpExample(
+            MavenExample(
+                name="quarkus-no-health",
+                project_directory=root / "examples" / "quarkus",
+                main_class="io.quarkus.bootstrap.runner.QuarkusEntryPoint",
+                build_arguments=("-DnoHealth", "-DskipTests"),
+                runtime_arguments=(),
+            ),
+            executable_jar_name="quarkus-app/quarkus-run.jar",
+            random_port_environment="QUARKUS_HTTP_PORT",
+            additional_requests=(
+                HttpRequestExpectation("/q/health/ready", 404, "", body_contains=True),
+            ),
+        ),
     )
     print(
         "Published-shaped example verification passed: plain SLF4J, Vert.x, Micronaut, "
@@ -319,7 +329,11 @@ def require_quarkus_events(events: EventLog) -> None:
             "Quarkus request succeeded",
             resource_logger,
             "INFO",
-            (("quarkus.mdc", {"request.id": "request-success"}),),
+            (
+                ("mdc.request.id", "request-success"),
+                ("mdc.authorization", "[REDACTED]"),
+                ("mdc.session.token", "[REDACTED]"),
+            ),
         )
     )
     events.require(
@@ -327,10 +341,16 @@ def require_quarkus_events(events: EventLog) -> None:
             "Quarkus request failed",
             resource_logger,
             "ERROR",
-            (("quarkus.mdc", {"request.id": "request-failure"}),),
+            (
+                ("mdc.request.id", "request-failure"),
+                ("mdc.authorization", "[REDACTED]"),
+                ("mdc.session.token", "[REDACTED]"),
+            ),
             "expected Quarkus example failure",
         )
     )
+    events.require_no_attribute_value("mdc.authorization", "Bearer quarkus-example-secret")
+    events.require_no_attribute_value("mdc.session.token", "quarkus-example-token")
     events.require(EventExpectation("Quarkus shutdown flush", resource_logger, "INFO"))
 
 
