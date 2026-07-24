@@ -37,6 +37,7 @@ public final class RedactionProcessor implements EventProcessor {
         AttributeSet attributes = event.attributes();
         StructuredValueRedactor nested = null;
         AttributeSet.Builder redacted = null;
+        boolean redactionTruncated = false;
         for (int index = 0; index < attributes.size(); index++) {
             String key = attributes.keyAt(index);
             Object current = attributes.valueAt(index);
@@ -45,9 +46,11 @@ public final class RedactionProcessor implements EventProcessor {
                 replacement = REDACTED;
             } else if (current instanceof java.util.Map<?, ?> || current instanceof java.util.List<?>) {
                 if (nested == null) {
-                    nested = new StructuredValueRedactor(this::matches, REDACTED, event.remainingTraversalEntries());
+                    nested = new StructuredValueRedactor(this::matches, REDACTED);
                 }
-                replacement = nested.redactChildren(current, key);
+                StructuredValueRedactor.Result result = nested.redactChildren(current, key);
+                replacement = result.value();
+                redactionTruncated |= result.truncated();
             } else {
                 replacement = current;
             }
@@ -57,6 +60,12 @@ public final class RedactionProcessor implements EventProcessor {
                 }
                 redacted.put(key, replacement);
             }
+        }
+        if (redactionTruncated) {
+            if (redacted == null) {
+                redacted = AttributeSet.systemBuilder(attributes.size() + 1).putAll(attributes);
+            }
+            redacted.put("logyard.redaction.truncated", true);
         }
         return redacted == null ? event : event.withAttributes(redacted.build());
     }
@@ -71,7 +80,7 @@ public final class RedactionProcessor implements EventProcessor {
         if (matchesCandidate(leaf, 0)) {
             return true;
         }
-        int separator = leaf.lastIndexOf('.');
+        int separator = terminalSeparator(leaf);
         return separator >= 0
                 && separator + 1 < leaf.length()
                 && matchesCandidate(leaf, separator + 1);
@@ -81,8 +90,12 @@ public final class RedactionProcessor implements EventProcessor {
         if (matchesCandidate(key, 0)) {
             return true;
         }
-        int separator = key.lastIndexOf('.');
+        int separator = terminalSeparator(key);
         return separator >= 0 && separator + 1 < key.length() && matchesCandidate(key, separator + 1);
+    }
+
+    private static int terminalSeparator(String key) {
+        return Math.max(key.lastIndexOf('.'), key.lastIndexOf('~'));
     }
 
     private boolean matchesCandidate(String candidate, int start) {

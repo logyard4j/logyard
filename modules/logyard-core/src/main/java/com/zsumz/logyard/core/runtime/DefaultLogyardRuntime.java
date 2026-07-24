@@ -11,16 +11,14 @@ import com.zsumz.logyard.core.level.RuntimeLevelOverride;
 import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
-import com.zsumz.logyard.core.routing.RouteDefinition;
-import com.zsumz.logyard.core.routing.RouteResolver;
 
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
@@ -29,6 +27,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     private final ConcurrentHashMap<String, DefaultLogyardLogger> loggers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, LoggerControl> controls = new ConcurrentHashMap<>();
     private final RuntimeRetirements retirements = new RuntimeRetirements();
+    private final CompletableFuture<Void> retirementCompletion = new CompletableFuture<>();
     private final AtomicBoolean closed = new AtomicBoolean();
     private final RuntimeRouteLeases routeLeases;
     private final EventPublicationPipeline publicationPipeline;
@@ -153,10 +152,8 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     }
 
     public Set<String> knownLoggerNames() {
-        LinkedHashSet<String> names = new LinkedHashSet<>(controls.keySet());
-        names.addAll(baseConfiguredLevels().keySet());
-        names.addAll(state.levelOverrides().configuredLevels().keySet());
-        return Set.copyOf(names);
+        RuntimeState snapshot = state;
+        return RuntimeManagementView.knownLoggerNames(controls.keySet(), snapshot.plan(), snapshot.levelOverrides());
     }
 
     public RuntimeLevelOverride effectiveLevelOverride(String loggerName) {
@@ -172,24 +169,12 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     public RuntimeLoggerLevelSnapshot loggerLevelSnapshot(String loggerName) {
         Objects.requireNonNull(loggerName, "loggerName");
         RuntimeState snapshot = state;
-        Level effectiveBase = RouteResolver.resolve(loggerName, snapshot.plan().root(), snapshot.plan().loggers()).definition().level();
-        return new RuntimeLoggerLevelSnapshot(
-                snapshot.plan().configuredLevels().get(loggerName), snapshot.levelOverrides().exactLevel(loggerName),
-                Objects.requireNonNull(effectiveBase, "effective logger level"), snapshot.levelOverrides().resolve(loggerName));
+        return RuntimeManagementView.loggerLevelSnapshot(loggerName, snapshot.plan(), snapshot.levelOverrides());
     }
 
     public synchronized RuntimeManagementSnapshot managementSnapshot() {
         RuntimeState snapshot = state;
-        LinkedHashSet<String> names = new LinkedHashSet<>(controls.keySet());
-        names.addAll(snapshot.plan().loggers().keySet());
-        names.addAll(snapshot.plan().configuredLevels().keySet());
-        names.addAll(snapshot.levelOverrides().configuredLevels().keySet());
-        return new RuntimeManagementSnapshot(
-                snapshot.plan().root(),
-                snapshot.plan().loggers(),
-                snapshot.plan().configuredLevels(),
-                snapshot.levelOverrides(),
-                names);
+        return RuntimeManagementView.snapshot(controls.keySet(), snapshot.plan(), snapshot.levelOverrides());
     }
 
     void publish(LoggerControl control, EventDraft draft) {
@@ -259,13 +244,32 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     }
 
     @Override
-    public synchronized void close() {
-        if (!closed.compareAndSet(false, true)) {
-            return;
+    public void close() {
+        RuntimeState current;
+        synchronized (this) {
+            if (!closed.compareAndSet(false, true)) {
+                return;
+            }
+            current = state;
         }
-        RuntimeState current = state;
-        retirements.finishPlan(current.plan(), current.epoch());
+        try {
+            retirements.finishPlan(current.plan(), current.epoch()).whenComplete((ignored, failure) -> {
+                if (failure == null) {
+                    retirementCompletion.complete(null);
+                } else {
+                    retirementCompletion.completeExceptionally(failure);
+                }
+            });
+        } catch (RuntimeException | Error failure) {
+            retirementCompletion.completeExceptionally(failure);
+            throw failure;
+        }
         retirements.await(current.plan().shutdownTimeout());
+    }
+
+    /** Completes only after final output retirement, even when {@link #close()} returns at its deadline. */
+    public CompletionStage<Void> retirementCompletion() {
+        return retirementCompletion;
     }
 
     private static CompiledRoute compileRoute(String loggerName, RuntimeState state) {
@@ -277,13 +281,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     }
 
     public static DefaultLogyardRuntime consoleOnly(EventSink sink) {
-        Map<String, EventSink> outputs = new LinkedHashMap<>();
-        outputs.put("console", sink);
-        return new DefaultLogyardRuntime(new RuntimePlan(
-                RouteDefinition.root(Level.INFO, List.of("console"), List.of()),
-                Map.of(),
-                outputs,
-                Map.of()));
+        return new DefaultLogyardRuntime(RuntimePlans.consoleOnly(sink));
     }
 
     private void requireOpen() {

@@ -6,6 +6,8 @@ import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +32,41 @@ final class RedactionProcessorTest {
         assertEquals("[REDACTED]", redacted.attributes().valueAt(1));
         assertTrue(redacted.attributes().keyAt(0).endsWith(".authorization"));
         assertTrue(redacted.attributes().keyAt(1).endsWith(".token"));
+    }
+
+    @Test
+    void redactsLongNonDottedSuffixesCaseInsensitively() {
+        String authorization = "x".repeat(300) + "AuThOrIzAtIoN";
+        String nestedAuthorization = "y".repeat(300) + "authorization";
+        AttributeSet attributes = AttributeSet.builder()
+                .put(authorization, "bearer-secret")
+                .put("request", Map.of(nestedAuthorization, "nested-secret"))
+                .build();
+
+        LogEvent redacted = new RedactionProcessor(List.of("*authorization")).process(event(attributes));
+
+        assertEquals("[REDACTED]", redacted.attributes().valueAt(0));
+        assertTrue(redacted.attributes().keyAt(0).endsWith("AuThOrIzAtIoN"));
+        assertEquals(
+                "[REDACTED]",
+                ((Map<?, ?>) redacted.attributes().get("request")).values().iterator().next());
+    }
+
+    @Test
+    void redactsAUnicodeSafeLongNonDottedSuffix() {
+        char[] keyCharacters = new char[400];
+        Arrays.fill(keyCharacters, 'x');
+        keyCharacters[109] = '\uD83D';
+        keyCharacters[110] = '\uDE80';
+        keyCharacters[271] = '\uD83D';
+        keyCharacters[272] = '\uDE80';
+        "authorization".getChars(0, "authorization".length(), keyCharacters, 387);
+        AttributeSet attributes = AttributeSet.of(new String(keyCharacters), "secret");
+
+        LogEvent redacted = new RedactionProcessor(List.of("*authorization")).process(event(attributes));
+
+        assertEquals("[REDACTED]", redacted.attributes().valueAt(0));
+        assertTrue(redacted.attributes().keyAt(0).endsWith("authorization"));
     }
 
     @Test
@@ -124,7 +161,47 @@ final class RedactionProcessorTest {
         assertEquals("Ada", request.get("display.name"));
     }
 
+    @Test
+    void findsALateMatchWithoutReusingTheRemainingCaptureBudgetOrDoubleChargingThePrefix() {
+        Object[] arguments = new Object[31];
+        for (int index = 0; index < arguments.length; index++) {
+            arguments[index] = java.util.Collections.nCopies(128, "x");
+        }
+        Map<String, Object> request = new LinkedHashMap<>();
+        for (int index = 0; index < 20; index++) {
+            request.put("ordinary." + index, index);
+        }
+        request.put("authorization", "late-secret");
+        LogEvent original = event(arguments, AttributeSet.of("request", request));
+
+        LogEvent redacted = new RedactionProcessor(List.of("authorization")).process(original);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> captured = (Map<String, Object>) redacted.attributes().get("request");
+        assertEquals(21, captured.size());
+        assertEquals(0, captured.get("ordinary.0"));
+        assertEquals("[REDACTED]", captured.get("authorization"));
+    }
+
+    @Test
+    void reportsDefensiveTraversalExhaustion() {
+        Map<String, Object> oversized = new LinkedHashMap<>();
+        for (int index = 0; index <= CaptureLimits.MAX_EVENT_ENTRIES; index++) {
+            oversized.put("key." + index, index);
+        }
+        StructuredValueRedactor redactor = new StructuredValueRedactor((path, leaf) -> false, "[REDACTED]");
+
+        StructuredValueRedactor.Result result = redactor.redactChildren(oversized, "request");
+
+        assertEquals("[REDACTED]", result.value());
+        assertTrue(result.truncated());
+    }
+
     private static LogEvent event(AttributeSet attributes) {
+        return event(null, attributes);
+    }
+
+    private static LogEvent event(Object[] arguments, AttributeSet attributes) {
         return new LogEvent(
                 1L,
                 1_000_000L,
@@ -132,7 +209,7 @@ final class RedactionProcessorTest {
                 "test.Logger",
                 null,
                 "message",
-                null,
+                arguments,
                 attributes,
                 null,
                 7L,

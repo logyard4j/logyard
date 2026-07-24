@@ -3,7 +3,12 @@ package com.zsumz.logyard.api.event;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-/** Fixed alpha limits that make one captured event's memory use finite. */
+/**
+ * Fixed limits that make one captured event's memory use finite.
+ *
+ * <p>The published numeric values are stable API constants. A future release may add a new
+ * limit, but it will not silently change an existing inlined value.</p>
+ */
 public final class CaptureLimits {
     private static final int ATTRIBUTE_HASH_EDGE_CHARS = 1_024;
     private static final int ATTRIBUTE_HASH_SAMPLES = 32;
@@ -108,7 +113,10 @@ public final class CaptureLimits {
         String hash = boundedHash(value);
         int separator = lastSeparatorInBoundedSuffix(value);
         if (separator < 0 || separator == value.length() - 1) {
-            return safePrefix(value, MAX_ATTRIBUTE_KEY_CHARS - 17) + '~' + hash;
+            int suffixLength = Math.min(value.length(), MAX_ATTRIBUTE_KEY_CHARS / 2);
+            String suffix = safeSuffix(value, suffixLength);
+            int prefixLength = MAX_ATTRIBUTE_KEY_CHARS - 18 - suffix.length();
+            return safePrefix(value, prefixLength) + '~' + hash + '~' + suffix;
         }
 
         String leaf = value.substring(separator + 1);
@@ -116,6 +124,14 @@ public final class CaptureLimits {
         String boundedLeaf = safeSuffix(leaf, maximumLeafLength);
         int prefixLength = MAX_ATTRIBUTE_KEY_CHARS - 18 - boundedLeaf.length();
         return safePrefix(value, prefixLength) + '~' + hash + '.' + boundedLeaf;
+    }
+
+    static String disambiguateAttributeKey(String key, int collisionIndex) {
+        String marker = "~collision-" + collisionIndex;
+        int suffixSeparator = Math.max(key.lastIndexOf('.'), key.lastIndexOf('~'));
+        String suffix = suffixSeparator < 0 ? "" : key.substring(suffixSeparator);
+        int prefixLength = MAX_ATTRIBUTE_KEY_CHARS - marker.length() - suffix.length();
+        return safePrefix(key, prefixLength) + marker + suffix;
     }
 
     static String truncate(String value, int maximum) {

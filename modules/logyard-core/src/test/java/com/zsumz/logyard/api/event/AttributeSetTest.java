@@ -3,6 +3,8 @@ package com.zsumz.logyard.api.event;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -62,6 +64,11 @@ final class AttributeSetTest {
         assertTrue(normalizedAuthorization.endsWith(".authorization"));
         assertTrue(normalizedSessionToken.length() <= CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
         assertTrue(normalizedSessionToken.endsWith(".token"));
+
+        String nonDottedAuthorization = "x".repeat(300) + "authorization";
+        String normalizedNonDotted = CaptureLimits.attributeKey(nonDottedAuthorization);
+        assertEquals(CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS, normalizedNonDotted.length());
+        assertTrue(normalizedNonDotted.endsWith("authorization"));
     }
 
     @Test
@@ -80,6 +87,17 @@ final class AttributeSetTest {
         assertNotEquals(normalizedFirst, normalizedSecond);
         assertTrue(normalizedFirst.endsWith(".authorization"));
         assertTrue(normalizedSecond.endsWith(".authorization"));
+
+        char[] nonDottedBoundary = new char[400];
+        java.util.Arrays.fill(nonDottedBoundary, 'x');
+        nonDottedBoundary[109] = '\uD83D';
+        nonDottedBoundary[110] = '\uDE80';
+        nonDottedBoundary[271] = '\uD83D';
+        nonDottedBoundary[272] = '\uDE80';
+        "authorization".getChars(0, "authorization".length(), nonDottedBoundary, 387);
+        String normalizedNonDotted = CaptureLimits.attributeKey(new String(nonDottedBoundary));
+        assertValidUtf16(normalizedNonDotted);
+        assertTrue(normalizedNonDotted.endsWith("authorization"));
     }
 
     @Test
@@ -93,6 +111,61 @@ final class AttributeSetTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> AttributeSet.of(" ".repeat(2_000_000), "rejected"));
+    }
+
+    @Test
+    void disambiguatesBoundedHashCollisionsWithoutLosingEitherAttribute() {
+        char[] firstCharacters = new char[5_000];
+        java.util.Arrays.fill(firstCharacters, 'x');
+        char[] secondCharacters = firstCharacters.clone();
+        firstCharacters[2_501] = 'a';
+        secondCharacters[2_501] = 'b';
+        String first = new String(firstCharacters);
+        String second = new String(secondCharacters);
+        assertEquals(CaptureLimits.attributeKey(first), CaptureLimits.attributeKey(second));
+
+        AttributeSet attributes = AttributeSet.builder()
+                .put(first, "first")
+                .put(second, "second")
+                .build();
+
+        assertEquals(2, attributes.size());
+        assertNotEquals(attributes.keyAt(0), attributes.keyAt(1));
+        assertEquals("first", attributes.valueAt(0));
+        assertEquals("second", attributes.valueAt(1));
+        assertTrue(attributes.keyAt(1).contains("~collision-2"));
+    }
+
+    @Test
+    void disambiguatesCollisionBetweenLiteralAndNormalizedKeys() {
+        String longKey = "x".repeat(5_000);
+        String literalKey = CaptureLimits.attributeKey(longKey);
+
+        AttributeSet attributes = AttributeSet.builder()
+                .put(literalKey, "literal")
+                .put(longKey, "first")
+                .put(longKey, "updated")
+                .build();
+
+        assertEquals(2, attributes.size());
+        assertEquals(literalKey, attributes.keyAt(0));
+        assertEquals("literal", attributes.valueAt(0));
+        assertTrue(attributes.keyAt(1).contains("~collision-2"));
+        assertEquals("updated", attributes.valueAt(1));
+    }
+
+    @Test
+    void typeQualifiesNonStringMapKeysAndPreservesCanonicalCollisions() {
+        Map<Object, Object> source = new LinkedHashMap<>();
+        source.put(1, "integer");
+        source.put("1", "string");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> captured = (Map<String, Object>) AttributeSet.of("map", source).get("map");
+
+        assertEquals(2, captured.size());
+        assertTrue(captured.containsValue("integer"));
+        assertTrue(captured.containsValue("string"));
     }
 
     private static void assertValidUtf16(String value) {

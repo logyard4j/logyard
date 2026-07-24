@@ -132,22 +132,32 @@ final class RuntimeInstallationManagerTest {
     }
 
     @Test
-    void concurrentAcquisitionsInstallOnceAndRemainActiveUntilEveryLeaseCloses() throws Exception {
+    void concurrentAcquisitionsInstallOnceAndRejectRatherThanBlockDuringStartup() throws Exception {
         Harness harness = Harness.create();
         ConfigurationInstallationRequest request = textRequest("concurrent", config("info", false), new Object());
         ExecutorService executor = Executors.newFixedThreadPool(8);
         List<Future<RuntimeInstallationLease>> futures = new ArrayList<>();
         try {
             for (int index = 0; index < 8; index++) {
-                futures.add(executor.submit(() -> harness.manager().acquireAdapter(request)));
+                futures.add(executor.submit(() -> {
+                    try {
+                        return harness.manager().acquireAdapter(request);
+                    } catch (IllegalStateException transition) {
+                        return null;
+                    }
+                }));
             }
             List<RuntimeInstallationLease> leases = new ArrayList<>();
             for (Future<RuntimeInstallationLease> future : futures) {
-                leases.add(future.get());
+                RuntimeInstallationLease lease = future.get();
+                if (lease != null) {
+                    leases.add(lease);
+                }
             }
+            assertFalse(leases.isEmpty());
             LogyardRuntime runtime = leases.getFirst().runtime();
             assertTrue(leases.stream().allMatch(lease -> lease.runtime() == runtime));
-            assertEquals(8, harness.manager().leaseCount(RuntimeOwner.ADAPTER));
+            assertEquals(leases.size(), harness.manager().leaseCount(RuntimeOwner.ADAPTER));
             assertEquals(1, harness.hooks().get());
 
             for (int index = 0; index < leases.size() - 1; index++) {

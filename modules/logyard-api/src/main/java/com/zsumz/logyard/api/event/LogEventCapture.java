@@ -41,6 +41,9 @@ final class LogEventCapture {
             CaptureAllowance attributeAllowance = context.payloadAllowance();
             AttributeSet suppliedAttributes = Objects.requireNonNullElse(attributeSupplier.get(), AttributeSet.EMPTY);
             AttributeSet capturedAttributes = attributesCapturedInContext ? suppliedAttributes : suppliedAttributes.recapture(context);
+            if (capturedAttributes.captureTruncated()) {
+                context.markTruncated();
+            }
 
             int omittedArguments = Math.max(0, suppliedArgumentCount - capturedArguments.length);
             if (omittedArguments > 0) {

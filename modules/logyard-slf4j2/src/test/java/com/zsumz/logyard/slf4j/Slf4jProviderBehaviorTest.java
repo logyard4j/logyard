@@ -11,6 +11,7 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.routing.RouteDefinition;
@@ -141,6 +142,26 @@ final class Slf4jProviderBehaviorTest {
                     .log("disabled {} event");
             assertFalse(evaluated.get());
             assertTrue(sink.events.isEmpty());
+        }
+    }
+
+    @Test
+    void preservesCaptureTruncationFromMdcAndFluentAttributes() {
+        RecordingSink sink = new RecordingSink();
+        try (LogyardRuntime runtime = runtime(sink)) {
+            LogyardMdcAdapter mdc = new LogyardMdcAdapter();
+            mdc.put("oversized.mdc", "x".repeat(CaptureLimits.MAX_TEXT_CHARS + 1));
+            Logger logger = new LogyardLoggerFactory(
+                    runtime,
+                    new Slf4jEventMapper(mdc, new ContextSnapshotPolicy(List.of("oversized.mdc"))))
+                    .getLogger("test.Truncation");
+            logger.info("mdc");
+            logger.atInfo()
+                    .addKeyValue("x".repeat(1_000) + ".authorization", "secret")
+                    .log("fluent");
+
+            assertEquals(true, sink.events.get(0).attributes().get("logyard.capture.truncated"));
+            assertEquals(true, sink.events.get(1).attributes().get("logyard.capture.truncated"));
         }
     }
 

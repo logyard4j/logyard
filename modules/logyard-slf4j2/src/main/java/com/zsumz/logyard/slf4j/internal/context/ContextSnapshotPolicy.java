@@ -43,6 +43,9 @@ public final class ContextSnapshotPolicy {
                     break;
                 }
                 attributes.put(entry.getKey(), entry.getValue());
+                if (adapter.valueTruncated(entry.getKey())) {
+                    attributes.markCaptureTruncated();
+                }
             }
         }
         return attributes.build();

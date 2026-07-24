@@ -1,6 +1,7 @@
 package com.zsumz.logyard.runtime.reload;
 
 import com.zsumz.logyard.config.LogyardConfig;
+import com.zsumz.logyard.config.loading.BoundedConfigurationFile;
 import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 
 import java.io.IOException;
@@ -8,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -39,17 +39,7 @@ public final class ConfigurationSnapshot {
 
     public static ConfigurationSnapshot read(Path source) throws IOException {
         Path normalized = Objects.requireNonNull(source, "source").toAbsolutePath().normalize();
-        if (!Files.isRegularFile(normalized)) {
-            throw new IOException("Logyard configuration is not a regular file: " + normalized);
-        }
-        long declaredSize = Files.size(normalized);
-        if (declaredSize > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-            throw new IOException("Logyard configuration exceeds " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes: " + normalized);
-        }
-        byte[] bytes = Files.readAllBytes(normalized);
-        if (bytes.length > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-            throw new IOException("Logyard configuration grew beyond " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes while reading: " + normalized);
-        }
+        byte[] bytes = BoundedConfigurationFile.read(normalized);
         Path parent = normalized.getParent();
         Path baseDirectory = parent == null ? Path.of(".").toAbsolutePath().normalize() : parent;
         return capture(normalized.toString(), baseDirectory, normalized, bytes);

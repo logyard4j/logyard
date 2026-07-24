@@ -5,6 +5,8 @@ import com.zsumz.logyard.config.ConfigurationException;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.output.ConsoleOutputConfig;
 import com.zsumz.logyard.config.output.JsonStreamOutputConfig;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
@@ -96,6 +98,22 @@ public final class LogyardConfigLoaderTest {
             throw new AssertionError("oversized configuration should fail");
         } catch (ConfigurationException expected) {
             check(expected.getMessage().contains("exceeds"), "diagnostic should report the size bound");
+        }
+    }
+
+    @Test
+    void rejectsOversizedConfigurationFilesThroughTheBoundedStreamRead() throws Exception {
+        Path source = Files.createTempFile("logyard-oversized-", ".toml");
+        try {
+            Files.write(source, new byte[LogyardConfigLoader.MAX_CONFIG_BYTES + 1]);
+            try {
+                LogyardConfigLoader.load(source);
+                throw new AssertionError("oversized configuration file should fail");
+            } catch (IOException expected) {
+                check(expected.getMessage().contains("exceeds"), "diagnostic should report the file size bound");
+            }
+        } finally {
+            Files.deleteIfExists(source);
         }
     }
 

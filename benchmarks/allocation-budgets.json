@@ -28,6 +28,10 @@
       "maxBytesPerOperation": 1
     },
     {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.nestedRedactionWithoutMatch",
+      "maxBytesPerOperation": 512
+    },
+    {
       "benchmark": "com.zsumz.logyard.benchmarks.ingress.ContextPolicyBenchmark.fixedConfiguration",
       "maxBytesPerOperation": 1
     },

@@ -11,7 +11,7 @@ public final class RuntimeInstallationLease implements AutoCloseable {
     private final RuntimeInstallationManager manager;
     private final GlobalRuntimeAccess globalRuntime;
     private final RuntimeOwner owner;
-    private final ManagedRuntimeInstallation installation;
+    private final RuntimeInstallation installation;
     private final LogyardRuntime runtime;
     private final AtomicBoolean closed = new AtomicBoolean();
 
@@ -19,7 +19,7 @@ public final class RuntimeInstallationLease implements AutoCloseable {
             RuntimeInstallationManager manager,
             GlobalRuntimeAccess globalRuntime,
             RuntimeOwner owner,
-            ManagedRuntimeInstallation installation) {
+            RuntimeInstallation installation) {
         return new RuntimeInstallationLease(manager, globalRuntime, owner, installation, installation.runtime());
     }
 
@@ -33,7 +33,7 @@ public final class RuntimeInstallationLease implements AutoCloseable {
             RuntimeInstallationManager manager,
             GlobalRuntimeAccess globalRuntime,
             RuntimeOwner owner,
-            ManagedRuntimeInstallation installation,
+            RuntimeInstallation installation,
             LogyardRuntime runtime) {
         this.manager = manager;
         this.globalRuntime = Objects.requireNonNull(globalRuntime, "globalRuntime");

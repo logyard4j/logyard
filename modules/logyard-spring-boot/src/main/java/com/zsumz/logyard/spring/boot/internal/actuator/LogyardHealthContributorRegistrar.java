@@ -1,20 +1,17 @@
 package com.zsumz.logyard.spring.boot.internal.actuator;
 
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.FactoryBean;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.RootBeanDefinition;
-import org.springframework.core.Ordered;
-import org.springframework.core.PriorityOrdered;
+import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
+import org.springframework.core.type.AnnotationMetadata;
 
-/** Registers a precisely typed health bean without linking one Boot line's relocated API. */
-public final class LogyardHealthContributorRegistrar implements BeanDefinitionRegistryPostProcessor, PriorityOrdered {
+/** Registers a precisely typed health bean during configuration parsing and AOT processing. */
+public final class LogyardHealthContributorRegistrar implements ImportBeanDefinitionRegistrar {
     public static final String BEAN_NAME = "logyard";
 
     @Override
-    public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
+    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
         if (registry.containsBeanDefinition(BEAN_NAME)) {
             return;
         }
@@ -23,16 +20,6 @@ public final class LogyardHealthContributorRegistrar implements BeanDefinitionRe
                 ? LogyardHealthContributorRegistrar.class.getClassLoader()
                 : contextClassLoader;
         ActuatorHealthApi.detect(classLoader).ifPresent(api -> register(registry, api));
-    }
-
-    @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
-        // No bean-factory mutation is required after the typed definition is registered.
-    }
-
-    @Override
-    public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE;
     }
 
     private static void register(BeanDefinitionRegistry registry, ActuatorHealthApi api) {

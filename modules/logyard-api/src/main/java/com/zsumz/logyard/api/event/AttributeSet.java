@@ -15,10 +15,16 @@ public final class AttributeSet {
 
     final String[] keys;
     final Object[] values;
+    final boolean captureTruncated;
 
     AttributeSet(String[] keys, Object[] values) {
+        this(keys, values, false);
+    }
+
+    AttributeSet(String[] keys, Object[] values, boolean captureTruncated) {
         this.keys = keys;
         this.values = values;
+        this.captureTruncated = captureTruncated;
     }
 
     /**
@@ -101,10 +107,10 @@ public final class AttributeSet {
      */
     public AttributeSet mergedWith(AttributeSet other) {
         Objects.requireNonNull(other, "other");
-        if (other.isEmpty()) {
+        if (other.isEmpty() && !other.captureTruncated) {
             return this;
         }
-        if (isEmpty()) {
+        if (isEmpty() && !captureTruncated) {
             return other;
         }
         return builder(size() + other.size()).putAll(this).putAll(other).build();
@@ -182,7 +188,8 @@ public final class AttributeSet {
          * @return this builder
          */
         public Builder put(String key, Object value) {
-            attributes.put(normalizeKey(key), value);
+            String storageKey = normalizeKey(key);
+            attributes.put(key, storageKey, storageKey != key, value);
             return this;
         }
 
@@ -195,9 +202,9 @@ public final class AttributeSet {
          * @return this builder
          */
         public Builder putSupplied(String key, Supplier<?> supplier) {
-            String normalized = normalizeKey(key);
+            String storageKey = normalizeKey(key);
             Objects.requireNonNull(supplier, "valueSupplier");
-            attributes.putSupplied(normalized, supplier);
+            attributes.putSupplied(key, storageKey, storageKey != key, supplier);
             return this;
         }
 
@@ -206,28 +213,29 @@ public final class AttributeSet {
          *
          * @return attribute count
          */
-        public int size() {
-            return attributes.size();
-        }
+        public int size() { return attributes.size(); }
 
         /**
          * Returns whether no further user attributes can be accepted without truncation.
          *
          * @return {@code true} when full
          */
-        public boolean isFull() {
-            return attributes.isFull();
-        }
+        public boolean isFull() { return attributes.isFull(); }
 
         /**
          * Records that a source contained additional attributes which could not be captured.
          *
          * @return this builder
          */
-        public Builder markTruncated() {
-            attributes.markTruncated();
-            return this;
-        }
+        public Builder markTruncated() { attributes.markTruncated(); return this; }
+
+        /**
+         * Preserves capture-level shortening without claiming that attribute entries were omitted.
+         *
+         * @return this builder
+         */
+        @InternalApi
+        public Builder markCaptureTruncated() { attributes.markCaptureTruncated(); return this; }
 
         /**
          * Adds all attributes from an immutable set.
@@ -238,7 +246,10 @@ public final class AttributeSet {
         public Builder putAll(AttributeSet attributes) {
             Objects.requireNonNull(attributes, "attributes");
             for (int index = 0; index < attributes.size(); index++) {
-                this.attributes.put(attributes.keyAt(index), attributes.valueAt(index));
+                this.attributes.putCaptured(attributes.keyAt(index), attributes.valueAt(index));
+            }
+            if (attributes.captureTruncated) {
+                this.attributes.markCaptureTruncated();
             }
             return this;
         }
@@ -265,17 +276,25 @@ public final class AttributeSet {
          *
          * @return immutable captured attributes
          */
-        public AttributeSet build() {
-            return attributes.build();
+        public AttributeSet build() { return attributes.build(); }
+
+        /**
+         * Adds a key which has already passed the shared bounded normalization policy.
+         *
+         * @param key normalized key identity
+         * @param value attribute value
+         * @return this builder
+         */
+        @InternalApi
+        public Builder putNormalized(NormalizedAttributeKey key, Object value) {
+            NormalizedAttributeKey normalized = Objects.requireNonNull(key, "key");
+            attributes.put(normalized.original(), normalized.storageKey(), normalized.truncated(), value);
+            return this;
         }
 
-        private String normalizeKey(String key) {
-            return AttributeKey.normalize(key, systemAttributesAllowed);
-        }
+        private String normalizeKey(String key) { return AttributeKey.normalizeStorage(key, systemAttributesAllowed); }
     }
 
-    AttributeSet recapture(CaptureContext context) {
-        return AttributeSetOperations.recapture(this, context);
-    }
-
+    AttributeSet recapture(CaptureContext context) { return AttributeSetOperations.recapture(this, context); }
+    boolean captureTruncated() { return captureTruncated; }
 }

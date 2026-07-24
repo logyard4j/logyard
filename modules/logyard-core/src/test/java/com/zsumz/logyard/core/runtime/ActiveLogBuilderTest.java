@@ -82,11 +82,25 @@ final class ActiveLogBuilderTest {
 
             assertThrows(NullPointerException.class, () -> builder.add(null, "value"));
             assertThrows(IllegalArgumentException.class, () -> builder.add(" ", "value"));
+            assertThrows(IllegalArgumentException.class, () -> builder.add(" ".repeat(256) + "x", "value"));
             assertThrows(NullPointerException.class, () -> builder.add("key", (java.util.function.Supplier<?>) null));
             assertThrows(NullPointerException.class, () -> builder.argument((java.util.function.Supplier<?>) null));
             builder.log("once");
             assertThrows(IllegalStateException.class, () -> builder.log("twice"));
         }
+    }
+
+    @Test
+    void nativeLongKeysPreserveCaptureTruncationProvenance() {
+        List<LogEvent> events = new ArrayList<>();
+        try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
+            runtime.logger("test.LongKey")
+                    .atInfo()
+                    .add("x".repeat(1_000) + ".authorization", "secret")
+                    .log("captured");
+        }
+
+        assertEquals(true, events.getFirst().attributes().get("logyard.capture.truncated"));
     }
 
     private static AbstractMap<String, Object> hostileMap() {

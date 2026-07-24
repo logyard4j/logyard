@@ -179,6 +179,8 @@ Every accepted event has a timestamp, level, logger name, message template and a
 
 Values are detached at ingress as bounded trees. Cycles become `[circular reference]`; a second reference to the same container or throwable becomes `[shared reference]` or `[shared exception reference]` instead of preserving an alias that an output could expand again. Capture stops at 8 levels, 2,048 value nodes, and 4,096 aggregate entries.
 
+The numeric values published by `CaptureLimits` are stable API constants; releases may add new limits but do not change an existing inlined value.
+
 One event can retain at most 65,536 UTF-16 characters across explicit partitions: 4,096 for identity, 8,192 for the template, 16,384 for the rendered message, 16,384 for exception diagnostics, and 20,480 for arguments, attributes, and processor enrichment. Exception text is further reserved for types, messages, and frame fields so a large payload or exception message cannot erase the useful failure identity. Processor replacements are recaptured under the original allowance. Ingress loss sets `logyard.capture.truncated=true`; lazy message loss is exposed by `LogEvent.renderedMessageTruncated()` and the built-in outputs emit `logyard.output.truncated=true`.
 
 Built-in rendering is independently defensive: one JSON record is capped at 262,144 characters and one complete console event at 131,072 characters. Both outputs enforce their own depth, identity, entry, and character limits even if a future processor violates the captured-value model.

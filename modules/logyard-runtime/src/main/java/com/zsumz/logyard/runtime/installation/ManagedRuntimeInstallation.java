@@ -13,14 +13,24 @@ import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.locks.ReentrantLock;
 
-final class ManagedRuntimeInstallation {
+final class ManagedRuntimeInstallation implements RuntimeInstallation {
+    private enum State {
+        OPEN,
+        RECONFIGURING,
+        RELOADING,
+        CLOSED
+    }
+
     private final ReentrantLock transition = new ReentrantLock();
     private final DefaultLogyardRuntime runtime;
     private final Map<String, String> environment;
     private ActiveRuntimeConfiguration active;
-    private boolean closed;
+    private State state = State.OPEN;
 
     private ManagedRuntimeInstallation(DefaultLogyardRuntime runtime, Map<String, String> environment) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
@@ -55,105 +65,187 @@ final class ManagedRuntimeInstallation {
         }
     }
 
-    ReloadResult reconfigure(ConfigurationInstallationRequest request) {
-        transition.lock();
+    @Override
+    public ReloadResult reconfigure(ConfigurationInstallationRequest request) {
+        ActiveRuntimeConfiguration current = begin(State.RECONFIGURING);
+        if (current == null) {
+            return ReloadResult.REJECTED;
+        }
+
+        RuntimeAssembly currentAssembly = current.coordinator().currentAssembly();
+        RuntimeAssembly candidate = null;
+        ActiveRuntimeConfiguration replacement = null;
+        boolean currentWatcherClosed = false;
         try {
-            requireOpen();
             ConfigurationSnapshot snapshot = read(request);
-            if (active.sameSourceAndDigest(request, snapshot)) {
-                return ReloadResult.UNCHANGED;
+            if (current.sameSourceAndDigest(request, snapshot)) {
+                return finishUnchanged(State.RECONFIGURING);
             }
-
-            RuntimeAssembly currentAssembly = active.coordinator().currentAssembly();
-            RuntimeAssembly candidate = null;
-            ActiveRuntimeConfiguration replacement = null;
-            boolean currentWatcherClosed = false;
-            try {
-                LogyardConfig config = snapshot.parse(environment);
-                candidate = LogyardRuntimeFactory.assemble(config, currentAssembly);
-                replacement = ActiveRuntimeConfiguration.prepare(
-                        request,
-                        runtime,
-                        snapshot,
-                        candidate,
-                        environment,
-                        this::reloadNow);
-                replacement.activateWatcher();
-                active.closeWatcher();
-                currentWatcherClosed = true;
-                runtime.reload(candidate.plan());
-                LogyardRuntimeFactory.attach(runtime, candidate);
-                active = replacement;
-                return ReloadResult.APPLIED;
-            } catch (RuntimeException | Error failure) {
-                closeReplacement(replacement, candidate, currentAssembly, failure);
-                if (currentWatcherClosed) {
-                    restartCurrentWatcher(failure);
-                }
-                throw failure;
+            LogyardConfig config = snapshot.parse(environment);
+            candidate = LogyardRuntimeFactory.assemble(config, currentAssembly);
+            replacement = ActiveRuntimeConfiguration.prepare(
+                    request,
+                    runtime,
+                    snapshot,
+                    candidate,
+                    environment,
+                    this::reloadNow);
+            replacement.activateWatcher();
+            current.closeWatcher();
+            currentWatcherClosed = true;
+            return commitReplacement(current, replacement, candidate, currentAssembly);
+        } catch (RuntimeException | Error failure) {
+            closeReplacement(replacement, candidate, currentAssembly, failure);
+            if (currentWatcherClosed) {
+                restartCurrentWatcher(current, failure);
             }
-        } finally {
-            transition.unlock();
+            finishFailed(State.RECONFIGURING);
+            throw failure;
         }
     }
 
-    ReloadResult reloadNow() {
-        boolean interrupted = false;
+    @Override
+    public ReloadResult reloadNow() {
+        ActiveRuntimeConfiguration current = begin(State.RELOADING);
+        if (current == null) {
+            return ReloadResult.REJECTED;
+        }
         try {
-            try {
-                transition.lockInterruptibly();
-            } catch (InterruptedException interruption) {
-                interrupted = true;
-                return ReloadResult.REJECTED;
-            }
-            try {
-                return closed ? ReloadResult.REJECTED : active.coordinator().reloadIfChanged();
-            } finally {
-                transition.unlock();
-            }
+            return current.coordinator().reloadIfChanged();
         } finally {
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
+            finishFailed(State.RELOADING);
         }
     }
 
-    LogyardRuntime runtime() {
+    @Override
+    public LogyardRuntime runtime() {
         return runtime;
     }
 
-    boolean watchesConfiguration() {
+    @Override
+    public boolean watchesConfiguration() {
         transition.lock();
         try {
-            return !closed && active.watchesConfiguration();
+            return state != State.CLOSED && active != null && active.watchesConfiguration();
         } finally {
             transition.unlock();
         }
     }
 
-    void close(GlobalRuntimeAccess globalRuntime) {
+    @Override
+    public CompletionStage<Void> close(GlobalRuntimeAccess globalRuntime) {
+        ActiveRuntimeConfiguration closing;
         transition.lock();
         try {
-            if (closed) {
-                return;
+            if (state == State.CLOSED) {
+                return runtime.retirementCompletion();
             }
-            closed = true;
-            ComponentFailureCollector failures = new ComponentFailureCollector();
-            ComponentInvocationBoundary.invoke("configuration watcher close", active::closeWatcher, failures);
-            ComponentInvocationBoundary.invoke("installed runtime close", () -> {
-                if (!globalRuntime.shutdownIfCurrent(runtime)) {
+            state = State.CLOSED;
+            closing = active;
+            active = null;
+        } finally {
+            transition.unlock();
+        }
+
+        ComponentFailureCollector failures = new ComponentFailureCollector();
+        if (closing != null) {
+            ComponentInvocationBoundary.invoke("configuration watcher close", closing::closeWatcher, failures);
+        }
+        ComponentInvocationBoundary.invoke("installed runtime close", () -> {
+            boolean closedByGlobal = false;
+            try {
+                closedByGlobal = globalRuntime.shutdownIfCurrent(runtime);
+            } finally {
+                if (!closedByGlobal) {
                     runtime.close();
                 }
-            }, failures);
-            failures.throwIfPresent("runtime installation close");
+            }
+        }, failures);
+        return completionWithFailures(runtime.retirementCompletion(), failures);
+    }
+
+    private ActiveRuntimeConfiguration begin(State requested) {
+        transition.lock();
+        try {
+            if (state != State.OPEN) {
+                return null;
+            }
+            state = requested;
+            return active;
         } finally {
             transition.unlock();
         }
     }
 
-    private void restartCurrentWatcher(Throwable primaryFailure) {
+    private ReloadResult commitReplacement(
+            ActiveRuntimeConfiguration expected,
+            ActiveRuntimeConfiguration replacement,
+            RuntimeAssembly candidate,
+            RuntimeAssembly currentAssembly) {
+        boolean superseded;
+        transition.lock();
         try {
-            active = active.restartWatcher(this::reloadNow);
+            superseded = state != State.RECONFIGURING || active != expected;
+            if (!superseded) {
+                runtime.reload(candidate.plan());
+                LogyardRuntimeFactory.attach(runtime, candidate);
+                active = replacement;
+                state = State.OPEN;
+            }
+        } finally {
+            transition.unlock();
+        }
+        if (superseded) {
+            closeReplacement(
+                    replacement,
+                    candidate,
+                    currentAssembly,
+                    new IllegalStateException("runtime reconfiguration was superseded by shutdown"));
+            return ReloadResult.REJECTED;
+        }
+        return ReloadResult.APPLIED;
+    }
+
+    private ReloadResult finishUnchanged(State expected) {
+        transition.lock();
+        try {
+            if (state != expected) {
+                return ReloadResult.REJECTED;
+            }
+            state = State.OPEN;
+            return ReloadResult.UNCHANGED;
+        } finally {
+            transition.unlock();
+        }
+    }
+
+    private void finishFailed(State expected) {
+        transition.lock();
+        try {
+            if (state == expected) {
+                state = State.OPEN;
+            }
+        } finally {
+            transition.unlock();
+        }
+    }
+
+    private void restartCurrentWatcher(ActiveRuntimeConfiguration current, Throwable primaryFailure) {
+        try {
+            ActiveRuntimeConfiguration restarted = current.restartWatcher(this::reloadNow);
+            boolean accepted;
+            transition.lock();
+            try {
+                accepted = state == State.RECONFIGURING && active == current;
+                if (accepted) {
+                    active = restarted;
+                }
+            } finally {
+                transition.unlock();
+            }
+            if (!accepted) {
+                restarted.closeWatcher();
+            }
         } catch (RuntimeException restartFailure) {
             primaryFailure.addSuppressed(restartFailure);
         }
@@ -184,9 +276,19 @@ final class ManagedRuntimeInstallation {
         }
     }
 
-    private void requireOpen() {
-        if (closed) {
-            throw new IllegalStateException("Logyard runtime installation is closed");
+    private static CompletionStage<Void> completionWithFailures(
+            CompletionStage<Void> retirement,
+            ComponentFailureCollector failures) {
+        try {
+            failures.throwIfPresent("runtime installation close");
+            return retirement;
+        } catch (RuntimeException failure) {
+            return retirement.handle((ignored, retirementFailure) -> {
+                if (retirementFailure != null) {
+                    failure.addSuppressed(retirementFailure);
+                }
+                throw new CompletionException(failure);
+            });
         }
     }
 }

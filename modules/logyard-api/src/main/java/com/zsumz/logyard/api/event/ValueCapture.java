@@ -162,9 +162,12 @@ final class ValueCapture {
                 result.put(uniqueTruncationKey(result), BUDGET_MARKER);
                 return Collections.unmodifiableMap(result);
             }
-            String key = context.capturePayloadText(
-                    CaptureLimits.attributeKey(renderMapKey(entry.getKey(), context)),
-                    CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
+            String renderedKey = renderMapKey(entry.getKey(), context);
+            String key = CapturedMapKeys.resolve(entry.getKey(), renderedKey, result, context);
+            if (key == null) {
+                result.put(uniqueTruncationKey(result), BUDGET_MARKER);
+                return Collections.unmodifiableMap(result);
+            }
             result.put(key, capture(entry.getValue(), context, depth + 1));
             retained++;
         }

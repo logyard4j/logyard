@@ -1,5 +1,6 @@
 package com.zsumz.logyard.runtime.bootstrap;
 
+import com.zsumz.logyard.config.loading.BoundedConfigurationFile;
 import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 
@@ -173,18 +174,7 @@ public final class LogyardConfigurationSource {
     }
 
     private static byte[] readFile(Path path) throws IOException {
-        if (!Files.isRegularFile(path)) {
-            throw new IOException("Logyard configuration is not a regular file: " + path);
-        }
-        long declaredSize = Files.size(path);
-        if (declaredSize > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-            throw new IOException("Logyard configuration exceeds " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes: " + path);
-        }
-        byte[] bytes = Files.readAllBytes(path);
-        if (bytes.length > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-            throw new IOException("Logyard configuration grew beyond " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes while reading: " + path);
-        }
-        return bytes;
+        return BoundedConfigurationFile.read(path);
     }
 
     private static byte[] readClasspath(ClassLoader loader, String resource) throws IOException {

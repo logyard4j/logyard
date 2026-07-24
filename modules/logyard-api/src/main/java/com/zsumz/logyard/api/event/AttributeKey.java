@@ -1,13 +1,28 @@
 package com.zsumz.logyard.api.event;
 
+import com.zsumz.logyard.api.annotation.InternalApi;
+
 import java.util.Objects;
 
 /** Applies bounded validation and storage normalization to an attribute key. */
-final class AttributeKey {
+@InternalApi
+public final class AttributeKey {
     private AttributeKey() {
     }
 
-    static String normalize(String key, boolean systemAttributesAllowed) {
+    /**
+     * Validates a caller key and creates its bounded storage identity.
+     *
+     * @param key source attribute key
+     * @param systemAttributesAllowed whether the reserved {@code logyard.*} namespace is allowed
+     * @return validated key normalization result
+     */
+    public static NormalizedAttributeKey normalize(String key, boolean systemAttributesAllowed) {
+        String storageKey = normalizeStorage(key, systemAttributesAllowed);
+        return new NormalizedAttributeKey(key, storageKey, storageKey != key);
+    }
+
+    static String normalizeStorage(String key, boolean systemAttributesAllowed) {
         Objects.requireNonNull(key, "attribute key");
         if (isBlankBounded(key)) {
             throw new IllegalArgumentException("attribute key must not be blank");

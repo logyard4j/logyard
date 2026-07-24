@@ -72,6 +72,24 @@ final class QuarkusEventMapperTest {
         assertTrue((Boolean) event.attributes().get("logyard.attributes.truncated"));
     }
 
+    @Test
+    void preservesCaptureTruncationFromMdcAndSourceMetadata() {
+        List<LogEvent> events = new ArrayList<>();
+        ExtLogRecord record = new ExtLogRecord(
+                java.util.logging.Level.INFO,
+                "mapped",
+                ExtLogRecord.FormatStyle.NO_FORMAT,
+                QuarkusEventMapperTest.class.getName());
+        record.setLoggerName("test.Quarkus");
+        record.setSourceClassName("x".repeat(CaptureLimits.MAX_TEXT_CHARS + 1));
+        record.putMdc("oversized", "y".repeat(CaptureLimits.MAX_TEXT_CHARS + 1));
+        try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
+            new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, record);
+        }
+
+        assertEquals(true, events.getFirst().attributes().get("logyard.capture.truncated"));
+    }
+
     private static final class TrackingRecord extends ExtLogRecord {
         private static final long serialVersionUID = 1L;
 

@@ -10,21 +10,23 @@ final class AttributeSetOperations {
 
     static AttributeSet withSystemAttribute(AttributeSet source, String key, Object value) {
         Objects.requireNonNull(key, "key");
-        String normalized = CaptureLimits.attributeKey(key);
-        Object capturedValue = ValueCapture.capture(value, CaptureContext.currentOrCreate());
+        NormalizedAttributeKey normalized = AttributeKey.normalize(key, true);
+        CaptureContext context = CaptureContext.currentOrCreate();
+        Object capturedValue = ValueCapture.capture(value, context);
+        boolean captureTruncated = source.captureTruncated || normalized.truncated() || context.truncated();
         for (int index = 0; index < source.keys.length; index++) {
-            if (source.keys[index].equals(normalized)) {
+            if (source.keys[index].equals(normalized.storageKey())) {
                 Object[] nextValues = source.values.clone();
                 nextValues[index] = capturedValue;
-                return new AttributeSet(source.keys.clone(), nextValues);
+                return new AttributeSet(source.keys.clone(), nextValues, captureTruncated);
             }
         }
         if (source.keys.length < CaptureLimits.MAX_ATTRIBUTES) {
             String[] nextKeys = Arrays.copyOf(source.keys, source.keys.length + 1);
             Object[] nextValues = Arrays.copyOf(source.values, source.values.length + 1);
-            nextKeys[source.keys.length] = normalized;
+            nextKeys[source.keys.length] = normalized.storageKey();
             nextValues[source.values.length] = capturedValue;
-            return new AttributeSet(nextKeys, nextValues);
+            return new AttributeSet(nextKeys, nextValues, captureTruncated);
         }
 
         String[] nextKeys = source.keys.clone();
@@ -36,12 +38,15 @@ final class AttributeSetOperations {
                 break;
             }
         }
-        nextKeys[replacement] = normalized;
+        nextKeys[replacement] = normalized.storageKey();
         nextValues[replacement] = capturedValue;
-        return new AttributeSet(nextKeys, nextValues);
+        return new AttributeSet(nextKeys, nextValues, true);
     }
 
     static AttributeSet recapture(AttributeSet source, CaptureContext context) {
+        if (source.captureTruncated) {
+            context.markTruncated();
+        }
         if (source.isEmpty()) {
             return source;
         }
@@ -56,9 +61,9 @@ final class AttributeSetOperations {
             recapturedValues[retained] = ValueCapture.capture(source.values[index], context);
             retained++;
         }
-        if (retained == 0) {
-            return AttributeSet.EMPTY;
-        }
-        return new AttributeSet(Arrays.copyOf(recapturedKeys, retained), Arrays.copyOf(recapturedValues, retained));
+        return new AttributeSet(
+                Arrays.copyOf(recapturedKeys, retained),
+                Arrays.copyOf(recapturedValues, retained),
+                source.captureTruncated || context.truncated());
     }
 }

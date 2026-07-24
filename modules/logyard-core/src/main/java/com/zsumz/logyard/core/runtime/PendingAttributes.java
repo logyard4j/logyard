@@ -1,16 +1,17 @@
 package com.zsumz.logyard.core.runtime;
 
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.event.AttributeKey;
 import com.zsumz.logyard.api.event.CaptureLimits;
+import com.zsumz.logyard.api.event.NormalizedAttributeKey;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Supplier;
 
 /** Validated attribute declarations whose caller-owned values are captured at publication. */
 final class PendingAttributes {
-    private final Map<String, PendingValue> values = new LinkedHashMap<>();
+    private final Map<NormalizedAttributeKey, PendingValue> values = new LinkedHashMap<>();
     private boolean truncated;
 
     void add(String key, Object value) {
@@ -23,12 +24,12 @@ final class PendingAttributes {
 
     AttributeSet capture() {
         AttributeSet.Builder captured = AttributeSet.builder(values.size());
-        for (Map.Entry<String, PendingValue> entry : values.entrySet()) {
+        for (Map.Entry<NormalizedAttributeKey, PendingValue> entry : values.entrySet()) {
             if (captured.isFull()) {
                 captured.markTruncated();
                 break;
             }
-            captured.put(entry.getKey(), entry.getValue().resolve());
+            captured.putNormalized(entry.getKey(), entry.getValue().resolve());
         }
         if (truncated) {
             captured.markTruncated();
@@ -36,7 +37,7 @@ final class PendingAttributes {
         return captured.build();
     }
 
-    private void add(String key, PendingValue value) {
+    private void add(NormalizedAttributeKey key, PendingValue value) {
         if (!values.containsKey(key) && values.size() >= CaptureLimits.MAX_ATTRIBUTES - 1) {
             truncated = true;
             return;
@@ -44,14 +45,7 @@ final class PendingAttributes {
         values.put(key, value);
     }
 
-    private static String requireKey(String key) {
-        String value = Objects.requireNonNull(key, "attribute key");
-        if (value.isBlank()) {
-            throw new IllegalArgumentException("attribute key must not be blank");
-        }
-        if (AttributeSet.isReservedKey(value)) {
-            throw new IllegalArgumentException("attribute keys in the logyard.* namespace are reserved");
-        }
-        return CaptureLimits.attributeKey(value);
+    private static NormalizedAttributeKey requireKey(String key) {
+        return AttributeKey.normalize(key, false);
     }
 }

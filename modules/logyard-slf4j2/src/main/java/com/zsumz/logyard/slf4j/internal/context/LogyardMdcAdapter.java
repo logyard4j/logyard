@@ -72,4 +72,8 @@ public final class LogyardMdcAdapter implements MDCAdapter {
     Map<String, String> currentValues() {
         return values.current();
     }
+
+    boolean valueTruncated(String key) {
+        return values.valueTruncated(key);
+    }
 }

@@ -57,10 +57,10 @@ final class RuntimeRetirements {
         }
     }
 
-    void finishPlan(RuntimePlan plan, PlanEpoch epoch) {
+    CompletableFuture<Void> finishPlan(RuntimePlan plan, PlanEpoch epoch) {
         Objects.requireNonNull(plan, "plan");
         Objects.requireNonNull(epoch, "epoch");
-        observe(sequence.retire(epoch, () -> RuntimeOutputs.closeAll(plan), executor::scheduleFinal));
+        return observe(sequence.retire(epoch, () -> RuntimeOutputs.closeAll(plan), executor::scheduleFinal));
     }
 
     void await(Duration timeout) {
@@ -86,7 +86,7 @@ final class RuntimeRetirements {
         }
     }
 
-    private void observe(CompletableFuture<Void> retirement) {
+    private CompletableFuture<Void> observe(CompletableFuture<Void> retirement) {
         CompletableFuture<Void> observation = new CompletableFuture<>();
         pending.add(observation);
         retirement.whenComplete((ignored, failure) -> {
@@ -108,6 +108,7 @@ final class RuntimeRetirements {
                 }
             }
         });
+        return observation;
     }
 
     private static long saturatedNanos(Duration duration) {

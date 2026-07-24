@@ -19,7 +19,10 @@ import com.zsumz.logyard.config.toml.TomlDocument;
 import com.zsumz.logyard.config.toml.TomlParseException;
 import com.zsumz.logyard.config.toml.TomlParser;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
@@ -34,15 +37,23 @@ public final class LogyardConfigLoader {
 
     public static LogyardConfig load(Path path) throws IOException {
         Path absolute = path.toAbsolutePath().normalize();
-        long size = Files.size(absolute);
-        if (size > MAX_CONFIG_BYTES) {
-            throw tooLarge(absolute.toString());
-        }
         return parse(
-                Files.readString(absolute),
+                decodeStrictUtf8(BoundedConfigurationFile.read(absolute), absolute),
                 absolute.toString(),
                 absolute.getParent() == null ? Path.of(".").toAbsolutePath() : absolute.getParent(),
                 System.getenv());
+    }
+
+    private static String decodeStrictUtf8(byte[] bytes, Path source) throws IOException {
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes))
+                    .toString();
+        } catch (CharacterCodingException invalidUtf8) {
+            throw new IOException("Logyard configuration is not valid UTF-8: " + source, invalidUtf8);
+        }
     }
 
     public static LogyardConfig parse(String text, String source, Path baseDirectory) {

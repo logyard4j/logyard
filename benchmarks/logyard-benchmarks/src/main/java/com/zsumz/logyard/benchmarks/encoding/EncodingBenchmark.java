@@ -19,6 +19,7 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /** Console, JSON, rendering, and redaction allocation baselines. */
@@ -32,6 +33,11 @@ public class EncodingBenchmark {
     private final LogEvent plain = BenchmarkFixtures.event(AttributeSet.builder().put("order.id", 42L).build());
     private final LogEvent secret = BenchmarkFixtures.event(
             AttributeSet.builder().put("order.id", 42L).put("payment.token", "secret").build());
+    private final LogEvent nestedWithoutSecret = BenchmarkFixtures.event(AttributeSet.builder()
+            .put("request", Map.of(
+                    "users", List.of(Map.of("name", "Ada", "roles", List.of("admin", "operator"))),
+                    "metadata", Map.of("region", "us-central", "attempt", 3)))
+            .build());
     private final JsonEncoder json = new JsonEncoder(ResourceAttributes.service("orders", "benchmark", "1"));
     private final TemplateTextFormatter console =
             new TemplateTextFormatter("{timestamp} {level} {logger} - {message} {fields}", ZoneOffset.UTC);
@@ -55,6 +61,11 @@ public class EncodingBenchmark {
     @Benchmark
     public LogEvent redactionWithoutMatch() {
         return redaction.process(plain);
+    }
+
+    @Benchmark
+    public LogEvent nestedRedactionWithoutMatch() {
+        return redaction.process(nestedWithoutSecret);
     }
 
     @Benchmark
