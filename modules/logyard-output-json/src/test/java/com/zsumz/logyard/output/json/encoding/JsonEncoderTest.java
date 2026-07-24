@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.event.CaptureLimits;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -92,4 +95,92 @@ final class JsonEncoderTest {
         assertThrows(IllegalArgumentException.class, () -> encoder.encode(event));
     }
 
+    @Test
+    void emitsCompactExactDecimalsAsJsonNumbers() {
+        BigDecimal compactExponent = new BigDecimal(BigInteger.ONE, -1_000_000);
+        JsonEncoder encoder = new JsonEncoder(ResourceAttributes.service("orders", "test", "1"));
+
+        String json = encoder.encode(event(
+                "{}",
+                new Object[] {compactExponent},
+                AttributeSet.of("amount", compactExponent),
+                null));
+
+        assertTrue(json.contains("\"amount\":1E+1000000"));
+        assertTrue(json.contains("\"body\":\"1E+1000000\""));
+        JsonSyntaxValidator.requireValid(json);
+    }
+
+    @Test
+    void boundsSharedValueAndExceptionGraphsWithoutExpandingAliases() {
+        List<Object> shared = new ArrayList<>();
+        shared.add("x".repeat(1_000));
+        List<Object> root = new ArrayList<>();
+        for (int index = 0; index < CaptureLimits.MAX_COLLECTION_ELEMENTS; index++) {
+            root.add(shared);
+        }
+        IllegalStateException repeated = new IllegalStateException("shared");
+        RuntimeException failure = new RuntimeException("parent");
+        for (int index = 0; index < 8; index++) {
+            failure.addSuppressed(repeated);
+        }
+        JsonEncoder encoder = new JsonEncoder(ResourceAttributes.service("orders", "test", "1"));
+
+        String json = encoder.encode(event("{}", new Object[] {root}, AttributeSet.of("graph", root), failure));
+
+        assertTrue(json.length() < 100_000);
+        assertTrue(json.contains("[shared reference]"));
+        assertTrue(json.contains("[shared exception reference]"));
+        JsonSyntaxValidator.requireValid(json);
+    }
+
+    @Test
+    void fallsBackToACompleteJsonRecordWhenEscapingExhaustsTheOutputBudget() {
+        String controls = "\u0000".repeat(CaptureLimits.MAX_EVENT_PAYLOAD_TEXT_CHARS);
+        ResourceAttributes resource = new ResourceAttributes(Map.of("resource.noisy", controls));
+        JsonEncoder encoder = new JsonEncoder(resource);
+        IllegalStateException failure = new IllegalStateException(
+                "\u0000".repeat(CaptureLimits.MAX_EVENT_EXCEPTION_MESSAGE_CHARS));
+
+        String json = encoder.encode(event("{}", new Object[] {controls}, AttributeSet.EMPTY, failure));
+
+        assertTrue(json.length() <= JsonOutputLimits.MAX_RECORD_CHARACTERS);
+        assertTrue(json.contains("\"logyard.output.truncated\":true"));
+        JsonSyntaxValidator.requireValid(json);
+    }
+
+    @Test
+    void reportsWhenLazyMessageRenderingWasTruncated() {
+        List<List<Long>> denseNumbers = new ArrayList<>();
+        for (int row = 0; row < 31; row++) {
+            denseNumbers.add(java.util.Collections.nCopies(
+                    CaptureLimits.MAX_COLLECTION_ELEMENTS,
+                    Long.MAX_VALUE));
+        }
+        JsonEncoder encoder = new JsonEncoder(ResourceAttributes.service("orders", "test", "1"));
+
+        String json = encoder.encode(event("{}", new Object[] {denseNumbers}, AttributeSet.EMPTY, null));
+
+        assertTrue(json.contains("\"logyard.output.truncated\":true"));
+        JsonSyntaxValidator.requireValid(json);
+    }
+
+    private static LogEvent event(
+            String template,
+            Object[] arguments,
+            AttributeSet attributes,
+            Throwable failure) {
+        return new LogEvent(
+                0,
+                1,
+                Level.INFO,
+                "orders.Service",
+                null,
+                template,
+                arguments,
+                attributes,
+                failure,
+                1,
+                "main");
+    }
 }

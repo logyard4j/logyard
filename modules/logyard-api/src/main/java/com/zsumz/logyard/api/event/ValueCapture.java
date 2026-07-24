@@ -3,8 +3,6 @@ package com.zsumz.logyard.api.event;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.temporal.TemporalAccessor;
-import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,13 +10,13 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
-/** Captures caller-owned values before asynchronous delivery can observe later mutation. */
+/** Captures caller-owned values as bounded trees before asynchronous delivery. */
 final class ValueCapture {
     private static final Object[] EMPTY_ARGUMENTS = new Object[0];
     private static final String DEPTH_MARKER = "[maximum nesting depth reached]";
     private static final String CYCLE_MARKER = "[circular reference]";
+    private static final String SHARED_MARKER = "[shared reference]";
     private static final String BUDGET_MARKER = "[event capture budget exhausted]";
 
     private ValueCapture() {
@@ -51,51 +49,71 @@ final class ValueCapture {
     }
 
     private static Object capture(Object value, CaptureContext context, int depth) {
-        if (value == null || isImmutableScalar(value)) {
+        if (value == null || isClosedScalar(value)) {
             return value;
         }
-        Object completed = context.completedValue(value);
-        if (completed != null) {
-            return completed;
-        }
         if (value instanceof String string) {
-            return context.captureText(string, CaptureLimits.MAX_TEXT_CHARS);
+            return context.capturePayloadText(string, CaptureLimits.MAX_TEXT_CHARS);
         }
-        if (depth >= CaptureLimits.MAX_NESTING_DEPTH) {
+
+        boolean container = requiresGraphTracking(value);
+        if (container && depth >= CaptureLimits.MAX_NESTING_DEPTH) {
             context.markTruncated();
             return DEPTH_MARKER;
+        }
+        if (container) {
+            return captureContainerReference(value, context, depth);
+        }
+
+        Object completed = context.capturedScalar(value);
+        if (completed != null) {
+            return completed;
         }
         if (!context.claimNode()) {
             return BUDGET_MARKER;
         }
-        if (context.remainingCharacters() == 0 && !requiresGraphTracking(value)) {
+        if (context.remainingPayloadCharacters() == 0) {
             context.markTruncated();
             return BUDGET_MARKER;
         }
-        if (value instanceof CharSequence
-                || value instanceof TemporalAccessor
-                || value instanceof TemporalAmount
-                || value instanceof UUID
-                || value instanceof Class<?>) {
-            String captured = captureRendered(value, context);
-            context.completeValue(value, captured);
-            return captured;
-        }
-        if (!requiresGraphTracking(value)) {
-            String captured = captureRendered(value, context);
-            context.completeValue(value, captured);
-            return captured;
-        }
-        if (!context.visitValue(value)) {
+
+        Object captured = captureScalar(value, context);
+        context.completeScalar(value, captured);
+        return captured;
+    }
+
+    private static Object captureContainerReference(Object value, CaptureContext context, int depth) {
+        CaptureContext.ReferenceState reference = context.enterValue(value);
+        if (reference == CaptureContext.ReferenceState.CYCLE) {
+            context.markTruncated();
             return CYCLE_MARKER;
         }
+        if (reference == CaptureContext.ReferenceState.SHARED) {
+            context.markTruncated();
+            return SHARED_MARKER;
+        }
+        if (!context.claimNode()) {
+            context.leaveValue(value);
+            return BUDGET_MARKER;
+        }
         try {
-            Object captured = captureContainer(value, context, depth);
-            context.completeValue(value, captured);
-            return captured;
+            return captureContainer(value, context, depth);
         } finally {
             context.leaveValue(value);
         }
+    }
+
+    private static Object captureScalar(Object value, CaptureContext context) {
+        if (value instanceof Enum<?> enumeration) {
+            return context.capturePayloadText(enumeration.name(), CaptureLimits.MAX_TEXT_CHARS);
+        }
+        if (value.getClass() == BigInteger.class) {
+            return SafeNumberCapture.bigInteger((BigInteger) value, context);
+        }
+        if (value.getClass() == BigDecimal.class) {
+            return SafeNumberCapture.bigDecimal((BigDecimal) value, context);
+        }
+        return captureRendered(value, context);
     }
 
     private static Object captureContainer(Object value, CaptureContext context, int depth) {
@@ -139,15 +157,13 @@ final class ValueCapture {
                 return Collections.unmodifiableMap(result);
             }
             Map.Entry<?, ?> entry = entries.next();
-            if (context.remainingCharacters() == 0) {
+            if (context.remainingPayloadCharacters() == 0) {
                 context.markTruncated();
                 result.put(uniqueTruncationKey(result), BUDGET_MARKER);
                 return Collections.unmodifiableMap(result);
             }
-            String key = context.captureText(
-                    CaptureLimits.attributeKey(MessageFormatter.safeToString(
-                            entry.getKey(),
-                            Math.min(CaptureLimits.MAX_TEXT_CHARS, context.remainingCharacters()))),
+            String key = context.capturePayloadText(
+                    CaptureLimits.attributeKey(renderMapKey(entry.getKey(), context)),
                     CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
             result.put(key, capture(entry.getValue(), context, depth + 1));
             retained++;
@@ -169,8 +185,7 @@ final class ValueCapture {
                 result.add(BUDGET_MARKER);
                 return Collections.unmodifiableList(result);
             }
-            Object value = values.next();
-            result.add(capture(value, context, depth + 1));
+            result.add(capture(values.next(), context, depth + 1));
             retained++;
         }
         if (values.hasNext()) {
@@ -186,8 +201,21 @@ final class ValueCapture {
     }
 
     private static String captureRendered(Object value, CaptureContext context) {
-        int maximum = Math.min(CaptureLimits.MAX_TEXT_CHARS, context.remainingCharacters());
-        return context.captureText(MessageFormatter.safeToString(value, maximum), maximum);
+        int maximum = Math.min(CaptureLimits.MAX_TEXT_CHARS, context.remainingPayloadCharacters());
+        MessageFormatter.RenderResult rendered = MessageFormatter.safeRender(value, maximum);
+        if (rendered.truncated()) {
+            context.markTruncated();
+        }
+        return context.capturePayloadText(rendered.value(), maximum);
+    }
+
+    private static String renderMapKey(Object key, CaptureContext context) {
+        int maximum = Math.min(CaptureLimits.MAX_TEXT_CHARS, context.remainingPayloadCharacters());
+        MessageFormatter.RenderResult rendered = MessageFormatter.safeRender(key, maximum);
+        if (rendered.truncated()) {
+            context.markTruncated();
+        }
+        return rendered.value();
     }
 
     private static String omission(int omitted, String noun) {
@@ -203,7 +231,7 @@ final class ValueCapture {
         return key;
     }
 
-    private static boolean isImmutableScalar(Object value) {
+    private static boolean isClosedScalar(Object value) {
         return value instanceof Boolean
                 || value instanceof Byte
                 || value instanceof Short
@@ -211,9 +239,6 @@ final class ValueCapture {
                 || value instanceof Long
                 || value instanceof Float
                 || value instanceof Double
-                || value instanceof BigInteger
-                || value instanceof BigDecimal
-                || value instanceof Character
-                || value instanceof Enum<?>;
+                || value instanceof Character;
     }
 }

@@ -177,7 +177,11 @@ Closing `RuntimeBundle` releases that owner’s lease. Configuration watching, b
 
 Every accepted event has a timestamp, level, logger name, message template and arguments, structured attributes, resource metadata, thread metadata, and an optional captured exception. Outputs receive the same immutable event.
 
-Values are captured defensively with per-value limits and one event-wide budget shared by arguments, attributes, nested values, exception graphs, stack frames, and lazy message rendering. Completed object and exception snapshots are reused by identity, so shared graphs are captured once. When the aggregate budget is exhausted, Logyard stops traversing and sets `logyard.capture.truncated=true`.
+Values are detached at ingress as bounded trees. Cycles become `[circular reference]`; a second reference to the same container or throwable becomes `[shared reference]` or `[shared exception reference]` instead of preserving an alias that an output could expand again. Capture stops at 8 levels, 2,048 value nodes, and 4,096 aggregate entries.
+
+One event can retain at most 65,536 UTF-16 characters across explicit partitions: 4,096 for identity, 8,192 for the template, 16,384 for the rendered message, 16,384 for exception diagnostics, and 20,480 for arguments, attributes, and processor enrichment. Exception text is further reserved for types, messages, and frame fields so a large payload or exception message cannot erase the useful failure identity. Processor replacements are recaptured under the original allowance. Ingress loss sets `logyard.capture.truncated=true`; lazy message loss is exposed by `LogEvent.renderedMessageTruncated()` and the built-in outputs emit `logyard.output.truncated=true`.
+
+Built-in rendering is independently defensive: one JSON record is capped at 262,144 characters and one complete console event at 131,072 characters. Both outputs enforce their own depth, identity, entry, and character limits even if a future processor violates the captured-value model.
 
 The `logyard.*` attribute namespace is reserved for these system diagnostics. Application attributes, SLF4J key values, and captured context must use application-owned names.
 
@@ -208,7 +212,7 @@ Delivery is asynchronous by default. Each output has an isolated queue and worke
 ```toml
 [delivery]
 mode = "async"
-capacity = 16384
+capacity = 2048
 
 [delivery.overflow]
 trace = "drop"
@@ -225,7 +229,7 @@ Overflow actions are:
 - `sync`: wait for the optional timeout, then deliver on the caller thread.
 - `stderr`: wait for the optional timeout, then write the emergency representation directly to standard error.
 
-The default policy drops trace, debug, and info events; sends warnings and errors immediately to emergency stderr; and uses 16,384 slots per async output. The queue's reference array consumes approximately 64–128 KiB per output. Queued `LogEvent` instances and their captured arguments, attributes, exception snapshots, and rendered values consume additional heap until delivered. Runtime health exposes queue capacity, depth, dropped-event counts, and failure state.
+The default policy drops trace, debug, and info events; sends warnings and errors immediately to emergency stderr; and uses 2,048 slots per async output. The queue's reference array is small, but a completely full queue of maximum-text events can still approach 256 MiB before object overhead. Rich-event or memory-constrained services should choose a smaller capacity. Runtime health exposes queue capacity, depth, dropped-event counts, and failure state.
 
 ## Outputs
 

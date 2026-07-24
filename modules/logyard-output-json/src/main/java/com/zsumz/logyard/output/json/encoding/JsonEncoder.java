@@ -2,10 +2,12 @@ package com.zsumz.logyard.output.json.encoding;
 
 import com.zsumz.logyard.api.event.ExceptionSnapshot;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.spi.encoding.EventEncoder;
 
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Objects;
 import java.util.Set;
 
@@ -14,6 +16,8 @@ public final class JsonEncoder implements EventEncoder {
     private final ResourceAttributes resource;
     private final JsonProfile profile;
     private final JsonWriter json = new JsonWriter(1024);
+    private final IdentityHashMap<ExceptionSnapshot, Boolean> renderedExceptions = new IdentityHashMap<>();
+    private int remainingExceptionNodes;
 
     public JsonEncoder(ResourceAttributes resource) {
         this(resource, JsonProfile.named("logyard"));
@@ -27,7 +31,17 @@ public final class JsonEncoder implements EventEncoder {
     @Override
     public String encode(LogEvent event) {
         Objects.requireNonNull(event, "event");
+        renderedExceptions.clear();
+        remainingExceptionNodes = CaptureLimits.MAX_EVENT_EXCEPTION_NODES;
         json.reset();
+        try {
+            return encodeEvent(event);
+        } catch (JsonLimitExceeded limit) {
+            return encodeTruncatedFallback(event);
+        }
+    }
+
+    private String encodeEvent(LogEvent event) {
         json.beginObject();
         boolean first = true;
         first = stringField(first, "timestamp", Instant.ofEpochMilli(event.timestampMillis()).toString());
@@ -57,7 +71,11 @@ public final class JsonEncoder implements EventEncoder {
         }
         if (event.exception() != null && profile.emits("exception")) {
             first = beginField(first, profile.outputName("exception"));
-            exception(event.exception());
+            exception(event.exception(), 0);
+        }
+        if (json.traversalTruncated() || event.renderedMessageTruncated()) {
+            first = beginField(first, "logyard.output.truncated");
+            json.value(true);
         }
         json.endObject();
         return json.result();
@@ -150,7 +168,18 @@ public final class JsonEncoder implements EventEncoder {
         return false;
     }
 
-    private void exception(ExceptionSnapshot exception) {
+    private void exception(ExceptionSnapshot exception, int depth) {
+        if (depth >= ExceptionSnapshot.MAX_CAUSE_DEPTH) {
+            json.markTraversalTruncated();
+            json.string("[maximum exception rendering depth reached]");
+            return;
+        }
+        if (remainingExceptionNodes == 0 || renderedExceptions.put(exception, Boolean.TRUE) != null) {
+            json.markTraversalTruncated();
+            json.string("[shared or bounded exception reference]");
+            return;
+        }
+        remainingExceptionNodes--;
         json.beginObject();
         json.field("type", exception.type());
         if (exception.message() != null) {
@@ -161,6 +190,13 @@ public final class JsonEncoder implements EventEncoder {
         json.name("stacktrace");
         json.beginArray();
         for (int index = 0; index < exception.frames().size(); index++) {
+            if (!json.claimEntry()) {
+                if (index > 0) {
+                    json.comma();
+                }
+                json.string("[output traversal budget exhausted]");
+                break;
+            }
             if (index > 0) {
                 json.comma();
             }
@@ -176,18 +212,41 @@ public final class JsonEncoder implements EventEncoder {
             json.name("suppressed");
             json.beginArray();
             for (int index = 0; index < exception.suppressed().size(); index++) {
+                if (!json.claimEntry()) {
+                    if (index > 0) {
+                        json.comma();
+                    }
+                    json.string("[output traversal budget exhausted]");
+                    break;
+                }
                 if (index > 0) {
                     json.comma();
                 }
-                exception(exception.suppressed().get(index));
+                exception(exception.suppressed().get(index), depth + 1);
             }
             json.endArray();
         }
         if (exception.cause() != null) {
             json.comma();
             json.name("cause");
-            exception(exception.cause());
+            exception(exception.cause(), depth + 1);
         }
         json.endObject();
+    }
+
+    private String encodeTruncatedFallback(LogEvent event) {
+        json.reset();
+        json.beginObject();
+        json.field("timestamp", Instant.ofEpochMilli(event.timestampMillis()).toString());
+        json.comma();
+        json.field("severity_text", event.level().name());
+        json.comma();
+        json.field("logger", event.loggerName());
+        json.comma();
+        json.field("body", event.renderedMessage());
+        json.comma();
+        json.field("logyard.output.truncated", true);
+        json.endObject();
+        return json.result();
     }
 }

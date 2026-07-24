@@ -32,7 +32,7 @@ public final class CoreBehaviorTest {
         equal("slash \\world", MessageFormatter.format("slash \\\\{}", new Object[] {"world"}));
         Object[] circular = new Object[1];
         circular[0] = circular;
-        equal("[[...]]", MessageFormatter.safeToString(circular));
+        equal("[[shared reference]]", MessageFormatter.safeToString(circular));
     }
 
 

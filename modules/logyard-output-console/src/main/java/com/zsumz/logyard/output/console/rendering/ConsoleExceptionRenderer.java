@@ -1,9 +1,11 @@
 package com.zsumz.logyard.output.console.rendering;
 
 import com.zsumz.logyard.api.event.ExceptionSnapshot;
+import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.output.console.style.ConsoleTheme;
 import com.zsumz.logyard.output.console.terminal.ColorCapability;
 
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -31,8 +33,9 @@ final class ConsoleExceptionRenderer {
         this.collapseCommonFrames = collapseCommonFrames;
     }
 
-    void render(ExceptionSnapshot exception, Consumer<String> output) {
-        render(exception, 0, null, false, Objects.requireNonNull(output, "output"));
+    void render(ExceptionSnapshot exception, ConsoleRenderBudget budget, Consumer<String> output) {
+        render(exception, 0, null, false, Objects.requireNonNull(budget, "budget"),
+                new IdentityHashMap<>(), Objects.requireNonNull(output, "output"));
     }
 
     private void render(
@@ -40,34 +43,45 @@ final class ConsoleExceptionRenderer {
             int depth,
             List<StackTraceElement> parentFrames,
             boolean suppressed,
+            ConsoleRenderBudget budget,
+            IdentityHashMap<ExceptionSnapshot, Boolean> seen,
             Consumer<String> output) {
+        if (budget.exhausted()) {
+            return;
+        }
+        if (depth >= CaptureLimits.MAX_NESTING_DEPTH || seen.put(exception, Boolean.TRUE) != null) {
+            emit("stack_frame", "    ... shared or bounded exception reference", budget, output);
+            return;
+        }
         String prefix = depth == 0 ? "  " : suppressed ? "  Suppressed: " : "  Caused by: ";
-        output.accept(theme.role("exception").render(prefix + ConsoleText.sanitize(exception.summary()), colors, capability));
+        emit("exception", prefix + ConsoleText.sanitize(exception.summary()), budget, output);
 
         List<StackTraceElement> frames = exception.frames();
         int common = parentFrames == null || !collapseCommonFrames ? 0 : commonFrames(frames, parentFrames);
         int available = frames.size() - common;
         int limit = Math.min(available, compact ? COMPACT_STACK_FRAMES : FULL_STACK_FRAMES);
-        for (int index = 0; index < limit; index++) {
-            output.accept(theme.role("stack_frame").render(
-                    "    at " + ConsoleText.sanitize(frames.get(index).toString()), colors, capability));
+        for (int index = 0; index < limit && !budget.exhausted(); index++) {
+            emit("stack_frame", "    at " + ConsoleText.sanitize(frames.get(index).toString()), budget, output);
         }
         if (available > limit) {
-            output.accept(theme.role("stack_frame").render(
-                    "    ... " + (available - limit) + " frame(s) truncated", colors, capability));
+            emit("stack_frame", "    ... " + (available - limit) + " frame(s) truncated", budget, output);
         }
         if (common > 0) {
-            output.accept(theme.role("stack_frame").render("    ... " + common + " common frame(s)", colors, capability));
+            emit("stack_frame", "    ... " + common + " common frame(s)", budget, output);
         }
         if (exception.truncated()) {
-            output.accept(theme.role("stack_frame").render("    ... exception snapshot was bounded", colors, capability));
+            emit("stack_frame", "    ... exception snapshot was bounded", budget, output);
         }
         for (ExceptionSnapshot current : exception.suppressed()) {
-            render(current, depth + 1, frames, true, output);
+            render(current, depth + 1, frames, true, budget, seen, output);
         }
         if (exception.cause() != null) {
-            render(exception.cause(), depth + 1, frames, false, output);
+            render(exception.cause(), depth + 1, frames, false, budget, seen, output);
         }
+    }
+
+    private void emit(String role, String line, ConsoleRenderBudget budget, Consumer<String> output) {
+        budget.emit(theme.role(role).render(line, colors, capability), output);
     }
 
     private static int commonFrames(List<StackTraceElement> left, List<StackTraceElement> right) {

@@ -52,7 +52,7 @@ final class AttributeSetOperations {
             if (!context.claimEntry()) {
                 break;
             }
-            recapturedKeys[retained] = context.captureText(source.keys[index], CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
+            recapturedKeys[retained] = context.capturePayloadText(source.keys[index], CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
             recapturedValues[retained] = ValueCapture.capture(source.values[index], context);
             retained++;
         }

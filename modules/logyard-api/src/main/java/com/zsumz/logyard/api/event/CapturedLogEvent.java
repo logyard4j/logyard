@@ -16,5 +16,7 @@ record CapturedLogEvent(
         long threadId,
         String threadName,
         int renderedMessageLimit,
-        int remainingTraversalEntries) {
+        int remainingTraversalEntries,
+        CaptureAllowance attributeAllowance,
+        boolean captureTruncated) {
 }

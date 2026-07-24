@@ -25,15 +25,18 @@ final class StructuredValueRedactor {
 
     Object redactChildren(Object value, String path) {
         if (value instanceof Map<?, ?> map) {
-            return redactMap(map, path);
+            return redactMap(map, path, 0);
         }
         if (value instanceof List<?> list) {
-            return redactList(list, path);
+            return redactList(list, path, 0);
         }
         return value;
     }
 
-    private Object redactMap(Map<?, ?> source, String path) {
+    private Object redactMap(Map<?, ?> source, String path, int depth) {
+        if (depth >= CaptureLimits.MAX_NESTING_DEPTH) {
+            return replacement;
+        }
         Object cached = completed(source, path);
         if (cached != null) {
             return cached;
@@ -48,7 +51,9 @@ final class StructuredValueRedactor {
             String key = String.valueOf(entry.getKey());
             String childPath = path.isEmpty() ? key : path + '.' + key;
             Object current = entry.getValue();
-            Object redacted = matcher.matches(childPath, key) ? replacement : redactChildren(current, childPath);
+            Object redacted = matcher.matches(childPath, key)
+                    ? replacement
+                    : redactChildren(current, childPath, depth + 1);
             if (redacted != current && copy == null) {
                 copy = new LinkedHashMap<>(source.size());
                 int retained = 0;
@@ -73,7 +78,10 @@ final class StructuredValueRedactor {
         return result;
     }
 
-    private Object redactList(List<?> source, String path) {
+    private Object redactList(List<?> source, String path, int depth) {
+        if (depth >= CaptureLimits.MAX_NESTING_DEPTH) {
+            return replacement;
+        }
         Object cached = completed(source, path);
         if (cached != null) {
             return cached;
@@ -86,7 +94,9 @@ final class StructuredValueRedactor {
             }
             Object current = source.get(index);
             String childPath = path + '[' + index + ']';
-            Object redacted = matcher.matches(childPath, "") ? replacement : redactChildren(current, childPath);
+            Object redacted = matcher.matches(childPath, "")
+                    ? replacement
+                    : redactChildren(current, childPath, depth + 1);
             if (redacted != current && copy == null) {
                 copy = new ArrayList<>(source);
             }
@@ -97,6 +107,16 @@ final class StructuredValueRedactor {
         Object result = copy == null ? source : Collections.unmodifiableList(copy);
         remember(source, path, result);
         return result;
+    }
+
+    private Object redactChildren(Object value, String path, int depth) {
+        if (value instanceof Map<?, ?> map) {
+            return redactMap(map, path, depth);
+        }
+        if (value instanceof List<?> list) {
+            return redactList(list, path, depth);
+        }
+        return value;
     }
 
     private boolean claim() {

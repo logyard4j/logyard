@@ -23,7 +23,7 @@ public final class ExceptionSnapshot {
     public static final int MAX_FRAMES_PER_NODE = 256;
 
     /** Maximum UTF-16 characters retained from an exception message. */
-    public static final int MAX_MESSAGE_CHARS = 16_384;
+    public static final int MAX_MESSAGE_CHARS = CaptureLimits.MAX_EVENT_EXCEPTION_MESSAGE_CHARS;
 
     private final String type;
     private final String message;
@@ -128,39 +128,49 @@ public final class ExceptionSnapshot {
     }
 
     private static ExceptionSnapshot capture(Throwable throwable, CaptureContext context, int depth) {
-        ExceptionSnapshot completed = context.completedException(throwable);
-        if (completed != null) {
-            return completed;
-        }
         if (depth >= MAX_CAUSE_DEPTH) {
             context.markTruncated();
             return marker("[maximum cause depth reached]");
         }
-        if (!context.visitException(throwable)) {
+        CaptureContext.ReferenceState reference = context.enterException(throwable);
+        if (reference == CaptureContext.ReferenceState.CYCLE) {
             context.markTruncated();
             return marker("[circular exception reference]");
         }
+        if (reference == CaptureContext.ReferenceState.SHARED) {
+            context.markTruncated();
+            return marker("[shared exception reference]");
+        }
         if (!context.claimExceptionNode()) {
             context.leaveException(throwable);
-            ExceptionSnapshot exhausted = marker("[event exception budget exhausted]");
-            context.completeException(throwable, exhausted);
-            return exhausted;
+            return marker("[event exception budget exhausted]");
         }
         try {
             boolean truncated = false;
-            String type = context.captureText(throwable.getClass().getName(), CaptureLimits.MAX_NAME_CHARS);
+            CapturedText capturedType = context.captureExceptionTypeText(
+                    throwable.getClass().getName(),
+                    CaptureLimits.MAX_NAME_CHARS);
+            String type = capturedType.value();
+            if (type == null || type.isBlank()) {
+                type = "[exception type omitted]";
+                truncated = true;
+                context.markTruncated();
+            } else {
+                truncated = capturedType.truncated();
+            }
             String message;
             try {
-                String sourceMessage = throwable.getMessage();
-                message = context.captureText(sourceMessage, MAX_MESSAGE_CHARS);
-                if (safeLength(sourceMessage) > safeLength(message)) {
-                    truncated = true;
-                }
+                CapturedText capturedMessage = context.captureExceptionMessageText(
+                        throwable.getMessage(),
+                        MAX_MESSAGE_CHARS);
+                message = capturedMessage.value();
+                truncated |= capturedMessage.truncated();
             } catch (Throwable failure) {
                 FailureIsolation.prepareForRecovery(failure);
-                message = context.captureText(
+                CapturedText failedMessage = context.captureExceptionMessageText(
                         "[message accessor failed: " + failure.getClass().getName() + ']',
                         MAX_MESSAGE_CHARS);
+                message = failedMessage.value();
                 truncated = true;
             }
 
@@ -184,18 +194,40 @@ public final class ExceptionSnapshot {
             int frameCount = Math.min(sourceFrames.length, MAX_FRAMES_PER_NODE);
             List<StackTraceElement> frames = new ArrayList<>(frameCount);
             for (int index = 0; index < frameCount; index++) {
-                if (!context.claimFrame()) {
+                if (!context.canCaptureExceptionFrame() || !context.claimFrame()) {
                     truncated = true;
+                    context.markTruncated();
                     break;
                 }
                 StackTraceElement frame = sourceFrames[index];
                 if (frame != null) {
-                    frames.add(captureFrame(frame, context));
+                    ExceptionFrameCapture.Result capturedFrame = ExceptionFrameCapture.capture(frame, context);
+                    frames.add(capturedFrame.frame());
+                    truncated |= capturedFrame.truncated();
                 }
             }
             if (sourceFrames.length > frames.size()) {
                 truncated = true;
                 context.markTruncated();
+            }
+
+            Throwable sourceCause;
+            try {
+                sourceCause = throwable.getCause();
+            } catch (Throwable failure) {
+                FailureIsolation.prepareForRecovery(failure);
+                sourceCause = null;
+                truncated = true;
+            }
+            ExceptionSnapshot cause = null;
+            if (sourceCause == throwable) {
+                truncated = true;
+                context.markTruncated();
+            } else if (sourceCause != null) {
+                cause = capture(sourceCause, context, depth + 1);
+            }
+            if (cause != null && cause.truncated()) {
+                truncated = true;
             }
 
             Throwable[] sourceSuppressed;
@@ -226,20 +258,6 @@ public final class ExceptionSnapshot {
                 context.markTruncated();
             }
 
-            Throwable sourceCause;
-            try {
-                sourceCause = throwable.getCause();
-            } catch (Throwable failure) {
-                FailureIsolation.prepareForRecovery(failure);
-                sourceCause = null;
-                truncated = true;
-            }
-            ExceptionSnapshot cause = sourceCause == null || sourceCause == throwable
-                    ? null
-                    : capture(sourceCause, context, depth + 1);
-            if (cause != null && cause.truncated()) {
-                truncated = true;
-            }
             for (ExceptionSnapshot current : suppressed) {
                 if (current.truncated()) {
                     truncated = true;
@@ -247,23 +265,10 @@ public final class ExceptionSnapshot {
                 }
             }
 
-            ExceptionSnapshot captured = new ExceptionSnapshot(type, message, frames, suppressed, cause, truncated);
-            context.completeException(throwable, captured);
-            return captured;
+            return new ExceptionSnapshot(type, message, frames, suppressed, cause, truncated);
         } finally {
             context.leaveException(throwable);
         }
-    }
-
-    private static StackTraceElement captureFrame(StackTraceElement frame, CaptureContext context) {
-        return new StackTraceElement(
-                context.captureText(frame.getClassLoaderName(), CaptureLimits.MAX_NAME_CHARS),
-                context.captureText(frame.getModuleName(), CaptureLimits.MAX_NAME_CHARS),
-                context.captureText(frame.getModuleVersion(), CaptureLimits.MAX_NAME_CHARS),
-                context.captureText(frame.getClassName(), CaptureLimits.MAX_NAME_CHARS),
-                context.captureText(frame.getMethodName(), CaptureLimits.MAX_NAME_CHARS),
-                context.captureText(frame.getFileName(), CaptureLimits.MAX_NAME_CHARS),
-                frame.getLineNumber());
     }
 
     private static ExceptionSnapshot marker(String message) {
@@ -274,10 +279,6 @@ public final class ExceptionSnapshot {
                 List.of(),
                 null,
                 true);
-    }
-
-    private static int safeLength(String value) {
-        return value == null ? 0 : value.length();
     }
 
 }

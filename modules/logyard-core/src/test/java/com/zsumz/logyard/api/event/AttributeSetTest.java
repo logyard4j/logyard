@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class AttributeSetTest {
@@ -79,6 +80,19 @@ final class AttributeSetTest {
         assertNotEquals(normalizedFirst, normalizedSecond);
         assertTrue(normalizedFirst.endsWith(".authorization"));
         assertTrue(normalizedSecond.endsWith(".authorization"));
+    }
+
+    @Test
+    void performsBoundedValidationForHostileLongKeys() {
+        String longKey = "request." + "x".repeat(2_000_000) + ".authorization";
+        AttributeSet attributes = AttributeSet.of(longKey, "secret");
+
+        assertEquals(1, attributes.size());
+        assertTrue(attributes.keyAt(0).length() <= CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
+        assertTrue(attributes.keyAt(0).endsWith(".authorization"));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> AttributeSet.of(" ".repeat(2_000_000), "rejected"));
     }
 
     private static void assertValidUtf16(String value) {

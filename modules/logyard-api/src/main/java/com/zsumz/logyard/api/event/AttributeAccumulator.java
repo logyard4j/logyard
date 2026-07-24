@@ -76,7 +76,7 @@ final class AttributeAccumulator {
             if (!context.claimEntry()) {
                 break;
             }
-            snapshotKeys[retained] = context.captureText(keys[index], CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
+            snapshotKeys[retained] = context.capturePayloadText(keys[index], CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
             snapshotValues[retained] = ValueCapture.capture(values[index], context);
             retained++;
         }

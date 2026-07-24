@@ -19,9 +19,10 @@ public final class LogEvent {
     private final ExceptionSnapshot exception;
     private final long threadId;
     private final String threadName;
-    private final int renderedMessageLimit;
     private final int remainingTraversalEntries;
-    private volatile String renderedMessage;
+    private final CaptureAllowance attributeAllowance;
+    private final boolean captureTruncated;
+    private final LazyRenderedMessage renderedMessage;
 
     /**
      * Captures one detached, bounded event.
@@ -90,27 +91,43 @@ public final class LogEvent {
         exception = captured.exception();
         threadId = captured.threadId();
         threadName = captured.threadName();
-        renderedMessageLimit = captured.renderedMessageLimit();
         remainingTraversalEntries = captured.remainingTraversalEntries();
+        attributeAllowance = captured.attributeAllowance();
+        captureTruncated = captured.captureTruncated();
+        renderedMessage = new LazyRenderedMessage(messageTemplate, arguments, captured.renderedMessageLimit());
     }
 
-    private LogEvent(LogEvent source, String eventName, String template, AttributeSet attributes) {
+    private LogEvent(LogEvent source, String eventName, String template, AttributeSet replacementAttributes) {
         timestampMillis = source.timestampMillis;
         observedTimestampUnixNanos = source.observedTimestampUnixNanos;
         level = source.level;
         loggerName = source.loggerName;
         this.eventName = CaptureLimits.name(eventName);
-        messageTemplate = CaptureLimits.text(template);
+        messageTemplate = CaptureLimits.truncate(template, CaptureLimits.MAX_EVENT_TEMPLATE_CHARS);
         arguments = source.arguments;
-        this.attributes = Objects.requireNonNull(attributes, "attributes");
         exception = source.exception;
         threadId = source.threadId;
         threadName = source.threadName;
-        renderedMessageLimit = source.renderedMessageLimit;
-        remainingTraversalEntries = source.remainingTraversalEntries;
-        if (Objects.equals(source.messageTemplate, messageTemplate)) {
-            renderedMessage = source.renderedMessage;
+        attributeAllowance = source.attributeAllowance;
+        boolean transformedTruncation = source.captureTruncated
+                || shortened(eventName, this.eventName)
+                || shortened(template, messageTemplate);
+        if (replacementAttributes == null) {
+            attributes = transformedTruncation
+                    ? source.attributes.withSystemAttribute("logyard.capture.truncated", true)
+                    : source.attributes;
+            remainingTraversalEntries = source.remainingTraversalEntries;
+            captureTruncated = transformedTruncation;
+        } else {
+            EventAttributeCapture.Result captured = EventAttributeCapture.capture(
+                    replacementAttributes,
+                    attributeAllowance,
+                    transformedTruncation);
+            attributes = captured.attributes();
+            remainingTraversalEntries = captured.remainingTraversalEntries();
+            captureTruncated = captured.truncated();
         }
+        renderedMessage = Objects.equals(source.messageTemplate, messageTemplate) ? source.renderedMessage : source.renderedMessage.rerender(messageTemplate, arguments);
     }
 
     /**
@@ -228,12 +245,16 @@ public final class LogEvent {
      * @return bounded rendered message
      */
     public String renderedMessage() {
-        String current = renderedMessage;
-        if (current == null) {
-            current = MessageFormatter.format(messageTemplate, arguments, renderedMessageLimit);
-            renderedMessage = current;
-        }
-        return current;
+        return renderedMessage.value();
+    }
+
+    /**
+     * Returns whether rendering the captured template and arguments exceeded its character allowance.
+     *
+     * @return {@code true} when the rendered message was shortened
+     */
+    public boolean renderedMessageTruncated() {
+        return renderedMessage.truncated();
     }
 
     /**
@@ -242,16 +263,14 @@ public final class LogEvent {
      * @param replacement replacement template
      * @return copied event
      */
-    public LogEvent withMessageTemplate(String replacement) { return new LogEvent(this, eventName, replacement, attributes); }
-
+    public LogEvent withMessageTemplate(String replacement) { return new LogEvent(this, eventName, replacement, null); }
     /**
      * Returns a copy with a replacement event name.
      *
      * @param replacement replacement event name
      * @return copied event
      */
-    public LogEvent withEventName(String replacement) { return new LogEvent(this, replacement, messageTemplate, attributes); }
-
+    public LogEvent withEventName(String replacement) { return new LogEvent(this, replacement, messageTemplate, null); }
     /**
      * Returns a copy with replacement attributes.
      *
@@ -259,7 +278,6 @@ public final class LogEvent {
      * @return copied event
      */
     public LogEvent withAttributes(AttributeSet replacement) { return new LogEvent(this, eventName, messageTemplate, replacement); }
-
     /**
      * Returns a copy enriched with optional name and template replacements plus added attributes.
      *
@@ -276,4 +294,7 @@ public final class LogEvent {
                 attributes.mergedWith(Objects.requireNonNull(added, "added")));
     }
 
+    private static boolean shortened(String source, String captured) {
+        return source != null && source.length() > Objects.requireNonNullElse(captured, "").length();
+    }
 }

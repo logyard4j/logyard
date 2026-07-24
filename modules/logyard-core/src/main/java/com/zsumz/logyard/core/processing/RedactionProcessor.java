@@ -65,7 +65,16 @@ public final class RedactionProcessor implements EventProcessor {
         if (matchesCandidate(path, 0)) {
             return true;
         }
-        return !leaf.isEmpty() && !leaf.equals(path) && matchesCandidate(leaf, 0);
+        if (leaf.isEmpty() || leaf.equals(path)) {
+            return false;
+        }
+        if (matchesCandidate(leaf, 0)) {
+            return true;
+        }
+        int separator = leaf.lastIndexOf('.');
+        return separator >= 0
+                && separator + 1 < leaf.length()
+                && matchesCandidate(leaf, separator + 1);
     }
 
     private boolean matchesAttribute(String key) {

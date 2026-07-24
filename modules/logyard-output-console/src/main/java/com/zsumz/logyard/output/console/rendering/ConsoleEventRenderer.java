@@ -50,9 +50,10 @@ public final class ConsoleEventRenderer {
 
     /** Renders one event and any captured exception as bounded physical lines. */
     public void render(LogEvent event, Consumer<String> output) {
-        output.accept(lineRenderer.render(event));
+        ConsoleRenderBudget budget = new ConsoleRenderBudget();
+        budget.emit(lineRenderer.render(event), output);
         if (event.exception() != null) {
-            exceptionRenderer.render(event.exception(), output);
+            exceptionRenderer.render(event.exception(), budget, output);
         }
     }
 

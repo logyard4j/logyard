@@ -35,7 +35,7 @@ final class LogyardConfigurationSourceTest {
         assertFalse(config.runtime().watch());
         assertEquals(Level.INFO, config.rootLogger().level());
         assertTrue(config.delivery().asynchronous());
-        assertEquals(16_384, config.delivery().capacity());
+        assertEquals(2_048, config.delivery().capacity());
         assertEquals(OverflowAction.DROP, config.delivery().overflow().get(Level.INFO).action());
         assertEquals(OverflowAction.STDERR, config.delivery().overflow().get(Level.WARN).action());
         assertTrue(config.delivery().overflow().get(Level.WARN).after().isZero());

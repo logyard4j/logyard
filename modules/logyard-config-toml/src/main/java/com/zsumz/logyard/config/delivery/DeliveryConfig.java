@@ -14,7 +14,7 @@ public record DeliveryConfig(
         int capacity,
         Map<Level, OverflowRuleConfig> overflow) {
     public static final int MIN_CAPACITY = 16;
-    public static final int DEFAULT_CAPACITY = 16_384;
+    public static final int DEFAULT_CAPACITY = 2_048;
     public static final int MAX_CAPACITY = 16_777_216;
 
     public DeliveryConfig {

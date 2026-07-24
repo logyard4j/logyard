@@ -85,18 +85,43 @@ final class RedactionProcessorTest {
     }
 
     @Test
-    void evaluatesSharedCapturedContainersAtEachPath() {
+    void redactsTheExpandedCopyAndLeavesSharedMarkersOpaque() {
         Map<String, String> shared = Map.of("token", "secret", "name", "shared");
         LogEvent original = event(AttributeSet.builder()
                 .put("public", shared)
                 .put("private", shared)
                 .build());
-        assertSame(original.attributes().get("public"), original.attributes().get("private"));
+        assertEquals("[shared reference]", original.attributes().get("private"));
 
-        LogEvent redacted = new RedactionProcessor(List.of("private.token")).process(original);
+        LogEvent redacted = new RedactionProcessor(List.of("public.token")).process(original);
 
-        assertEquals("secret", ((Map<?, ?>) redacted.attributes().get("public")).get("token"));
-        assertEquals("[REDACTED]", ((Map<?, ?>) redacted.attributes().get("private")).get("token"));
+        assertEquals("[REDACTED]", ((Map<?, ?>) redacted.attributes().get("public")).get("token"));
+        assertEquals("[shared reference]", redacted.attributes().get("private"));
+    }
+
+    @Test
+    void redactsTerminalSegmentsOfNestedDottedKeysCaseInsensitively() {
+        String longAuthorization = "namespace.".repeat(40) + "AuThOrIzAtIoN";
+        AttributeSet attributes = AttributeSet.builder()
+                .put("request", Map.of(
+                        "request.authorization", "dotted-secret",
+                        longAuthorization, "long-secret",
+                        "metadata.token[primary]", "bracket-secret",
+                        "display.name", "Ada"))
+                .build();
+
+        LogEvent redacted = new RedactionProcessor(
+                List.of("authorization", "token[primary]")).process(event(attributes));
+
+        Map<?, ?> request = (Map<?, ?>) redacted.attributes().get("request");
+        assertEquals("[REDACTED]", request.get("request.authorization"));
+        assertEquals("[REDACTED]", request.entrySet().stream()
+                .filter(entry -> entry.getKey().toString().endsWith(".AuThOrIzAtIoN"))
+                .findFirst()
+                .orElseThrow()
+                .getValue());
+        assertEquals("[REDACTED]", request.get("metadata.token[primary]"));
+        assertEquals("Ada", request.get("display.name"));
     }
 
     private static LogEvent event(AttributeSet attributes) {

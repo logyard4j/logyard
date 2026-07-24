@@ -270,18 +270,7 @@ public final class AttributeSet {
         }
 
         private String normalizeKey(String key) {
-            return normalizeKey(key, systemAttributesAllowed);
-        }
-
-        private static String normalizeKey(String key, boolean systemAttributesAllowed) {
-            Objects.requireNonNull(key, "attribute key");
-            if (key.isBlank()) {
-                throw new IllegalArgumentException("attribute key must not be blank");
-            }
-            if (!systemAttributesAllowed && isReservedKey(key)) {
-                throw new IllegalArgumentException("attribute keys in the logyard.* namespace are reserved");
-            }
-            return CaptureLimits.attributeKey(key);
+            return AttributeKey.normalize(key, systemAttributesAllowed);
         }
     }
 

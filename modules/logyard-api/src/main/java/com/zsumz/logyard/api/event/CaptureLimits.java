@@ -1,7 +1,14 @@
 package com.zsumz.logyard.api.event;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 /** Fixed alpha limits that make one captured event's memory use finite. */
 public final class CaptureLimits {
+    private static final int ATTRIBUTE_HASH_EDGE_CHARS = 1_024;
+    private static final int ATTRIBUTE_HASH_SAMPLES = 32;
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+
     /** Maximum positional arguments retained by one event. */
     public static final int MAX_ARGUMENTS = 64;
 
@@ -30,7 +37,34 @@ public final class CaptureLimits {
     public static final int MAX_EVENT_ENTRIES = 4_096;
 
     /** Maximum UTF-16 characters retained across all captured and rendered text in one event. */
-    public static final int MAX_EVENT_TEXT_CHARS = 262_144;
+    public static final int MAX_EVENT_TEXT_CHARS = 65_536;
+
+    /** Reserved event-wide allowance for logger, event, and thread identity. */
+    public static final int MAX_EVENT_IDENTITY_CHARS = 4_096;
+
+    /** Reserved event-wide allowance for the message template. */
+    public static final int MAX_EVENT_TEMPLATE_CHARS = 8_192;
+
+    /** Reserved event-wide allowance for the lazily rendered primary message. */
+    public static final int MAX_RENDERED_MESSAGE_CHARS = 16_384;
+
+    /** Reserved event-wide allowance for exception types, messages, and stack-frame fields. */
+    public static final int MAX_EVENT_EXCEPTION_TEXT_CHARS = 16_384;
+
+    /** Reserved portion of the exception allowance for throwable type names. */
+    public static final int MAX_EVENT_EXCEPTION_TYPE_CHARS = 2_048;
+
+    /** Reserved portion of the exception allowance for throwable messages. */
+    public static final int MAX_EVENT_EXCEPTION_MESSAGE_CHARS = 8_192;
+
+    /** Reserved portion of the exception allowance for stack-frame fields. */
+    public static final int MAX_EVENT_EXCEPTION_FRAME_CHARS = 6_144;
+
+    /** Event-wide allowance for argument, attribute, and processor-enrichment text. */
+    public static final int MAX_EVENT_PAYLOAD_TEXT_CHARS = 20_480;
+
+    /** Maximum canonical characters retained for one arbitrary-precision number. */
+    public static final int MAX_CAPTURED_NUMBER_CHARS = 2_048;
 
     /** Maximum throwable nodes captured across one event. */
     public static final int MAX_EVENT_EXCEPTION_NODES = 64;
@@ -71,8 +105,8 @@ public final class CaptureLimits {
         if (value.length() <= MAX_ATTRIBUTE_KEY_CHARS) {
             return value;
         }
-        String hash = String.format(java.util.Locale.ROOT, "%016x", stableHash(value));
-        int separator = value.lastIndexOf('.');
+        String hash = boundedHash(value);
+        int separator = lastSeparatorInBoundedSuffix(value);
         if (separator < 0 || separator == value.length() - 1) {
             return safePrefix(value, MAX_ATTRIBUTE_KEY_CHARS - 17) + '~' + hash;
         }
@@ -114,12 +148,61 @@ public final class CaptureLimits {
         return value.substring(start);
     }
 
-    private static long stableHash(String value) {
-        long hash = 0xcbf29ce484222325L;
-        for (int index = 0; index < value.length(); index++) {
-            hash ^= value.charAt(index);
-            hash *= 0x100000001b3L;
+    private static int lastSeparatorInBoundedSuffix(String value) {
+        int minimum = Math.max(0, value.length() - MAX_ATTRIBUTE_KEY_CHARS / 2);
+        for (int index = value.length() - 1; index >= minimum; index--) {
+            if (value.charAt(index) == '.') {
+                return index;
+            }
         }
-        return hash;
+        return -1;
+    }
+
+    private static String boundedHash(String value) {
+        MessageDigest digest = sha256();
+        updateInt(digest, value.length());
+        int prefixEnd = Math.min(value.length(), ATTRIBUTE_HASH_EDGE_CHARS);
+        updateRange(digest, value, 0, prefixEnd);
+        int suffixStart = Math.max(prefixEnd, value.length() - ATTRIBUTE_HASH_EDGE_CHARS);
+        updateRange(digest, value, suffixStart, value.length());
+        if (value.length() > 1) {
+            for (int sample = 0; sample < ATTRIBUTE_HASH_SAMPLES; sample++) {
+                int index = (int) ((long) sample * (value.length() - 1) / (ATTRIBUTE_HASH_SAMPLES - 1));
+                updateChar(digest, value.charAt(index));
+            }
+        }
+        byte[] hash = digest.digest();
+        char[] encoded = new char[16];
+        for (int index = 0; index < 8; index++) {
+            encoded[index * 2] = HEX[(hash[index] >>> 4) & 0xf];
+            encoded[index * 2 + 1] = HEX[hash[index] & 0xf];
+        }
+        return new String(encoded);
+    }
+
+    private static MessageDigest sha256() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new ExceptionInInitializerError(impossible);
+        }
+    }
+
+    private static void updateInt(MessageDigest digest, int value) {
+        digest.update((byte) (value >>> 24));
+        digest.update((byte) (value >>> 16));
+        digest.update((byte) (value >>> 8));
+        digest.update((byte) value);
+    }
+
+    private static void updateRange(MessageDigest digest, String value, int start, int end) {
+        for (int index = start; index < end; index++) {
+            updateChar(digest, value.charAt(index));
+        }
+    }
+
+    private static void updateChar(MessageDigest digest, char value) {
+        digest.update((byte) (value >>> 8));
+        digest.update((byte) value);
     }
 }

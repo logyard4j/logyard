@@ -2,6 +2,7 @@ package com.zsumz.logyard.output.console;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 import com.zsumz.logyard.output.console.style.BuiltInThemes;
@@ -64,7 +65,32 @@ final class ConsoleSinkTest {
         String rendered = bytes.toString(StandardCharsets.UTF_8);
         assertTrue(rendered.contains("Suppressed: java.lang.IllegalStateException: suppressed"));
         assertTrue(rendered.contains("Caused by: java.lang.IllegalArgumentException: cause"));
-        assertTrue(rendered.contains("1 common frame(s)"));
+        assertTrue(rendered.contains("1 common frame(s)"), rendered);
+    }
+
+    @Test
+    void boundsTheCompletePhysicalEventAcrossPayloadAndExceptionLines() {
+        String controls = "\u0000".repeat(CaptureLimits.MAX_EVENT_PAYLOAD_TEXT_CHARS);
+        IllegalStateException failure = new IllegalStateException(
+                "\u0000".repeat(CaptureLimits.MAX_EVENT_EXCEPTION_MESSAGE_CHARS));
+        StackTraceElement[] frames = new StackTraceElement[256];
+        for (int index = 0; index < frames.length; index++) {
+            frames[index] = new StackTraceElement(
+                    "example.Service" + index,
+                    "operation" + index,
+                    "Service.java",
+                    index);
+        }
+        failure.setStackTrace(frames);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        ConsoleSink sink = sink(bytes, false, false, null);
+
+        sink.accept(event("{}", new Object[] {controls}, AttributeSet.of("payload", controls), failure));
+
+        String rendered = bytes.toString(StandardCharsets.UTF_8);
+        assertTrue(rendered.length() <= 131_072);
+        assertTrue(rendered.contains("java.lang.IllegalStateException"));
+        assertFalse(rendered.contains("\u0000"));
     }
 
     private static ConsoleSink sink(

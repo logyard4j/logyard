@@ -1,5 +1,6 @@
 package com.zsumz.logyard.output.console.rendering;
 
+import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.output.console.style.ConsoleTheme;
 import com.zsumz.logyard.output.console.terminal.ColorCapability;
@@ -31,7 +32,7 @@ final class PrettyConsoleLineRenderer implements ConsoleLineRenderer {
         String level = pad(event.level().name(), 5);
         String logger = pad(abbreviateLogger(event.loggerName(), LOGGER_WIDTH), LOGGER_WIDTH);
 
-        StringBuilder line = new StringBuilder(192);
+        ConsoleTextBuffer line = new ConsoleTextBuffer(CaptureLimits.MAX_TEXT_CHARS);
         line.append(theme.role("timestamp").render(timestamp, colors, capability)).append(' ')
                 .append(theme.level(event.level()).render(level, colors, capability)).append(' ')
                 .append(theme.role("logger").render(logger, colors, capability)).append(' ');
@@ -39,19 +40,19 @@ final class PrettyConsoleLineRenderer implements ConsoleLineRenderer {
         line.append(ConsoleText.sanitize(event.renderedMessage()));
         appendAttributes(line, event);
         appendThread(line, event);
-        return line.toString();
+        return line.finish();
     }
 
-    private void appendEventName(StringBuilder line, LogEvent event) {
+    private void appendEventName(ConsoleTextBuffer line, LogEvent event) {
         if (event.eventName() != null && !event.eventName().isBlank()) {
             line.append(theme.role("event").render('[' + ConsoleText.sanitize(event.eventName()) + ']', colors, capability)).append(' ');
         }
     }
 
-    private void appendAttributes(StringBuilder line, LogEvent event) {
-        for (int index = 0; index < event.attributes().size(); index++) {
+    private void appendAttributes(ConsoleTextBuffer line, LogEvent event) {
+        for (int index = 0; index < event.attributes().size() && !line.full(); index++) {
             String key = ConsoleText.sanitize(event.attributes().keyAt(index));
-            String value = ConsoleText.safe(event.attributes().valueAt(index));
+            String value = ConsoleText.safe(event.attributes().valueAt(index), line.remaining());
             line.append(' ')
                     .append(theme.role("field_key").render(key, colors, capability))
                     .append('=')
@@ -59,7 +60,7 @@ final class PrettyConsoleLineRenderer implements ConsoleLineRenderer {
         }
     }
 
-    private void appendThread(StringBuilder line, LogEvent event) {
+    private void appendThread(ConsoleTextBuffer line, LogEvent event) {
         if (!event.threadName().isBlank()) {
             line.append(' ').append(
                     theme.role("thread").render("thread=" + ConsoleText.sanitize(event.threadName()), colors, capability));
