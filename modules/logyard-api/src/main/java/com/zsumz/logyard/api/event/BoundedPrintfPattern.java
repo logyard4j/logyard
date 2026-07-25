@@ -1,6 +1,7 @@
 package com.zsumz.logyard.api.event;
 
 import java.time.ZoneId;
+import java.util.DuplicateFormatFlagsException;
 import java.util.IllegalFormatPrecisionException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -43,8 +44,12 @@ final class BoundedPrintfPattern {
             boolean reusePrevious = false;
             while (cursor < pattern.length() && isFlag(pattern.charAt(cursor))) {
                 char flag = pattern.charAt(cursor++);
-                reusePrevious |= flag == '<';
-                if (flag != '<') {
+                if (flag == '<') {
+                    if (reusePrevious) {
+                        throw new DuplicateFormatFlagsException("<");
+                    }
+                    reusePrevious = true;
+                } else {
                     flags.append(flag);
                 }
             }

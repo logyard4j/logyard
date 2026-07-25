@@ -79,6 +79,10 @@ public final class AdapterBoundednessMain {
             numericJul.setParameters(new Object[] {compactExpandedDecimal});
             handler.publish(numericJul);
             system.log(System.Logger.Level.INFO, repeatedDefaultNumber, compactExpandedDecimal);
+            String nestedTemporalPattern = "{0,date," + "[".repeat(8_000) + "u}";
+            String expandingTemporalPattern = "{0,time," + "zzzz ".repeat(1_600) + "}";
+            publishMessageFormat(handler, system, "boundedness.jul.temporal.nested", nestedTemporalPattern);
+            publishMessageFormat(handler, system, "boundedness.jul.temporal.expanding", expandingTemporalPattern);
             TimeZone originalTimeZone = TimeZone.getDefault();
             TimeZone.setDefault(hostileTimeZone);
             try {
@@ -102,7 +106,7 @@ public final class AdapterBoundednessMain {
             handler.close();
         }
 
-        require(events.size() == 59, "adapter events were not delivered");
+        require(events.size() == 63, "adapter events were not delivered");
         for (LogEvent event : events) {
             require(event.renderedMessage().length() <= CaptureLimits.MAX_RENDERED_MESSAGE_CHARS, "adapter message exceeded its cap");
         }
@@ -117,9 +121,25 @@ public final class AdapterBoundednessMain {
         require(events.get(6).renderedMessage().contains("format expansion omitted"), "System.Logger recursive choice was not work-bounded");
         require(events.get(7).renderedMessage().contains("format expansion omitted"), "JUL default number expansion was not work-bounded");
         require(events.get(8).renderedMessage().contains("format expansion omitted"), "System.Logger default number expansion was not work-bounded");
-        require(events.get(9).renderedMessage().length() < 1_024, "JUL trusted time-zone rendering was not bounded");
-        require(events.get(10).renderedMessage().length() < 1_024, "System.Logger trusted time-zone rendering was not bounded");
+        require(events.get(9).renderedMessage().startsWith("{0,date,"), "JUL nested temporal pattern was not rejected");
+        require(events.get(10).renderedMessage().startsWith("{0,date,"), "System.Logger nested temporal pattern was not rejected");
+        require(events.get(11).renderedMessage().startsWith("{0,time,"), "JUL expanding temporal pattern was not rejected");
+        require(events.get(12).renderedMessage().startsWith("{0,time,"), "System.Logger expanding temporal pattern was not rejected");
+        require(events.get(13).renderedMessage().length() < 1_024, "JUL trusted time-zone rendering was not bounded");
+        require(events.get(14).renderedMessage().length() < 1_024, "System.Logger trusted time-zone rendering was not bounded");
         System.out.println("Adapter boundedness verification passed under constrained heap");
+    }
+
+    private static void publishMessageFormat(
+            LogyardHandler handler,
+            System.Logger system,
+            String loggerName,
+            String pattern) {
+        LogRecord record = new LogRecord(java.util.logging.Level.INFO, pattern);
+        record.setLoggerName(loggerName);
+        record.setParameters(new Object[] {new Date(0L)});
+        handler.publish(record);
+        system.log(System.Logger.Level.INFO, pattern, new Date(0L));
     }
 
     private static void verifyConcurrentRepeatedSubstitutions(LogyardHandler handler, System.Logger system) {

@@ -22,6 +22,9 @@ final class QuarkusTemporalSafetyTest {
         ExtLogRecord messageFormat = record(
                 "{0,time,full} {0,date,full}",
                 ExtLogRecord.FormatStyle.MESSAGE_FORMAT);
+        ExtLogRecord customMessageFormat = record(
+                "{0,date," + "[".repeat(8_000) + "u}",
+                ExtLogRecord.FormatStyle.MESSAGE_FORMAT);
         ExtLogRecord printf = record("%1$tZ %1$tc", ExtLogRecord.FormatStyle.PRINTF);
         ExtLogRecord display = record("%s", ExtLogRecord.FormatStyle.PRINTF);
         HostileTimeZone hostile = new HostileTimeZone();
@@ -31,16 +34,18 @@ final class QuarkusTemporalSafetyTest {
         try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
             QuarkusEventMapper mapper = new QuarkusEventMapper(ContextPolicySnapshot::all);
             mapper.publish(runtime, messageFormat);
+            mapper.publish(runtime, customMessageFormat);
             mapper.publish(runtime, printf);
             mapper.publish(runtime, display);
         } finally {
             TimeZone.setDefault(original);
         }
 
-        assertEquals(3, events.size());
+        assertEquals(4, events.size());
         assertTrue(events.get(0).renderedMessage().length() < 1_024);
-        assertTrue(events.get(1).renderedMessage().length() < 1_024);
-        assertEquals("Thu Jan 01 00:00:00 UTC 1970", events.get(2).renderedMessage());
+        assertTrue(events.get(1).renderedMessage().startsWith("{0,date,"));
+        assertTrue(events.get(2).renderedMessage().length() < 1_024);
+        assertEquals("Thu Jan 01 00:00:00 UTC 1970", events.get(3).renderedMessage());
         assertEquals(1, hostile.cloneCalls.get());
         assertEquals(0, hostile.behaviorCalls.get());
     }

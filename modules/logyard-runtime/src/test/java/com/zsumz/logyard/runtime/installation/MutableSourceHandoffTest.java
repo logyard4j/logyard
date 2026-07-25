@@ -103,7 +103,7 @@ final class MutableSourceHandoffTest {
     }
 
     @Test
-    void queuedWatcherEventOverlappingHandoffIsAppliedAfterActivation() throws Exception {
+    void catchUpChangeOverlappingHandoffIsCommittedBeforeActivation() throws Exception {
         TestGlobal global = new TestGlobal();
         RuntimeInstallationManager manager = new RuntimeInstallationManager(global, ignored -> true, Map::of);
         RuntimeInstallationLease application =
@@ -122,8 +122,8 @@ final class MutableSourceHandoffTest {
 
             try (RuntimeInstallationLease framework = handoff.get(2L, TimeUnit.SECONDS)) {
                 assertTrue(framework.watchesConfiguration());
-                awaitTrue(logger::isDebugEnabled, "queued watcher event was not applied after handoff");
-                assertTrue(snapshots.reads.get() >= 3, "queued watcher event did not trigger a reload read");
+                assertTrue(logger.isDebugEnabled(), "caught-up configuration was not committed during handoff");
+                assertEquals(5, snapshots.reads.get(), "handoff did not perform one bounded stabilization retry");
             }
         } finally {
             snapshots.allowSecondReadReturn.countDown();
@@ -255,13 +255,4 @@ final class MutableSourceHandoffTest {
         }
     }
 
-    private static void awaitTrue(java.util.function.BooleanSupplier condition, String failure) throws InterruptedException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2L);
-        while (!condition.getAsBoolean()) {
-            if (System.nanoTime() >= deadline) {
-                throw new AssertionError(failure);
-            }
-            Thread.sleep(5L);
-        }
-    }
 }

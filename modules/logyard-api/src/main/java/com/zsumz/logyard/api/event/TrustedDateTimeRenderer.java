@@ -26,6 +26,10 @@ final class TrustedDateTimeRenderer {
                 .format(temporal(value, type.isEmpty() ? 't' : type.charAt(0), zone));
     }
 
+    static void requireSupportedMessageStyle(String style) {
+        localizedStyle(style);
+    }
+
     static String printf(Object value, char suffix, Locale locale, ZoneId zone) {
         long epochMillis = epochMillis(value, suffix);
         return printf(epochMillis, temporal(epochMillis, zone), suffix, locale);
@@ -71,9 +75,6 @@ final class TrustedDateTimeRenderer {
 
     private static DateTimeFormatter messageFormatter(String type, String style, Locale locale) {
         FormatStyle localizedStyle = localizedStyle(style);
-        if (localizedStyle == null) {
-            return DateTimeFormatter.ofPattern(style, locale);
-        }
         return switch (type.toLowerCase(Locale.ROOT)) {
             case "time" -> DateTimeFormatter.ofLocalizedTime(localizedStyle).withLocale(locale);
             case "datetime" -> DateTimeFormatter.ofLocalizedDateTime(localizedStyle).withLocale(locale);
@@ -87,7 +88,8 @@ final class TrustedDateTimeRenderer {
             case "short" -> FormatStyle.SHORT;
             case "long" -> FormatStyle.LONG;
             case "full" -> FormatStyle.FULL;
-            default -> null;
+            default -> throw new IllegalArgumentException(
+                    "custom date/time styles are not supported by bounded adapter formatting");
         };
     }
 

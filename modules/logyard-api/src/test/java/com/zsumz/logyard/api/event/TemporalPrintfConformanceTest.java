@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.DuplicateFormatFlagsException;
 import java.util.IllegalFormatPrecisionException;
 import java.util.List;
 import java.util.Locale;
@@ -80,6 +81,16 @@ final class TemporalPrintfConformanceTest {
         assertThrows(IllegalFormatPrecisionException.class, () -> String.format(Locale.US, "%.2tH", value));
         for (String pattern : List.of("%.2tH", "%#tH", "%0tH", "%-tH")) {
             assertTrue(BoundedMessageFormat.printf(pattern, new Object[] {value}).formatFailed(), pattern);
+        }
+    }
+
+    @Test
+    void duplicateReuseFlagsMatchFormatterFailureForOrdinaryAndTemporalConversions() {
+        for (String pattern : List.of("%1$s %<<s", "%1$tH %<<tH")) {
+            assertThrows(
+                    DuplicateFormatFlagsException.class,
+                    () -> String.format(Locale.US, pattern, new Date(0L)));
+            assertTrue(BoundedMessageFormat.printf(pattern, new Object[] {new Date(0L)}).formatFailed(), pattern);
         }
     }
 

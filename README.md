@@ -173,6 +173,8 @@ try (RuntimeBundle logyard = LogyardBootstrap.start()) {
 
 Closing `RuntimeBundle` releases that owner’s lease. Configuration watching, buffered delivery, outputs, and the process-global `Logyard` reference are closed only when the final ownership lease is released.
 
+JUL, `System.Logger`, and Quarkus `MESSAGE_FORMAT` records use bounded `MessageFormat` rendering. Exact `Date` values and epoch-millisecond `Long` values render in deterministic UTC with proleptic-Gregorian semantics. Date/time elements support only the localized `short`, `medium`, `long`, and `full` styles; custom `SimpleDateFormat` patterns are rejected and the original template is retained. Temporal `printf` conversions follow the same UTC and safe-value policy.
+
 ## Event model
 
 Every accepted event has a timestamp, level, logger name, message template and arguments, structured attributes, resource metadata, thread metadata, and an optional captured exception. Outputs receive the same immutable event.
@@ -284,7 +286,9 @@ reload_debounce = "250ms"
 internal_status = "warn"
 ```
 
-A reload reads and parses a complete candidate configuration, assembles its resources, and publishes the new routing plan atomically. Invalid candidates are rejected while the current runtime remains active. An unchanged file is ignored.
+A reload reads and parses a complete candidate configuration, assembles its resources, and publishes the new routing plan atomically. Invalid candidates are rejected while the current runtime remains active. Periodic reconciliation may reread the source, but an unchanged rejected digest is not reparsed or reported again. An unchanged active file is ignored.
+
+Initial installation and framework handoff stabilize a reloadable source before commit so the active routing plan, watcher state, debounce, shutdown timeout, and internal diagnostics all come from one snapshot. If the source keeps changing through eight preparation attempts, installation fails explicitly instead of publishing a knowingly stale policy.
 
 Levels, routes, processors, context policy, and outputs may be added or removed at runtime. An existing file output holds an exclusive path lock; changing that output's path identity, buffering, rotation, encoder, delivery, or other resource-owning settings at the same path is rejected and requires a process restart. This prevents a reload from briefly running two writers against one file.
 

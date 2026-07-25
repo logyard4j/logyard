@@ -25,6 +25,7 @@ public final class ReloadCoordinator {
     private final Map<String, String> environment;
     private ConfigurationSnapshot snapshot;
     private RuntimeAssembly assembly;
+    private String rejectedDigest;
 
     public ReloadCoordinator(
             Path source,
@@ -87,15 +88,15 @@ public final class ReloadCoordinator {
     }
 
     public synchronized ReloadResult reloadIfChanged() {
-        return reload().publicResult();
+        return reload(false).publicResult();
     }
 
     /** Reloads for a file watcher while preserving whether a rejection is transient or candidate-specific. */
     public synchronized WatcherReloadOutcome reloadForWatcher() {
-        return reload();
+        return reload(true);
     }
 
-    private WatcherReloadOutcome reload() {
+    private WatcherReloadOutcome reload(boolean suppressKnownRejection) {
         ConfigurationSnapshot candidateSnapshot;
         try {
             candidateSnapshot = snapshotReader.read();
@@ -107,8 +108,12 @@ public final class ReloadCoordinator {
             return WatcherReloadOutcome.WAIT_FOR_CHANGE;
         }
         if (candidateSnapshot.sameContent(snapshot)) {
+            rejectedDigest = null;
             unchanged();
             return WatcherReloadOutcome.UNCHANGED;
+        }
+        if (suppressKnownRejection && candidateSnapshot.sha256().equals(rejectedDigest)) {
+            return WatcherReloadOutcome.WAIT_FOR_CHANGE;
         }
 
         RuntimeAssembly candidate = null;
@@ -123,6 +128,7 @@ public final class ReloadCoordinator {
             assembly = candidate;
             snapshot = candidateSnapshot;
             LogyardRuntimeFactory.attach(runtime, candidate);
+            rejectedDigest = null;
             applied(previousDigest, candidateSnapshot.sha256());
             return WatcherReloadOutcome.APPLIED;
         } catch (RuntimeReloadDeferredException reloadDeferred) {
@@ -135,6 +141,7 @@ public final class ReloadCoordinator {
             if (candidate != null) {
                 candidate.closeCandidateOutputs(assembly, reloadFailure);
             }
+            rejectedDigest = candidateSnapshot.sha256();
             rejected(reloadFailure);
             return WatcherReloadOutcome.WAIT_FOR_CHANGE;
         }

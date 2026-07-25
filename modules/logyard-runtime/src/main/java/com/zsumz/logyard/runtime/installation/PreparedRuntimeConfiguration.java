@@ -18,6 +18,8 @@ import java.util.function.Supplier;
 
 /** Registration-first configuration candidate that owns its watcher and assembled resources until commit. */
 final class PreparedRuntimeConfiguration {
+    private static final int MAX_STABILIZATION_ATTEMPTS = 8;
+
     private final ConfigurationInstallationRequest request;
     private final ConfigurationSnapshot snapshot;
     private final RuntimeAssembly assembly;
@@ -49,52 +51,70 @@ final class PreparedRuntimeConfiguration {
             RuntimeAssembly currentAssembly,
             Map<String, String> environment,
             Supplier<WatcherReloadOutcome> reload) {
-        ConfigurationWatchRegistration registration = null;
-        ConfigurationWatcher watcher = null;
-        ConfigurationWatcherPolicy watcherPolicy = null;
-        RuntimeAssembly assembly = null;
-        try {
-            ConfigurationWatchHandshake.Selection selection =
-                    ConfigurationWatchHandshake.select(request, initialSnapshot, environment);
-            registration = selection.registration();
-            ConfigurationSnapshot selectedSnapshot = selection.snapshot();
-            LogyardConfig selectedConfig = selection.config();
+        ConfigurationSnapshot candidateSnapshot = initialSnapshot;
+        for (int attempt = 1; attempt <= MAX_STABILIZATION_ATTEMPTS; attempt++) {
+            ConfigurationWatchRegistration registration = null;
+            ConfigurationWatcher watcher = null;
+            ConfigurationWatcherPolicy watcherPolicy = null;
+            RuntimeAssembly assembly = null;
+            try {
+                ConfigurationWatchHandshake.Selection selection =
+                        ConfigurationWatchHandshake.select(request, candidateSnapshot, environment);
+                registration = selection.registration();
+                ConfigurationSnapshot selectedSnapshot = selection.snapshot();
+                LogyardConfig selectedConfig = selection.config();
 
-            ReloadDiagnostics diagnostics = diagnostics(selectedConfig);
-            if (registration != null && selectedConfig.runtime().watch()) {
-                watcherPolicy = new ConfigurationWatcherPolicy(
-                        selectedConfig.runtime().reloadDebounce(),
-                        selectedConfig.runtime().shutdownTimeout(),
-                        diagnostics);
-                watcher = ConfigurationWatcher.prepare(
-                        registration,
-                        watcherPolicy.debounce(),
-                        watcherPolicy.closeTimeout(),
-                        reload,
-                        watcherPolicy.diagnostics());
-                ConfigurationWatcherCatchUp.markDirtyIfChanged(watcher, selectedSnapshot.sha256(), request);
+                ReloadDiagnostics diagnostics = diagnostics(selectedConfig);
+                if (registration != null && selectedConfig.runtime().watch()) {
+                    watcherPolicy = new ConfigurationWatcherPolicy(
+                            selectedConfig.runtime().reloadDebounce(),
+                            selectedConfig.runtime().shutdownTimeout(),
+                            diagnostics);
+                    watcher = ConfigurationWatcher.prepare(
+                            registration,
+                            watcherPolicy.debounce(),
+                            watcherPolicy.closeTimeout(),
+                            reload,
+                            watcherPolicy.diagnostics());
+                    registration = null;
+                } else {
+                    closeRegistration(registration);
+                    registration = null;
+                }
+                assembly = LogyardRuntimeFactory.assemble(selectedConfig, currentAssembly);
+                ConfigurationSnapshot catchUpSnapshot = catchUpSnapshot(request, selectedSnapshot);
+                if (catchUpSnapshot.sameContent(selectedSnapshot)) {
+                    return new PreparedRuntimeConfiguration(
+                            request,
+                            selectedSnapshot,
+                            assembly,
+                            diagnostics,
+                            watcher,
+                            watcherPolicy,
+                            environment);
+                }
+
+                IllegalStateException restart = new IllegalStateException(
+                        "Logyard configuration changed during preparation attempt " + attempt);
+                closeAttempt(registration, watcher, assembly, currentAssembly, restart);
                 registration = null;
-            } else {
-                closeRegistration(registration);
-                registration = null;
+                watcher = null;
+                assembly = null;
+                if (restart.getSuppressed().length > 0) {
+                    throw restart;
+                }
+                candidateSnapshot = catchUpSnapshot;
+                if (attempt == MAX_STABILIZATION_ATTEMPTS) {
+                    throw new IllegalStateException(
+                            "Logyard configuration did not stabilize after " + MAX_STABILIZATION_ATTEMPTS
+                                    + " preparation attempts: " + request.description());
+                }
+            } catch (RuntimeException | Error failure) {
+                closeAttempt(registration, watcher, assembly, currentAssembly, failure);
+                throw failure;
             }
-            assembly = LogyardRuntimeFactory.assemble(selectedConfig, currentAssembly);
-            return new PreparedRuntimeConfiguration(
-                    request,
-                    selectedSnapshot,
-                    assembly,
-                    diagnostics,
-                    watcher,
-                    watcherPolicy,
-                    environment);
-        } catch (RuntimeException | Error failure) {
-            closeRegistration(registration, failure);
-            closeWatcher(watcher, failure);
-            if (assembly != null) {
-                assembly.closeCandidateOutputs(currentAssembly, failure);
-            }
-            throw failure;
         }
+        throw new IllegalStateException("unreachable configuration stabilization state");
     }
 
     static ConfigurationSnapshot read(ConfigurationInstallationRequest request) {
@@ -149,6 +169,25 @@ final class PreparedRuntimeConfiguration {
         return "off".equals(config.runtime().internalStatus())
                 ? ReloadDiagnostics.silent()
                 : new StderrReloadDiagnostics(System.err);
+    }
+
+    private static ConfigurationSnapshot catchUpSnapshot(
+            ConfigurationInstallationRequest request,
+            ConfigurationSnapshot selectedSnapshot) {
+        return request.reloadable() ? read(request) : selectedSnapshot;
+    }
+
+    private static void closeAttempt(
+            ConfigurationWatchRegistration registration,
+            ConfigurationWatcher watcher,
+            RuntimeAssembly assembly,
+            RuntimeAssembly currentAssembly,
+            Throwable failure) {
+        closeRegistration(registration, failure);
+        closeWatcher(watcher, failure);
+        if (assembly != null) {
+            assembly.closeCandidateOutputs(currentAssembly, failure);
+        }
     }
 
     private static void closeWatcher(ConfigurationWatcher watcher, Throwable failure) {

@@ -48,12 +48,18 @@ final class TrustedDateTimeFormattingTest {
     }
 
     @Test
-    void customDatePatternsUseTheDocumentedSafeJavaTimeDialect() {
-        BoundedMessageFormat.Result result =
-                BoundedMessageFormat.messageFormat("{0,date,S}", new Object[] {new Date(123L)});
+    void customDatePatternsTakeTheBoundedFormatFailurePathBeforeFormatterConstruction() {
+        for (String pattern : new String[] {
+                "{0,date,u}",
+                "{0,date," + "[".repeat(8_000) + "u}",
+                "{0,time," + "zzzz ".repeat(1_600) + "}"
+        }) {
+            BoundedMessageFormat.Result result =
+                    BoundedMessageFormat.messageFormat(pattern, new Object[] {new Date(123L)});
 
-        assertEquals("1", result.message());
-        assertFalse(result.formatFailed());
+            assertEquals(pattern, result.message());
+            assertTrue(result.formatFailed(), pattern);
+        }
     }
 
     @Test

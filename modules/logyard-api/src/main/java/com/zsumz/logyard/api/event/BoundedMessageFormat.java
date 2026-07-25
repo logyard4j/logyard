@@ -15,9 +15,9 @@ import java.util.IllegalFormatException;
  * and arbitrary-precision numbers whose expanded decimal form would exceed the capture budget are
  * represented by their bounded scientific form. Legacy {@link java.util.Date} and epoch-millisecond
  * {@link Long} temporal conversions use a deterministic UTC, proleptic-Gregorian policy; no adapter
- * formatting path consults the process-default {@link java.util.TimeZone}. Standard date/time styles
- * retain their localized meaning; custom date/time styles use {@link java.time.format.DateTimeFormatter}
- * pattern semantics.</p>
+ * formatting path consults the process-default {@link java.util.TimeZone}. Date/time elements accept
+ * only the localized {@code short}, {@code medium}, {@code long}, and {@code full} styles; custom
+ * temporal patterns take the bounded format-failure path.</p>
  */
 @InternalApi
 public final class BoundedMessageFormat {

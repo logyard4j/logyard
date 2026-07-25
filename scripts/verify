@@ -130,7 +130,7 @@ run_bounded "$JAVA" -Xmx64m -cp "$PRODUCT_CP:$ADAPTER_CP:$TARGET/integration" \
   com.zsumz.logyard.tests.AdversarialBoundednessMain
 compile_sources "$TARGET/adapter-boundedness" "$PRODUCT_CP:$ADAPTER_CP" \
   "$ROOT/scripts/verify-support/adapter-boundedness-src"
-run_bounded "$JAVA" -Xmx64m -cp "$PRODUCT_CP:$ADAPTER_CP:$TARGET/adapter-boundedness" \
+run_bounded "$JAVA" -Xmx64m -Xss256k -cp "$PRODUCT_CP:$ADAPTER_CP:$TARGET/adapter-boundedness" \
   com.zsumz.logyard.verify.AdapterBoundednessMain
 
 phase "Compile and run JUnit tests"

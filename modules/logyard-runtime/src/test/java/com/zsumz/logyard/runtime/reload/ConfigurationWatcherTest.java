@@ -129,7 +129,7 @@ final class ConfigurationWatcherTest {
     }
 
     @Test
-    void invalidCandidateIsReportedOnceAndWaitsForAnotherFileEvent() throws Exception {
+    void invalidCandidateIsNotRetriedBeforeReconciliationOrAnotherFileEvent() throws Exception {
         Path directory = Files.createTempDirectory("logyard-invalid-configuration-watcher-");
         Path source = directory.resolve("logyard.toml");
         Files.writeString(source, "schema = 1\n", StandardCharsets.UTF_8);
@@ -153,7 +153,7 @@ final class ConfigurationWatcherTest {
         try {
             Files.writeString(source, "invalid = true\n", StandardCharsets.UTF_8);
             assertTrue(firstAttempt.await(5L, TimeUnit.SECONDS), "invalid configuration was not observed");
-            assertFalse(unexpectedRetry.await(300L, TimeUnit.MILLISECONDS), "invalid configuration retried without another event");
+            assertFalse(unexpectedRetry.await(300L, TimeUnit.MILLISECONDS), "invalid configuration retried before reconciliation");
             assertEquals(1, attempts.get());
         } finally {
             watcher.close();

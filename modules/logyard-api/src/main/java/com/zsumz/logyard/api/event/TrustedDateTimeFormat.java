@@ -16,6 +16,7 @@ final class TrustedDateTimeFormat extends Format {
     private final ZoneId zone;
 
     TrustedDateTimeFormat(String type, String style, Locale locale, ZoneId zone) {
+        TrustedDateTimeRenderer.requireSupportedMessageStyle(style);
         this.type = type;
         this.style = style;
         this.locale = locale;
