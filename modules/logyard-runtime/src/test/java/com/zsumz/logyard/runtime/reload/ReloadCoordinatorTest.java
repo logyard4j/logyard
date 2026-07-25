@@ -66,7 +66,7 @@ final class ReloadCoordinatorTest {
             Files.writeString(fixture.source(), fixture.config("debug", "4KiB")
                     + "\ninvalid_key = true\n", StandardCharsets.UTF_8);
 
-            assertEquals(WatcherReloadOutcome.WAIT_FOR_CHANGE, harness.coordinator().reloadForWatcher());
+            assertEquals(WatcherReloadOutcome.INVALID_CANDIDATE, harness.coordinator().reloadForWatcher());
             assertEquals(Level.INFO, harness.coordinator().currentConfig().rootLogger().level());
         }
     }
@@ -221,6 +221,7 @@ final class ReloadCoordinatorTest {
             ConfigurationSnapshot snapshot = ConfigurationSnapshot.read(fixture.source());
             LogyardConfig config = snapshot.parse(Map.of());
             RuntimeAssembly assembly = LogyardRuntimeFactory.assemble(config, null);
+            assembly.activateCandidateOutputs();
             DefaultLogyardRuntime runtime = new DefaultLogyardRuntime(assembly.plan());
             LogyardRuntimeFactory.attach(runtime, assembly);
             return new ReloadHarness(

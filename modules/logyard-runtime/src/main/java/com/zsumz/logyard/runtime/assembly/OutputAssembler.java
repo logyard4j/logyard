@@ -22,21 +22,26 @@ final class OutputAssembler {
         Objects.requireNonNull(extensions, "extensions");
         Map<String, EventSink> sinks = new LinkedHashMap<>();
         Map<String, OutputBinding> bindings = new LinkedHashMap<>();
-        List<EventSink> created = new ArrayList<>();
+        List<OutputPreparation> created = new ArrayList<>();
         try {
             for (OutputConfig output : config.outputs().values()) {
                 OutputSignature signature = OutputSignatures.from(config, output);
                 Path exclusivePath = OutputSignatures.exclusivePath(output);
                 OutputBinding existing = current == null ? null : current.binding(output.name());
-                EventSink sink = reusable(existing, signature)
-                        ? existing.sink()
-                        : create(config, current, output, exclusivePath, extensions, created);
+                EventSink sink;
+                if (reusable(existing, signature)) {
+                    sink = existing.sink();
+                } else {
+                    OutputPreparation preparation = create(config, current, output, exclusivePath, extensions);
+                    created.add(preparation);
+                    sink = preparation.sink();
+                }
                 sinks.put(output.name(), sink);
                 bindings.put(output.name(), new OutputBinding(sink, signature, exclusivePath));
             }
-            return new AssembledOutputs(sinks, bindings, created);
+            return new AssembledOutputs(sinks, bindings, new OutputCandidateSet(created));
         } catch (RuntimeException | Error failure) {
-            EventSinkCleanup.close(created, failure);
+            new OutputCandidateSet(created).close(failure);
             throw failure;
         }
     }
@@ -45,17 +50,14 @@ final class OutputAssembler {
         return existing != null && existing.signature().equals(signature);
     }
 
-    private static EventSink create(
+    private static OutputPreparation create(
             LogyardConfig config,
             RuntimeAssembly current,
             OutputConfig output,
             Path exclusivePath,
-            ExtensionRegistry extensions,
-            List<EventSink> created) {
+            ExtensionRegistry extensions) {
         verifyExclusivePathAvailable(current, output, exclusivePath);
-        EventSink sink = OutputFactory.create(config, output, extensions);
-        created.add(sink);
-        return sink;
+        return OutputFactory.prepare(config, output, extensions);
     }
 
     private static void verifyExclusivePathAvailable(RuntimeAssembly current, OutputConfig output, Path exclusivePath) {

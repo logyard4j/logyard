@@ -1,13 +1,11 @@
 package com.zsumz.logyard.runtime.installation;
 
-import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
+import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
-import com.zsumz.logyard.runtime.diagnostics.StderrReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
-import com.zsumz.logyard.runtime.reload.ConfigurationWatchRegistration;
 import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
 import com.zsumz.logyard.runtime.reload.ReloadCoordinator;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
@@ -18,8 +16,6 @@ import java.util.function.Supplier;
 
 /** Registration-first configuration candidate that owns its watcher and assembled resources until commit. */
 final class PreparedRuntimeConfiguration {
-    private static final int MAX_STABILIZATION_ATTEMPTS = 8;
-
     private final ConfigurationInstallationRequest request;
     private final ConfigurationSnapshot snapshot;
     private final RuntimeAssembly assembly;
@@ -51,70 +47,22 @@ final class PreparedRuntimeConfiguration {
             RuntimeAssembly currentAssembly,
             Map<String, String> environment,
             Supplier<WatcherReloadOutcome> reload) {
-        ConfigurationSnapshot candidateSnapshot = initialSnapshot;
-        for (int attempt = 1; attempt <= MAX_STABILIZATION_ATTEMPTS; attempt++) {
-            ConfigurationWatchRegistration registration = null;
-            ConfigurationWatcher watcher = null;
-            ConfigurationWatcherPolicy watcherPolicy = null;
-            RuntimeAssembly assembly = null;
-            try {
-                ConfigurationWatchHandshake.Selection selection =
-                        ConfigurationWatchHandshake.select(request, candidateSnapshot, environment);
-                registration = selection.registration();
-                ConfigurationSnapshot selectedSnapshot = selection.snapshot();
-                LogyardConfig selectedConfig = selection.config();
-
-                ReloadDiagnostics diagnostics = diagnostics(selectedConfig);
-                if (registration != null && selectedConfig.runtime().watch()) {
-                    watcherPolicy = new ConfigurationWatcherPolicy(
-                            selectedConfig.runtime().reloadDebounce(),
-                            selectedConfig.runtime().shutdownTimeout(),
-                            diagnostics);
-                    watcher = ConfigurationWatcher.prepare(
-                            registration,
-                            watcherPolicy.debounce(),
-                            watcherPolicy.closeTimeout(),
-                            reload,
-                            watcherPolicy.diagnostics());
-                    registration = null;
-                } else {
-                    closeRegistration(registration);
-                    registration = null;
-                }
-                assembly = LogyardRuntimeFactory.assemble(selectedConfig, currentAssembly);
-                ConfigurationSnapshot catchUpSnapshot = catchUpSnapshot(request, selectedSnapshot);
-                if (catchUpSnapshot.sameContent(selectedSnapshot)) {
-                    return new PreparedRuntimeConfiguration(
-                            request,
-                            selectedSnapshot,
-                            assembly,
-                            diagnostics,
-                            watcher,
-                            watcherPolicy,
-                            environment);
-                }
-
-                IllegalStateException restart = new IllegalStateException(
-                        "Logyard configuration changed during preparation attempt " + attempt);
-                closeAttempt(registration, watcher, assembly, currentAssembly, restart);
-                registration = null;
-                watcher = null;
-                assembly = null;
-                if (restart.getSuppressed().length > 0) {
-                    throw restart;
-                }
-                candidateSnapshot = catchUpSnapshot;
-                if (attempt == MAX_STABILIZATION_ATTEMPTS) {
-                    throw new IllegalStateException(
-                            "Logyard configuration did not stabilize after " + MAX_STABILIZATION_ATTEMPTS
-                                    + " preparation attempts: " + request.description());
-                }
-            } catch (RuntimeException | Error failure) {
-                closeAttempt(registration, watcher, assembly, currentAssembly, failure);
-                throw failure;
-            }
+        StabilizedConfiguration stable =
+                ConfigurationSnapshotStabilizer.stabilize(request, initialSnapshot, environment, reload);
+        try {
+            RuntimeAssembly assembly = LogyardRuntimeFactory.assemble(stable.config(), currentAssembly);
+            return new PreparedRuntimeConfiguration(
+                    request,
+                    stable.snapshot(),
+                    assembly,
+                    stable.diagnostics(),
+                    stable.watcher(),
+                    stable.watcherPolicy(),
+                    environment);
+        } catch (RuntimeException | Error failure) {
+            stable.closeWatcher(failure);
+            throw failure;
         }
-        throw new IllegalStateException("unreachable configuration stabilization state");
     }
 
     static ConfigurationSnapshot read(ConfigurationInstallationRequest request) {
@@ -153,6 +101,10 @@ final class PreparedRuntimeConfiguration {
         return new ActiveRuntimeConfiguration(request, coordinator, diagnostics, watcher);
     }
 
+    void activateOutputs() {
+        assembly.activateCandidateOutputs();
+    }
+
     RuntimeAssembly assembly() {
         return assembly;
     }
@@ -163,31 +115,6 @@ final class PreparedRuntimeConfiguration {
 
     void closeWatcher(Throwable failure) {
         closeWatcher(watcher, failure);
-    }
-
-    private static ReloadDiagnostics diagnostics(LogyardConfig config) {
-        return "off".equals(config.runtime().internalStatus())
-                ? ReloadDiagnostics.silent()
-                : new StderrReloadDiagnostics(System.err);
-    }
-
-    private static ConfigurationSnapshot catchUpSnapshot(
-            ConfigurationInstallationRequest request,
-            ConfigurationSnapshot selectedSnapshot) {
-        return request.reloadable() ? read(request) : selectedSnapshot;
-    }
-
-    private static void closeAttempt(
-            ConfigurationWatchRegistration registration,
-            ConfigurationWatcher watcher,
-            RuntimeAssembly assembly,
-            RuntimeAssembly currentAssembly,
-            Throwable failure) {
-        closeRegistration(registration, failure);
-        closeWatcher(watcher, failure);
-        if (assembly != null) {
-            assembly.closeCandidateOutputs(currentAssembly, failure);
-        }
     }
 
     private static void closeWatcher(ConfigurationWatcher watcher, Throwable failure) {
@@ -201,20 +128,4 @@ final class PreparedRuntimeConfiguration {
         }
     }
 
-    private static void closeRegistration(ConfigurationWatchRegistration registration) {
-        if (registration != null) {
-            registration.close();
-        }
-    }
-
-    private static void closeRegistration(ConfigurationWatchRegistration registration, Throwable failure) {
-        if (registration == null) {
-            return;
-        }
-        try {
-            registration.close();
-        } catch (RuntimeException closeFailure) {
-            failure.addSuppressed(closeFailure);
-        }
-    }
 }

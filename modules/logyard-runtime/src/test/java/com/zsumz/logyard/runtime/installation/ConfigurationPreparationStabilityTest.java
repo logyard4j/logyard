@@ -60,7 +60,7 @@ final class ConfigurationPreparationStabilityTest {
                 PreparedRuntimeConfiguration.read(request),
                 null,
                 Map.of(),
-                () -> WatcherReloadOutcome.WAIT_FOR_CHANGE);
+                () -> WatcherReloadOutcome.INVALID_CANDIDATE);
         IllegalStateException cleanup = new IllegalStateException("test cleanup");
         try {
             assertEquals(Duration.ofMillis(10L), prepared.watcherPolicy().debounce());
@@ -82,6 +82,21 @@ final class ConfigurationPreparationStabilityTest {
         try (RuntimeInstallationLease lease = manager().acquireApplication(snapshots.request())) {
             LogyardLogger logger = lease.runtime().logger("example.Service");
             assertTrue(logger.isDebugEnabled());
+            assertEquals(5, snapshots.reads());
+        }
+    }
+
+    @Test
+    void discardedSnapshotCannotTruncateItsConfiguredFileOutput() throws Exception {
+        Path output = Files.createTempDirectory("logyard-stabilization-output-").resolve("events.jsonl");
+        Files.writeString(output, "KEEP-ME\n", StandardCharsets.UTF_8);
+        String provisional = fileConfig(output);
+        String caughtUp = config("info", false, "25ms");
+        ScriptedSnapshots snapshots = ScriptedSnapshots.sequence(provisional, provisional, caughtUp, caughtUp, caughtUp);
+
+        try (RuntimeInstallationLease lease = manager().acquireApplication(snapshots.request())) {
+            assertFalse(lease.watchesConfiguration());
+            assertEquals("KEEP-ME\n", Files.readString(output, StandardCharsets.UTF_8));
             assertEquals(5, snapshots.reads());
         }
     }
@@ -163,6 +178,26 @@ final class ConfigurationPreparationStabilityTest {
                 stream = "stderr"
                 color = { mode = "never" }
                 """.formatted(watch, debounce, shutdownTimeout, internalStatus, level);
+    }
+
+    private static String fileConfig(Path output) {
+        return """
+                schema = 1
+                [runtime]
+                watch = false
+                shutdown_timeout = "2s"
+                internal_status = "off"
+                [delivery]
+                mode = "sync"
+                capacity = 16
+                [loggers]
+                root = { level = "info", outputs = ["json"] }
+                [outputs.json]
+                type = "file"
+                path = "%s"
+                append = false
+                flush = "0s"
+                """.formatted(output);
     }
 
     private static final class ScriptedSnapshots {

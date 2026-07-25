@@ -3,29 +3,24 @@ package com.zsumz.logyard.runtime.reload;
 import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
-import com.zsumz.logyard.core.runtime.RuntimeReloadDeferredException;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
 
-/** Serializes parse, assembly, publication, registry update, and rollback. */
+/** Coordinates a generation-checked, two-phase reload without holding a monitor across extension or I/O work. */
 public final class ReloadCoordinator {
     private final String sourceDescription;
     private final Path legacyFileSource;
-    private final ConfigurationSnapshotReader snapshotReader;
     private final DefaultLogyardRuntime runtime;
     private final RuntimePlanPublisher planPublisher;
     private final ReloadDiagnosticBoundary diagnostics;
-    private final Map<String, String> environment;
-    private ConfigurationSnapshot snapshot;
-    private RuntimeAssembly assembly;
-    private String rejectedDigest;
+    private final ReloadCandidatePreparer candidates;
+    private final ReloadState state;
+    private final RejectedSnapshotMemo rejectedSnapshots = new RejectedSnapshotMemo();
 
     public ReloadCoordinator(
             Path source,
@@ -78,108 +73,111 @@ public final class ReloadCoordinator {
             Map<String, String> environment) {
         this.sourceDescription = Objects.requireNonNull(sourceDescription, "sourceDescription");
         this.legacyFileSource = legacyFileSource == null ? null : legacyFileSource.toAbsolutePath().normalize();
-        this.snapshotReader = Objects.requireNonNull(snapshotReader, "snapshotReader");
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.planPublisher = Objects.requireNonNull(planPublisher, "planPublisher");
-        this.snapshot = Objects.requireNonNull(snapshot, "snapshot");
-        this.assembly = Objects.requireNonNull(assembly, "assembly");
         this.diagnostics = new ReloadDiagnosticBoundary(diagnostics);
-        this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
+        candidates = new ReloadCandidatePreparer(snapshotReader, environment);
+        state = new ReloadState(snapshot, assembly);
     }
 
-    public synchronized ReloadResult reloadIfChanged() {
+    public ReloadResult reloadIfChanged() {
         return reload(false).publicResult();
     }
 
-    /** Reloads for a file watcher while preserving whether a rejection is transient or candidate-specific. */
-    public synchronized WatcherReloadOutcome reloadForWatcher() {
+    /** Reloads for a watcher while preserving whether a rejection is transient or candidate-specific. */
+    public WatcherReloadOutcome reloadForWatcher() {
         return reload(true);
     }
 
     private WatcherReloadOutcome reload(boolean suppressKnownRejection) {
-        ConfigurationSnapshot candidateSnapshot;
-        try {
-            candidateSnapshot = snapshotReader.read();
-        } catch (IOException | UncheckedIOException readFailure) {
-            rejected(readFailure);
-            return WatcherReloadOutcome.TRANSIENT_RETRY;
-        } catch (RuntimeException readFailure) {
-            rejected(readFailure);
-            return WatcherReloadOutcome.WAIT_FOR_CHANGE;
-        }
-        if (candidateSnapshot.sameContent(snapshot)) {
-            rejectedDigest = null;
-            unchanged();
-            return WatcherReloadOutcome.UNCHANGED;
-        }
-        if (suppressKnownRejection && candidateSnapshot.sha256().equals(rejectedDigest)) {
-            return WatcherReloadOutcome.WAIT_FOR_CHANGE;
+        ReloadState.Reservation reservation = state.tryReserve();
+        if (reservation == null) {
+            return WatcherReloadOutcome.BUSY_RETRY;
         }
 
-        RuntimeAssembly candidate = null;
+        ReloadCompletion completion;
         try {
-            LogyardConfig candidateConfig = candidateSnapshot.parse(environment);
-            RuntimeReloadPolicy.requireInstallationPolicyUnchanged(
-                    assembly.config().runtime(),
-                    candidateConfig.runtime());
-            candidate = LogyardRuntimeFactory.assemble(candidateConfig, assembly);
+            completion = execute(reservation, suppressKnownRejection);
+        } finally {
+            state.release(reservation);
+        }
+        completion.notify(diagnostics, sourceDescription, legacyFileSource);
+        return completion.outcome();
+    }
+
+    private ReloadCompletion execute(ReloadState.Reservation reservation, boolean suppressKnownRejection) {
+        ReloadState.ActiveConfiguration active = reservation.active();
+        ReloadCandidatePreparer.SnapshotRead read = candidates.read();
+        if (!read.succeeded()) {
+            return ReloadCompletion.rejected(read.failure());
+        }
+
+        ConfigurationSnapshot snapshot = read.snapshot();
+        if (snapshot.sameContent(active.snapshot())) {
+            rejectedSnapshots.clear();
+            return ReloadCompletion.unchanged(snapshot.sha256());
+        }
+        if (suppressKnownRejection && rejectedSnapshots.contains(snapshot.sha256())) {
+            return ReloadCompletion.silent(WatcherReloadOutcome.INVALID_CANDIDATE);
+        }
+
+        ReloadCandidatePreparer.CandidatePreparation prepared = candidates.prepare(snapshot, active.assembly());
+        if (!prepared.succeeded()) {
+            return reject(snapshot, prepared.failure());
+        }
+        return publish(reservation, active, snapshot, prepared.assembly());
+    }
+
+    private ReloadCompletion publish(
+            ReloadState.Reservation reservation,
+            ReloadState.ActiveConfiguration active,
+            ConfigurationSnapshot snapshot,
+            RuntimeAssembly candidate) {
+        try {
+            candidate.activateCandidateOutputs();
             planPublisher.publish(candidate.plan());
-            String previousDigest = snapshot.sha256();
-            assembly = candidate;
-            snapshot = candidateSnapshot;
-            LogyardRuntimeFactory.attach(runtime, candidate);
-            rejectedDigest = null;
-            applied(previousDigest, candidateSnapshot.sha256());
-            return WatcherReloadOutcome.APPLIED;
-        } catch (RuntimeReloadDeferredException reloadDeferred) {
-            if (candidate != null) {
-                candidate.closeCandidateOutputs(assembly, reloadDeferred);
-            }
-            rejected(reloadDeferred);
-            return WatcherReloadOutcome.TRANSIENT_RETRY;
-        } catch (RuntimeException reloadFailure) {
-            if (candidate != null) {
-                candidate.closeCandidateOutputs(assembly, reloadFailure);
-            }
-            rejectedDigest = candidateSnapshot.sha256();
-            rejected(reloadFailure);
-            return WatcherReloadOutcome.WAIT_FOR_CHANGE;
+        } catch (RuntimeException failure) {
+            candidate.closeCandidateOutputs(active.assembly(), failure);
+            return reject(snapshot, ReloadFailureClassifier.publication(failure));
         }
-    }
 
-    public synchronized LogyardConfig currentConfig() {
-        return assembly.config();
-    }
-
-    public synchronized RuntimeAssembly currentAssembly() {
-        return assembly;
-    }
-
-    public synchronized String currentDigest() {
-        return snapshot.sha256();
-    }
-
-    private void unchanged() {
-        if (legacyFileSource == null) {
-            diagnostics.unchanged(sourceDescription, snapshot.sha256());
-        } else {
-            diagnostics.unchanged(legacyFileSource, snapshot.sha256());
+        if (!state.commit(reservation, snapshot, candidate)) {
+            IllegalStateException failure = new IllegalStateException("reload generation changed while its writer reservation was held");
+            rollbackPublication(active, candidate, failure);
+            return reject(snapshot, new ReloadFailure(ReloadFailureKind.INTERNAL_FAILURE, failure));
         }
+
+        LogyardRuntimeFactory.attach(runtime, candidate);
+        rejectedSnapshots.clear();
+        return ReloadCompletion.applied(active.snapshot().sha256(), snapshot.sha256());
     }
 
-    private void applied(String previousDigest, String nextDigest) {
-        if (legacyFileSource == null) {
-            diagnostics.applied(sourceDescription, previousDigest, nextDigest);
-        } else {
-            diagnostics.applied(legacyFileSource, previousDigest, nextDigest);
+    private void rollbackPublication(
+            ReloadState.ActiveConfiguration active,
+            RuntimeAssembly candidate,
+            IllegalStateException failure) {
+        try {
+            planPublisher.publish(active.assembly().plan());
+        } catch (RuntimeException rollbackFailure) {
+            failure.addSuppressed(rollbackFailure);
         }
+        candidate.closeCandidateOutputs(active.assembly(), failure);
     }
 
-    private void rejected(Throwable failure) {
-        if (legacyFileSource == null) {
-            diagnostics.rejected(sourceDescription, failure);
-        } else {
-            diagnostics.rejected(legacyFileSource, failure);
-        }
+    private ReloadCompletion reject(ConfigurationSnapshot snapshot, ReloadFailure failure) {
+        rejectedSnapshots.record(snapshot.sha256(), failure.kind());
+        return ReloadCompletion.rejected(failure);
+    }
+
+    public LogyardConfig currentConfig() {
+        return state.current().assembly().config();
+    }
+
+    public RuntimeAssembly currentAssembly() {
+        return state.current().assembly();
+    }
+
+    public String currentDigest() {
+        return state.current().snapshot().sha256();
     }
 }

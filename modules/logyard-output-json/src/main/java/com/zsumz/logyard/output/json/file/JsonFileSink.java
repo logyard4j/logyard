@@ -34,6 +34,7 @@ public final class JsonFileSink implements EventSink, HealthContributor {
     private final RotationPolicy rotationPolicy;
     private final long flushIntervalNanos;
     private long nextFlushNanos;
+    private volatile boolean active;
     private volatile boolean closed;
 
     public JsonFileSink(
@@ -67,6 +68,17 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             Duration flushInterval,
             boolean append,
             RotationPolicy rotationPolicy) {
+        this(path, encoder, bufferBytes, flushInterval, append, rotationPolicy, true);
+    }
+
+    private JsonFileSink(
+            Path path,
+            EventEncoder encoder,
+            int bufferBytes,
+            Duration flushInterval,
+            boolean append,
+            RotationPolicy rotationPolicy,
+            boolean active) {
         this.path = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
         this.encoder = Objects.requireNonNull(encoder, "encoder");
         Objects.requireNonNull(flushInterval, "flushInterval");
@@ -81,6 +93,43 @@ public final class JsonFileSink implements EventSink, HealthContributor {
         flushIntervalNanos = saturatedNanos(flushInterval);
         nextFlushNanos = System.nanoTime() + flushIntervalNanos;
         writer = new RotatingFileWriter(this.path, bufferBytes, append, rotationPolicy);
+        this.active = active;
+        if (active) {
+            writer.initializeForDirectUse();
+        }
+    }
+
+    /**
+     * Reserves and validates a JSON output without opening or truncating its durable data file.
+     *
+     * @param path durable JSON Lines path
+     * @param encoder event encoder
+     * @param bufferBytes bounded writer buffer
+     * @param flushInterval maximum interval between flushes
+     * @param append whether committed delivery appends instead of replacing existing contents
+     * @param rotationPolicy optional rotation policy
+     * @return prepared exclusive sink
+     */
+    public static JsonFileSink prepare(
+            Path path,
+            EventEncoder encoder,
+            int bufferBytes,
+            Duration flushInterval,
+            boolean append,
+            RotationPolicy rotationPolicy) {
+        return new JsonFileSink(path, encoder, bufferBytes, flushInterval, append, rotationPolicy, false);
+    }
+
+    /**
+     * Makes a successfully assembled output eligible for delivery.
+     *
+     * <p>Activation itself performs no file I/O; the first accepted event or explicit flush opens the durable file.</p>
+     */
+    public void activate() {
+        if (closed) {
+            throw new IllegalStateException("cannot activate closed Logyard JSON output: " + path);
+        }
+        active = true;
     }
 
     public Path path() {
@@ -94,6 +143,7 @@ public final class JsonFileSink implements EventSink, HealthContributor {
     @Override
     public void accept(LogEvent event) {
         ensureOpen();
+        ensureActive();
         byte[] json = encoder.encode(Objects.requireNonNull(event, "event")).getBytes(StandardCharsets.UTF_8);
         synchronized (writerState) {
             ensureOpen();
@@ -110,6 +160,9 @@ public final class JsonFileSink implements EventSink, HealthContributor {
     public void flush() {
         synchronized (writerState) {
             ensureOpen();
+            if (!active) {
+                return;
+            }
             writer.flush();
         }
     }
@@ -158,6 +211,12 @@ public final class JsonFileSink implements EventSink, HealthContributor {
     private void ensureOpen() {
         if (closed) {
             throw new IllegalStateException("Logyard JSON output is closed: " + path);
+        }
+    }
+
+    private void ensureActive() {
+        if (!active) {
+            throw new IllegalStateException("Logyard JSON output is not active: " + path);
         }
     }
 

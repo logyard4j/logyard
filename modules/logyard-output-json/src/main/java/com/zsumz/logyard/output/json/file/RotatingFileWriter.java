@@ -17,9 +17,11 @@ import java.util.Objects;
 final class RotatingFileWriter implements AutoCloseable {
     private final Path path;
     private final int bufferBytes;
+    private final boolean append;
     private final RotationPolicy policy;
     private final ArchiveNaming naming;
-    private final ArchiveMaintenance maintenance;
+    private FileLease lease;
+    private ArchiveMaintenance maintenance;
     private BufferedFileWriter active;
     private boolean closed;
 
@@ -30,49 +32,21 @@ final class RotatingFileWriter implements AutoCloseable {
             RotationPolicy policy) {
         this.path = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
         this.bufferBytes = bufferBytes;
+        this.append = append;
         this.policy = policy;
-        FileLease lease = FileLease.acquire(this.path);
-        BufferedFileWriter opened = null;
-        ArchiveMaintenance started = null;
-        try {
-            opened = BufferedFileWriter.open(this.path, bufferBytes, append);
-            if (policy != null) {
-                naming = new ArchiveNaming(this.path);
-                started = ArchiveMaintenance.start(naming, policy, lease);
-            } else {
-                naming = null;
-            }
-            active = opened;
-            maintenance = started;
-            if (maintenance == null) {
-                directLease = lease;
-            } else {
-                directLease = null;
-            }
-        } catch (RuntimeException | Error failure) {
-            if (opened != null) {
-                try {
-                    opened.close();
-                } catch (RuntimeException closeFailure) {
-                    failure.addSuppressed(closeFailure);
-                }
-            }
-            if (started == null) {
-                try {
-                    lease.close();
-                } catch (RuntimeException closeFailure) {
-                    failure.addSuppressed(closeFailure);
-                }
-            }
-            throw failure;
-        }
+        naming = policy == null ? null : new ArchiveNaming(this.path);
+        lease = FileLease.acquire(this.path);
     }
 
-    private final FileLease directLease;
+    void initializeForDirectUse() {
+        ensureOpen();
+        initialize();
+    }
 
     void writeRecord(byte[] record, byte terminator) {
         Objects.requireNonNull(record, "record");
         ensureOpen();
+        initialize();
         if (maintenance != null) {
             maintenance.throwIfFailed();
         }
@@ -87,6 +61,7 @@ final class RotatingFileWriter implements AutoCloseable {
 
     void flush() {
         ensureOpen();
+        initialize();
         active.flush();
         if (maintenance != null) {
             maintenance.throwIfFailed();
@@ -106,7 +81,7 @@ final class RotatingFileWriter implements AutoCloseable {
     }
 
     boolean maintenanceWorkerAlive() {
-        return maintenance == null || maintenance.workerAlive();
+        return active == null || maintenance == null || maintenance.workerAlive();
     }
 
     boolean maintenanceClosing() {
@@ -124,16 +99,18 @@ final class RotatingFileWriter implements AutoCloseable {
         }
         closed = true;
         RuntimeException failure = null;
-        try {
-            active.close();
-        } catch (RuntimeException closeFailure) {
-            failure = closeFailure;
+        if (active != null) {
+            try {
+                active.close();
+            } catch (RuntimeException closeFailure) {
+                failure = closeFailure;
+            }
         }
         try {
             if (maintenance != null) {
                 maintenance.close(policy.maintenanceShutdownTimeout());
-            } else if (directLease != null) {
-                directLease.close();
+            } else if (lease != null) {
+                lease.close();
             }
         } catch (RuntimeException closeFailure) {
             if (failure == null) {
@@ -156,6 +133,35 @@ final class RotatingFileWriter implements AutoCloseable {
             maintenance.submit(archive);
         } catch (RuntimeException failure) {
             tryReopenAfterRotationFailure(failure);
+            throw failure;
+        }
+    }
+
+    private void initialize() {
+        if (active != null) {
+            return;
+        }
+        BufferedFileWriter opened = BufferedFileWriter.open(path, bufferBytes, append);
+        try {
+            if (policy != null) {
+                maintenance = ArchiveMaintenance.start(naming, policy, lease);
+                lease = null;
+            }
+            active = opened;
+        } catch (RuntimeException | Error failure) {
+            try {
+                opened.close();
+            } catch (RuntimeException closeFailure) {
+                failure.addSuppressed(closeFailure);
+            }
+            if (lease != null) {
+                try {
+                    lease.close();
+                } catch (RuntimeException closeFailure) {
+                    failure.addSuppressed(closeFailure);
+                }
+                lease = null;
+            }
             throw failure;
         }
     }

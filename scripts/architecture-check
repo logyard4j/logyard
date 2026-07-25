@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -16,7 +17,10 @@ ROOT = Path.cwd()
 with (ROOT / "framework-versions.toml").open("rb") as source:
     FRAMEWORK_VERSIONS = tomllib.load(source)["frameworks"]
 PREFIX = "com.zsumz.logyard."
-MAX_JAVA_SOURCE_LINES = 300
+MAX_NEW_PRODUCTION_LINES = 240
+MAX_GRANDFATHERED_PRODUCTION_LINES = 300
+MAX_TEST_OR_EXAMPLE_LINES = 300
+SIZE_BASELINE = ROOT / "scripts/java-size-baseline.tsv"
 SOURCE_ROOTS = sorted(
     {
         path
@@ -46,6 +50,24 @@ EXAMPLE_JAVA_SOURCES = sorted(
     for path in (ROOT / "examples").glob("**/*.java")
     if path.is_file() and "target" not in path.relative_to(ROOT / "examples").parts
 )
+
+size_baseline: dict[str, int] = {}
+for baseline_line_number, baseline_line in enumerate(SIZE_BASELINE.read_text(encoding="utf-8").splitlines(), start=1):
+    if not baseline_line or baseline_line.startswith("#"):
+        continue
+    fields = baseline_line.split("\t")
+    if len(fields) != 2 or not fields[1].isdigit():
+        raise SystemExit(f"{SIZE_BASELINE.relative_to(ROOT)}:{baseline_line_number}: expected path<TAB>line-count")
+    baseline_source, baseline_limit_text = fields
+    baseline_limit = int(baseline_limit_text)
+    if baseline_source in size_baseline:
+        raise SystemExit(f"{SIZE_BASELINE.relative_to(ROOT)}:{baseline_line_number}: duplicate {baseline_source}")
+    if not 220 < baseline_limit <= MAX_GRANDFATHERED_PRODUCTION_LINES:
+        raise SystemExit(
+            f"{SIZE_BASELINE.relative_to(ROOT)}:{baseline_line_number}: baseline must be between 221 and "
+            f"{MAX_GRANDFATHERED_PRODUCTION_LINES} lines"
+        )
+    size_baseline[baseline_source] = baseline_limit
 
 PACKAGE = re.compile(r"(?m)^package\s+([A-Za-z_][\w.]*)\s*;")
 IMPORT = re.compile(r"(?m)^import\s+(?:static\s+)?([A-Za-z_][\w.*]*)\s*;")
@@ -477,13 +499,32 @@ for source_root in TEST_ROOTS:
 for source in EXAMPLE_JAVA_SOURCES:
     java_sources.add(source.relative_to(ROOT).as_posix())
 
-for relative in sorted(java_sources):
+production_sources = {source.relative_to(ROOT).as_posix() for source, _ in main_files}
+for baseline_source in sorted(size_baseline.keys() - production_sources):
+    errors.append(f"{SIZE_BASELINE.relative_to(ROOT)}: unknown production source {baseline_source}")
+
+for source, _ in main_files:
+    relative = source.relative_to(ROOT).as_posix()
+    line_count = len(source.read_text(encoding="utf-8").splitlines())
+    baseline_limit = size_baseline.get(relative)
+    if baseline_limit is not None and line_count > baseline_limit:
+        errors.append(
+            f"{relative}: {line_count} lines exceeds its grandfathered {baseline_limit}-line ceiling; "
+            "modified large production files may shrink but never grow"
+        )
+    elif baseline_limit is None and line_count > MAX_NEW_PRODUCTION_LINES:
+        errors.append(
+            f"{relative}: {line_count} lines exceeds the {MAX_NEW_PRODUCTION_LINES}-line production limit; "
+            "extract a cohesive collaborator"
+        )
+
+for relative in sorted(java_sources - production_sources):
     source = ROOT / relative
     line_count = len(source.read_text(encoding="utf-8").splitlines())
-    if line_count > MAX_JAVA_SOURCE_LINES:
+    if line_count > MAX_TEST_OR_EXAMPLE_LINES:
         errors.append(
-            f"{relative}: {line_count} lines exceeds its {MAX_JAVA_SOURCE_LINES}-line limit; "
-            "extract cohesive collaborators instead of extending the file"
+            f"{relative}: {line_count} lines exceeds the {MAX_TEST_OR_EXAMPLE_LINES}-line test/example limit; "
+            "keep each file focused on one behavior family"
         )
 
 manifest_versions: dict[str, str] = {}
@@ -639,6 +680,38 @@ runtime_sources = [
     (source, source.read_text(encoding="utf-8"))
     for source in sorted((ROOT / "modules/logyard-runtime/src/main/java").rglob("*.java"))
 ]
+reload_coordinator_source = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload/ReloadCoordinator.java"
+reload_coordinator_text = reload_coordinator_source.read_text(encoding="utf-8")
+if "synchronized" in reload_coordinator_text or "ReentrantLock" in reload_coordinator_text:
+    errors.append(
+        f"{reload_coordinator_source.relative_to(ROOT)}: reload coordination must use non-blocking generation ownership"
+    )
+
+reload_state_source = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload/ReloadState.java"
+reload_state_text = reload_state_source.read_text(encoding="utf-8")
+for forbidden_state_collaborator in (
+    "ConfigurationSnapshotReader",
+    "LogyardRuntimeFactory",
+    "ReloadDiagnostics",
+    "java.io.",
+    "java.nio.file.",
+    "Provider",
+):
+    if forbidden_state_collaborator in reload_state_text:
+        errors.append(
+            f"{reload_state_source.relative_to(ROOT)}: atomic reload state must not invoke or own "
+            f"{forbidden_state_collaborator}"
+        )
+
+managed_installation_source = (
+    ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/installation/ManagedRuntimeInstallation.java"
+)
+managed_installation_text = managed_installation_source.read_text(encoding="utf-8")
+if "synchronized" in managed_installation_text or "ReentrantLock" in managed_installation_text:
+    errors.append(
+        f"{managed_installation_source.relative_to(ROOT)}: managed installation publication must not run under a lock"
+    )
+
 if not any(
         re.search(
             r"output\s+instanceof\s+CustomOutputConfig.*?new\s+AsyncSink\(.*?false\s*\)",

@@ -14,21 +14,14 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.locks.ReentrantLock;
+
+import static com.zsumz.logyard.runtime.installation.RuntimeInstallationTransitions.Phase.RECONFIGURING;
+import static com.zsumz.logyard.runtime.installation.RuntimeInstallationTransitions.Phase.RELOADING;
 
 final class ManagedRuntimeInstallation implements RuntimeInstallation {
-    private enum State {
-        OPEN,
-        RECONFIGURING,
-        RELOADING,
-        CLOSED
-    }
-
-    private final ReentrantLock transition = new ReentrantLock();
+    private final RuntimeInstallationTransitions transitions = new RuntimeInstallationTransitions();
     private final DefaultLogyardRuntime runtime;
     private final Map<String, String> environment;
-    private ActiveRuntimeConfiguration active;
-    private State state = State.OPEN;
 
     private ManagedRuntimeInstallation(DefaultLogyardRuntime runtime, Map<String, String> environment) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
@@ -47,12 +40,14 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
                 reload);
         DefaultLogyardRuntime runtime = null;
         try {
+            prepared.activateOutputs();
             runtime = new DefaultLogyardRuntime(prepared.assembly().plan());
             ManagedRuntimeInstallation installation = new ManagedRuntimeInstallation(runtime, environment);
             reload.bind(installation::reloadFromWatcher);
             LogyardRuntimeFactory.attach(runtime, prepared.assembly());
-            installation.active = prepared.activate(runtime);
-            installation.active.activateWatcher();
+            ActiveRuntimeConfiguration active = prepared.activate(runtime);
+            installation.transitions.initialize(active);
+            active.activateWatcher();
             return installation;
         } catch (RuntimeException | Error failure) {
             prepared.closeWatcher(failure);
@@ -70,74 +65,69 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
 
     @Override
     public ReloadResult reconfigure(ConfigurationInstallationRequest request) {
-        ActiveRuntimeConfiguration current = begin(State.RECONFIGURING);
+        ActiveRuntimeConfiguration current = transitions.begin(RECONFIGURING);
         if (current == null) {
             return ReloadResult.REJECTED;
         }
 
         RuntimeAssembly currentAssembly = current.coordinator().currentAssembly();
+        PreparedRuntimeConfiguration prepared = null;
         RuntimeAssembly candidate = null;
         ActiveRuntimeConfiguration replacement = null;
         boolean currentWatcherRetirementAttempted = false;
         try {
             ConfigurationSnapshot snapshot = PreparedRuntimeConfiguration.read(request);
             if (current.canReuseImmutableSource(request, snapshot)) {
-                return finishUnchanged(State.RECONFIGURING);
+                return transitions.finish(RECONFIGURING) ? ReloadResult.UNCHANGED : ReloadResult.REJECTED;
             }
-            PreparedRuntimeConfiguration prepared = PreparedRuntimeConfiguration.prepare(
+            prepared = PreparedRuntimeConfiguration.prepare(
                     request,
                     snapshot,
                     currentAssembly,
                     environment,
                     this::reloadFromWatcher);
             candidate = prepared.assembly();
+            prepared.activateOutputs();
             replacement = prepared.activate(runtime);
             replacement.activateWatcher();
             currentWatcherRetirementAttempted = true;
             current.closeWatcher();
             return commitReplacement(current, replacement, candidate, currentAssembly);
         } catch (RuntimeException | Error failure) {
+            if (prepared != null && replacement == null) {
+                prepared.closeWatcher(failure);
+            }
             RuntimeConfigurationCleanup.closeReplacement(replacement, candidate, currentAssembly, failure);
             if (currentWatcherRetirementAttempted) {
                 restartCurrentWatcher(current, failure);
             }
-            finishFailed(State.RECONFIGURING);
+            transitions.finish(RECONFIGURING);
             throw failure;
         }
     }
 
     @Override
     public ReloadResult reloadNow() {
-        ActiveRuntimeConfiguration current = begin(State.RELOADING);
+        ActiveRuntimeConfiguration current = transitions.begin(RELOADING);
         if (current == null) {
             return ReloadResult.REJECTED;
         }
         try {
             return current.coordinator().reloadIfChanged();
         } finally {
-            finishFailed(State.RELOADING);
+            transitions.finish(RELOADING);
         }
     }
 
     private WatcherReloadOutcome reloadFromWatcher() {
-        ActiveRuntimeConfiguration current;
-        transition.lock();
-        try {
-            if (state == State.CLOSED) {
-                return WatcherReloadOutcome.WAIT_FOR_CHANGE;
-            }
-            if (state != State.OPEN) {
-                return WatcherReloadOutcome.BUSY_RETRY;
-            }
-            state = State.RELOADING;
-            current = active;
-        } finally {
-            transition.unlock();
+        ActiveRuntimeConfiguration current = transitions.begin(RELOADING);
+        if (current == null) {
+            return transitions.closed() ? WatcherReloadOutcome.INVALID_CANDIDATE : WatcherReloadOutcome.BUSY_RETRY;
         }
         try {
             return current.coordinator().reloadForWatcher();
         } finally {
-            finishFailed(State.RELOADING);
+            transitions.finish(RELOADING);
         }
     }
 
@@ -148,44 +138,28 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
 
     @Override
     public boolean watchesConfiguration() {
-        transition.lock();
-        try {
-            return state != State.CLOSED && active != null && active.watchesConfiguration();
-        } finally {
-            transition.unlock();
-        }
+        ActiveRuntimeConfiguration current = transitions.current();
+        return !transitions.closed() && current != null && current.watchesConfiguration();
     }
 
     @Override
     public Duration shutdownTimeout() {
-        transition.lock();
-        try {
-            return active == null
-                    ? RuntimeInstallation.super.shutdownTimeout()
-                    : active.coordinator().currentConfig().runtime().shutdownTimeout();
-        } finally {
-            transition.unlock();
-        }
+        ActiveRuntimeConfiguration current = transitions.current();
+        return current == null
+                ? RuntimeInstallation.super.shutdownTimeout()
+                : current.coordinator().currentConfig().runtime().shutdownTimeout();
     }
 
     @Override
     public CompletionStage<Void> close(GlobalRuntimeAccess globalRuntime) {
-        ActiveRuntimeConfiguration closing;
-        transition.lock();
-        try {
-            if (state == State.CLOSED) {
-                return runtime.retirementCompletion();
-            }
-            state = State.CLOSED;
-            closing = active;
-            active = null;
-        } finally {
-            transition.unlock();
+        RuntimeInstallationTransitions.CloseTransition closing = transitions.close();
+        if (!closing.changed()) {
+            return runtime.retirementCompletion();
         }
 
         ComponentFailureCollector failures = new ComponentFailureCollector();
-        if (closing != null) {
-            ComponentInvocationBoundary.invoke("configuration watcher close", closing::closeWatcher, failures);
+        if (closing.active() != null) {
+            ComponentInvocationBoundary.invoke("configuration watcher close", closing.active()::closeWatcher, failures);
         }
         ComponentInvocationBoundary.invoke("installed runtime close", () -> {
             boolean closedByGlobal = false;
@@ -200,91 +174,44 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
         return RuntimeInstallationClosure.withFailures(runtime.retirementCompletion(), failures);
     }
 
-    private ActiveRuntimeConfiguration begin(State requested) {
-        transition.lock();
-        try {
-            if (state != State.OPEN) {
-                return null;
-            }
-            state = requested;
-            return active;
-        } finally {
-            transition.unlock();
-        }
-    }
-
     private ReloadResult commitReplacement(
             ActiveRuntimeConfiguration expected,
             ActiveRuntimeConfiguration replacement,
             RuntimeAssembly candidate,
             RuntimeAssembly currentAssembly) {
-        boolean superseded;
-        transition.lock();
-        try {
-            superseded = state != State.RECONFIGURING || active != expected;
-            if (!superseded) {
-                runtime.reload(candidate.plan());
-                LogyardRuntimeFactory.attach(runtime, candidate);
-                active = replacement;
-                state = State.OPEN;
-            }
-        } finally {
-            transition.unlock();
-        }
-        if (superseded) {
-            RuntimeConfigurationCleanup.closeReplacement(
-                    replacement,
-                    candidate,
-                    currentAssembly,
-                    new IllegalStateException("runtime reconfiguration was superseded by shutdown"));
+        if (!transitions.accepts(RECONFIGURING, expected)) {
+            closeSupersededReplacement(replacement, candidate, currentAssembly);
             return ReloadResult.REJECTED;
         }
-        return ReloadResult.APPLIED;
+
+        runtime.reload(candidate.plan());
+        LogyardRuntimeFactory.attach(runtime, candidate);
+        if (transitions.replace(RECONFIGURING, expected, replacement)) {
+            return ReloadResult.APPLIED;
+        }
+        closeSupersededReplacement(replacement, candidate, currentAssembly);
+        return ReloadResult.REJECTED;
     }
 
-    private ReloadResult finishUnchanged(State expected) {
-        transition.lock();
-        try {
-            if (state != expected) {
-                return ReloadResult.REJECTED;
-            }
-            state = State.OPEN;
-            return ReloadResult.UNCHANGED;
-        } finally {
-            transition.unlock();
-        }
-    }
-
-    private void finishFailed(State expected) {
-        transition.lock();
-        try {
-            if (state == expected) {
-                state = State.OPEN;
-            }
-        } finally {
-            transition.unlock();
-        }
+    private static void closeSupersededReplacement(
+            ActiveRuntimeConfiguration replacement,
+            RuntimeAssembly candidate,
+            RuntimeAssembly currentAssembly) {
+        RuntimeConfigurationCleanup.closeReplacement(
+                replacement,
+                candidate,
+                currentAssembly,
+                new IllegalStateException("runtime reconfiguration was superseded by shutdown"));
     }
 
     private void restartCurrentWatcher(ActiveRuntimeConfiguration current, Throwable primaryFailure) {
         try {
             ActiveRuntimeConfiguration restarted = current.restartWatcher(this::reloadFromWatcher);
-            boolean accepted;
-            transition.lock();
-            try {
-                accepted = state == State.RECONFIGURING && active == current;
-                if (accepted) {
-                    active = restarted;
-                }
-            } finally {
-                transition.unlock();
-            }
-            if (!accepted) {
+            if (!transitions.replaceDuring(RECONFIGURING, current, restarted)) {
                 restarted.closeWatcher();
             }
         } catch (RuntimeException restartFailure) {
             primaryFailure.addSuppressed(restartFailure);
         }
     }
-
 }

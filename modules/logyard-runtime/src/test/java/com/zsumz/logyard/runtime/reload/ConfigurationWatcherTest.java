@@ -147,7 +147,7 @@ final class ConfigurationWatcherTest {
                     } else {
                         unexpectedRetry.countDown();
                     }
-                    return WatcherReloadOutcome.WAIT_FOR_CHANGE;
+                    return WatcherReloadOutcome.INVALID_CANDIDATE;
                 },
                 ReloadDiagnostics.silent());
         try {

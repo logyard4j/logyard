@@ -36,9 +36,20 @@ public final class LogyardRuntimeFactory {
 
     public static LogyardRuntime create(LogyardConfig config) {
         RuntimeAssembly assembly = assemble(config, null);
-        DefaultLogyardRuntime runtime = new DefaultLogyardRuntime(assembly.plan());
-        attach(runtime, assembly);
-        return runtime;
+        DefaultLogyardRuntime runtime = null;
+        try {
+            assembly.activateCandidateOutputs();
+            runtime = new DefaultLogyardRuntime(assembly.plan());
+            attach(runtime, assembly);
+            return runtime;
+        } catch (RuntimeException | Error failure) {
+            if (runtime == null) {
+                assembly.closeCandidateOutputs(null, failure);
+            } else {
+                runtime.close();
+            }
+            throw failure;
+        }
     }
 
     /** Builds a candidate plan, reusing only outputs with an identical immutable signature. */
@@ -71,7 +82,7 @@ public final class LogyardRuntimeFactory {
                     processors.processors(),
                     config.runtime().shutdownTimeout(),
                     configuredLevels);
-            return new RuntimeAssembly(config, plan, outputs.bindings());
+            return new RuntimeAssembly(config, plan, outputs.bindings(), outputs.candidates());
         } catch (RuntimeException | Error failure) {
             if (outputs != null) {
                 outputs.closeCreated(failure);

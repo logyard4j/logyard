@@ -9,7 +9,7 @@ final class RuntimeReloadPolicy {
 
     static void requireInstallationPolicyUnchanged(RuntimeConfig active, RuntimeConfig candidate) {
         if (!active.equals(candidate)) {
-            throw new IllegalArgumentException(
+            throw new RestartRequiredReloadException(
                     "changes to [runtime] watch, reload_debounce, shutdown_timeout, or internal_status "
                             + "require an application/framework configuration handoff or process restart");
         }

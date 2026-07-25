@@ -1,0 +1,23 @@
+# Production files above the 220-line review threshold at the guardrail introduction commit.
+# A listed file may shrink, but it may never exceed this recorded line count.
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/LogyardLogger.java	290
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/AttributeAccumulator.java	273
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/AttributeSet.java	300
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/BoundedPrintfPattern.java	226
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/CaptureContext.java	274
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/CaptureLimits.java	227
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/ExceptionSnapshot.java	284
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/LogEvent.java	300
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/MessageFormatWorkBudget.java	277
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/MessageFormatter.java	284
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/ValueCapture.java	253
+modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/config/ProviderConfiguration.java	264
+modules/logyard-config-toml/src/main/java/com/zsumz/logyard/config/loading/ConfigReader.java	260
+modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/async/AsyncSinkWorker.java	256
+modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/DefaultLogyardRuntime.java	298
+modules/logyard-output-console/src/main/java/com/zsumz/logyard/output/console/style/AnsiStyle.java	237
+modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/encoding/JsonEncoder.java	252
+modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/encoding/JsonWriter.java	252
+modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/bootstrap/ConfigurationDiscovery.java	222
+modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/bootstrap/LogyardConfigurationSource.java	271
+modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/installation/ManagedRuntimeInstallation.java	290

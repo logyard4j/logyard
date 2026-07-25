@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -90,6 +91,7 @@ required_files=(
   scripts/examples-native-verify
   scripts/verify
   scripts/architecture-check
+  scripts/java-size-baseline.tsv
   modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider
   'modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder'
   tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.formatting.TextFormatterProvider
@@ -100,6 +102,12 @@ required_files=(
 for required in "${required_files[@]}"; do
   [[ -f "$required" ]] || fail "required file is missing: $required"
 done
+
+generated_python_artifact="$(
+  find . -path './.git' -prune -o -path './.zolt' -prune -o -path '*/target' -prune -o \
+    \( -type d -name __pycache__ -o -type f \( -name '*.pyc' -o -name '*.pyo' \) \) -print -quit
+)"
+[[ -z "$generated_python_artifact" ]] || fail "generated Python bytecode is present: $generated_python_artifact"
 
 if find . -path './.git' -prune -o -path './.zolt' -prune -o \
     -path './target' -prune -o \
@@ -119,7 +127,7 @@ if grep -R -nE 'uses: [^[:space:]]+@(main|master|v[0-9]+([.][0-9]+)*)($|[[:space
   fail 'GitHub Actions must use immutable commit SHAs'
 fi
 
-PYTHONPATH="$ROOT/scripts" python3 -m unittest discover -s scripts/release_tools -t scripts -p 'test_*.py'
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m unittest discover -s scripts/release_tools -t scripts -p 'test_*.py'
 
 ./scripts/framework-versions-check
 ./scripts/architecture-check

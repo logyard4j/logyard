@@ -18,8 +18,8 @@ public enum WatcherReloadOutcome {
     /** Reading the source failed transiently; retry with a bounded backoff. */
     TRANSIENT_RETRY(ReloadResult.REJECTED),
 
-    /** The candidate was read but invalid; wait for another filesystem event. */
-    WAIT_FOR_CHANGE(ReloadResult.REJECTED);
+    /** The candidate deterministically failed validation; wait for different content. */
+    INVALID_CANDIDATE(ReloadResult.REJECTED);
 
     private final ReloadResult publicResult;
 

@@ -97,6 +97,7 @@
           <imageName>logyard-spring-boot-example</imageName>
           <buildArgs>
             <buildArg>--initialize-at-run-time=com.zsumz.logyard,org.slf4j</buildArg>
+            <buildArg>-H:ConfigurationFileDirectories=${project.build.directory}/spring-aot/main/resources/META-INF/native-image/${project.groupId}/${project.artifactId}</buildArg>
           </buildArgs>
         </configuration>
       </plugin>

@@ -20,12 +20,14 @@ public final class RuntimeAssembly {
     private final RuntimePlan plan;
     private final ContextPolicySnapshot contextPolicy;
     private final Map<String, OutputBinding> bindings;
+    private final OutputCandidateSet candidates;
 
-    RuntimeAssembly(LogyardConfig config, RuntimePlan plan, Map<String, OutputBinding> bindings) {
+    RuntimeAssembly(LogyardConfig config, RuntimePlan plan, Map<String, OutputBinding> bindings, OutputCandidateSet candidates) {
         this.config = Objects.requireNonNull(config, "config");
         this.plan = Objects.requireNonNull(plan, "plan");
         contextPolicy = ContextPolicySnapshot.of(config.context().mdc());
         this.bindings = Collections.unmodifiableMap(new LinkedHashMap<>(bindings));
+        this.candidates = Objects.requireNonNull(candidates, "candidates");
     }
 
     public LogyardConfig config() {
@@ -52,6 +54,11 @@ public final class RuntimeAssembly {
             }
         }
         return null;
+    }
+
+    /** Activates outputs only after the complete candidate has passed validation and ownership checks. */
+    public void activateCandidateOutputs() {
+        candidates.activate();
     }
 
     /** Closes only candidate resources not shared with the currently published plan. */

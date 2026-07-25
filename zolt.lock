@@ -1,4 +1,4 @@
-version = 4
+version = 5
 projectResolutionFingerprint = "sha256:7285887f5e0f88495dfbf09ec32cd957be18e1724ffb67e4332e16e4f7370ff5"
 projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:8c9e460f3f7f95c8b5569de21088c75f9bf436c6976e53605fcd579f48656300", "dependencies.compile=sha256:960ab6b4471a965ba7cdd1ad4c3b0b392d5b4453b68c3056b2e8db39678e96b3", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:916bedc1786832ef3d6a9739263e71fe1237c19bab6232f4d45418cd3a73a84d", "dependencies.test=sha256:c300140f35ed708a712d0152adc889237473dd0b12deca3c033db85a0503c28f", "dependencyMetadata=sha256:e5f55f68bafce466c84652b0f0724d9c813a384a5af187165a13fc5d8030421a", "framework.quarkus=sha256:38d906cadff10c998616502ef85243f1e6dba006128b9b0154476fa0b180ae68", "framework.springBoot.native=sha256:0e63d15d3b189db306510b05809ad5044603f41a983b159224a35b2dc9b002bf", "java=sha256:7b769273cac080831a89df544e04fd7b1db48ecd923b277f4484edef726c031f", "package=sha256:209616b617eaca97bf18a3ca1ff2cf97577d6d5b53f5a55d29f66d4201f50a3f", "repositories=sha256:2cfe1b4cb22f56f44065853a0421091ae15beac5fe34e1a488cc3e4f68b2d09b", "schema=sha256:42cd6a505902356bf86cac6557264415203d6394e208dcec1d2f28f24ec87b43"]
 
@@ -99,7 +99,7 @@ direct = true
 workspace = "modules/logyard-slf4j2"
 workspaceOutput = "target/classes"
 members = ["benchmarks/logyard-benchmarks", "modules/logyard-spring-boot-starter"]
-dependencies = []
+dependencies = ["org.slf4j:slf4j-api:2.0.18:jar:compile"]
 
 [[package]]
 id = "com.zsumz.logyard:logyard-slf4j2"
@@ -110,7 +110,7 @@ direct = true
 workspace = "modules/logyard-slf4j2"
 workspaceOutput = "target/classes"
 members = ["modules/logyard-spring-boot"]
-dependencies = []
+dependencies = ["org.slf4j:slf4j-api:2.0.18:jar:compile"]
 
 [[package]]
 id = "com.zsumz.logyard:logyard-spring-boot"
@@ -121,7 +121,7 @@ direct = true
 workspace = "modules/logyard-spring-boot"
 workspaceOutput = "target/classes"
 members = ["modules/logyard-spring-boot-starter"]
-dependencies = []
+dependencies = ["org.springframework.boot:spring-boot-autoconfigure:3.5.16:jar:compile", "org.springframework.boot:spring-boot:3.5.16:jar:compile"]
 
 [[package]]
 id = "io.micrometer:micrometer-commons"

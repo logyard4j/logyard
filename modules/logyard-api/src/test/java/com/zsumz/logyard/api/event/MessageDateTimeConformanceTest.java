@@ -34,12 +34,34 @@ final class MessageDateTimeConformanceTest {
         }
     }
 
+    @Test
+    void surroundingStyleWhitespaceMatchesMessageFormatForDatesTimesAndSelectedChoices() {
+        Date value = new Date(Instant.parse("2000-02-29T12:34:56.789Z").toEpochMilli());
+        withDefaults(Locale.US, () -> {
+            assertPattern("{0,date, short}", value, Locale.US);
+            assertPattern("{0,time, full }", value, Locale.US);
+            assertPattern("{0,date, SHORT }", value, Locale.US);
+            assertPattern("{0,time, SHORT }", value, Locale.US);
+            assertChoicePattern("{0,choice,0#{1,date, short}|1#{1,time, full }}", 0, value, Locale.US);
+            assertChoicePattern("{0,choice,0#{1,date, short}|1#{1,time, full }}", 1, value, Locale.US);
+        });
+    }
+
     private static void assertPattern(String pattern, Date value, Locale locale) {
         String expected = new MessageFormat(pattern, locale).format(new Object[] {value});
         BoundedMessageFormat.Result actual = BoundedMessageFormat.messageFormat(pattern, new Object[] {value});
 
         assertFalse(actual.formatFailed(), pattern + " / " + locale);
         assertEquals(expected, actual.message(), pattern + " / " + locale);
+    }
+
+    private static void assertChoicePattern(String pattern, int selector, Date value, Locale locale) {
+        Object[] arguments = {selector, value};
+        String expected = new MessageFormat(pattern, locale).format(arguments);
+        BoundedMessageFormat.Result actual = BoundedMessageFormat.messageFormat(pattern, arguments);
+
+        assertFalse(actual.formatFailed(), pattern + " / " + selector);
+        assertEquals(expected, actual.message(), pattern + " / " + selector);
     }
 
     private static void withDefaults(Locale locale, Runnable action) {

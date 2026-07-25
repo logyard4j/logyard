@@ -9,6 +9,7 @@ import java.util.Locale;
 
 /** Closed UTC/proleptic-Gregorian renderer over immutable epoch-millisecond values. */
 final class TrustedDateTimeRenderer {
+    private static final int MAX_LOCALIZED_STYLE_CHARS = 16;
     private static final DateTimeFormatter DATE_DISPLAY =
             DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss 'UTC' uuuu", Locale.ROOT)
                     .withZone(TrustedFormattingZone.defaultZone());
@@ -83,14 +84,20 @@ final class TrustedDateTimeRenderer {
     }
 
     private static FormatStyle localizedStyle(String style) {
-        return switch (style.toLowerCase(Locale.ROOT)) {
+        if (style.length() > MAX_LOCALIZED_STYLE_CHARS) {
+            throw unsupportedMessageStyle();
+        }
+        return switch (style.trim().toLowerCase(Locale.ROOT)) {
             case "", "medium" -> FormatStyle.MEDIUM;
             case "short" -> FormatStyle.SHORT;
             case "long" -> FormatStyle.LONG;
             case "full" -> FormatStyle.FULL;
-            default -> throw new IllegalArgumentException(
-                    "custom date/time styles are not supported by bounded adapter formatting");
+            default -> throw unsupportedMessageStyle();
         };
+    }
+
+    private static IllegalArgumentException unsupportedMessageStyle() {
+        return new IllegalArgumentException("custom date/time styles are not supported by bounded adapter formatting");
     }
 
     private static long epochMillis(Object value, char conversion) {

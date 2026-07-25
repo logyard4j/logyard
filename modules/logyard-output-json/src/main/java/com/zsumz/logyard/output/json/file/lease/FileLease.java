@@ -45,12 +45,12 @@ public final class FileLease implements AutoCloseable {
                 FileLock lock = channel.tryLock();
                 if (lock == null) {
                     channel.close();
-                    throw new IllegalStateException("Logyard output is already owned: " + normalized);
+                    throw new FileLeaseUnavailableException(normalized, false, null);
                 }
                 return new FileLease(normalized, lockPath, channel, lock);
             } catch (OverlappingFileLockException overlap) {
                 channel.close();
-                throw new IllegalStateException("Logyard output is already owned in this JVM: " + normalized, overlap);
+                throw new FileLeaseUnavailableException(normalized, true, overlap);
             } catch (RuntimeException | Error failure) {
                 channel.close();
                 throw failure;

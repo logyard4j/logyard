@@ -133,9 +133,11 @@ final class MutableSourceHandoffTest {
     }
 
     private static void stopWatcher(ManagedRuntimeInstallation installation) throws ReflectiveOperationException {
-        Field activeField = ManagedRuntimeInstallation.class.getDeclaredField("active");
-        activeField.setAccessible(true);
-        ActiveRuntimeConfiguration active = (ActiveRuntimeConfiguration) activeField.get(installation);
+        Field transitionsField = ManagedRuntimeInstallation.class.getDeclaredField("transitions");
+        transitionsField.setAccessible(true);
+        RuntimeInstallationTransitions transitions =
+                (RuntimeInstallationTransitions) transitionsField.get(installation);
+        ActiveRuntimeConfiguration active = transitions.current();
         Field watcherField = ActiveRuntimeConfiguration.class.getDeclaredField("watcher");
         watcherField.setAccessible(true);
         ((ConfigurationWatcher) watcherField.get(active)).close();

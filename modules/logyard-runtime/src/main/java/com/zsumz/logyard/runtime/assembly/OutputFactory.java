@@ -36,15 +36,21 @@ final class OutputFactory {
     private OutputFactory() {
     }
 
-    static EventSink create(LogyardConfig config, OutputConfig output, ExtensionRegistry extensions) {
+    static OutputPreparation prepare(LogyardConfig config, OutputConfig output, ExtensionRegistry extensions) {
         ResourceAttributes resource = EncoderResolver.resource(config);
+        if (output instanceof JsonFileOutputConfig json) {
+            JsonFileSink raw = jsonFile(config, json, resource, extensions);
+            EventSink delivered = DeliveryAssembler.wrap(output, raw, config.deliveryFor(output), config.runtime().shutdownTimeout());
+            return OutputPreparation.prepared(delivered, raw::activate);
+        }
         EventSink raw = switch (output) {
             case ConsoleOutputConfig console -> console(config, console, extensions);
             case JsonStreamOutputConfig json -> jsonStream(config, json, resource, extensions);
-            case JsonFileOutputConfig json -> jsonFile(config, json, resource, extensions);
             case CustomOutputConfig custom -> custom(config, custom, resource, extensions);
+            case JsonFileOutputConfig ignored -> throw new IllegalStateException("JSON file preparation was not selected");
         };
-        return DeliveryAssembler.wrap(output, raw, config.deliveryFor(output), config.runtime().shutdownTimeout());
+        return OutputPreparation.active(
+                DeliveryAssembler.wrap(output, raw, config.deliveryFor(output), config.runtime().shutdownTimeout()));
     }
 
     static void validateDefinitions(LogyardConfig config, ExtensionRegistry extensions) {
@@ -94,7 +100,7 @@ final class OutputFactory {
                 false);
     }
 
-    private static EventSink jsonFile(
+    private static JsonFileSink jsonFile(
             LogyardConfig config,
             JsonFileOutputConfig output,
             ResourceAttributes resource,
@@ -106,7 +112,7 @@ final class OutputFactory {
                         output.rotation().keep(),
                         RotationPolicy.Compression.parse(output.rotation().compress()),
                         config.runtime().shutdownTimeout());
-        return new JsonFileSink(
+        return JsonFileSink.prepare(
                 output.path(),
                 EncoderResolver.resolve(config, output.encoder(), resource, extensions),
                 output.bufferBytes(),

@@ -1,13 +1,20 @@
 package com.zsumz.logyard.runtime.assembly;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.zsumz.logyard.api.spi.output.OutputProvider;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.loading.LogyardConfigLoader;
+import com.zsumz.logyard.core.failure.ComponentInvocationException;
+import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -43,6 +50,31 @@ final class OutputAssemblerTest {
         }
     }
 
+    @Test
+    void laterProviderFailureDoesNotModifyPreparedFileOutput(@TempDir Path temporaryDirectory) throws Exception {
+        Path path = temporaryDirectory.resolve("application.jsonl");
+        Files.writeString(path, "KEEP-ME\n", StandardCharsets.UTF_8);
+        LogyardConfig config = fileThenFailingProviderConfig(path);
+        OutputProvider failing = new OutputProvider() {
+            @Override
+            public String name() {
+                return "failing";
+            }
+
+            @Override
+            public com.zsumz.logyard.api.spi.output.EventSink create(
+                    com.zsumz.logyard.api.spi.output.OutputProviderContext context,
+                    com.zsumz.logyard.api.spi.config.ProviderConfiguration configuration) {
+                throw new IllegalStateException("provider construction failed");
+            }
+        };
+        ExtensionRegistry extensions = new ExtensionRegistry(Map.of(), Map.of(), Map.of("failing", failing), Map.of());
+
+        assertEquals(List.of("json", "later"), List.copyOf(config.outputs().keySet()));
+        assertThrows(ComponentInvocationException.class, () -> OutputAssembler.assemble(config, null, extensions));
+        assertEquals("KEEP-ME\n", Files.readString(path, StandardCharsets.UTF_8));
+    }
+
     private static LogyardConfig consoleConfig() {
         String text = """
                 schema = 1
@@ -75,5 +107,27 @@ final class OutputAssemblerTest {
                 flush = "10ms"
                 """.formatted(path, append);
         return LogyardConfigLoader.parse(text, "file-output.toml", Path.of("."), Map.of());
+    }
+
+    private static LogyardConfig fileThenFailingProviderConfig(Path path) {
+        String text = """
+                schema = 1
+                [service]
+                name = "test"
+                [delivery]
+                mode = "async"
+                capacity = 16
+                [loggers]
+                root = { level = "info", outputs = ["json", "later"] }
+                [outputs.json]
+                type = "file"
+                path = "%s"
+                append = false
+                flush = "10ms"
+                [outputs.later]
+                type = "custom"
+                provider = "failing"
+                """.formatted(path);
+        return LogyardConfigLoader.parse(text, "candidate-output.toml", Path.of("."), Map.of());
     }
 }

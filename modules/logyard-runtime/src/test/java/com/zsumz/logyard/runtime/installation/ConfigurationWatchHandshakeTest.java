@@ -93,7 +93,7 @@ final class ConfigurationWatchHandshakeTest {
                 initialSnapshot,
                 null,
                 Map.of(),
-                () -> WatcherReloadOutcome.WAIT_FOR_CHANGE);
+                () -> WatcherReloadOutcome.INVALID_CANDIDATE);
         try {
             ConfigurationWatcherPolicy policy = prepared.watcherPolicy();
             assertEquals(Duration.ofMillis(10L), policy.debounce());

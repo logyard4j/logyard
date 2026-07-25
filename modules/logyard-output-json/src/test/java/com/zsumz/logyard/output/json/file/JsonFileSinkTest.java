@@ -121,6 +121,26 @@ final class JsonFileSinkTest {
     }
 
     @Test
+    void preparedSinkDoesNotModifyDurableContentsUntilItsFirstActiveWrite() throws Exception {
+        Path output = Files.createTempDirectory("logyard-json-prepared-").resolve("events.jsonl");
+        Files.writeString(output, "KEEP-ME\n", StandardCharsets.UTF_8);
+        EventEncoder encoder = event -> "{\"sequence\":" + event.attributes().get("sequence") + "}";
+
+        try (JsonFileSink discarded = JsonFileSink.prepare(output, encoder, 1_024, Duration.ZERO, false, null)) {
+            assertEquals("KEEP-ME\n", Files.readString(output, StandardCharsets.UTF_8));
+            assertThrows(IllegalStateException.class, () -> discarded.accept(event(1)));
+        }
+        assertEquals("KEEP-ME\n", Files.readString(output, StandardCharsets.UTF_8));
+
+        try (JsonFileSink committed = JsonFileSink.prepare(output, encoder, 1_024, Duration.ZERO, false, null)) {
+            committed.activate();
+            assertEquals("KEEP-ME\n", Files.readString(output, StandardCharsets.UTF_8));
+            committed.accept(event(2));
+        }
+        assertEquals("{\"sequence\":2}\n", Files.readString(output, StandardCharsets.UTF_8));
+    }
+
+    @Test
     void customEncoderCanInvokeAcceptFlushAndCloseAcrossThreadsWithoutDeadlock() throws Exception {
         Path output = Files.createTempDirectory("logyard-json-reentrant-").resolve("events.jsonl");
         ExecutorService callbacks = Executors.newSingleThreadExecutor();

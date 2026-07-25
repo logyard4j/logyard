@@ -28,6 +28,7 @@ final class RejectedConfigurationReconciliationTest {
         ConfigurationSnapshot activeSnapshot = ConfigurationSnapshot.read(source);
         LogyardConfig activeConfig = activeSnapshot.parse(Map.of());
         RuntimeAssembly activeAssembly = LogyardRuntimeFactory.assemble(activeConfig, null);
+        activeAssembly.activateCandidateOutputs();
         DefaultLogyardRuntime runtime = new DefaultLogyardRuntime(activeAssembly.plan());
         LogyardRuntimeFactory.attach(runtime, activeAssembly);
         AtomicInteger reads = new AtomicInteger();
@@ -50,12 +51,13 @@ final class RejectedConfigurationReconciliationTest {
                 },
                 Map.of());
         try {
-            try (ConfigurationWatcher ignored = ConfigurationWatcher.start(
+            try (ConfigurationWatcher watcher = ConfigurationWatcher.start(
                     source,
                     Duration.ofMillis(25L),
                     Duration.ofSeconds(2L),
                     coordinator,
                     ReloadDiagnostics.silent())) {
+                assertTrue(watcher.isRunning(), "reconciliation watcher did not start");
                 Files.writeString(source, activeText + "\ninvalid = true\n", StandardCharsets.UTF_8);
 
                 await(() -> rejections.get() == 1, "invalid content was not rejected");
@@ -66,7 +68,7 @@ final class RejectedConfigurationReconciliationTest {
             assertEquals(1, rejections.get(), "identical invalid content was parsed or reported repeatedly");
 
             Files.writeString(source, activeText + "\nanother_invalid = true\n", StandardCharsets.UTF_8);
-            assertEquals(WatcherReloadOutcome.WAIT_FOR_CHANGE, coordinator.reloadForWatcher());
+            assertEquals(WatcherReloadOutcome.INVALID_CANDIDATE, coordinator.reloadForWatcher());
             assertEquals(2, rejections.get(), "new invalid content was not attempted exactly once");
 
             Files.writeString(source, activeText, StandardCharsets.UTF_8);
@@ -74,7 +76,7 @@ final class RejectedConfigurationReconciliationTest {
             assertEquals(Level.INFO, coordinator.currentConfig().rootLogger().level());
 
             Files.writeString(source, activeText + "\nanother_invalid = true\n", StandardCharsets.UTF_8);
-            assertEquals(WatcherReloadOutcome.WAIT_FOR_CHANGE, coordinator.reloadForWatcher());
+            assertEquals(WatcherReloadOutcome.INVALID_CANDIDATE, coordinator.reloadForWatcher());
             assertEquals(3, rejections.get(), "returning to active content did not clear rejected-digest state");
         } finally {
             runtime.close();

@@ -75,12 +75,12 @@ final class ReloadDebouncerTest {
         clock.set(110L);
         debouncer.runIfDue(() -> {
             attempts.incrementAndGet();
-            return WatcherReloadOutcome.WAIT_FOR_CHANGE;
+            return WatcherReloadOutcome.INVALID_CANDIDATE;
         });
         clock.set(1_000L);
         debouncer.runIfDue(() -> {
             attempts.incrementAndGet();
-            return WatcherReloadOutcome.WAIT_FOR_CHANGE;
+            return WatcherReloadOutcome.INVALID_CANDIDATE;
         });
 
         assertEquals(1, attempts.get());
