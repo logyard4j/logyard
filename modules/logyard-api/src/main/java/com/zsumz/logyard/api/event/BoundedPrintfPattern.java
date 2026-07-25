@@ -1,6 +1,7 @@
 package com.zsumz.logyard.api.event;
 
 import java.time.ZoneId;
+import java.util.IllegalFormatPrecisionException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,6 +62,9 @@ final class BoundedPrintfPattern {
                     ? pattern.charAt(cursor++)
                     : '\0';
             char conversion = cursor < pattern.length() ? pattern.charAt(cursor++) : '\0';
+            if (datePrefix != '\0' && precisionPresent && !precision.text().isEmpty()) {
+                throw new IllegalFormatPrecisionException(Integer.parseInt(precision.text()));
+            }
 
             if (conversion == '%' || conversion == 'n' || conversion == '\0') {
                 if (explicit.present()) {
@@ -102,7 +106,7 @@ final class BoundedPrintfPattern {
                 referencedParameterOmitted,
                 syntaxBounded,
                 Locale.getDefault(Locale.Category.FORMAT),
-                TrustedFormattingZone.current());
+                TrustedFormattingZone.defaultZone());
     }
 
     private static ArgumentRequest request(int argumentIndex, char datePrefix, char conversion) {

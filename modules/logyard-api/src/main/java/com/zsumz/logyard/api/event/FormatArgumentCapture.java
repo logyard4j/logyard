@@ -27,7 +27,7 @@ final class FormatArgumentCapture {
             return captureDecimal((BigDecimal) value);
         }
         if (value.getClass() == Date.class) {
-            return new Captured(new Date(((Date) value).getTime()), false);
+            return new Captured(CapturedTemporal.from((Date) value), false);
         }
         MessageFormatter.RenderResult rendered =
                 MessageFormatter.safeRender(value, CaptureLimits.MAX_CAPTURED_NUMBER_CHARS);

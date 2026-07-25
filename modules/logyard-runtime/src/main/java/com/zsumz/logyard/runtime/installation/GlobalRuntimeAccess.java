@@ -7,6 +7,7 @@ import java.util.function.BooleanSupplier;
 interface GlobalRuntimeAccess {
     LogyardRuntime current();
 
+    /** Performs only the process-global slot installation; implementations must not invoke extension code or block. */
     void install(LogyardRuntime runtime);
 
     default void install(LogyardRuntime runtime, BooleanSupplier managedShutdown) {

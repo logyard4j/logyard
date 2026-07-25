@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,12 +21,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @InternalApi
 public final class ConfigurationWatchRegistration implements AutoCloseable {
     private final Path source;
+    private final Path parent;
     private final Path filename;
     private final WatchService watchService;
     private final AtomicBoolean claimed = new AtomicBoolean();
 
-    private ConfigurationWatchRegistration(Path source, Path filename, WatchService watchService) {
+    private ConfigurationWatchRegistration(Path source, Path parent, Path filename, WatchService watchService) {
         this.source = Objects.requireNonNull(source, "source");
+        this.parent = Objects.requireNonNull(parent, "parent");
         this.filename = Objects.requireNonNull(filename, "filename");
         this.watchService = Objects.requireNonNull(watchService, "watchService");
     }
@@ -50,12 +53,8 @@ public final class ConfigurationWatchRegistration implements AutoCloseable {
                     failure);
         }
         try {
-            parent.register(
-                    watchService,
-                    StandardWatchEventKinds.ENTRY_CREATE,
-                    StandardWatchEventKinds.ENTRY_MODIFY,
-                    StandardWatchEventKinds.ENTRY_DELETE);
-            return new ConfigurationWatchRegistration(normalizedSource, filename, watchService);
+            register(parent, watchService);
+            return new ConfigurationWatchRegistration(normalizedSource, parent, filename, watchService);
         } catch (IOException | RuntimeException registrationFailure) {
             try {
                 watchService.close();
@@ -82,6 +81,22 @@ public final class ConfigurationWatchRegistration implements AutoCloseable {
 
     WatchService watchService() {
         return watchService;
+    }
+
+    boolean sourceIsSymbolicLink() {
+        return java.nio.file.Files.isSymbolicLink(source);
+    }
+
+    WatchKey reregister() throws IOException {
+        return register(parent, watchService);
+    }
+
+    private static WatchKey register(Path parent, WatchService watchService) throws IOException {
+        return parent.register(
+                watchService,
+                StandardWatchEventKinds.ENTRY_CREATE,
+                StandardWatchEventKinds.ENTRY_MODIFY,
+                StandardWatchEventKinds.ENTRY_DELETE);
     }
 
     @Override

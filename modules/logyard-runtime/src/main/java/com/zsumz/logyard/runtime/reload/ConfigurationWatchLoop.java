@@ -19,7 +19,10 @@ import java.util.function.Supplier;
 
 final class ConfigurationWatchLoop implements Runnable {
     private static final long POLL_MILLIS = 100L;
+    private static final long RECONCILIATION_NANOS = Duration.ofSeconds(1L).toNanos();
+    private static final long REGISTRATION_RETRY_NANOS = Duration.ofSeconds(1L).toNanos();
 
+    private final ConfigurationWatchRegistration registration;
     private final Path source;
     private final Path filename;
     private final WatchService watchService;
@@ -27,18 +30,23 @@ final class ConfigurationWatchLoop implements Runnable {
     private final Supplier<WatcherReloadOutcome> reload;
     private final ReloadDiagnosticBoundary diagnostics;
     private final AtomicBoolean stopped = new AtomicBoolean();
+    private boolean registrationValid = true;
+    private long nextReconciliation;
+    private long nextRegistrationAttempt;
 
     ConfigurationWatchLoop(
             ConfigurationWatchRegistration registration,
             Duration debounce,
             Supplier<WatcherReloadOutcome> reload,
             ReloadDiagnostics diagnostics) {
+        this.registration = registration;
         source = registration.source();
         filename = registration.filename();
         watchService = registration.watchService();
         debouncer = new ReloadDebouncer(debounce);
         this.reload = reload;
         this.diagnostics = new ReloadDiagnosticBoundary(diagnostics);
+        nextReconciliation = saturatedDeadline(System.nanoTime(), RECONCILIATION_NANOS);
     }
 
     @Override
@@ -50,6 +58,7 @@ final class ConfigurationWatchLoop implements Runnable {
                 if (key != null && consume(key)) {
                     debouncer.signalChange();
                 }
+                reconcile();
                 ComponentInvocationBoundary.invoke(
                         "configuration reload callback",
                         () -> debouncer.runIfDue(reload),
@@ -91,15 +100,43 @@ final class ConfigurationWatchLoop implements Runnable {
 
     private boolean consume(WatchKey key) {
         boolean relevant = false;
+        boolean symbolicLink = registration.sourceIsSymbolicLink();
         for (WatchEvent<?> event : key.pollEvents()) {
-            if (event.kind() == StandardWatchEventKinds.OVERFLOW || filename.equals(event.context())) {
+            if (event.kind() == StandardWatchEventKinds.OVERFLOW
+                    || filename.equals(event.context())
+                    || symbolicLink) {
                 relevant = true;
             }
         }
         if (!key.reset()) {
-            throw new IllegalStateException("configuration watch key is no longer valid");
+            registrationValid = false;
+            nextRegistrationAttempt = System.nanoTime();
+            relevant = true;
         }
         return relevant;
+    }
+
+    private void reconcile() {
+        long now = System.nanoTime();
+        if (now - nextReconciliation >= 0L) {
+            debouncer.signalReconciliation();
+            nextReconciliation = saturatedDeadline(now, RECONCILIATION_NANOS);
+        }
+        if (!registrationValid && now - nextRegistrationAttempt >= 0L) {
+            try {
+                registration.reregister();
+                registrationValid = true;
+                debouncer.signalChange();
+            } catch (IOException | RuntimeException failure) {
+                diagnostics.rejected(source, failure);
+                nextRegistrationAttempt = saturatedDeadline(now, REGISTRATION_RETRY_NANOS);
+            }
+        }
+    }
+
+    private static long saturatedDeadline(long now, long delay) {
+        long candidate = now + delay;
+        return candidate < 0L && now > 0L ? Long.MAX_VALUE : candidate;
     }
 
     private Throwable closeAfterRun(Throwable terminalFailure) {

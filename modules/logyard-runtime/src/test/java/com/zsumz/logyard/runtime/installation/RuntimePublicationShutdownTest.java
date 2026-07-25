@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -49,8 +50,16 @@ final class RuntimePublicationShutdownTest {
             Future<RuntimeInstallationLease> acquisition =
                     executor.submit(() -> manager.acquireApplication(TestRequests.request()));
             assertTrue(global.publicationEntered.await(1L, TimeUnit.SECONDS));
-            Future<?> terminalShutdown = executor.submit(shutdown.get());
-            awaitCancellation(manager);
+            CountDownLatch shutdownEntered = new CountDownLatch(1);
+            Future<?> terminalShutdown = executor.submit(() -> {
+                shutdownEntered.countDown();
+                shutdown.get().run();
+            });
+            assertTrue(shutdownEntered.await(1L, TimeUnit.SECONDS));
+            assertThrows(
+                    TimeoutException.class,
+                    () -> terminalShutdown.get(100L, TimeUnit.MILLISECONDS));
+            assertNull(global.current(), "candidate published while terminal shutdown was waiting to revoke authority");
             global.allowPublicationReturn.countDown();
 
             ExecutionException cancellation =
@@ -63,16 +72,6 @@ final class RuntimePublicationShutdownTest {
         } finally {
             global.allowPublicationReturn.countDown();
             executor.shutdownNow();
-        }
-    }
-
-    private static void awaitCancellation(RuntimeInstallationManager manager) throws InterruptedException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1L);
-        while (!manager.startCancellationPending()) {
-            if (System.nanoTime() >= deadline) {
-                throw new AssertionError("terminal shutdown did not cancel the pending start");
-            }
-            Thread.sleep(1L);
         }
     }
 
@@ -93,12 +92,12 @@ final class RuntimePublicationShutdownTest {
 
         @Override
         public void install(LogyardRuntime runtime) {
-            if (!current.compareAndSet(null, runtime)) {
-                throw new IllegalStateException("runtime already installed");
-            }
             if (publications.incrementAndGet() == 2) {
                 publicationEntered.countDown();
                 await(allowPublicationReturn);
+            }
+            if (!current.compareAndSet(null, runtime)) {
+                throw new IllegalStateException("runtime already installed");
             }
         }
 

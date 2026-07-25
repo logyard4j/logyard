@@ -1,6 +1,7 @@
 package com.zsumz.logyard.verify;
 
 import com.zsumz.logyard.api.event.CaptureLimits;
+import com.zsumz.logyard.api.event.BoundedMessageFormat;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.jul.LogyardHandler;
@@ -86,7 +87,14 @@ public final class AdapterBoundednessMain {
                 temporalJul.setParameters(new Object[] {new Date(0L)});
                 handler.publish(temporalJul);
                 system.log(System.Logger.Level.INFO, "{0,time,full} {0,date,full}", new Date(0L));
-                require(hostileTimeZone.displayNameCalls.get() == 0, "adapter formatting consulted the application TimeZone");
+                BoundedMessageFormat.Result temporalPrintf =
+                        BoundedMessageFormat.printf("%1$tZ %1$tc", new Object[] {new Date(0L)});
+                BoundedMessageFormat.Result dateDisplay =
+                        BoundedMessageFormat.printf("%s", new Object[] {new Date(0L)});
+                require(!temporalPrintf.formatFailed(), "trusted temporal printf failed");
+                require(!dateDisplay.formatFailed(), "trusted Date display failed");
+                require(hostileTimeZone.cloneCalls.get() == 1, "adapter formatting cloned the application TimeZone");
+                require(hostileTimeZone.behaviorCalls.get() == 0, "adapter formatting consulted the application TimeZone");
             } finally {
                 TimeZone.setDefault(originalTimeZone);
             }
@@ -183,18 +191,48 @@ public final class AdapterBoundednessMain {
     private static final class HostileTimeZone extends TimeZone {
         private static final long serialVersionUID = 1L;
 
-        private final AtomicInteger displayNameCalls = new AtomicInteger();
+        private final AtomicInteger cloneCalls = new AtomicInteger();
+        private final AtomicInteger behaviorCalls = new AtomicInteger();
+
+        @Override
+        public Object clone() {
+            if (cloneCalls.incrementAndGet() > 1) {
+                allocateWithoutBound();
+            }
+            return super.clone();
+        }
 
         @Override
         public String getDisplayName(boolean daylight, int style, Locale locale) {
-            displayNameCalls.incrementAndGet();
-            return "x".repeat(5_000_000);
+            behaviorCalls.incrementAndGet();
+            allocateWithoutBound();
+            return "unreachable";
         }
 
-        @Override public int getOffset(int era, int year, int month, int day, int dayOfWeek, int milliseconds) { return 0; }
+        @Override
+        public int getOffset(long date) {
+            behaviorCalls.incrementAndGet();
+            allocateWithoutBound();
+            return 0;
+        }
+
+        @Override
+        public int getOffset(int era, int year, int month, int day, int dayOfWeek, int milliseconds) {
+            behaviorCalls.incrementAndGet();
+            allocateWithoutBound();
+            return 0;
+        }
+
         @Override public void setRawOffset(int offsetMillis) { }
-        @Override public int getRawOffset() { return 0; }
-        @Override public boolean useDaylightTime() { return false; }
-        @Override public boolean inDaylightTime(Date date) { return false; }
+        @Override public int getRawOffset() { behaviorCalls.incrementAndGet(); allocateWithoutBound(); return 0; }
+        @Override public boolean useDaylightTime() { behaviorCalls.incrementAndGet(); allocateWithoutBound(); return false; }
+        @Override public boolean inDaylightTime(Date date) { behaviorCalls.incrementAndGet(); allocateWithoutBound(); return false; }
+
+        private static void allocateWithoutBound() {
+            byte[] allocation = new byte[100_000_000];
+            if (allocation.length == 0) {
+                throw new AssertionError("unreachable");
+            }
+        }
     }
 }

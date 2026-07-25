@@ -13,7 +13,11 @@ import java.util.IllegalFormatException;
  * <p>This boundary captures caller-owned parameters before invoking a formatter. In particular,
  * arbitrary objects cannot run their {@code toString()} implementation inside {@link MessageFormat},
  * and arbitrary-precision numbers whose expanded decimal form would exceed the capture budget are
- * represented by their bounded scientific form.</p>
+ * represented by their bounded scientific form. Legacy {@link java.util.Date} and epoch-millisecond
+ * {@link Long} temporal conversions use a deterministic UTC, proleptic-Gregorian policy; no adapter
+ * formatting path consults the process-default {@link java.util.TimeZone}. Standard date/time styles
+ * retain their localized meaning; custom date/time styles use {@link java.time.format.DateTimeFormatter}
+ * pattern semantics.</p>
  */
 @InternalApi
 public final class BoundedMessageFormat {

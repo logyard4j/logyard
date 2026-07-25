@@ -87,6 +87,32 @@ final class ReloadDebouncerTest {
     }
 
     @Test
+    void reconciliationNeverPostponesAnAlreadyPendingFilesystemChange() {
+        AtomicLong clock = new AtomicLong(100L);
+        AtomicInteger attempts = new AtomicInteger();
+        ReloadDebouncer debouncer = new ReloadDebouncer(Duration.ofNanos(10L), clock::get);
+
+        debouncer.signalChange();
+        clock.set(105L);
+        debouncer.signalReconciliation();
+        clock.set(110L);
+        debouncer.runIfDue(() -> {
+            attempts.incrementAndGet();
+            return WatcherReloadOutcome.APPLIED;
+        });
+        assertEquals(1, attempts.get());
+
+        clock.set(200L);
+        debouncer.signalReconciliation();
+        clock.set(210L);
+        debouncer.runIfDue(() -> {
+            attempts.incrementAndGet();
+            return WatcherReloadOutcome.UNCHANGED;
+        });
+        assertEquals(2, attempts.get());
+    }
+
+    @Test
     void transientFailuresRemainDirtyWithCappedExponentialRetriesUntilApplied() {
         AtomicLong clock = new AtomicLong(100L);
         AtomicInteger attempts = new AtomicInteger();

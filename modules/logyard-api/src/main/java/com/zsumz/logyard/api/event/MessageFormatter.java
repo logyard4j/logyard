@@ -183,6 +183,8 @@ public final class MessageFormatter {
                 result.append(String.valueOf(SafeNumberCapture.bigInteger((BigInteger) value)));
             } else if (value.getClass() == BigDecimal.class) {
                 result.append(String.valueOf(SafeNumberCapture.bigDecimal((BigDecimal) value)));
+            } else if (value.getClass() == java.util.Date.class) {
+                result.append(CapturedTemporal.from((java.util.Date) value).toString());
             } else if (value instanceof CharSequence sequence) {
                 result.append(sequence);
             } else {

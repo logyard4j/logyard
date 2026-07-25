@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.ChoiceFormat;
 import java.text.Format;
-import java.util.Date;
 
 /** Conservative construction bounds for one JDK formatter element. */
 final class FormattedValueWorkBudget {
@@ -33,7 +32,7 @@ final class FormattedValueWorkBudget {
         if (value instanceof Number number) {
             return integerMaximum(decimalCharacters(number.longValue()), sourceCharacters);
         }
-        if (value instanceof Date) {
+        if (value instanceof CapturedTemporal) {
             return saturatedAdd(saturatedMultiply(sourceCharacters, 2L), 256L);
         }
         if (value instanceof CharSequence sequence) {

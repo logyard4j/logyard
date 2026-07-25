@@ -42,8 +42,7 @@ final class PublicShutdownTransactionTest {
             assertTrue(global.installed.await(1L, TimeUnit.SECONDS));
 
             Future<?> shutdown = executor.submit(Logyard::shutdown);
-            assertFalse(shutdown.isDone());
-            awaitCancellation(manager);
+            assertThrows(TimeoutException.class, () -> shutdown.get(100L, TimeUnit.MILLISECONDS));
             global.allowInstallReturn.countDown();
 
             ExecutionException superseded =
@@ -248,16 +247,6 @@ final class PublicShutdownTransactionTest {
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("test barrier interrupted", interrupted);
-        }
-    }
-
-    private static void awaitCancellation(RuntimeInstallationManager manager) throws InterruptedException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1L);
-        while (!manager.startCancellationPending()) {
-            if (System.nanoTime() >= deadline) {
-                throw new AssertionError("public shutdown did not cancel the pending start");
-            }
-            Thread.sleep(1L);
         }
     }
 }

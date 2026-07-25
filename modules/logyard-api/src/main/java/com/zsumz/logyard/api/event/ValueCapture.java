@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
 
 /** Captures caller-owned values as bounded trees before asynchronous delivery. */
 final class ValueCapture {
@@ -112,6 +113,11 @@ final class ValueCapture {
         }
         if (value.getClass() == BigDecimal.class) {
             return SafeNumberCapture.bigDecimal((BigDecimal) value, context);
+        }
+        if (value.getClass() == Date.class) {
+            return context.capturePayloadText(
+                    CapturedTemporal.from((Date) value).toString(),
+                    CaptureLimits.MAX_TEXT_CHARS);
         }
         return captureRendered(value, context);
     }

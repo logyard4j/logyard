@@ -39,6 +39,12 @@ final class ReloadDebouncer {
         schedule(delayNanos);
     }
 
+    void signalReconciliation() {
+        if (deadline == Long.MAX_VALUE) {
+            signalChange();
+        }
+    }
+
     private void schedule(long delay) {
         long now = nanoTime.getAsLong();
         long candidate = now + delay;

@@ -86,7 +86,7 @@ final class MessageFormatWorkBudget {
         private static Plan parse(String pattern, Locale locale, boolean validateWithMessageFormat) {
             List<MessageFormatPattern.Element> seeds = MessageFormatPattern.parse(pattern);
             ZoneId zone = MessageFormatPattern.containsDateTime(seeds)
-                    ? TrustedFormattingZone.current()
+                    ? TrustedFormattingZone.defaultZone()
                     : null;
             MessageFormat messageFormat =
                     validateWithMessageFormat ? executable(pattern, seeds, locale, zone) : null;
@@ -198,9 +198,9 @@ final class MessageFormatWorkBudget {
                         && element.seed.argumentIndex() >= 0
                         && element.seed.argumentIndex() < captured.length
                         && captured[element.seed.argumentIndex()] != null
-                        && captured[element.seed.argumentIndex()].getClass() == java.util.Date.class) {
+                        && captured[element.seed.argumentIndex()] instanceof CapturedTemporal) {
                     if (effectiveZone == null) {
-                        effectiveZone = TrustedFormattingZone.current();
+                        effectiveZone = TrustedFormattingZone.defaultZone();
                     }
                     formats[index] = new TrustedDateTimeFormat("datetime", "short", locale, effectiveZone);
                 }

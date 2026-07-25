@@ -52,36 +52,32 @@ final class RuntimeStartTransaction {
         };
     }
 
-    boolean publish(Runnable publicationAction) {
+    synchronized boolean publish(Runnable publicationAction) {
         Objects.requireNonNull(publicationAction, "publicationAction");
-        synchronized (this) {
-            if (publication == Publication.CANCELLED) {
-                return false;
-            }
-            if (publication != Publication.OPEN) {
-                throw new IllegalStateException("runtime start publication was already attempted");
-            }
-            publication = Publication.PUBLISHING;
+        if (publication == Publication.CANCELLED) {
+            return false;
         }
+        if (publication != Publication.OPEN) {
+            throw new IllegalStateException("runtime start publication was already attempted");
+        }
+        publication = Publication.PUBLISHING;
         try {
+            // The action is the internal nonblocking global-slot CAS. Retaining this monitor makes
+            // publication authority and terminal cancellation one indivisible transition.
             publicationAction.run();
         } catch (RuntimeException | Error failure) {
-            synchronized (this) {
-                publication = Publication.CANCELLED;
-            }
+            publication = Publication.CANCELLED;
             throw failure;
         }
-        synchronized (this) {
-            if (publication == Publication.CANCELLATION_REQUESTED) {
-                publication = Publication.CANCELLED;
-                return false;
-            }
-            if (publication != Publication.PUBLISHING) {
-                throw new IllegalStateException("runtime start publication was not in progress");
-            }
-            publication = Publication.PUBLISHED;
-            return true;
+        if (publication == Publication.CANCELLATION_REQUESTED) {
+            publication = Publication.CANCELLED;
+            return false;
         }
+        if (publication != Publication.PUBLISHING) {
+            throw new IllegalStateException("runtime start publication was not in progress");
+        }
+        publication = Publication.PUBLISHED;
+        return true;
     }
 
     void completeWithoutRetirement() {
