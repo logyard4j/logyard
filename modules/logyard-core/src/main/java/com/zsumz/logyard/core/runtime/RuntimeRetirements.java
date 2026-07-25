@@ -38,7 +38,7 @@ final class RuntimeRetirements {
         Objects.requireNonNull(nextPlan, "nextPlan");
         Objects.requireNonNull(activation, "activation");
         if (!executor.reserveReload()) {
-            throw new IllegalStateException("Logyard has " + RetirementExecutor.MAX_PENDING_RELOADS
+            throw new RuntimeReloadDeferredException("Logyard has " + RetirementExecutor.MAX_PENDING_RELOADS
                     + " pending plan retirements; wait for output closure before reloading again");
         }
 

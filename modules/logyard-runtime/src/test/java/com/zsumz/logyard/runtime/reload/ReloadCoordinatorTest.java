@@ -9,6 +9,7 @@ import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
+import com.zsumz.logyard.core.runtime.RuntimeReloadDeferredException;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
@@ -20,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 final class ReloadCoordinatorTest {
@@ -88,6 +90,36 @@ final class ReloadCoordinatorTest {
 
             assertEquals(WatcherReloadOutcome.TRANSIENT_RETRY, failingReader.reloadForWatcher());
             assertEquals(Level.INFO, failingReader.currentConfig().rootLogger().level());
+        }
+    }
+
+    @Test
+    void watcherRetainsAValidCandidateUntilTransientRuntimeCapacityRecovers() throws Exception {
+        Fixture fixture = Fixture.create();
+        try (ReloadHarness harness = ReloadHarness.start(fixture, ReloadDiagnostics.silent())) {
+            ConfigurationSnapshot snapshot = ConfigurationSnapshot.read(fixture.source());
+            AtomicInteger publications = new AtomicInteger();
+            ReloadCoordinator coordinator = new ReloadCoordinator(
+                    fixture.source().toString(),
+                    fixture.source(),
+                    () -> ConfigurationSnapshot.read(fixture.source()),
+                    harness.runtime(),
+                    plan -> {
+                        if (publications.getAndIncrement() == 0) {
+                            throw new RuntimeReloadDeferredException("retirement capacity is temporarily exhausted");
+                        }
+                        harness.runtime().reload(plan);
+                    },
+                    snapshot,
+                    harness.coordinator().currentAssembly(),
+                    ReloadDiagnostics.silent(),
+                    Map.of());
+            fixture.write("debug", "4KiB");
+
+            assertEquals(WatcherReloadOutcome.TRANSIENT_RETRY, coordinator.reloadForWatcher());
+            assertEquals(Level.INFO, coordinator.currentConfig().rootLogger().level());
+            assertEquals(WatcherReloadOutcome.APPLIED, coordinator.reloadForWatcher());
+            assertEquals(Level.DEBUG, coordinator.currentConfig().rootLogger().level());
         }
     }
 

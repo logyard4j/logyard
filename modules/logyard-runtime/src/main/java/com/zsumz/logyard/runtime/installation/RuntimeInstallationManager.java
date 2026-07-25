@@ -94,7 +94,7 @@ public final class RuntimeInstallationManager {
             state.requireActiveStart(transaction);
             installShutdownHook(plan);
             state.commitStart(transaction, candidate, owner);
-            transaction.complete();
+            transaction.completeWithoutRetirement();
             return managedLease(owner, candidate);
         } catch (RuntimeException | Error failure) {
             abortStart(transaction, candidate, failure);
@@ -111,15 +111,15 @@ public final class RuntimeInstallationManager {
     private void abortStart(RuntimeStartTransaction transaction, RuntimeInstallation candidate, Throwable primaryFailure) {
         RuntimeRetirementPlan retirement = state.abortStart(transaction, candidate);
         if (!retirement.required()) {
-            transaction.complete();
+            transaction.completeWithoutRetirement();
             return;
         }
-        retire(retirement, cleanupFailure -> {
+        retire(retirement, transaction::completeShutdownBoundary, cleanupFailure -> {
             if (cleanupFailure != null) {
                 primaryFailure.addSuppressed(cleanupFailure);
             }
             state.completeStartRetirement(transaction);
-            transaction.complete();
+            transaction.completeFinalRetirement();
         });
     }
 
@@ -155,24 +155,37 @@ public final class RuntimeInstallationManager {
     private boolean requestShutdown(RuntimeInstallation expected, boolean terminateProcess) {
         RuntimeShutdownPlan shutdown = state.shutdown(expected, terminateProcess);
         retire(shutdown.retirement());
-        if (terminateProcess && shutdown.cancelledStart() != null) {
-            shutdown.cancelledStart().awaitCompletion();
+        RuntimeStartTransaction cancelledStart = shutdown.cancelledStart();
+        if (cancelledStart != null) {
+            RuntimeInstallation candidate = cancelledStart.candidate();
+            if (candidate != null) {
+                globalRuntime.detachIfCurrent(candidate.runtime());
+            }
+            cancelledStart.awaitShutdownBoundary();
         }
         return shutdown.accepted();
     }
 
     private void retire(RuntimeRetirementPlan retirement) {
-        retire(retirement, ignored -> {
+        retire(retirement, () -> {
+        }, ignored -> {
         });
     }
 
-    private CompletionStage<Void> retire(RuntimeRetirementPlan retirement, Consumer<Throwable> completion) {
+    private CompletionStage<Void> retire(
+            RuntimeRetirementPlan retirement,
+            Runnable shutdownBoundary,
+            Consumer<Throwable> completion) {
         if (!retirement.required()) {
+            shutdownBoundary.run();
             return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
-        return retirements.close(retirement.installation(), globalRuntime, failure -> {
+        CompletionStage<Void> finalRetirement = retirements.close(retirement.installation(), globalRuntime);
+        shutdownBoundary.run();
+        retirements.observe(finalRetirement, failure -> {
             state.completeRetirement(retirement.installation(), retirement.generation());
             completion.accept(failure);
         });
+        return finalRetirement;
     }
 }

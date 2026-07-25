@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -76,6 +77,40 @@ final class BoundedMessageFormatTest {
     }
 
     @Test
+    void rejectsQuotedChoiceExpansionBeforeMessageFormatRecursivelyParsesIt() {
+        String pattern = "{0,choice,0#" + "'{1}'".repeat(1_600) + "}";
+
+        BoundedMessageFormat.Result result =
+                BoundedMessageFormat.messageFormat(pattern, new Object[] {0, "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)});
+
+        assertTrue(result.message().contains("format expansion omitted"));
+        assertTrue(result.truncated());
+        assertFalse(result.formatFailed());
+    }
+
+    @Test
+    void leavesUnreferencedMessageFormatAndPrintfArgumentsUntouched() {
+        AtomicInteger renderCalls = new AtomicInteger();
+        Object unreferenced = new Object() {
+            @Override
+            public String toString() {
+                renderCalls.incrementAndGet();
+                return "should not render";
+            }
+        };
+
+        BoundedMessageFormat.Result messageFormat =
+                BoundedMessageFormat.messageFormat("selected {1}", new Object[] {unreferenced, "message"});
+        BoundedMessageFormat.Result printf =
+                BoundedMessageFormat.printf("selected %2$s %<s", new Object[] {unreferenced, "message"});
+        BoundedMessageFormat.printf("literal %% %n", new Object[] {unreferenced});
+
+        assertEquals("selected message", messageFormat.message());
+        assertEquals("selected message message", printf.message());
+        assertEquals(0, renderCalls.get());
+    }
+
+    @Test
     void streamsRepeatedPrintfExpansionDirectlyIntoTheOutputAllowance() {
         String pattern = "%1$s".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 4);
 
@@ -104,5 +139,24 @@ final class BoundedMessageFormatTest {
         long allocated = allocationBean.getThreadAllocatedBytes(Thread.currentThread().threadId()) - before;
 
         assertTrue(allocated < 1_000_000L, () -> "repeated MessageFormat allocated " + allocated + " bytes");
+    }
+
+    @Test
+    void quotedChoiceFormattingStaysWithinAOneMegabyteAllocationEnvelope() {
+        java.lang.management.ThreadMXBean platformBean = ManagementFactory.getThreadMXBean();
+        if (!(platformBean instanceof com.sun.management.ThreadMXBean allocationBean)
+                || !allocationBean.isThreadAllocatedMemorySupported()) {
+            return;
+        }
+        allocationBean.setThreadAllocatedMemoryEnabled(true);
+        String pattern = "{0,choice,0#" + "'{1}'".repeat(1_600) + "}";
+        Object[] parameters = {0, "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)};
+        BoundedMessageFormat.messageFormat(pattern, parameters);
+
+        long before = allocationBean.getThreadAllocatedBytes(Thread.currentThread().threadId());
+        BoundedMessageFormat.messageFormat(pattern, parameters);
+        long allocated = allocationBean.getThreadAllocatedBytes(Thread.currentThread().threadId()) - before;
+
+        assertTrue(allocated < 1_000_000L, () -> "quoted ChoiceFormat allocated " + allocated + " bytes");
     }
 }

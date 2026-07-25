@@ -118,6 +118,12 @@ final class QuarkusEventMapperTest {
                 ExtLogRecord.FormatStyle.PRINTF,
                 QuarkusEventMapperTest.class.getName());
         repeatedPrintf.setParameters(new Object[] {"x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)});
+        ExtLogRecord recursiveChoice = new ExtLogRecord(
+                java.util.logging.Level.INFO,
+                "{0,choice,0#" + "'{1}'".repeat(1_600) + "}",
+                ExtLogRecord.FormatStyle.MESSAGE_FORMAT,
+                QuarkusEventMapperTest.class.getName());
+        recursiveChoice.setParameters(new Object[] {0, "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)});
 
         List<LogEvent> events = new ArrayList<>();
         try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
@@ -125,6 +131,7 @@ final class QuarkusEventMapperTest {
             new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, printf);
             new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, repeatedMessageFormat);
             new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, repeatedPrintf);
+            new QuarkusEventMapper(ContextPolicySnapshot::all).publish(runtime, recursiveChoice);
         }
 
         assertTrue(events.get(0).renderedMessage().contains("1E+100000000"));
@@ -136,6 +143,8 @@ final class QuarkusEventMapperTest {
         assertTrue(events.get(3).renderedMessage().length() <= CaptureLimits.MAX_RENDERED_MESSAGE_CHARS);
         assertTrue(events.get(3).renderedMessage().endsWith("…"));
         assertTrue((Boolean) events.get(3).attributes().get("logyard.capture.truncated"));
+        assertTrue(events.get(4).renderedMessage().contains("format expansion omitted"));
+        assertTrue((Boolean) events.get(4).attributes().get("logyard.capture.truncated"));
     }
 
     private static final class TrackingRecord extends ExtLogRecord {

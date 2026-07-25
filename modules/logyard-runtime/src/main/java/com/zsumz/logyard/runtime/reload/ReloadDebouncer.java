@@ -6,24 +6,36 @@ import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 final class ReloadDebouncer {
-    private static final int MAX_TRANSIENT_RETRIES = 3;
+    private static final Duration MINIMUM_TRANSIENT_RETRY = Duration.ofMillis(100L);
+    private static final Duration MAXIMUM_TRANSIENT_RETRY = Duration.ofSeconds(5L);
 
     private final long delayNanos;
+    private final long minimumTransientRetryNanos;
+    private final long maximumTransientRetryNanos;
     private final LongSupplier nanoTime;
     private long deadline = Long.MAX_VALUE;
-    private int transientRetries;
+    private int transientRetryExponent;
 
     ReloadDebouncer(Duration delay) {
         this(delay, System::nanoTime);
     }
 
     ReloadDebouncer(Duration delay, LongSupplier nanoTime) {
+        this(delay, MINIMUM_TRANSIENT_RETRY, MAXIMUM_TRANSIENT_RETRY, nanoTime);
+    }
+
+    ReloadDebouncer(Duration delay, Duration minimumTransientRetry, Duration maximumTransientRetry, LongSupplier nanoTime) {
         delayNanos = saturatedNanos(Objects.requireNonNull(delay, "delay"));
+        minimumTransientRetryNanos = saturatedNanos(Objects.requireNonNull(minimumTransientRetry, "minimumTransientRetry"));
+        maximumTransientRetryNanos = saturatedNanos(Objects.requireNonNull(maximumTransientRetry, "maximumTransientRetry"));
+        if (minimumTransientRetryNanos > maximumTransientRetryNanos) {
+            throw new IllegalArgumentException("minimum transient retry must not exceed maximum transient retry");
+        }
         this.nanoTime = Objects.requireNonNull(nanoTime, "nanoTime");
     }
 
     void signalChange() {
-        transientRetries = 0;
+        transientRetryExponent = 0;
         schedule(delayNanos);
     }
 
@@ -40,11 +52,22 @@ final class ReloadDebouncer {
             WatcherReloadOutcome outcome = Objects.requireNonNull(reload.get(), "reload result");
             if (outcome == WatcherReloadOutcome.BUSY_RETRY) {
                 schedule(delayNanos);
-            } else if (outcome == WatcherReloadOutcome.TRANSIENT_RETRY && transientRetries < MAX_TRANSIENT_RETRIES) {
-                transientRetries++;
-                schedule(saturatedMultiply(delayNanos, 1L << transientRetries));
+            } else if (outcome == WatcherReloadOutcome.TRANSIENT_RETRY) {
+                schedule(transientRetryDelay());
+            } else {
+                transientRetryExponent = 0;
             }
         }
+    }
+
+    private long transientRetryDelay() {
+        long base = Math.max(delayNanos, minimumTransientRetryNanos);
+        int exponent = transientRetryExponent;
+        if (transientRetryExponent < 62) {
+            transientRetryExponent++;
+        }
+        long multiplier = 1L << exponent;
+        return Math.min(maximumTransientRetryNanos, saturatedMultiply(base, multiplier));
     }
 
     private static long saturatedMultiply(long value, long multiplier) {

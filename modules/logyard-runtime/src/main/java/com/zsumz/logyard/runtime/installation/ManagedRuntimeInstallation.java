@@ -10,6 +10,7 @@ import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
@@ -77,7 +78,7 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
         RuntimeAssembly currentAssembly = current.coordinator().currentAssembly();
         RuntimeAssembly candidate = null;
         ActiveRuntimeConfiguration replacement = null;
-        boolean currentWatcherClosed = false;
+        boolean currentWatcherRetirementAttempted = false;
         try {
             ConfigurationSnapshot snapshot = PreparedRuntimeConfiguration.read(request);
             if (current.sameSourceAndDigest(request, snapshot)) {
@@ -92,12 +93,12 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
             candidate = prepared.assembly();
             replacement = prepared.activate(runtime);
             replacement.activateWatcher();
+            currentWatcherRetirementAttempted = true;
             current.closeWatcher();
-            currentWatcherClosed = true;
             return commitReplacement(current, replacement, candidate, currentAssembly);
         } catch (RuntimeException | Error failure) {
-            closeReplacement(replacement, candidate, currentAssembly, failure);
-            if (currentWatcherClosed) {
+            RuntimeConfigurationCleanup.closeReplacement(replacement, candidate, currentAssembly, failure);
+            if (currentWatcherRetirementAttempted) {
                 restartCurrentWatcher(current, failure);
             }
             finishFailed(State.RECONFIGURING);
@@ -150,6 +151,18 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
         transition.lock();
         try {
             return state != State.CLOSED && active != null && active.watchesConfiguration();
+        } finally {
+            transition.unlock();
+        }
+    }
+
+    @Override
+    public Duration shutdownTimeout() {
+        transition.lock();
+        try {
+            return active == null
+                    ? RuntimeInstallation.super.shutdownTimeout()
+                    : active.coordinator().currentConfig().runtime().shutdownTimeout();
         } finally {
             transition.unlock();
         }
@@ -219,7 +232,7 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
             transition.unlock();
         }
         if (superseded) {
-            closeReplacement(
+            RuntimeConfigurationCleanup.closeReplacement(
                     replacement,
                     candidate,
                     currentAssembly,
@@ -271,23 +284,6 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
             }
         } catch (RuntimeException restartFailure) {
             primaryFailure.addSuppressed(restartFailure);
-        }
-    }
-
-    private static void closeReplacement(
-            ActiveRuntimeConfiguration replacement,
-            RuntimeAssembly candidate,
-            RuntimeAssembly current,
-            Throwable failure) {
-        if (replacement != null) {
-            try {
-                replacement.closeWatcher();
-            } catch (RuntimeException closeFailure) {
-                failure.addSuppressed(closeFailure);
-            }
-        }
-        if (candidate != null) {
-            candidate.closeCandidateOutputs(current, failure);
         }
     }
 

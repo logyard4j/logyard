@@ -7,11 +7,13 @@ import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.runtime.diagnostics.StderrReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
+import com.zsumz.logyard.runtime.reload.ConfigurationWatchRegistration;
 import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
 import com.zsumz.logyard.runtime.reload.ReloadCoordinator;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -22,6 +24,7 @@ final class PreparedRuntimeConfiguration {
     private final RuntimeAssembly assembly;
     private final ReloadDiagnostics diagnostics;
     private final ConfigurationWatcher watcher;
+    private final ConfigurationWatcherPolicy watcherPolicy;
     private final Map<String, String> environment;
 
     private PreparedRuntimeConfiguration(
@@ -30,12 +33,14 @@ final class PreparedRuntimeConfiguration {
             RuntimeAssembly assembly,
             ReloadDiagnostics diagnostics,
             ConfigurationWatcher watcher,
+            ConfigurationWatcherPolicy watcherPolicy,
             Map<String, String> environment) {
         this.request = request;
         this.snapshot = snapshot;
         this.assembly = assembly;
         this.diagnostics = diagnostics;
         this.watcher = watcher;
+        this.watcherPolicy = watcherPolicy;
         this.environment = Map.copyOf(environment);
     }
 
@@ -45,27 +50,50 @@ final class PreparedRuntimeConfiguration {
             RuntimeAssembly currentAssembly,
             Map<String, String> environment,
             Supplier<WatcherReloadOutcome> reload) {
-        LogyardConfig selectedConfig = initialSnapshot.parse(environment);
-        ReloadDiagnostics diagnostics = diagnostics(selectedConfig);
+        LogyardConfig initialConfig = initialSnapshot.parse(environment);
+        ConfigurationWatchRegistration registration = null;
         ConfigurationWatcher watcher = null;
+        ConfigurationWatcherPolicy watcherPolicy = null;
         RuntimeAssembly assembly = null;
         try {
-            watcher = prepareWatcher(request, selectedConfig, reload, diagnostics);
+            registration = registerWatcher(request, initialConfig);
             ConfigurationSnapshot selectedSnapshot = initialSnapshot;
-            if (watcher != null) {
-                ConfigurationSnapshot registeredSnapshot = read(request);
-                if (!registeredSnapshot.sameContent(initialSnapshot)) {
-                    selectedSnapshot = registeredSnapshot;
-                    selectedConfig = registeredSnapshot.parse(environment);
-                }
-                if (!selectedConfig.runtime().watch()) {
-                    watcher.close();
-                    watcher = null;
-                }
+            LogyardConfig selectedConfig = initialConfig;
+            if (registration != null) {
+                selectedSnapshot = read(request);
+                selectedConfig = selectedSnapshot.sameContent(initialSnapshot)
+                        ? initialConfig
+                        : selectedSnapshot.parse(environment);
+            }
+
+            ReloadDiagnostics diagnostics = diagnostics(selectedConfig);
+            if (registration != null && selectedConfig.runtime().watch()) {
+                watcherPolicy = new ConfigurationWatcherPolicy(
+                        selectedConfig.runtime().reloadDebounce(),
+                        selectedConfig.runtime().shutdownTimeout(),
+                        diagnostics);
+                watcher = ConfigurationWatcher.prepare(
+                        registration,
+                        watcherPolicy.debounce(),
+                        watcherPolicy.closeTimeout(),
+                        reload,
+                        watcherPolicy.diagnostics());
+                registration = null;
+            } else {
+                closeRegistration(registration);
+                registration = null;
             }
             assembly = LogyardRuntimeFactory.assemble(selectedConfig, currentAssembly);
-            return new PreparedRuntimeConfiguration(request, selectedSnapshot, assembly, diagnostics, watcher, environment);
+            return new PreparedRuntimeConfiguration(
+                    request,
+                    selectedSnapshot,
+                    assembly,
+                    diagnostics,
+                    watcher,
+                    watcherPolicy,
+                    environment);
         } catch (RuntimeException | Error failure) {
+            closeRegistration(registration, failure);
             closeWatcher(watcher, failure);
             if (assembly != null) {
                 assembly.closeCandidateOutputs(currentAssembly, failure);
@@ -97,6 +125,19 @@ final class PreparedRuntimeConfiguration {
                 : null;
     }
 
+    private static ConfigurationWatchRegistration registerWatcher(
+            ConfigurationInstallationRequest request,
+            LogyardConfig config) {
+        if (!config.runtime().watch() || request.watchPath() == null) {
+            return null;
+        }
+        try {
+            return ConfigurationWatchRegistration.open(request.watchPath());
+        } catch (IOException failure) {
+            throw new UncheckedIOException("failed to watch Logyard configuration " + request.watchPath(), failure);
+        }
+    }
+
     ActiveRuntimeConfiguration activate(DefaultLogyardRuntime runtime) {
         ReloadCoordinator coordinator = new ReloadCoordinator(
                 request.description(),
@@ -112,6 +153,10 @@ final class PreparedRuntimeConfiguration {
 
     RuntimeAssembly assembly() {
         return assembly;
+    }
+
+    ConfigurationWatcherPolicy watcherPolicy() {
+        return watcherPolicy;
     }
 
     void closeWatcher(Throwable failure) {
@@ -130,6 +175,23 @@ final class PreparedRuntimeConfiguration {
         }
         try {
             watcher.close();
+        } catch (RuntimeException closeFailure) {
+            failure.addSuppressed(closeFailure);
+        }
+    }
+
+    private static void closeRegistration(ConfigurationWatchRegistration registration) {
+        if (registration != null) {
+            registration.close();
+        }
+    }
+
+    private static void closeRegistration(ConfigurationWatchRegistration registration, Throwable failure) {
+        if (registration == null) {
+            return;
+        }
+        try {
+            registration.close();
         } catch (RuntimeException closeFailure) {
             failure.addSuppressed(closeFailure);
         }

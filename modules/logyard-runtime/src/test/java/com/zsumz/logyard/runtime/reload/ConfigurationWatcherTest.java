@@ -160,6 +160,24 @@ final class ConfigurationWatcherTest {
         }
     }
 
+    @Test
+    void zeroShutdownTimeoutInitiatesStopWithoutReportingADeadWatcherAsRunning() throws Exception {
+        Path directory = Files.createTempDirectory("logyard-zero-timeout-watcher-");
+        Path source = directory.resolve("logyard.toml");
+        Files.writeString(source, "schema = 1\n", StandardCharsets.UTF_8);
+        ConfigurationWatcher watcher = ConfigurationWatcher.start(
+                source,
+                Duration.ofMillis(25L),
+                Duration.ZERO,
+                () -> WatcherReloadOutcome.APPLIED,
+                ReloadDiagnostics.silent());
+
+        assertTrue(watcher.isRunning());
+        watcher.close();
+
+        assertFalse(watcher.isRunning());
+    }
+
     private static String read(Path source) {
         try {
             return Files.readString(source, StandardCharsets.UTF_8);

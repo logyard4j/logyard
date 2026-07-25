@@ -63,6 +63,28 @@ final class RuntimeRetirementsTest {
     }
 
     @Test
+    void reportsRetirementCapacityAsATransientReloadBoundary() {
+        RetirementExecutor executor = new RetirementExecutor();
+        RuntimeRetirements retirements = new RuntimeRetirements(executor, new SilentRetirementDiagnostics());
+        for (int reservation = 0; reservation < RetirementExecutor.MAX_PENDING_RELOADS; reservation++) {
+            assertTrue(executor.reserveReload());
+        }
+
+        assertThrows(
+                RuntimeReloadDeferredException.class,
+                () -> retirements.replacePlan(
+                        plan(new RecordingSink()),
+                        new PlanEpoch(),
+                        plan(new RecordingSink()),
+                        () -> {
+                        }));
+
+        for (int reservation = 0; reservation < RetirementExecutor.MAX_PENDING_RELOADS; reservation++) {
+            executor.cancelReloadReservation();
+        }
+    }
+
+    @Test
     void retirementContinuesPastRecoverableOutputCloseErrors() {
         EventSink hostile = new EventSink() {
             @Override

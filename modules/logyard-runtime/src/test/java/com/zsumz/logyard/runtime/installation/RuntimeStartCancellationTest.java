@@ -110,6 +110,62 @@ final class RuntimeStartCancellationTest {
         }
     }
 
+    @Test
+    void terminalShutdownWaitsForTheCloseBoundaryButNotFinalAsynchronousRetirement() throws Exception {
+        TestGlobal global = new TestGlobal();
+        AtomicReference<Runnable> shutdown = new AtomicReference<>();
+        CountDownLatch secondOpenEntered = new CountDownLatch(1);
+        CountDownLatch allowSecondOpen = new CountDownLatch(1);
+        CompletableFuture<Void> finalRetirement = new CompletableFuture<>();
+        AtomicReference<CountingInstallation> second = new AtomicReference<>();
+        AtomicInteger opens = new AtomicInteger();
+        RuntimeInstallationManager manager = new RuntimeInstallationManager(
+                global,
+                callback -> {
+                    shutdown.set(callback);
+                    return true;
+                },
+                Map::of,
+                (request, environment) -> {
+                    CountingInstallation installation = opens.getAndIncrement() == 0
+                            ? new CountingInstallation()
+                            : new CountingInstallation(finalRetirement);
+                    if (opens.get() > 1) {
+                        second.set(installation);
+                        secondOpenEntered.countDown();
+                        await(allowSecondOpen);
+                    }
+                    return installation;
+                });
+        manager.acquireApplication(TestRequests.request()).close();
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<RuntimeInstallationLease> acquisition =
+                    executor.submit(() -> manager.acquireApplication(TestRequests.request()));
+            assertTrue(secondOpenEntered.await(1L, TimeUnit.SECONDS));
+            Future<?> terminalShutdown = executor.submit(shutdown.get());
+            awaitCancellation(manager);
+            allowSecondOpen.countDown();
+
+            assertStartCancelled(acquisition);
+            terminalShutdown.get(2L, TimeUnit.SECONDS);
+            assertEquals(1, second.get().closeCalls.get());
+            assertNull(global.current());
+            IllegalStateException closing = assertThrows(
+                    IllegalStateException.class,
+                    () -> manager.acquireAdapter(TestRequests.request()));
+            assertTrue(closing.getMessage().contains("closing"));
+
+            finalRetirement.complete(null);
+            awaitTerminated(manager);
+        } finally {
+            allowSecondOpen.countDown();
+            finalRetirement.complete(null);
+            executor.shutdownNow();
+        }
+    }
+
     private static void assertStartCancelled(Future<RuntimeInstallationLease> acquisition) {
         ExecutionException failure =
                 assertThrows(ExecutionException.class, () -> acquisition.get(2L, TimeUnit.SECONDS));
@@ -121,6 +177,21 @@ final class RuntimeStartCancellationTest {
                 IllegalStateException.class,
                 () -> manager.acquireAdapter(TestRequests.request()));
         assertTrue(failure.getMessage().contains("terminated"));
+    }
+
+    private static void awaitTerminated(RuntimeInstallationManager manager) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1L);
+        while (true) {
+            try {
+                assertTerminated(manager);
+                return;
+            } catch (AssertionError notFinished) {
+                if (System.nanoTime() >= deadline) {
+                    throw notFinished;
+                }
+                Thread.sleep(1L);
+            }
+        }
     }
 
     private static void awaitCancellation(RuntimeInstallationManager manager) throws InterruptedException {
@@ -173,7 +244,16 @@ final class RuntimeStartCancellationTest {
     private static final class CountingInstallation implements RuntimeInstallation {
         private final LogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(ignored -> {
         });
+        private final CompletableFuture<Void> finalRetirement;
         private final AtomicInteger closeCalls = new AtomicInteger();
+
+        private CountingInstallation() {
+            this(CompletableFuture.completedFuture(null));
+        }
+
+        private CountingInstallation(CompletableFuture<Void> finalRetirement) {
+            this.finalRetirement = finalRetirement;
+        }
 
         @Override public LogyardRuntime runtime() { return runtime; }
         @Override public ReloadResult reconfigure(ConfigurationInstallationRequest request) { return ReloadResult.UNCHANGED; }
@@ -186,7 +266,7 @@ final class RuntimeStartCancellationTest {
             if (!globalRuntime.shutdownIfCurrent(runtime)) {
                 runtime.close();
             }
-            return CompletableFuture.completedFuture(null);
+            return finalRetirement;
         }
     }
 

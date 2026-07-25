@@ -26,6 +26,11 @@ final class LogyardGlobalRuntimeAccess implements GlobalRuntimeAccess {
     }
 
     @Override
+    public boolean detachIfCurrent(LogyardRuntime runtime) {
+        return Logyard.detachManagedIfCurrent(runtime);
+    }
+
+    @Override
     public boolean shutdownIfCurrent(LogyardRuntime runtime) {
         return Logyard.releaseManagedIfCurrent(runtime);
     }

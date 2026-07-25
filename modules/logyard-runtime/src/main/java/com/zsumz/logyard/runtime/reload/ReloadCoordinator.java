@@ -3,11 +3,13 @@ package com.zsumz.logyard.runtime.reload;
 import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
+import com.zsumz.logyard.core.runtime.RuntimeReloadDeferredException;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
@@ -18,6 +20,7 @@ public final class ReloadCoordinator {
     private final Path legacyFileSource;
     private final ConfigurationSnapshotReader snapshotReader;
     private final DefaultLogyardRuntime runtime;
+    private final RuntimePlanPublisher planPublisher;
     private final ReloadDiagnosticBoundary diagnostics;
     private final Map<String, String> environment;
     private ConfigurationSnapshot snapshot;
@@ -50,10 +53,33 @@ public final class ReloadCoordinator {
             RuntimeAssembly assembly,
             ReloadDiagnostics diagnostics,
             Map<String, String> environment) {
+        this(
+                sourceDescription,
+                legacyFileSource,
+                snapshotReader,
+                runtime,
+                runtime::reload,
+                snapshot,
+                assembly,
+                diagnostics,
+                environment);
+    }
+
+    ReloadCoordinator(
+            String sourceDescription,
+            Path legacyFileSource,
+            ConfigurationSnapshotReader snapshotReader,
+            DefaultLogyardRuntime runtime,
+            RuntimePlanPublisher planPublisher,
+            ConfigurationSnapshot snapshot,
+            RuntimeAssembly assembly,
+            ReloadDiagnostics diagnostics,
+            Map<String, String> environment) {
         this.sourceDescription = Objects.requireNonNull(sourceDescription, "sourceDescription");
         this.legacyFileSource = legacyFileSource == null ? null : legacyFileSource.toAbsolutePath().normalize();
         this.snapshotReader = Objects.requireNonNull(snapshotReader, "snapshotReader");
         this.runtime = Objects.requireNonNull(runtime, "runtime");
+        this.planPublisher = Objects.requireNonNull(planPublisher, "planPublisher");
         this.snapshot = Objects.requireNonNull(snapshot, "snapshot");
         this.assembly = Objects.requireNonNull(assembly, "assembly");
         this.diagnostics = new ReloadDiagnosticBoundary(diagnostics);
@@ -73,9 +99,12 @@ public final class ReloadCoordinator {
         ConfigurationSnapshot candidateSnapshot;
         try {
             candidateSnapshot = snapshotReader.read();
-        } catch (IOException | RuntimeException readFailure) {
+        } catch (IOException | UncheckedIOException readFailure) {
             rejected(readFailure);
             return WatcherReloadOutcome.TRANSIENT_RETRY;
+        } catch (RuntimeException readFailure) {
+            rejected(readFailure);
+            return WatcherReloadOutcome.WAIT_FOR_CHANGE;
         }
         if (candidateSnapshot.sameContent(snapshot)) {
             unchanged();
@@ -86,13 +115,19 @@ public final class ReloadCoordinator {
         try {
             LogyardConfig candidateConfig = candidateSnapshot.parse(environment);
             candidate = LogyardRuntimeFactory.assemble(candidateConfig, assembly);
-            runtime.reload(candidate.plan());
+            planPublisher.publish(candidate.plan());
             String previousDigest = snapshot.sha256();
             assembly = candidate;
             snapshot = candidateSnapshot;
             LogyardRuntimeFactory.attach(runtime, candidate);
             applied(previousDigest, candidateSnapshot.sha256());
             return WatcherReloadOutcome.APPLIED;
+        } catch (RuntimeReloadDeferredException reloadDeferred) {
+            if (candidate != null) {
+                candidate.closeCandidateOutputs(assembly, reloadDeferred);
+            }
+            rejected(reloadDeferred);
+            return WatcherReloadOutcome.TRANSIENT_RETRY;
         } catch (RuntimeException reloadFailure) {
             if (candidate != null) {
                 candidate.closeCandidateOutputs(assembly, reloadFailure);

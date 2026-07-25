@@ -31,17 +31,20 @@ final class PublicShutdownTransactionTest {
                 ignored -> true,
                 Map::of,
                 (request, environment) -> new TestInstallation());
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<RuntimeInstallationLease> acquisition =
                     executor.submit(() -> manager.acquireApplication(TestRequests.request()));
             assertTrue(global.installed.await(1L, TimeUnit.SECONDS));
 
-            Logyard.shutdown();
+            Future<?> shutdown = executor.submit(Logyard::shutdown);
+            assertFalse(shutdown.isDone());
+            awaitCancellation(manager);
             global.allowInstallReturn.countDown();
 
             ExecutionException superseded =
                     assertThrows(ExecutionException.class, () -> acquisition.get(2L, TimeUnit.SECONDS));
+            shutdown.get(2L, TimeUnit.SECONDS);
             assertTrue(superseded.getCause() instanceof RuntimeTransitionInProgressException);
             assertFalse(Logyard.isInitialized());
             assertEquals(0, manager.leaseCount(RuntimeOwner.APPLICATION));
@@ -74,6 +77,11 @@ final class PublicShutdownTransactionTest {
         }
 
         @Override
+        public boolean detachIfCurrent(LogyardRuntime runtime) {
+            return Logyard.detachManagedIfCurrent(runtime);
+        }
+
+        @Override
         public boolean shutdownIfCurrent(LogyardRuntime runtime) {
             return Logyard.releaseManagedIfCurrent(runtime);
         }
@@ -101,6 +109,16 @@ final class PublicShutdownTransactionTest {
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("test barrier interrupted", interrupted);
+        }
+    }
+
+    private static void awaitCancellation(RuntimeInstallationManager manager) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1L);
+        while (!manager.startCancellationPending()) {
+            if (System.nanoTime() >= deadline) {
+                throw new AssertionError("public shutdown did not cancel the pending start");
+            }
+            Thread.sleep(1L);
         }
     }
 }

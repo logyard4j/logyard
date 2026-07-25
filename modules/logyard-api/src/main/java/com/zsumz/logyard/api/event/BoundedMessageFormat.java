@@ -41,8 +41,14 @@ public final class BoundedMessageFormat {
         try {
             int capturedLength = Math.min(parameters.length, CaptureLimits.MAX_ARGUMENTS);
             Object[] captured = new Object[capturedLength];
-            boolean parametersTruncated = capture(parameters, captured);
-            if (!MessageFormatWorkBudget.permits(template, captured)) {
+            MessageFormatWorkBudget.Analysis analysis =
+                    MessageFormatWorkBudget.analyze(template, parameters.length, capturedLength);
+            if (analysis.nestedChoice()) {
+                return workLimited(template);
+            }
+            boolean parametersTruncated = capture(parameters, captured, analysis::referenced)
+                    || analysis.referencedParameterOmitted();
+            if (!analysis.permits(template, captured)) {
                 return workLimited(template);
             }
             String rendered = MessageFormat.format(template, captured);
@@ -66,13 +72,15 @@ public final class BoundedMessageFormat {
             return literal(template, template != pattern);
         }
         try {
-            String safePattern = BoundedPrintfPattern.capture(template, MAX_PRINTF_FIELD_WIDTH);
             int capturedLength = Math.min(parameters.length, CaptureLimits.MAX_ARGUMENTS);
+            BoundedPrintfPattern.Analysis analysis =
+                    BoundedPrintfPattern.analyze(template, MAX_PRINTF_FIELD_WIDTH, parameters.length, capturedLength);
             Object[] captured = new Object[capturedLength];
-            boolean parametersTruncated = capture(parameters, captured);
+            boolean parametersTruncated = capture(parameters, captured, analysis::referenced)
+                    || analysis.referencedParameterOmitted();
             BoundedFormatBuffer output = new BoundedFormatBuffer(CaptureLimits.MAX_RENDERED_MESSAGE_CHARS);
             try (Formatter formatter = new Formatter(output, Locale.getDefault(Locale.Category.FORMAT))) {
-                formatter.format(safePattern, captured);
+                formatter.format(analysis.pattern(), captured);
             } catch (BoundedFormatBuffer.LimitReached exhausted) {
                 return new Result(template, output.value(), false, true);
             }
@@ -80,7 +88,7 @@ public final class BoundedMessageFormat {
                     template,
                     output.value(),
                     false,
-                    template != pattern || !safePattern.equals(template) || parametersTruncated);
+                    template != pattern || !analysis.pattern().equals(template) || parametersTruncated);
         } catch (IllegalFormatException failure) {
             return failed(template, template != pattern);
         } catch (Throwable failure) {
@@ -100,10 +108,12 @@ public final class BoundedMessageFormat {
         return literal(bounded, bounded != message);
     }
 
-    private static boolean capture(Object[] parameters, Object[] captured) {
-        boolean truncated = captured.length != parameters.length;
+    private static boolean capture(Object[] parameters, Object[] captured, ReferencedArgument referenced) {
+        boolean truncated = false;
         for (int index = 0; index < captured.length; index++) {
-            truncated |= capture(parameters[index], captured, index);
+            if (referenced.at(index)) {
+                truncated |= capture(parameters[index], captured, index);
+            }
         }
         return truncated;
     }
@@ -173,6 +183,11 @@ public final class BoundedMessageFormat {
 
     private static String boundedMessage(String message) {
         return CaptureLimits.truncate(message, CaptureLimits.MAX_RENDERED_MESSAGE_CHARS);
+    }
+
+    @FunctionalInterface
+    private interface ReferencedArgument {
+        boolean at(int index);
     }
 
     /**

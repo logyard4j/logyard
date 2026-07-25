@@ -55,7 +55,7 @@ final class ActiveRuntimeConfiguration {
     }
 
     boolean watchesConfiguration() {
-        return watcher != null;
+        return watcher != null && watcher.isRunning();
     }
 
     ReloadCoordinator coordinator() {

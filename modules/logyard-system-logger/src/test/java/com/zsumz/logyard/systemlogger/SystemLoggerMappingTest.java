@@ -1,6 +1,7 @@
 package com.zsumz.logyard.systemlogger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.LogEvent;
@@ -36,6 +37,17 @@ final class SystemLoggerMappingTest {
         assertEquals("Order A-42", result.message());
         assertEquals("Order {0}", result.template());
     }
+
+    @Test
+    void boundsRecursiveChoiceFormatExpansion() {
+        SystemMessageRenderer.Result result = SystemMessageRenderer.render(
+                null,
+                "{0,choice,0#" + "'{1}'".repeat(1_600) + "}",
+                new Object[] {0, "x".repeat(2_048)});
+
+        assertTrue(result.message().contains("format expansion omitted"));
+    }
+
     @Test
     void publishesWithModuleAndTemplateMetadata() {
         RecordingSink sink = new RecordingSink();

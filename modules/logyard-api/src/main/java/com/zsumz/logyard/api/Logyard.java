@@ -138,6 +138,25 @@ public final class Logyard {
         return true;
     }
 
+    /**
+     * Removes an expected manager-owned runtime from the global slot without closing it.
+     *
+     * <p>The lifecycle manager uses this only when a concurrently cancelled start retains sole
+     * responsibility for closing its candidate.</p>
+     *
+     * @param expected managed runtime expected to occupy the global slot
+     * @return {@code true} when the expected runtime was detached
+     */
+    @InternalApi
+    public static boolean detachManagedIfCurrent(LogyardRuntime expected) {
+        Objects.requireNonNull(expected, "expected");
+        RuntimeSlot slot = RUNTIME.get();
+        return slot != null
+                && slot.runtime() == expected
+                && slot.managedShutdown() != null
+                && RUNTIME.compareAndSet(slot, null);
+    }
+
     private static boolean shutdown(RuntimeSlot slot) {
         if (slot.managedShutdown() != null) {
             return slot.managedShutdown().getAsBoolean();

@@ -13,5 +13,9 @@ interface GlobalRuntimeAccess {
         install(runtime);
     }
 
+    default boolean detachIfCurrent(LogyardRuntime runtime) {
+        return false;
+    }
+
     boolean shutdownIfCurrent(LogyardRuntime runtime);
 }

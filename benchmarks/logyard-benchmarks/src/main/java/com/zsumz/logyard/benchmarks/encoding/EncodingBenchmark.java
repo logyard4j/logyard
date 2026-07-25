@@ -1,6 +1,7 @@
 package com.zsumz.logyard.benchmarks.encoding;
 
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.event.BoundedMessageFormat;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.benchmarks.fixture.BenchmarkFixtures;
 import com.zsumz.logyard.core.processing.RedactionProcessor;
@@ -42,6 +43,8 @@ public class EncodingBenchmark {
     private final TemplateTextFormatter console =
             new TemplateTextFormatter("{timestamp} {level} {logger} - {message} {fields}", ZoneOffset.UTC);
     private final RedactionProcessor redaction = new RedactionProcessor(List.of("*.token"));
+    private final String recursiveChoicePattern = "{0,choice,0#" + "'{1}'".repeat(1_600) + "}";
+    private final Object[] recursiveChoiceParameters = {0, "x".repeat(2_048)};
 
     @Benchmark
     public String jsonEncoding() {
@@ -71,5 +74,10 @@ public class EncodingBenchmark {
     @Benchmark
     public LogEvent redactionWithMatch() {
         return redaction.process(secret);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result rejectedRecursiveChoiceExpansion() {
+        return BoundedMessageFormat.messageFormat(recursiveChoicePattern, recursiveChoiceParameters);
     }
 }

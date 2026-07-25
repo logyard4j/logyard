@@ -32,6 +32,20 @@ final class LogyardLifecycleTest {
         }
     }
 
+    @Test
+    void managedDetachmentLeavesClosureToTheLifecycleOwner() {
+        TestRuntime installed = new TestRuntime();
+        Logyard.initializeManaged(installed, () -> true);
+        try {
+            assertTrue(Logyard.detachManagedIfCurrent(installed));
+            assertFalse(Logyard.isInitialized());
+            assertEquals(0, installed.closes());
+        } finally {
+            installed.close();
+            Logyard.shutdown();
+        }
+    }
+
     private static final class TestRuntime implements LogyardRuntime {
         private final AtomicInteger closes = new AtomicInteger();
 

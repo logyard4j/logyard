@@ -87,20 +87,25 @@ final class ReloadDebouncerTest {
     }
 
     @Test
-    void transientReadsUseBoundedExponentialRetries() {
+    void transientFailuresRemainDirtyWithCappedExponentialRetriesUntilApplied() {
         AtomicLong clock = new AtomicLong(100L);
         AtomicInteger attempts = new AtomicInteger();
-        ReloadDebouncer debouncer = new ReloadDebouncer(Duration.ofNanos(10L), clock::get);
+        ReloadDebouncer debouncer = new ReloadDebouncer(
+                Duration.ofNanos(10L),
+                Duration.ofNanos(10L),
+                Duration.ofNanos(40L),
+                clock::get);
 
         debouncer.signalChange();
-        for (long due : new long[] {110L, 130L, 170L, 250L, 1_000L}) {
+        for (long due : new long[] {110L, 120L, 140L, 180L, 220L, 260L, 1_000L}) {
             clock.set(due);
             debouncer.runIfDue(() -> {
-                attempts.incrementAndGet();
-                return WatcherReloadOutcome.TRANSIENT_RETRY;
+                return attempts.incrementAndGet() < 6
+                        ? WatcherReloadOutcome.TRANSIENT_RETRY
+                        : WatcherReloadOutcome.APPLIED;
             });
         }
 
-        assertEquals(4, attempts.get());
+        assertEquals(6, attempts.get());
     }
 }

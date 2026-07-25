@@ -37,6 +37,15 @@ final class LogyardHandlerTest {
         record.setParameters(new Object[] {"A-42", 3});
         assertEquals("Order A-42 has 3 items", JulMessageRenderer.render(record).message());
     }
+
+    @Test
+    void boundsRecursiveChoiceFormatExpansion() {
+        LogRecord record = new LogRecord(java.util.logging.Level.INFO, "{0,choice,0#" + "'{1}'".repeat(1_600) + "}");
+        record.setParameters(new Object[] {0, "x".repeat(2_048)});
+
+        assertTrue(JulMessageRenderer.render(record).message().contains("format expansion omitted"));
+    }
+
     @Test
     void publishesACompleteRecordIntoAnApplicationOwnedRuntime() {
         RecordingSink sink = new RecordingSink();

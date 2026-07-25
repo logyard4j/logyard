@@ -1,23 +1,38 @@
 package com.zsumz.logyard.api.event;
 
-/** Caps printf width and precision before {@link java.util.Formatter} sees the pattern. */
+/** Caps printf width and precision while identifying exactly which caller arguments the formatter can consult. */
 final class BoundedPrintfPattern {
     private BoundedPrintfPattern() {
     }
 
-    static String capture(String pattern, int maximumFieldWidth) {
+    static Analysis analyze(String pattern, int maximumFieldWidth, int parameterCount, int capturedParameterCount) {
         StringBuilder bounded = new StringBuilder(pattern.length());
+        boolean[] referenced = new boolean[capturedParameterCount];
+        boolean referencedParameterOmitted = false;
+        int ordinaryArgument = 0;
+        int previousArgument = -1;
         int cursor = 0;
         while (cursor < pattern.length()) {
             char current = pattern.charAt(cursor++);
             bounded.append(current);
-            if (current != '%' || cursor >= pattern.length() || pattern.charAt(cursor) == '%'
-                    || pattern.charAt(cursor) == 'n') {
+            if (current != '%' || cursor >= pattern.length()) {
                 continue;
             }
-            cursor = copyArgumentIndex(pattern, cursor, bounded);
-            while (cursor < pattern.length() && isFlag(pattern.charAt(cursor))) {
+            if (pattern.charAt(cursor) == '%' || pattern.charAt(cursor) == 'n') {
                 bounded.append(pattern.charAt(cursor++));
+                continue;
+            }
+
+            ArgumentIndex explicit = argumentIndex(pattern, cursor);
+            if (explicit.present()) {
+                bounded.append(pattern, cursor, explicit.end());
+                cursor = explicit.end();
+            }
+            boolean reusePrevious = false;
+            while (cursor < pattern.length() && isFlag(pattern.charAt(cursor))) {
+                char flag = pattern.charAt(cursor++);
+                bounded.append(flag);
+                reusePrevious |= flag == '<';
             }
             cursor = copyBoundedNumber(pattern, cursor, bounded, maximumFieldWidth);
             if (cursor < pattern.length() && pattern.charAt(cursor) == '.') {
@@ -30,17 +45,47 @@ final class BoundedPrintfPattern {
             if (cursor < pattern.length()) {
                 bounded.append(pattern.charAt(cursor++));
             }
+
+            int selected;
+            if (reusePrevious) {
+                selected = previousArgument;
+            } else if (explicit.present()) {
+                selected = explicit.zeroBased();
+            } else {
+                selected = ordinaryArgument++;
+            }
+            if (selected >= 0) {
+                previousArgument = selected;
+                if (selected < referenced.length) {
+                    referenced[selected] = true;
+                } else if (selected < parameterCount) {
+                    referencedParameterOmitted = true;
+                }
+            }
         }
-        return bounded.toString();
+        return new Analysis(bounded.toString(), referenced, referencedParameterOmitted);
     }
 
-    private static int copyArgumentIndex(String pattern, int cursor, StringBuilder target) {
-        int digitsEnd = digitEnd(pattern, cursor);
-        if (digitsEnd < pattern.length() && digitsEnd > cursor && pattern.charAt(digitsEnd) == '$') {
-            target.append(pattern, cursor, digitsEnd + 1);
-            return digitsEnd + 1;
+    record Analysis(String pattern, boolean[] referenced, boolean referencedParameterOmitted) {
+        boolean referenced(int index) {
+            return referenced[index];
         }
-        return cursor;
+    }
+
+    private static ArgumentIndex argumentIndex(String pattern, int cursor) {
+        int digitsEnd = digitEnd(pattern, cursor);
+        if (digitsEnd >= pattern.length() || digitsEnd == cursor || pattern.charAt(digitsEnd) != '$') {
+            return ArgumentIndex.NONE;
+        }
+        int value = 0;
+        for (int index = cursor; index < digitsEnd; index++) {
+            int digit = pattern.charAt(index) - '0';
+            if (value > (Integer.MAX_VALUE - digit) / 10) {
+                return new ArgumentIndex(-1, digitsEnd + 1);
+            }
+            value = value * 10 + digit;
+        }
+        return new ArgumentIndex(value - 1, digitsEnd + 1);
     }
 
     private static int copyBoundedNumber(String pattern, int cursor, StringBuilder target, int maximum) {
@@ -66,5 +111,13 @@ final class BoundedPrintfPattern {
 
     private static boolean isFlag(char value) {
         return "-#+ 0,(<".indexOf(value) >= 0;
+    }
+
+    private record ArgumentIndex(int zeroBased, int end) {
+        private static final ArgumentIndex NONE = new ArgumentIndex(-1, -1);
+
+        boolean present() {
+            return end >= 0;
+        }
     }
 }

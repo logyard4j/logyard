@@ -56,11 +56,21 @@ public final class AdapterBoundednessMain {
                     System.Logger.Level.INFO,
                     "{0}".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 3),
                     "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS));
+            String recursiveChoice = "{0,choice,0#" + "'{1}'".repeat(1_600) + "}";
+            LogRecord choiceJul = new LogRecord(java.util.logging.Level.INFO, recursiveChoice);
+            choiceJul.setLoggerName("boundedness.jul.choice");
+            choiceJul.setParameters(new Object[] {0, "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS)});
+            handler.publish(choiceJul);
+            system.log(
+                    System.Logger.Level.INFO,
+                    recursiveChoice,
+                    0,
+                    "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS));
             verifyConcurrentRepeatedSubstitutions(handler, system);
             handler.close();
         }
 
-        require(events.size() == 21, "adapter events were not delivered");
+        require(events.size() == 23, "adapter events were not delivered");
         for (LogEvent event : events) {
             require(event.renderedMessage().length() <= CaptureLimits.MAX_RENDERED_MESSAGE_CHARS, "adapter message exceeded its cap");
         }
@@ -71,6 +81,8 @@ public final class AdapterBoundednessMain {
         require(Boolean.TRUE.equals(events.get(2).attributes().get("logyard.capture.truncated")), "huge adapter template was not marked");
         require(events.get(3).renderedMessage().contains("format expansion omitted"), "JUL repeated expansion was not work-bounded");
         require(events.get(4).renderedMessage().contains("format expansion omitted"), "System.Logger repeated expansion was not work-bounded");
+        require(events.get(5).renderedMessage().contains("format expansion omitted"), "JUL recursive choice was not work-bounded");
+        require(events.get(6).renderedMessage().contains("format expansion omitted"), "System.Logger recursive choice was not work-bounded");
         System.out.println("Adapter boundedness verification passed under constrained heap");
     }
 

@@ -27,8 +27,18 @@ public final class Assertions {
     }
 
     public static void assertFalse(boolean condition) {
+        assertFalse(condition, "expected false");
+    }
+
+    public static void assertFalse(boolean condition, String message) {
         if (condition) {
-            throw new AssertionError("expected false");
+            throw new AssertionError(message);
+        }
+    }
+
+    public static void assertFalse(boolean condition, Supplier<String> messageSupplier) {
+        if (condition) {
+            throw new AssertionError(messageSupplier.get());
         }
     }
 
