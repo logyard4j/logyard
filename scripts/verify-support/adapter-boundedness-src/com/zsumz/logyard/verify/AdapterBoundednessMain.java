@@ -11,8 +11,12 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.LogRecord;
 
@@ -32,6 +36,7 @@ public final class AdapterBoundednessMain {
             }
         };
 
+        HostileTimeZone hostileTimeZone = new HostileTimeZone();
         try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
             LogyardHandler handler = new LogyardHandler(runtime);
             LogRecord jul = new LogRecord(java.util.logging.Level.INFO, "{0} {1} {2}");
@@ -73,11 +78,23 @@ public final class AdapterBoundednessMain {
             numericJul.setParameters(new Object[] {compactExpandedDecimal});
             handler.publish(numericJul);
             system.log(System.Logger.Level.INFO, repeatedDefaultNumber, compactExpandedDecimal);
+            TimeZone originalTimeZone = TimeZone.getDefault();
+            TimeZone.setDefault(hostileTimeZone);
+            try {
+                LogRecord temporalJul = new LogRecord(java.util.logging.Level.INFO, "{0,time,full} {0,date,full}");
+                temporalJul.setLoggerName("boundedness.jul.time");
+                temporalJul.setParameters(new Object[] {new Date(0L)});
+                handler.publish(temporalJul);
+                system.log(System.Logger.Level.INFO, "{0,time,full} {0,date,full}", new Date(0L));
+                require(hostileTimeZone.displayNameCalls.get() == 0, "adapter formatting consulted the application TimeZone");
+            } finally {
+                TimeZone.setDefault(originalTimeZone);
+            }
             verifyConcurrentRepeatedSubstitutions(handler, system);
             handler.close();
         }
 
-        require(events.size() == 57, "adapter events were not delivered");
+        require(events.size() == 59, "adapter events were not delivered");
         for (LogEvent event : events) {
             require(event.renderedMessage().length() <= CaptureLimits.MAX_RENDERED_MESSAGE_CHARS, "adapter message exceeded its cap");
         }
@@ -92,6 +109,8 @@ public final class AdapterBoundednessMain {
         require(events.get(6).renderedMessage().contains("format expansion omitted"), "System.Logger recursive choice was not work-bounded");
         require(events.get(7).renderedMessage().contains("format expansion omitted"), "JUL default number expansion was not work-bounded");
         require(events.get(8).renderedMessage().contains("format expansion omitted"), "System.Logger default number expansion was not work-bounded");
+        require(events.get(9).renderedMessage().length() < 1_024, "JUL trusted time-zone rendering was not bounded");
+        require(events.get(10).renderedMessage().length() < 1_024, "System.Logger trusted time-zone rendering was not bounded");
         System.out.println("Adapter boundedness verification passed under constrained heap");
     }
 
@@ -159,5 +178,23 @@ public final class AdapterBoundednessMain {
         if (!condition) {
             throw new AssertionError(message);
         }
+    }
+
+    private static final class HostileTimeZone extends TimeZone {
+        private static final long serialVersionUID = 1L;
+
+        private final AtomicInteger displayNameCalls = new AtomicInteger();
+
+        @Override
+        public String getDisplayName(boolean daylight, int style, Locale locale) {
+            displayNameCalls.incrementAndGet();
+            return "x".repeat(5_000_000);
+        }
+
+        @Override public int getOffset(int era, int year, int month, int day, int dayOfWeek, int milliseconds) { return 0; }
+        @Override public void setRawOffset(int offsetMillis) { }
+        @Override public int getRawOffset() { return 0; }
+        @Override public boolean useDaylightTime() { return false; }
+        @Override public boolean inDaylightTime(Date date) { return false; }
     }
 }

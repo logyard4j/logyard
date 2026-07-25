@@ -8,6 +8,7 @@ java = "21"
 central = "https://repo.maven.apache.org/maven2"
 
 [dependencies]
+"com.zsumz.logyard:logyard-api" = { workspace = "modules/logyard-api" }
 "com.zsumz.logyard:logyard-slf4j2" = { workspace = "modules/logyard-slf4j2" }
 "com.zsumz.logyard:logyard-spring-boot" = { workspace = "modules/logyard-spring-boot" }
 "org.springframework.boot:spring-boot-starter" = { version = "3.5.16", exclusions = [

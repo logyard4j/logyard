@@ -81,7 +81,7 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
         boolean currentWatcherRetirementAttempted = false;
         try {
             ConfigurationSnapshot snapshot = PreparedRuntimeConfiguration.read(request);
-            if (current.sameSourceAndDigest(request, snapshot)) {
+            if (current.canReuseImmutableSource(request, snapshot)) {
                 return finishUnchanged(State.RECONFIGURING);
             }
             PreparedRuntimeConfiguration prepared = PreparedRuntimeConfiguration.prepare(

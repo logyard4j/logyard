@@ -40,6 +40,42 @@
       "maxBytesPerOperation": 1048576
     },
     {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.literalMessage",
+      "maxBytesPerOperation": 256
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatOneString",
+      "maxBytesPerOperation": 4096
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatTwoStrings",
+      "maxBytesPerOperation": 4096
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatNumber",
+      "maxBytesPerOperation": 6144
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatDate",
+      "maxBytesPerOperation": 16384
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatChoice",
+      "maxBytesPerOperation": 8192
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.printfString",
+      "maxBytesPerOperation": 4096
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.printfNumber",
+      "maxBytesPerOperation": 4096
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.printfDate",
+      "maxBytesPerOperation": 8192
+    },
+    {
       "benchmark": "com.zsumz.logyard.benchmarks.ingress.ContextPolicyBenchmark.fixedConfiguration",
       "maxBytesPerOperation": 1
     },
@@ -133,12 +169,12 @@
     {
       "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "0"},
-      "maxBytesPerOperation": 2176
+      "maxBytesPerOperation": 2560
     },
     {
       "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "1"},
-      "maxBytesPerOperation": 2560
+      "maxBytesPerOperation": 2816
     },
     {
       "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",

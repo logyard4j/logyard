@@ -13,7 +13,6 @@ import com.zsumz.logyard.runtime.reload.ReloadCoordinator;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -50,21 +49,16 @@ final class PreparedRuntimeConfiguration {
             RuntimeAssembly currentAssembly,
             Map<String, String> environment,
             Supplier<WatcherReloadOutcome> reload) {
-        LogyardConfig initialConfig = initialSnapshot.parse(environment);
         ConfigurationWatchRegistration registration = null;
         ConfigurationWatcher watcher = null;
         ConfigurationWatcherPolicy watcherPolicy = null;
         RuntimeAssembly assembly = null;
         try {
-            registration = registerWatcher(request);
-            ConfigurationSnapshot selectedSnapshot = initialSnapshot;
-            LogyardConfig selectedConfig = initialConfig;
-            if (registration != null) {
-                selectedSnapshot = read(request);
-                selectedConfig = selectedSnapshot.sameContent(initialSnapshot)
-                        ? initialConfig
-                        : selectedSnapshot.parse(environment);
-            }
+            ConfigurationWatchHandshake.Selection selection =
+                    ConfigurationWatchHandshake.select(request, initialSnapshot, environment);
+            registration = selection.registration();
+            ConfigurationSnapshot selectedSnapshot = selection.snapshot();
+            LogyardConfig selectedConfig = selection.config();
 
             ReloadDiagnostics diagnostics = diagnostics(selectedConfig);
             if (registration != null && selectedConfig.runtime().watch()) {
@@ -78,6 +72,7 @@ final class PreparedRuntimeConfiguration {
                         watcherPolicy.closeTimeout(),
                         reload,
                         watcherPolicy.diagnostics());
+                ConfigurationWatcherCatchUp.markDirtyIfChanged(watcher, selectedSnapshot.sha256(), request);
                 registration = null;
             } else {
                 closeRegistration(registration);
@@ -123,18 +118,6 @@ final class PreparedRuntimeConfiguration {
                         reload,
                         diagnostics)
                 : null;
-    }
-
-    private static ConfigurationWatchRegistration registerWatcher(
-            ConfigurationInstallationRequest request) {
-        if (request.watchPath() == null) {
-            return null;
-        }
-        try {
-            return ConfigurationWatchRegistration.open(request.watchPath());
-        } catch (IOException failure) {
-            throw new UncheckedIOException("failed to watch Logyard configuration " + request.watchPath(), failure);
-        }
     }
 
     ActiveRuntimeConfiguration activate(DefaultLogyardRuntime runtime) {

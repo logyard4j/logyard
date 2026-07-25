@@ -1,8 +1,11 @@
 package com.zsumz.logyard.api.event;
 
 import java.text.ChoiceFormat;
+import java.text.FieldPosition;
 import java.text.Format;
 import java.text.MessageFormat;
+import java.text.ParsePosition;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -49,6 +52,10 @@ final class MessageFormatWorkBudget {
             return !nestedChoice && root.maximumWork(captured) <= CaptureLimits.MAX_FORMATTER_WORK_CHARS;
         }
 
+        String render(Object[] captured) {
+            return root.render(captured);
+        }
+
         private void mark(int argumentIndex) {
             if (argumentIndex < 0) {
                 return;
@@ -64,38 +71,69 @@ final class MessageFormatWorkBudget {
     private static final class Plan {
         private final String pattern;
         private final Locale locale;
+        private final ZoneId zone;
         private final List<Element> elements;
+        private final MessageFormat executable;
 
-        private Plan(String pattern, Locale locale, List<Element> elements) {
+        private Plan(String pattern, Locale locale, ZoneId zone, List<Element> elements, MessageFormat executable) {
             this.pattern = pattern;
             this.locale = locale;
+            this.zone = zone;
             this.elements = elements;
+            this.executable = executable;
         }
 
         private static Plan parse(String pattern, Locale locale, boolean validateWithMessageFormat) {
             List<MessageFormatPattern.Element> seeds = MessageFormatPattern.parse(pattern);
-            Format[] formats = null;
-            if (validateWithMessageFormat) {
-                MessageFormat messageFormat = new MessageFormat(pattern, locale);
-                formats = messageFormat.getFormats();
-                if (seeds.size() != formats.length) {
-                    throw new IllegalArgumentException("MessageFormat element plan did not match the parsed pattern");
-                }
-            }
+            ZoneId zone = MessageFormatPattern.containsDateTime(seeds)
+                    ? TrustedFormattingZone.current()
+                    : null;
+            MessageFormat messageFormat =
+                    validateWithMessageFormat ? executable(pattern, seeds, locale, zone) : null;
+            Format[] formats = messageFormat == null ? null : messageFormat.getFormats();
             List<Element> elements = new ArrayList<>(seeds.size());
             for (int index = 0; index < seeds.size(); index++) {
                 MessageFormatPattern.Element seed = seeds.get(index);
-                Format format = formats == null
-                        ? seed.choiceFormat()
-                        : formats[index];
-                elements.add(new Element(seed.argumentIndex(), seed.sourceCharacters(), format));
+                Format format = formats == null ? plannedFormat(seed, locale, zone) : formats[index];
+                elements.add(new Element(seed, format));
             }
-            return new Plan(pattern, locale, List.copyOf(elements));
+            return new Plan(pattern, locale, zone, List.copyOf(elements), messageFormat);
+        }
+
+        private static MessageFormat executable(
+                String pattern,
+                List<MessageFormatPattern.Element> seeds,
+                Locale locale,
+                ZoneId zone) {
+            MessageFormat messageFormat =
+                    new MessageFormat(MessageFormatPattern.sanitizeDateTime(pattern, seeds), locale);
+            Format[] formats = messageFormat.getFormats();
+            if (seeds.size() != formats.length) {
+                throw new IllegalArgumentException("MessageFormat element plan did not match the parsed pattern");
+            }
+            for (int index = 0; index < formats.length; index++) {
+                MessageFormatPattern.Element seed = seeds.get(index);
+                if (seed.dateTime()) {
+                    formats[index] = new TrustedDateTimeFormat(
+                            seed.formatType(),
+                            seed.formatStyle(),
+                            locale,
+                            zone);
+                }
+            }
+            messageFormat.setFormats(formats);
+            return messageFormat;
+        }
+
+        private static Format plannedFormat(MessageFormatPattern.Element seed, Locale locale, ZoneId zone) {
+            return seed.dateTime()
+                    ? new TrustedDateTimeFormat(seed.formatType(), seed.formatStyle(), locale, zone)
+                    : seed.choiceFormat();
         }
 
         private void markReferences(Analysis analysis) {
             for (Element element : elements) {
-                analysis.mark(element.argumentIndex);
+                analysis.mark(element.seed.argumentIndex());
             }
         }
 
@@ -108,10 +146,10 @@ final class MessageFormatWorkBudget {
                     analysis.nestedChoice = true;
                     return;
                 }
-                if (element.argumentIndex < 0 || element.argumentIndex >= captured.length) {
+                if (element.seed.argumentIndex() < 0 || element.seed.argumentIndex() >= captured.length) {
                     continue;
                 }
-                Object selector = captured[element.argumentIndex];
+                Object selector = captured[element.seed.argumentIndex()];
                 if (selector == null) {
                     element.selected = SelectedChoice.literal("null");
                     continue;
@@ -134,7 +172,7 @@ final class MessageFormatWorkBudget {
         private long maximumWork(Object[] captured) {
             long work = pattern.length();
             for (Element element : elements) {
-                if (element.argumentIndex < 0 || element.argumentIndex >= captured.length) {
+                if (element.seed.argumentIndex() < 0 || element.seed.argumentIndex() >= captured.length) {
                     continue;
                 }
                 long expansion = element.maximumWork(captured);
@@ -145,22 +183,45 @@ final class MessageFormatWorkBudget {
             }
             return work;
         }
+
+        private String render(Object[] captured) {
+            MessageFormat formatter = executable == null
+                    ? executable(pattern, elements.stream().map(element -> element.seed).toList(), locale, zone)
+                    : executable;
+            Format[] formats = formatter.getFormats();
+            ZoneId effectiveZone = zone;
+            for (int index = 0; index < elements.size(); index++) {
+                Element element = elements.get(index);
+                if (element.format instanceof ChoiceFormat && element.selected != null) {
+                    formats[index] = new LiteralFormat(element.selected.render(captured));
+                } else if (element.format == null
+                        && element.seed.argumentIndex() >= 0
+                        && element.seed.argumentIndex() < captured.length
+                        && captured[element.seed.argumentIndex()] != null
+                        && captured[element.seed.argumentIndex()].getClass() == java.util.Date.class) {
+                    if (effectiveZone == null) {
+                        effectiveZone = TrustedFormattingZone.current();
+                    }
+                    formats[index] = new TrustedDateTimeFormat("datetime", "short", locale, effectiveZone);
+                }
+            }
+            formatter.setFormats(formats);
+            return formatter.format(captured);
+        }
     }
 
     private static final class Element {
-        private final int argumentIndex;
-        private final int sourceCharacters;
+        private final MessageFormatPattern.Element seed;
         private final Format format;
         private SelectedChoice selected;
 
-        private Element(int argumentIndex, int sourceCharacters, Format format) {
-            this.argumentIndex = argumentIndex;
-            this.sourceCharacters = sourceCharacters;
+        private Element(MessageFormatPattern.Element seed, Format format) {
+            this.seed = seed;
             this.format = format;
         }
 
         private long maximumWork(Object[] captured) {
-            Object value = captured[argumentIndex];
+            Object value = captured[seed.argumentIndex()];
             if (format instanceof ChoiceFormat) {
                 if (value == null) {
                     return 4L;
@@ -170,7 +231,7 @@ final class MessageFormatWorkBudget {
                 }
                 return selected.maximumWork(captured);
             }
-            return FormattedValueWorkBudget.maximum(value, format, sourceCharacters);
+            return FormattedValueWorkBudget.maximum(value, format, seed.sourceCharacters());
         }
     }
 
@@ -185,6 +246,31 @@ final class MessageFormatWorkBudget {
 
         private long maximumWork(Object[] captured) {
             return plan == null ? literal.length() : plan.maximumWork(captured);
+        }
+
+        private String render(Object[] captured) {
+            return plan == null ? literal : plan.render(captured);
+        }
+    }
+
+    private static final class LiteralFormat extends Format {
+        private static final long serialVersionUID = 1L;
+
+        private final String value;
+
+        private LiteralFormat(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public StringBuffer format(Object ignored, StringBuffer target, FieldPosition position) {
+            return target.append(value);
+        }
+
+        @Override
+        public Object parseObject(String source, ParsePosition position) {
+            position.setErrorIndex(position.getIndex());
+            return null;
         }
     }
 

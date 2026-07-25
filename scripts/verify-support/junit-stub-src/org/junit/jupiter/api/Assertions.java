@@ -3,7 +3,10 @@ package org.junit.jupiter.api;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public final class Assertions {
@@ -76,8 +79,18 @@ public final class Assertions {
     }
 
     public static void assertEquals(Object expected, Object actual) {
+        assertEquals(expected, actual, null);
+    }
+
+    public static void assertEquals(Object expected, Object actual, String message) {
         if (!Objects.equals(expected, actual)) {
-            throw unequal(expected, actual);
+            throw message == null ? unequal(expected, actual) : new AssertionError(message);
+        }
+    }
+
+    public static void assertArrayEquals(Object[] expected, Object[] actual) {
+        if (!Arrays.equals(expected, actual)) {
+            throw unequal(Arrays.toString(expected), Arrays.toString(actual));
         }
     }
 
@@ -127,7 +140,46 @@ public final class Assertions {
         }
     }
 
+    public static void assertTimeoutPreemptively(Duration timeout, Executable executable) {
+        Objects.requireNonNull(timeout, "timeout");
+        Objects.requireNonNull(executable, "executable");
+        if (timeout.isNegative()) {
+            throw new IllegalArgumentException("timeout must not be negative");
+        }
+
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread worker = Thread.ofVirtual().name("logyard-fallback-timeout").unstarted(() -> {
+            try {
+                executable.execute();
+            } catch (Throwable executionFailure) {
+                failure.set(executionFailure);
+            }
+        });
+        worker.start();
+
+        boolean completed;
+        try {
+            completed = worker.join(timeout);
+        } catch (InterruptedException interrupted) {
+            worker.interrupt();
+            Thread.currentThread().interrupt();
+            throw new AssertionError("timeout assertion was interrupted", interrupted);
+        }
+        if (!completed) {
+            worker.interrupt();
+            throw new AssertionError("execution exceeded timeout of " + timeout);
+        }
+        if (failure.get() != null) {
+            Assertions.<RuntimeException>throwUnchecked(failure.get());
+        }
+    }
+
     private static AssertionError unequal(Object expected, Object actual) {
         return new AssertionError("expected <" + expected + "> but was <" + actual + ">");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> void throwUnchecked(Throwable failure) throws T {
+        throw (T) failure;
     }
 }

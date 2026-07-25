@@ -3,6 +3,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+[[ -x "$ZOLT" ]] || {
+  printf 'package failed: Zolt was not found; run scripts/bootstrap-zolt or set ZOLT to an executable path\n' >&2
+  exit 1
+}
 ZOLT_JAVA_HOME="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.jdk_home)"
 members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli zolt-members "$ROOT")"
 STAGING="$ROOT/target/maven-build-repository"

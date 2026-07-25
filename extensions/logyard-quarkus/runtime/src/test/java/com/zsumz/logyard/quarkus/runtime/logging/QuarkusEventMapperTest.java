@@ -11,10 +11,13 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -156,6 +159,38 @@ final class QuarkusEventMapperTest {
         assertTrue((Boolean) events.get(5).attributes().get("logyard.capture.truncated"));
     }
 
+    @Test
+    void dateTimeFormatStylesNeverConsultTheApplicationTimeZoneObject() {
+        ExtLogRecord messageFormat = new ExtLogRecord(
+                java.util.logging.Level.INFO,
+                "{0,time,full} {0,date,full}",
+                ExtLogRecord.FormatStyle.MESSAGE_FORMAT,
+                QuarkusEventMapperTest.class.getName());
+        messageFormat.setParameters(new Object[] {new Date(0L)});
+        ExtLogRecord printf = new ExtLogRecord(
+                java.util.logging.Level.INFO,
+                "%1$tZ %1$tc",
+                ExtLogRecord.FormatStyle.PRINTF,
+                QuarkusEventMapperTest.class.getName());
+        printf.setParameters(new Object[] {new Date(0L)});
+        HostileTimeZone hostile = new HostileTimeZone();
+        TimeZone original = TimeZone.getDefault();
+        List<LogEvent> events = new ArrayList<>();
+        TimeZone.setDefault(hostile);
+        try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
+            QuarkusEventMapper mapper = new QuarkusEventMapper(ContextPolicySnapshot::all);
+            mapper.publish(runtime, messageFormat);
+            mapper.publish(runtime, printf);
+        } finally {
+            TimeZone.setDefault(original);
+        }
+
+        assertEquals(2, events.size());
+        assertTrue(events.get(0).renderedMessage().length() < 1_024);
+        assertTrue(events.get(1).renderedMessage().length() < 1_024);
+        assertEquals(0, hostile.displayNameCalls.get());
+    }
+
     private static final class TrackingRecord extends ExtLogRecord {
         private static final long serialVersionUID = 1L;
 
@@ -231,5 +266,23 @@ final class QuarkusEventMapperTest {
             }
         }
         return Integer.MAX_VALUE;
+    }
+
+    private static final class HostileTimeZone extends TimeZone {
+        private static final long serialVersionUID = 1L;
+
+        private final AtomicInteger displayNameCalls = new AtomicInteger();
+
+        @Override
+        public String getDisplayName(boolean daylight, int style, Locale locale) {
+            displayNameCalls.incrementAndGet();
+            return "x".repeat(5_000_000);
+        }
+
+        @Override public int getOffset(int era, int year, int month, int day, int dayOfWeek, int milliseconds) { return 0; }
+        @Override public void setRawOffset(int offsetMillis) { }
+        @Override public int getRawOffset() { return 0; }
+        @Override public boolean useDaylightTime() { return false; }
+        @Override public boolean inDaylightTime(Date date) { return false; }
     }
 }

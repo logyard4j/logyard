@@ -60,7 +60,9 @@ def zolt_test_members(root: Path) -> tuple[str, ...]:
     for member in members:
         if not isinstance(member, str) or not member.strip():
             raise PublicationError(f"{root / 'zolt.toml'} has an invalid workspace member {member!r}")
-        if not isinstance(_read_toml(root / member / "zolt.toml").get("bom"), dict):
+        manifest = _read_toml(root / member / "zolt.toml")
+        test_source = manifest.get("build", {}).get("test")
+        if isinstance(test_source, str) and test_source.strip():
             testable_members.append(member)
     return tuple(testable_members)
 

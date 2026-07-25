@@ -21,6 +21,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +50,11 @@ public class EncodingBenchmark {
     private final Object[] recursiveChoiceParameters = {0, "x".repeat(2_048)};
     private final String defaultNumberPattern = "{0}".repeat(490);
     private final Object[] defaultNumberParameters = {new BigDecimal(BigInteger.ONE, -2_048)};
+    private final Object[] oneStringParameter = {"value"};
+    private final Object[] twoStringParameters = {"left", "right"};
+    private final Object[] numberParameter = {42};
+    private final Object[] dateParameter = {new Date(0L)};
+    private final Object[] choiceParameter = {1};
 
     @Benchmark
     public String jsonEncoding() {
@@ -88,5 +94,50 @@ public class EncodingBenchmark {
     @Benchmark
     public BoundedMessageFormat.Result rejectedDefaultNumberExpansion() {
         return BoundedMessageFormat.messageFormat(defaultNumberPattern, defaultNumberParameters);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result literalMessage() {
+        return BoundedMessageFormat.literal("hello");
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result messageFormatOneString() {
+        return BoundedMessageFormat.messageFormat("hello {0}", oneStringParameter);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result messageFormatTwoStrings() {
+        return BoundedMessageFormat.messageFormat("{0} {1}", twoStringParameters);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result messageFormatNumber() {
+        return BoundedMessageFormat.messageFormat("count {0,number,integer}", numberParameter);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result messageFormatDate() {
+        return BoundedMessageFormat.messageFormat("at {0,time,full} on {0,date,full}", dateParameter);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result messageFormatChoice() {
+        return BoundedMessageFormat.messageFormat("{0,choice,0#none|1#one|1<many}", choiceParameter);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result printfString() {
+        return BoundedMessageFormat.printf("hello %s", oneStringParameter);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result printfNumber() {
+        return BoundedMessageFormat.printf("count %d", numberParameter);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result printfDate() {
+        return BoundedMessageFormat.printf("at %1$tZ %1$tc", dateParameter);
     }
 }

@@ -69,43 +69,39 @@ final class RuntimeStartCancellationTest {
     }
 
     @Test
-    void terminalShutdownRollsBackAGlobalCandidatePublishedBeforeInstallReturns() throws Exception {
-        BarrierGlobal global = new BarrierGlobal();
+    void terminalShutdownRollsBackAGlobalCandidatePublishedBeforeHookRegistrationReturns() throws Exception {
+        TestGlobal global = new TestGlobal();
         AtomicReference<Runnable> shutdown = new AtomicReference<>();
-        AtomicInteger opens = new AtomicInteger();
-        AtomicReference<CountingInstallation> second = new AtomicReference<>();
+        CountDownLatch hookRegistrationEntered = new CountDownLatch(1);
+        CountDownLatch allowHookRegistration = new CountDownLatch(1);
+        CountingInstallation candidate = new CountingInstallation();
         RuntimeInstallationManager manager = new RuntimeInstallationManager(
                 global,
                 callback -> {
                     shutdown.set(callback);
+                    hookRegistrationEntered.countDown();
+                    await(allowHookRegistration);
                     return true;
                 },
                 Map::of,
-                (request, environment) -> {
-                    CountingInstallation installation = new CountingInstallation();
-                    if (opens.getAndIncrement() > 0) {
-                        second.set(installation);
-                    }
-                    return installation;
-                });
-        manager.acquireApplication(TestRequests.request()).close();
+                (request, environment) -> candidate);
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<RuntimeInstallationLease> acquisition =
                     executor.submit(() -> manager.acquireApplication(TestRequests.request()));
-            assertTrue(global.secondInstalled.await(1L, TimeUnit.SECONDS));
+            assertTrue(hookRegistrationEntered.await(1L, TimeUnit.SECONDS));
             Future<?> terminalShutdown = executor.submit(shutdown.get());
             awaitCancellation(manager);
-            global.allowSecondInstallReturn.countDown();
+            allowHookRegistration.countDown();
 
             assertStartCancelled(acquisition);
             terminalShutdown.get(2L, TimeUnit.SECONDS);
-            assertEquals(1, second.get().closeCalls.get());
+            assertEquals(1, candidate.closeCalls.get());
             assertNull(global.current());
             assertTerminated(manager);
         } finally {
-            global.allowSecondInstallReturn.countDown();
+            allowHookRegistration.countDown();
             executor.shutdownNow();
         }
     }
@@ -223,21 +219,6 @@ final class RuntimeStartCancellationTest {
             }
             runtime.close();
             return true;
-        }
-    }
-
-    private static final class BarrierGlobal extends TestGlobal {
-        private final AtomicInteger installs = new AtomicInteger();
-        private final CountDownLatch secondInstalled = new CountDownLatch(1);
-        private final CountDownLatch allowSecondInstallReturn = new CountDownLatch(1);
-
-        @Override
-        public void install(LogyardRuntime runtime) {
-            super.install(runtime);
-            if (installs.incrementAndGet() == 2) {
-                secondInstalled.countDown();
-                await(allowSecondInstallReturn);
-            }
         }
     }
 

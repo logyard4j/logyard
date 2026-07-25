@@ -11,8 +11,9 @@ final class SafeNumberCapture {
     }
 
     static Object bigInteger(BigInteger value) {
-        int estimatedDigits = decimalDigits(value);
-        if (estimatedDigits + (value.signum() < 0 ? 1 : 0) > CaptureLimits.MAX_CAPTURED_NUMBER_CHARS) {
+        long estimatedDigits = decimalDigits(value);
+        long estimatedCharacters = saturatedAdd(estimatedDigits, value.signum() < 0 ? 1L : 0L);
+        if (estimatedCharacters > CaptureLimits.MAX_CAPTURED_NUMBER_CHARS) {
             return omission(estimatedDigits);
         }
         String representation = value.toString();
@@ -27,7 +28,7 @@ final class SafeNumberCapture {
     }
 
     static Object bigDecimal(BigDecimal value) {
-        int estimatedCharacters = decimalDigits(value.unscaledValue()) + 16;
+        long estimatedCharacters = saturatedAdd(decimalDigits(value.unscaledValue()), 16L);
         if (estimatedCharacters > CaptureLimits.MAX_CAPTURED_NUMBER_CHARS) {
             return omission(estimatedCharacters - 16);
         }
@@ -42,16 +43,20 @@ final class SafeNumberCapture {
         return charge(bigDecimal(value), context);
     }
 
-    private static int decimalDigits(BigInteger value) {
+    private static long decimalDigits(BigInteger value) {
         int bits = value.abs().bitLength();
         if (bits == 0) {
-            return 1;
+            return 1L;
         }
-        return (int) Math.min(Integer.MAX_VALUE, ((long) bits * 1_233L >>> 12) + 1L);
+        return ((long) bits * 1_233L >>> 12) + 1L;
     }
 
-    private static String omission(int characters) {
+    private static String omission(long characters) {
         return OMITTED_PREFIX + characters + " digits]";
+    }
+
+    private static long saturatedAdd(long left, long right) {
+        return left > Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right;
     }
 
     private static Object charge(Object captured, CaptureContext context) {

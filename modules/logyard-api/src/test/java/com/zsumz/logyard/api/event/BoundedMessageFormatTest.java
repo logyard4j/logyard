@@ -51,6 +51,24 @@ final class BoundedMessageFormatTest {
     }
 
     @Test
+    void treatsArbitraryPrecisionNumberSubclassesAsCallerOwnedObjects() {
+        BigInteger integer = new BigInteger("42") {
+            @Override public int bitLength() { throw new AssertionError("subclass bitLength must not be trusted"); }
+            @Override public String toString() { return "integer-subclass"; }
+        };
+        BigDecimal decimal = new BigDecimal("42") {
+            @Override public int precision() { throw new AssertionError("subclass precision must not be trusted"); }
+            @Override public String toString() { return "decimal-subclass"; }
+        };
+
+        BoundedMessageFormat.Result result =
+                BoundedMessageFormat.messageFormat("{0} {1}", new Object[] {integer, decimal});
+
+        assertEquals("integer-subclass decimal-subclass", result.message());
+        assertFalse(result.formatFailed());
+    }
+
+    @Test
     void boundsHugeTemplatesAndPrintfFields() {
         BoundedMessageFormat.Result messageFormat =
                 BoundedMessageFormat.messageFormat("{0}".repeat(100_000), new Object[] {"value"});

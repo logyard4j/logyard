@@ -14,13 +14,45 @@ final class MessageFormatPattern {
         return new Scanner(pattern).elements();
     }
 
+    static String sanitizeDateTime(String pattern, List<Element> elements) {
+        if (!containsDateTime(elements)) {
+            return pattern;
+        }
+        StringBuilder sanitized = new StringBuilder(pattern.length());
+        int copied = 0;
+        for (Element element : elements) {
+            if (!element.dateTime()) {
+                continue;
+            }
+            sanitized.append(pattern, copied, element.opening());
+            sanitized.append('{').append(element.argumentIndex()).append('}');
+            copied = element.closing() + 1;
+        }
+        return sanitized.append(pattern, copied, pattern.length()).toString();
+    }
+
+    static boolean containsDateTime(List<Element> elements) {
+        for (Element element : elements) {
+            if (element.dateTime()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     record Element(
             int argumentIndex,
             int sourceCharacters,
             String formatType,
-            String formatStyle) {
+            String formatStyle,
+            int opening,
+            int closing) {
         Format choiceFormat() {
             return "choice".equalsIgnoreCase(formatType) ? new ChoiceFormat(formatStyle) : null;
+        }
+
+        boolean dateTime() {
+            return "date".equalsIgnoreCase(formatType) || "time".equalsIgnoreCase(formatType);
         }
     }
 
@@ -59,12 +91,12 @@ final class MessageFormatPattern {
         private Element element(int opening, int close) {
             int firstComma = delimiter(opening + 1, close);
             if (firstComma < 0) {
-                return new Element(argumentIndex(opening + 1), close - opening + 1, "", "");
+                return new Element(argumentIndex(opening + 1), close - opening + 1, "", "", opening, close);
             }
             int secondComma = delimiter(firstComma + 1, close);
             String type = pattern.substring(firstComma + 1, secondComma < 0 ? close : secondComma).trim();
             String style = secondComma < 0 ? "" : pattern.substring(secondComma + 1, close);
-            return new Element(argumentIndex(opening + 1), close - opening + 1, type, style);
+            return new Element(argumentIndex(opening + 1), close - opening + 1, type, style, opening, close);
         }
 
         private int delimiter(int start, int end) {

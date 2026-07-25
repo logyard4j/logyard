@@ -137,6 +137,7 @@ EXPECTED_DEPENDENCIES = {
         "org.springframework.boot:spring-boot-autoconfigure",
     },
     "modules/logyard-spring-boot-starter": {
+        "com.zsumz.logyard:logyard-api",
         "com.zsumz.logyard:logyard-slf4j2",
         "com.zsumz.logyard:logyard-spring-boot",
         "org.springframework.boot:spring-boot-starter",

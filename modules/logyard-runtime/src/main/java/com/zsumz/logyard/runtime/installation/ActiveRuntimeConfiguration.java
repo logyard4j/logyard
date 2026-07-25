@@ -6,7 +6,6 @@ import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
 import com.zsumz.logyard.runtime.reload.ReloadCoordinator;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
-import java.io.IOException;
 import java.util.function.Supplier;
 
 final class ActiveRuntimeConfiguration {
@@ -32,7 +31,7 @@ final class ActiveRuntimeConfiguration {
                 coordinator.currentConfig(),
                 reload,
                 diagnostics);
-        markDirtyWhenRegistrationMissedAChange(replacement);
+        ConfigurationWatcherCatchUp.markDirtyIfChanged(replacement, coordinator.currentDigest(), request);
         ActiveRuntimeConfiguration restarted = new ActiveRuntimeConfiguration(request, coordinator, diagnostics, replacement);
         restarted.activateWatcher();
         return restarted;
@@ -50,8 +49,11 @@ final class ActiveRuntimeConfiguration {
         }
     }
 
-    boolean sameSourceAndDigest(ConfigurationInstallationRequest candidate, ConfigurationSnapshot snapshot) {
-        return request.identifiesSameSource(candidate) && coordinator.currentDigest().equals(snapshot.sha256());
+    boolean canReuseImmutableSource(ConfigurationInstallationRequest candidate, ConfigurationSnapshot snapshot) {
+        return !request.reloadable()
+                && !candidate.reloadable()
+                && request.identifiesSameSource(candidate)
+                && coordinator.currentDigest().equals(snapshot.sha256());
     }
 
     boolean watchesConfiguration() {
@@ -60,18 +62,5 @@ final class ActiveRuntimeConfiguration {
 
     ReloadCoordinator coordinator() {
         return coordinator;
-    }
-
-    private void markDirtyWhenRegistrationMissedAChange(ConfigurationWatcher replacement) {
-        if (replacement == null) {
-            return;
-        }
-        try {
-            if (!coordinator.currentDigest().equals(request.snapshot().sha256())) {
-                replacement.markDirtyBeforeActivation();
-            }
-        } catch (IOException | RuntimeException readFailure) {
-            replacement.markDirtyBeforeActivation();
-        }
     }
 }

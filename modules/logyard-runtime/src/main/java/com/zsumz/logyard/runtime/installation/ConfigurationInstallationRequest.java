@@ -33,6 +33,10 @@ public final class ConfigurationInstallationRequest {
         return watchPath;
     }
 
+    boolean reloadable() {
+        return watchPath != null;
+    }
+
     boolean identifiesSameSource(ConfigurationInstallationRequest other) {
         return other != null && sourceIdentity.equals(other.sourceIdentity);
     }

@@ -4,7 +4,6 @@ import com.zsumz.logyard.api.annotation.InternalApi;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchService;
@@ -42,7 +41,14 @@ public final class ConfigurationWatchRegistration implements AutoCloseable {
             throw new IOException("configuration path has no parent directory: " + source);
         }
 
-        WatchService watchService = FileSystems.getDefault().newWatchService();
+        WatchService watchService;
+        try {
+            watchService = normalizedSource.getFileSystem().newWatchService();
+        } catch (UnsupportedOperationException failure) {
+            throw new IOException(
+                    "configuration filesystem does not support watching: " + normalizedSource.getFileSystem().provider().getScheme(),
+                    failure);
+        }
         try {
             parent.register(
                     watchService,

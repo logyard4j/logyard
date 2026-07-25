@@ -3,13 +3,9 @@ package com.zsumz.logyard.api.event;
 import com.zsumz.logyard.api.annotation.InternalApi;
 import com.zsumz.logyard.api.failure.FailureIsolation;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.text.MessageFormat;
-import java.util.Date;
 import java.util.Formatter;
 import java.util.IllegalFormatException;
-import java.util.Locale;
 
 /**
  * Bounded, failure-isolated rendering for logging adapters that receive JDK-style format strings.
@@ -54,7 +50,7 @@ public final class BoundedMessageFormat {
             if (!analysis.permits(captured)) {
                 return workLimited(template);
             }
-            String rendered = MessageFormat.format(template, captured);
+            String rendered = analysis.render(captured);
             return success(template, rendered, template != pattern || parametersTruncated);
         } catch (Throwable failure) {
             FailureIsolation.prepareForRecovery(failure);
@@ -78,16 +74,11 @@ public final class BoundedMessageFormat {
             int capturedLength = Math.min(parameters.length, CaptureLimits.MAX_ARGUMENTS);
             BoundedPrintfPattern.Analysis analysis =
                     BoundedPrintfPattern.analyze(template, MAX_PRINTF_FIELD_WIDTH, parameters.length, capturedLength);
-            Object[] captured = new Object[capturedLength];
-            boolean parametersTruncated = capture(
-                            parameters,
-                            captured,
-                            new boolean[capturedLength],
-                            analysis::referenced)
-                    || analysis.referencedParameterOmitted();
+            PrintfArgumentCapture.CapturedArguments captured = analysis.capture(parameters);
+            boolean parametersTruncated = captured.truncated() || analysis.referencedParameterOmitted();
             BoundedFormatBuffer output = new BoundedFormatBuffer(CaptureLimits.MAX_RENDERED_MESSAGE_CHARS);
-            try (Formatter formatter = new Formatter(output, Locale.getDefault(Locale.Category.FORMAT))) {
-                formatter.format(analysis.pattern(), captured);
+            try (Formatter formatter = new Formatter(output, analysis.locale())) {
+                formatter.format(analysis.pattern(), captured.values());
             } catch (BoundedFormatBuffer.LimitReached exhausted) {
                 return new Result(template, output.value(), false, true);
             }
@@ -95,7 +86,7 @@ public final class BoundedMessageFormat {
                     template,
                     output.value(),
                     false,
-                    template != pattern || !analysis.pattern().equals(template) || parametersTruncated);
+                    template != pattern || analysis.syntaxBounded() || parametersTruncated);
         } catch (IllegalFormatException failure) {
             return failed(template, template != pattern);
         } catch (Throwable failure) {
@@ -131,44 +122,9 @@ public final class BoundedMessageFormat {
     }
 
     private static boolean capture(Object value, Object[] captured, int index) {
-        if (value == null || value instanceof Boolean || value instanceof Character || value instanceof Byte
-                || value instanceof Short || value instanceof Integer || value instanceof Long || value instanceof Float
-                || value instanceof Double) {
-            captured[index] = value;
-            return false;
-        }
-        if (value instanceof String string) {
-            String bounded = CaptureLimits.truncate(string, CaptureLimits.MAX_CAPTURED_NUMBER_CHARS);
-            captured[index] = bounded;
-            return bounded != string;
-        }
-        if (value instanceof BigInteger integer) {
-            Object bounded = SafeNumberCapture.bigInteger(integer);
-            captured[index] = bounded instanceof BigInteger ? bounded : bounded.toString();
-            return !(bounded instanceof BigInteger);
-        }
-        if (value instanceof BigDecimal decimal) {
-            return captureDecimal(decimal, captured, index);
-        }
-        if (value instanceof Date date) {
-            captured[index] = new Date(date.getTime());
-            return false;
-        }
-        MessageFormatter.RenderResult rendered =
-                MessageFormatter.safeRender(value, CaptureLimits.MAX_CAPTURED_NUMBER_CHARS);
-        captured[index] = rendered.value();
-        return rendered.truncated();
-    }
-
-    private static boolean captureDecimal(BigDecimal value, Object[] captured, int index) {
-        if (value.precision() > CaptureLimits.MAX_CAPTURED_NUMBER_CHARS
-                || Math.abs((long) value.scale()) > CaptureLimits.MAX_CAPTURED_NUMBER_CHARS) {
-            captured[index] = MessageFormatter.safeRender(value, CaptureLimits.MAX_CAPTURED_NUMBER_CHARS).value();
-            return true;
-        }
-        Object bounded = SafeNumberCapture.bigDecimal(value);
-        captured[index] = bounded instanceof BigDecimal ? bounded : bounded.toString();
-        return !(bounded instanceof BigDecimal);
+        FormatArgumentCapture.Captured argument = FormatArgumentCapture.capture(value);
+        captured[index] = argument.value();
+        return argument.truncated();
     }
 
     private static Result success(String template, String rendered, boolean inputTruncated) {

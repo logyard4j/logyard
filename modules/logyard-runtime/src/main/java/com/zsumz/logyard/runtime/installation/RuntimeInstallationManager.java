@@ -1,5 +1,6 @@
 package com.zsumz.logyard.runtime.installation;
 
+import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.reload.ReloadResult;
 
 import java.util.Map;
@@ -90,7 +91,10 @@ public final class RuntimeInstallationManager {
             candidate = installations.open(request, Map.copyOf(environment.get()));
             state.registerStartCandidate(transaction, candidate);
             RuntimeInstallation starting = candidate;
-            globalRuntime.install(candidate.runtime(), () -> shutdownManaged(starting));
+            LogyardRuntime candidateRuntime = candidate.runtime();
+            if (!transaction.publish(() -> globalRuntime.install(candidateRuntime, () -> shutdownManaged(starting)))) {
+                state.requireActiveStart(transaction);
+            }
             state.requireActiveStart(transaction);
             installShutdownHook(plan);
             state.commitStart(transaction, candidate, owner);

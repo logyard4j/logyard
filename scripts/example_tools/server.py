@@ -113,11 +113,21 @@ class HttpExampleRunner:
     @staticmethod
     def _await_port(process: subprocess.Popen[bytes], port_file: Path, process_log: Path) -> int:
         deadline = time.monotonic() + 30
+        observed_port: int | None = None
         while time.monotonic() < deadline:
             if process.poll() is not None:
                 HttpExampleRunner._fail(f"server exited before publishing its port ({process.returncode})", process_log)
             if port_file.is_file():
-                return int(port_file.read_text(encoding="utf-8").strip())
+                value = port_file.read_text(encoding="utf-8").strip()
+                if value:
+                    if not value.isdecimal():
+                        HttpExampleRunner._fail(f"server published an invalid port {value!r}", process_log)
+                    port = int(value)
+                    if not 0 < port <= 65_535:
+                        HttpExampleRunner._fail(f"server published an invalid port {port}", process_log)
+                    if port == observed_port:
+                        return port
+                    observed_port = port
             time.sleep(0.05)
         HttpExampleRunner._fail("server did not publish its port within 30 seconds", process_log)
 

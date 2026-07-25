@@ -62,7 +62,10 @@ class RepositoryPublicationTest(unittest.TestCase):
             {dependency.coordinate for dependency in bom.managed_dependencies},
         )
         self.assertNotIn("modules/logyard-bom", zolt_test_members(root))
-        self.assertEqual(13, len(zolt_test_members(root)))
+        self.assertNotIn("modules/logyard-spring-boot-starter", zolt_test_members(root))
+        self.assertNotIn("tests/logyard-integration-tests", zolt_test_members(root))
+        self.assertNotIn("benchmarks/logyard-benchmarks", zolt_test_members(root))
+        self.assertEqual(10, len(zolt_test_members(root)))
 
 
 class PublicationManifestContractTest(unittest.TestCase):

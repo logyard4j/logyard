@@ -1,6 +1,7 @@
 package com.zsumz.logyard.runtime.installation;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -8,12 +9,20 @@ import java.util.concurrent.TimeoutException;
 
 /** Single-owner token separating a cancelled start's bounded shutdown boundary from final asynchronous retirement. */
 final class RuntimeStartTransaction {
+    private enum Publication {
+        OPEN,
+        PUBLISHING,
+        PUBLISHED,
+        CANCELLATION_REQUESTED,
+        CANCELLED
+    }
+
     private final long generation;
     private final Thread owner = Thread.currentThread();
     private final CompletableFuture<Void> shutdownBoundary = new CompletableFuture<>();
     private final CompletableFuture<Void> finalRetirement = new CompletableFuture<>();
     private RuntimeInstallation candidate;
-    private boolean cancelled;
+    private Publication publication = Publication.OPEN;
 
     RuntimeStartTransaction(long generation) {
         this.generation = generation;
@@ -23,20 +32,56 @@ final class RuntimeStartTransaction {
         return generation;
     }
 
-    RuntimeInstallation candidate() {
+    synchronized RuntimeInstallation candidate() {
         return candidate;
     }
 
-    void candidate(RuntimeInstallation candidate) {
+    synchronized void candidate(RuntimeInstallation candidate) {
         this.candidate = candidate;
     }
 
-    boolean cancelled() {
-        return cancelled;
+    synchronized boolean cancelled() {
+        return publication == Publication.CANCELLATION_REQUESTED || publication == Publication.CANCELLED;
     }
 
-    void cancel() {
-        cancelled = true;
+    synchronized void cancel() {
+        publication = switch (publication) {
+            case OPEN, PUBLISHED -> Publication.CANCELLED;
+            case PUBLISHING -> Publication.CANCELLATION_REQUESTED;
+            case CANCELLATION_REQUESTED, CANCELLED -> publication;
+        };
+    }
+
+    boolean publish(Runnable publicationAction) {
+        Objects.requireNonNull(publicationAction, "publicationAction");
+        synchronized (this) {
+            if (publication == Publication.CANCELLED) {
+                return false;
+            }
+            if (publication != Publication.OPEN) {
+                throw new IllegalStateException("runtime start publication was already attempted");
+            }
+            publication = Publication.PUBLISHING;
+        }
+        try {
+            publicationAction.run();
+        } catch (RuntimeException | Error failure) {
+            synchronized (this) {
+                publication = Publication.CANCELLED;
+            }
+            throw failure;
+        }
+        synchronized (this) {
+            if (publication == Publication.CANCELLATION_REQUESTED) {
+                publication = Publication.CANCELLED;
+                return false;
+            }
+            if (publication != Publication.PUBLISHING) {
+                throw new IllegalStateException("runtime start publication was not in progress");
+            }
+            publication = Publication.PUBLISHED;
+            return true;
+        }
     }
 
     void completeWithoutRetirement() {
