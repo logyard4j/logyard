@@ -141,8 +141,9 @@ public final class Logyard {
     /**
      * Removes an expected manager-owned runtime from the global slot without closing it.
      *
-     * <p>The lifecycle manager uses this only when a concurrently cancelled start retains sole
-     * responsibility for closing its candidate.</p>
+     * <p>The lifecycle manager uses this when a retirement transaction retains sole responsibility
+     * for closing the runtime but a cancelled start, reentrant close, or bounded shutdown wait must
+     * make the process-global slot unavailable immediately.</p>
      *
      * @param expected managed runtime expected to occupy the global slot
      * @return {@code true} when the expected runtime was detached

@@ -18,7 +18,11 @@ record RuntimeShutdownPlan(
         return new RuntimeShutdownPlan(true, RuntimeRetirementPlan.none(), start);
     }
 
-    static RuntimeShutdownPlan retire(RuntimeInstallation installation, long generation) {
-        return new RuntimeShutdownPlan(true, RuntimeRetirementPlan.close(installation, generation), null);
+    static RuntimeShutdownPlan retire(RuntimeRetirementPlan retirement) {
+        return new RuntimeShutdownPlan(true, retirement, null);
+    }
+
+    static RuntimeShutdownPlan join(RuntimeRetirementTransaction retirement) {
+        return retire(RuntimeRetirementPlan.close(retirement));
     }
 }

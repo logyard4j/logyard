@@ -36,6 +36,10 @@
       "maxBytesPerOperation": 1048576
     },
     {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.rejectedDefaultNumberExpansion",
+      "maxBytesPerOperation": 1048576
+    },
+    {
       "benchmark": "com.zsumz.logyard.benchmarks.ingress.ContextPolicyBenchmark.fixedConfiguration",
       "maxBytesPerOperation": 1
     },

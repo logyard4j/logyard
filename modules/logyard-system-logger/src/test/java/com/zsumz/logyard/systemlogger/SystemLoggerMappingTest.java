@@ -14,6 +14,8 @@ import com.zsumz.logyard.systemlogger.internal.factory.LogyardSystemLogger;
 import com.zsumz.logyard.systemlogger.internal.event.SystemLevelMapper;
 import com.zsumz.logyard.systemlogger.internal.event.SystemMessageRenderer;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +46,16 @@ final class SystemLoggerMappingTest {
                 null,
                 "{0,choice,0#" + "'{1}'".repeat(1_600) + "}",
                 new Object[] {0, "x".repeat(2_048)});
+
+        assertTrue(result.message().contains("format expansion omitted"));
+    }
+
+    @Test
+    void boundsRepeatedDefaultNumberExpansion() {
+        SystemMessageRenderer.Result result = SystemMessageRenderer.render(
+                null,
+                "{0}".repeat(490),
+                new Object[] {new BigDecimal(BigInteger.ONE, -2_048)});
 
         assertTrue(result.message().contains("format expansion omitted"));
     }

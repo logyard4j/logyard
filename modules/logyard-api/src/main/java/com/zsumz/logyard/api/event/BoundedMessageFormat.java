@@ -41,14 +41,17 @@ public final class BoundedMessageFormat {
         try {
             int capturedLength = Math.min(parameters.length, CaptureLimits.MAX_ARGUMENTS);
             Object[] captured = new Object[capturedLength];
+            boolean[] capturedArguments = new boolean[capturedLength];
             MessageFormatWorkBudget.Analysis analysis =
                     MessageFormatWorkBudget.analyze(template, parameters.length, capturedLength);
-            if (analysis.nestedChoice()) {
+            boolean parametersTruncated =
+                    capture(parameters, captured, capturedArguments, analysis::referenced);
+            if (!analysis.resolveChoices(captured)) {
                 return workLimited(template);
             }
-            boolean parametersTruncated = capture(parameters, captured, analysis::referenced)
+            parametersTruncated |= capture(parameters, captured, capturedArguments, analysis::referenced)
                     || analysis.referencedParameterOmitted();
-            if (!analysis.permits(template, captured)) {
+            if (!analysis.permits(captured)) {
                 return workLimited(template);
             }
             String rendered = MessageFormat.format(template, captured);
@@ -76,7 +79,11 @@ public final class BoundedMessageFormat {
             BoundedPrintfPattern.Analysis analysis =
                     BoundedPrintfPattern.analyze(template, MAX_PRINTF_FIELD_WIDTH, parameters.length, capturedLength);
             Object[] captured = new Object[capturedLength];
-            boolean parametersTruncated = capture(parameters, captured, analysis::referenced)
+            boolean parametersTruncated = capture(
+                            parameters,
+                            captured,
+                            new boolean[capturedLength],
+                            analysis::referenced)
                     || analysis.referencedParameterOmitted();
             BoundedFormatBuffer output = new BoundedFormatBuffer(CaptureLimits.MAX_RENDERED_MESSAGE_CHARS);
             try (Formatter formatter = new Formatter(output, Locale.getDefault(Locale.Category.FORMAT))) {
@@ -108,11 +115,16 @@ public final class BoundedMessageFormat {
         return literal(bounded, bounded != message);
     }
 
-    private static boolean capture(Object[] parameters, Object[] captured, ReferencedArgument referenced) {
+    private static boolean capture(
+            Object[] parameters,
+            Object[] captured,
+            boolean[] capturedArguments,
+            ReferencedArgument referenced) {
         boolean truncated = false;
         for (int index = 0; index < captured.length; index++) {
-            if (referenced.at(index)) {
+            if (referenced.at(index) && !capturedArguments[index]) {
                 truncated |= capture(parameters[index], captured, index);
+                capturedArguments[index] = true;
             }
         }
         return truncated;

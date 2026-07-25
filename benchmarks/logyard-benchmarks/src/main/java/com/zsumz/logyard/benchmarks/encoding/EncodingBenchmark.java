@@ -18,6 +18,8 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +47,8 @@ public class EncodingBenchmark {
     private final RedactionProcessor redaction = new RedactionProcessor(List.of("*.token"));
     private final String recursiveChoicePattern = "{0,choice,0#" + "'{1}'".repeat(1_600) + "}";
     private final Object[] recursiveChoiceParameters = {0, "x".repeat(2_048)};
+    private final String defaultNumberPattern = "{0}".repeat(490);
+    private final Object[] defaultNumberParameters = {new BigDecimal(BigInteger.ONE, -2_048)};
 
     @Benchmark
     public String jsonEncoding() {
@@ -79,5 +83,10 @@ public class EncodingBenchmark {
     @Benchmark
     public BoundedMessageFormat.Result rejectedRecursiveChoiceExpansion() {
         return BoundedMessageFormat.messageFormat(recursiveChoicePattern, recursiveChoiceParameters);
+    }
+
+    @Benchmark
+    public BoundedMessageFormat.Result rejectedDefaultNumberExpansion() {
+        return BoundedMessageFormat.messageFormat(defaultNumberPattern, defaultNumberParameters);
     }
 }

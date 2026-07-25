@@ -12,6 +12,8 @@ import com.zsumz.logyard.core.runtime.RuntimePlan;
 import com.zsumz.logyard.jul.internal.event.JulLevelMapper;
 import com.zsumz.logyard.jul.internal.event.JulMessageRenderer;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +44,14 @@ final class LogyardHandlerTest {
     void boundsRecursiveChoiceFormatExpansion() {
         LogRecord record = new LogRecord(java.util.logging.Level.INFO, "{0,choice,0#" + "'{1}'".repeat(1_600) + "}");
         record.setParameters(new Object[] {0, "x".repeat(2_048)});
+
+        assertTrue(JulMessageRenderer.render(record).message().contains("format expansion omitted"));
+    }
+
+    @Test
+    void boundsRepeatedDefaultNumberExpansion() {
+        LogRecord record = new LogRecord(java.util.logging.Level.INFO, "{0}".repeat(490));
+        record.setParameters(new Object[] {new BigDecimal(BigInteger.ONE, -2_048)});
 
         assertTrue(JulMessageRenderer.render(record).message().contains("format expansion omitted"));
     }

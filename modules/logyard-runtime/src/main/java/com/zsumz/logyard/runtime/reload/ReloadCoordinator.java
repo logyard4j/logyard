@@ -114,6 +114,9 @@ public final class ReloadCoordinator {
         RuntimeAssembly candidate = null;
         try {
             LogyardConfig candidateConfig = candidateSnapshot.parse(environment);
+            RuntimeReloadPolicy.requireInstallationPolicyUnchanged(
+                    assembly.config().runtime(),
+                    candidateConfig.runtime());
             candidate = LogyardRuntimeFactory.assemble(candidateConfig, assembly);
             planPublisher.publish(candidate.plan());
             String previousDigest = snapshot.sha256();

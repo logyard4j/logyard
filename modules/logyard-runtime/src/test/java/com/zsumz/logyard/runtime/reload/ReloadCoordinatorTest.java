@@ -134,6 +134,26 @@ final class ReloadCoordinatorTest {
     }
 
     @Test
+    void rejectsEveryInstallationOwnedRuntimePolicyChange() throws Exception {
+        Fixture fixture = Fixture.create();
+        try (ReloadHarness harness = ReloadHarness.start(fixture, ReloadDiagnostics.silent())) {
+            String baseline = fixture.config("debug", "4KiB");
+            String[] candidates = {
+                    baseline.replace("shutdown_timeout = \"2s\"", "shutdown_timeout = \"3s\""),
+                    baseline.replace("internal_status = \"off\"", "internal_status = \"warn\""),
+                    baseline.replace("[runtime]", "[runtime]\nwatch = true"),
+                    baseline.replace("[runtime]", "[runtime]\nreload_debounce = \"1s\"")
+            };
+
+            for (String candidate : candidates) {
+                Files.writeString(fixture.source(), candidate, StandardCharsets.UTF_8);
+                assertEquals(ReloadResult.REJECTED, harness.coordinator().reloadIfChanged());
+                assertEquals(Level.INFO, harness.coordinator().currentConfig().rootLogger().level());
+            }
+        }
+    }
+
+    @Test
     void lockedFileMutationIsRejected() throws Exception {
         Fixture fixture = Fixture.create();
         try (RuntimeBundle bundle = LogyardBootstrap.start(fixture.source())) {

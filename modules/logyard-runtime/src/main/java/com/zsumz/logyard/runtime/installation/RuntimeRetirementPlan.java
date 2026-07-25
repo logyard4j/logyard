@@ -1,18 +1,22 @@
 package com.zsumz.logyard.runtime.installation;
 
-/** Installation and generation selected atomically for retirement outside the lifecycle lock. */
-record RuntimeRetirementPlan(RuntimeInstallation installation, long generation) {
-    private static final RuntimeRetirementPlan NONE = new RuntimeRetirementPlan(null, 0L);
+/** Shared retirement transaction selected atomically for execution outside the lifecycle lock. */
+record RuntimeRetirementPlan(RuntimeRetirementTransaction transaction) {
+    private static final RuntimeRetirementPlan NONE = new RuntimeRetirementPlan(null);
 
     static RuntimeRetirementPlan none() {
         return NONE;
     }
 
     static RuntimeRetirementPlan close(RuntimeInstallation installation, long generation) {
-        return new RuntimeRetirementPlan(installation, generation);
+        return close(new RuntimeRetirementTransaction(installation, generation));
+    }
+
+    static RuntimeRetirementPlan close(RuntimeRetirementTransaction transaction) {
+        return new RuntimeRetirementPlan(transaction);
     }
 
     boolean required() {
-        return installation != null;
+        return transaction != null;
     }
 }

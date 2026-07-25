@@ -9,7 +9,8 @@ record AcquisitionPlan(
         LogyardRuntime borrowedRuntime,
         long generation,
         boolean installShutdownHook,
-        RuntimeStartTransaction startTransaction) {
+        RuntimeStartTransaction startTransaction,
+        RuntimeRetirementPlan retirement) {
 
     enum Action {
         BORROW,
@@ -20,22 +21,44 @@ record AcquisitionPlan(
     }
 
     static AcquisitionPlan borrowed(LogyardRuntime runtime) {
-        return new AcquisitionPlan(Action.BORROW, null, runtime, 0, false, null);
+        return new AcquisitionPlan(Action.BORROW, null, runtime, 0, false, null, RuntimeRetirementPlan.none());
     }
 
     static AcquisitionPlan shared(RuntimeInstallation installation) {
-        return new AcquisitionPlan(Action.SHARE, installation, null, 0, false, null);
+        return new AcquisitionPlan(Action.SHARE, installation, null, 0, false, null, RuntimeRetirementPlan.none());
     }
 
     static AcquisitionPlan start(RuntimeStartTransaction transaction, boolean installShutdownHook) {
-        return new AcquisitionPlan(Action.START, null, null, transaction.generation(), installShutdownHook, transaction);
+        return new AcquisitionPlan(
+                Action.START,
+                null,
+                null,
+                transaction.generation(),
+                installShutdownHook,
+                transaction,
+                RuntimeRetirementPlan.none());
     }
 
     static AcquisitionPlan reconfigure(RuntimeInstallation installation, long generation) {
-        return new AcquisitionPlan(Action.RECONFIGURE, installation, null, generation, false, null);
+        return new AcquisitionPlan(
+                Action.RECONFIGURE,
+                installation,
+                null,
+                generation,
+                false,
+                null,
+                RuntimeRetirementPlan.none());
     }
 
-    static AcquisitionPlan closeStale(RuntimeInstallation installation, long generation) {
-        return new AcquisitionPlan(Action.CLOSE_STALE, installation, null, generation, false, null);
+    static AcquisitionPlan closeStale(RuntimeRetirementPlan retirement) {
+        RuntimeRetirementTransaction transaction = retirement.transaction();
+        return new AcquisitionPlan(
+                Action.CLOSE_STALE,
+                transaction.installation(),
+                null,
+                transaction.generation(),
+                false,
+                null,
+                retirement);
     }
 }

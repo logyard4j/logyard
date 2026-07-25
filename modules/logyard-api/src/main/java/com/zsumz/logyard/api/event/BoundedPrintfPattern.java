@@ -42,8 +42,13 @@ final class BoundedPrintfPattern {
             if (cursor < pattern.length() && (pattern.charAt(cursor) == 't' || pattern.charAt(cursor) == 'T')) {
                 bounded.append(pattern.charAt(cursor++));
             }
-            if (cursor < pattern.length()) {
-                bounded.append(pattern.charAt(cursor++));
+            char conversion = cursor < pattern.length() ? pattern.charAt(cursor++) : '\0';
+            if (conversion != '\0') {
+                bounded.append(conversion);
+            }
+
+            if (conversion == '%' || conversion == 'n') {
+                continue;
             }
 
             int selected;

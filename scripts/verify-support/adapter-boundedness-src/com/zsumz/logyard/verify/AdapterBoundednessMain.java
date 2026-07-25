@@ -66,11 +66,18 @@ public final class AdapterBoundednessMain {
                     recursiveChoice,
                     0,
                     "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS));
+            String repeatedDefaultNumber = "{0}".repeat(490);
+            BigDecimal compactExpandedDecimal = new BigDecimal(BigInteger.ONE, -2_048);
+            LogRecord numericJul = new LogRecord(java.util.logging.Level.INFO, repeatedDefaultNumber);
+            numericJul.setLoggerName("boundedness.jul.number");
+            numericJul.setParameters(new Object[] {compactExpandedDecimal});
+            handler.publish(numericJul);
+            system.log(System.Logger.Level.INFO, repeatedDefaultNumber, compactExpandedDecimal);
             verifyConcurrentRepeatedSubstitutions(handler, system);
             handler.close();
         }
 
-        require(events.size() == 23, "adapter events were not delivered");
+        require(events.size() == 57, "adapter events were not delivered");
         for (LogEvent event : events) {
             require(event.renderedMessage().length() <= CaptureLimits.MAX_RENDERED_MESSAGE_CHARS, "adapter message exceeded its cap");
         }
@@ -83,11 +90,13 @@ public final class AdapterBoundednessMain {
         require(events.get(4).renderedMessage().contains("format expansion omitted"), "System.Logger repeated expansion was not work-bounded");
         require(events.get(5).renderedMessage().contains("format expansion omitted"), "JUL recursive choice was not work-bounded");
         require(events.get(6).renderedMessage().contains("format expansion omitted"), "System.Logger recursive choice was not work-bounded");
+        require(events.get(7).renderedMessage().contains("format expansion omitted"), "JUL default number expansion was not work-bounded");
+        require(events.get(8).renderedMessage().contains("format expansion omitted"), "System.Logger default number expansion was not work-bounded");
         System.out.println("Adapter boundedness verification passed under constrained heap");
     }
 
     private static void verifyConcurrentRepeatedSubstitutions(LogyardHandler handler, System.Logger system) {
-        int callerCount = 16;
+        int callerCount = 48;
         CountDownLatch ready = new CountDownLatch(callerCount);
         CountDownLatch start = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();
@@ -98,8 +107,13 @@ public final class AdapterBoundednessMain {
                 ready.countDown();
                 await(start);
                 try {
-                    String pattern = "{0}".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 3);
-                    String parameter = "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS);
+                    boolean numeric = (callerIndex & 2) != 0;
+                    String pattern = numeric
+                            ? "{0}".repeat(490)
+                            : "{0}".repeat(CaptureLimits.MAX_EVENT_TEMPLATE_CHARS / 3);
+                    Object parameter = numeric
+                            ? new BigDecimal(BigInteger.ONE, -2_048)
+                            : "x".repeat(CaptureLimits.MAX_CAPTURED_NUMBER_CHARS);
                     if ((callerIndex & 1) == 0) {
                         LogRecord record = new LogRecord(java.util.logging.Level.INFO, pattern);
                         record.setLoggerName("boundedness.jul.concurrent");

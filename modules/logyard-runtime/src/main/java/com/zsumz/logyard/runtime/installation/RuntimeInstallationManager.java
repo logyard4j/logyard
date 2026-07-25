@@ -77,7 +77,7 @@ public final class RuntimeInstallationManager {
             case START -> start(owner, request, plan);
             case RECONFIGURE -> reconfigure(owner, request, plan);
             case CLOSE_STALE -> {
-                retire(RuntimeRetirementPlan.close(plan.installation(), plan.generation()));
+                retire(plan.retirement());
                 throw InstallationTransitionFailures.forPhase(InstallationPhase.CLOSING);
             }
         };
@@ -155,6 +155,10 @@ public final class RuntimeInstallationManager {
     private boolean requestShutdown(RuntimeInstallation expected, boolean terminateProcess) {
         RuntimeShutdownPlan shutdown = state.shutdown(expected, terminateProcess);
         retire(shutdown.retirement());
+        RuntimeRetirementTransaction closing = shutdown.retirement().transaction();
+        if (closing != null && !closing.awaitShutdownBoundary()) {
+            globalRuntime.detachIfCurrent(closing.installation().runtime());
+        }
         RuntimeStartTransaction cancelledStart = shutdown.cancelledStart();
         if (cancelledStart != null) {
             RuntimeInstallation candidate = cancelledStart.candidate();
@@ -167,9 +171,7 @@ public final class RuntimeInstallationManager {
     }
 
     private void retire(RuntimeRetirementPlan retirement) {
-        retire(retirement, () -> {
-        }, ignored -> {
-        });
+        retire(retirement, null, null);
     }
 
     private CompletionStage<Void> retire(
@@ -177,14 +179,27 @@ public final class RuntimeInstallationManager {
             Runnable shutdownBoundary,
             Consumer<Throwable> completion) {
         if (!retirement.required()) {
-            shutdownBoundary.run();
+            if (shutdownBoundary != null) {
+                shutdownBoundary.run();
+            }
             return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
-        CompletionStage<Void> finalRetirement = retirements.close(retirement.installation(), globalRuntime);
-        shutdownBoundary.run();
+        RuntimeRetirementTransaction transaction = retirement.transaction();
+        if (shutdownBoundary != null) {
+            transaction.onShutdownBoundary(shutdownBoundary);
+        }
+        if (completion != null) {
+            transaction.onFinalRetirement(completion);
+        }
+        if (!transaction.claim()) {
+            return transaction.finalRetirement();
+        }
+
+        CompletionStage<Void> finalRetirement = retirements.close(transaction.installation(), globalRuntime);
+        transaction.completeShutdownBoundary();
         retirements.observe(finalRetirement, failure -> {
-            state.completeRetirement(retirement.installation(), retirement.generation());
-            completion.accept(failure);
+            state.completeRetirement(transaction);
+            transaction.completeFinalRetirement(failure);
         });
         return finalRetirement;
     }

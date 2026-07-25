@@ -104,10 +104,70 @@ final class BoundedMessageFormatTest {
         BoundedMessageFormat.Result printf =
                 BoundedMessageFormat.printf("selected %2$s %<s", new Object[] {unreferenced, "message"});
         BoundedMessageFormat.printf("literal %% %n", new Object[] {unreferenced});
+        BoundedMessageFormat.printf("indexed literals %1$% %1$n", new Object[] {unreferenced});
 
         assertEquals("selected message", messageFormat.message());
         assertEquals("selected message message", printf.message());
         assertEquals(0, renderCalls.get());
+    }
+
+    @Test
+    void leavesArgumentsInUnselectedChoiceBranchesUntouched() {
+        AtomicInteger renderCalls = new AtomicInteger();
+        Object unselected = new Object() {
+            @Override
+            public String toString() {
+                renderCalls.incrementAndGet();
+                return "should not render";
+            }
+        };
+
+        BoundedMessageFormat.Result result = BoundedMessageFormat.messageFormat(
+                "{0,choice,0#none|1#{1}}",
+                new Object[] {0, unselected});
+
+        assertEquals("none", result.message());
+        assertEquals(0, renderCalls.get());
+    }
+
+    @Test
+    void rejectsRepeatedDefaultNumberExpansionBeforeTheJdkFormatterAllocatesIt() {
+        BigDecimal expanded = new BigDecimal(BigInteger.ONE, -2_048);
+        String pattern = "{0}".repeat(490);
+
+        BoundedMessageFormat.Result result =
+                BoundedMessageFormat.messageFormat(pattern, new Object[] {expanded});
+
+        assertTrue(result.message().contains("format expansion omitted"));
+        assertTrue(result.truncated());
+        assertFalse(result.formatFailed());
+    }
+
+    @Test
+    void boundsEveryBuiltInNumberFormatKindBeforeRendering() {
+        Object[] values = {
+                new BigDecimal(BigInteger.ONE, -2_048),
+                BigInteger.TEN.pow(2_000),
+                Double.MAX_VALUE
+        };
+        String[] elements = {
+                "{0}",
+                "{0,number}",
+                "{0,number,integer}",
+                "{0,number,currency}",
+                "{0,number,percent}",
+                "{0,number,#,##0.00}"
+        };
+
+        for (Object value : values) {
+            for (String element : elements) {
+                BoundedMessageFormat.Result result =
+                        BoundedMessageFormat.messageFormat(element.repeat(100), new Object[] {value});
+                assertTrue(
+                        result.message().contains("format expansion omitted"),
+                        () -> "format work was not bounded for " + element + " and " + value.getClass().getSimpleName());
+            }
+        }
     }
 
     @Test
@@ -158,5 +218,24 @@ final class BoundedMessageFormatTest {
         long allocated = allocationBean.getThreadAllocatedBytes(Thread.currentThread().threadId()) - before;
 
         assertTrue(allocated < 1_000_000L, () -> "quoted ChoiceFormat allocated " + allocated + " bytes");
+    }
+
+    @Test
+    void repeatedDefaultNumberFormattingStaysWithinAOneMegabyteAllocationEnvelope() {
+        java.lang.management.ThreadMXBean platformBean = ManagementFactory.getThreadMXBean();
+        if (!(platformBean instanceof com.sun.management.ThreadMXBean allocationBean)
+                || !allocationBean.isThreadAllocatedMemorySupported()) {
+            return;
+        }
+        allocationBean.setThreadAllocatedMemoryEnabled(true);
+        String pattern = "{0}".repeat(490);
+        Object[] parameters = {new BigDecimal(BigInteger.ONE, -2_048)};
+        BoundedMessageFormat.messageFormat(pattern, parameters);
+
+        long before = allocationBean.getThreadAllocatedBytes(Thread.currentThread().threadId());
+        BoundedMessageFormat.messageFormat(pattern, parameters);
+        long allocated = allocationBean.getThreadAllocatedBytes(Thread.currentThread().threadId()) - before;
+
+        assertTrue(allocated < 1_000_000L, () -> "default number MessageFormat allocated " + allocated + " bytes");
     }
 }

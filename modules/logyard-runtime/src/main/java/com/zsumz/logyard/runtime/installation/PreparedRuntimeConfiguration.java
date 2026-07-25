@@ -56,7 +56,7 @@ final class PreparedRuntimeConfiguration {
         ConfigurationWatcherPolicy watcherPolicy = null;
         RuntimeAssembly assembly = null;
         try {
-            registration = registerWatcher(request, initialConfig);
+            registration = registerWatcher(request);
             ConfigurationSnapshot selectedSnapshot = initialSnapshot;
             LogyardConfig selectedConfig = initialConfig;
             if (registration != null) {
@@ -126,9 +126,8 @@ final class PreparedRuntimeConfiguration {
     }
 
     private static ConfigurationWatchRegistration registerWatcher(
-            ConfigurationInstallationRequest request,
-            LogyardConfig config) {
-        if (!config.runtime().watch() || request.watchPath() == null) {
+            ConfigurationInstallationRequest request) {
+        if (request.watchPath() == null) {
             return null;
         }
         try {

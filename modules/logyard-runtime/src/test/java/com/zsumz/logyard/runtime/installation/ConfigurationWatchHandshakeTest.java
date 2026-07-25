@@ -128,6 +128,61 @@ final class ConfigurationWatchHandshakeTest {
         }
     }
 
+    @Test
+    void postRegistrationSnapshotCanEnableAWatcherInitiallyDisabledByTheSource() throws Exception {
+        Harness harness = Harness.create();
+        Path source = Files.createTempDirectory("logyard-enable-handshake-").resolve("logyard.toml");
+        Files.writeString(source, config("info", false), StandardCharsets.UTF_8);
+        BlockingSnapshotSource snapshots = new BlockingSnapshotSource(source);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<RuntimeInstallationLease> acquisition =
+                    executor.submit(() -> harness.manager().acquireApplication(snapshots.request()));
+            assertTrue(snapshots.initialSnapshotCaptured.await(1L, TimeUnit.SECONDS));
+            Files.writeString(source, config("debug", true), StandardCharsets.UTF_8);
+            snapshots.allowInitialSnapshot.countDown();
+
+            try (RuntimeInstallationLease lease = acquisition.get(5L, TimeUnit.SECONDS)) {
+                assertTrue(lease.runtime().logger("example.Service").isDebugEnabled());
+                assertTrue(lease.watchesConfiguration());
+                assertTrue(snapshots.reads.get() >= 2, "disabled source was not reread after provisional registration");
+            }
+        } finally {
+            snapshots.allowInitialSnapshot.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void frameworkHandoffCanEnableAWatcherInitiallyDisabledByTheNewSource() throws Exception {
+        Harness harness = Harness.create();
+        RuntimeInstallationLease application =
+                harness.manager().acquireApplication(textRequest("initial", config("info", false)));
+        LogyardLogger existing = application.runtime().logger("example.Service");
+        Path source = Files.createTempDirectory("logyard-enable-handoff-").resolve("logyard.toml");
+        Files.writeString(source, config("error", false), StandardCharsets.UTF_8);
+        BlockingSnapshotSource snapshots = new BlockingSnapshotSource(source);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<RuntimeInstallationLease> handoff =
+                    executor.submit(() -> harness.manager().acquireFramework(snapshots.request()));
+            assertTrue(snapshots.initialSnapshotCaptured.await(1L, TimeUnit.SECONDS));
+            Files.writeString(source, config("debug", true), StandardCharsets.UTF_8);
+            snapshots.allowInitialSnapshot.countDown();
+
+            try (RuntimeInstallationLease framework = handoff.get(5L, TimeUnit.SECONDS)) {
+                assertTrue(framework.active());
+                assertTrue(framework.watchesConfiguration());
+                assertTrue(existing.isDebugEnabled());
+                assertTrue(snapshots.reads.get() >= 2, "disabled handoff source was not reread after registration");
+            }
+        } finally {
+            snapshots.allowInitialSnapshot.countDown();
+            application.close();
+            executor.shutdownNow();
+        }
+    }
+
     private static ConfigurationInstallationRequest textRequest(String description, String text) {
         return new ConfigurationInstallationRequest(
                 description,

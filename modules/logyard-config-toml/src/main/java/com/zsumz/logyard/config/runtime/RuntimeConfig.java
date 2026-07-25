@@ -3,7 +3,12 @@ package com.zsumz.logyard.config.runtime;
 import java.time.Duration;
 import java.util.Objects;
 
-/** Process-lifecycle and live-reload settings. */
+/**
+ * Installation-owned process lifecycle and file-watcher settings.
+ *
+ * <p>These values are selected during startup or an application/framework configuration handoff;
+ * ordinary in-place reload rejects changes to them.</p>
+ */
 public record RuntimeConfig(
         Duration shutdownTimeout,
         String internalStatus,

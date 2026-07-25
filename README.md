@@ -288,6 +288,8 @@ A reload reads and parses a complete candidate configuration, assembles its reso
 
 Levels, routes, processors, context policy, and outputs may be added or removed at runtime. An existing file output holds an exclusive path lock; changing that output's path identity, buffering, rotation, encoder, delivery, or other resource-owning settings at the same path is rejected and requires a process restart. This prevents a reload from briefly running two writers against one file.
 
+The `[runtime]` fields `watch`, `reload_debounce`, `shutdown_timeout`, and `internal_status` belong to the installation rather than an individual routing plan. An in-place reload that changes any of them is rejected atomically; apply those settings through an application/framework configuration handoff or a process restart. Logyard never reports a candidate as applied while retaining watcher policy from an older snapshot.
+
 Applications can trigger the same decision directly:
 
 ```java
