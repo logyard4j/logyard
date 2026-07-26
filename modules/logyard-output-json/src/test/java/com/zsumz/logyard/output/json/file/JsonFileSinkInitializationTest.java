@@ -141,7 +141,7 @@ final class JsonFileSinkInitializationTest {
         IllegalStateException initialization = new IllegalStateException("open failed");
         IllegalStateException cleanup = new IllegalStateException("cleanup failed");
 
-        RotatingFileWriter.closeAfterInitializationFailure(initialization, () -> {
+        FileWriterInitialization.closeAfterFailure(initialization, () -> {
             throw cleanup;
         });
 

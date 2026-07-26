@@ -49,7 +49,8 @@ public final class RuntimeAssembly {
     OutputBinding bindingForExclusivePath(Path path) {
         Path normalized = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
         for (OutputBinding binding : bindings.values()) {
-            if (normalized.equals(binding.exclusivePath())) {
+            if (binding.exclusivePath() != null
+                    && ExclusiveOutputPathValidator.refersToSameFile(normalized, binding.exclusivePath())) {
                 return binding;
             }
         }

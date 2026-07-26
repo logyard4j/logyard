@@ -4,7 +4,7 @@ Structured logging for Java 21+, with one runtime shared by native, SLF4J 2, JUL
 
 Logyard captures an immutable event once, applies the configured enrichers and filters, then sends that event to synchronous or asynchronous console and JSON outputs. Configuration is explicit TOML, reloads are atomic, and disabled log levels do not evaluate arguments, suppliers, context, clocks, or thread metadata.
 
-Logyard is under active development. The `0.1.0-rc.1` coordinates below describe the first release candidate and are not yet published to Maven Central.
+Logyard is under active development. The `0.1.0-rc.1` coordinates below describe the first release candidate. Availability begins after the release workflow completes.
 
 ## Install
 
@@ -286,13 +286,13 @@ reload_debounce = "250ms"
 internal_status = "warn"
 ```
 
-A reload reads and parses a complete candidate configuration, assembles its resources, and publishes the new routing plan atomically. Invalid candidates are rejected while the current runtime remains active. Only deterministic failures tied to the candidate bytes, such as parsing, provider validation, duplicate exclusive output paths, and restart-required policy changes, are memoized. Source I/O, file-lease contention, and runtime capacity remain retryable for the same digest with bounded backoff. An unchanged active file is ignored.
+A reload reads and parses a complete candidate configuration, assembles its resources, and publishes the new routing plan atomically. Invalid candidates are rejected while the current runtime remains active. Only deterministic failures tied to the candidate bytes, such as parsing, provider validation, duplicate exclusive output paths, and restart-required policy changes, are memoized. Source I/O remains retryable with bounded exponential backoff, known lifecycle contention remains dirty until the owner releases it, and an unexpected source-reader runtime failure opens a circuit until another source-change signal arrives. An unchanged active file is ignored.
 
 Initial installation and framework handoff stabilize a reloadable source before commit so the active routing plan, watcher state, debounce, shutdown timeout, and internal diagnostics all come from one snapshot. If the source keeps changing through eight preparation attempts, installation fails explicitly instead of publishing a knowingly stale policy.
 
-Levels, routes, processors, context policy, and outputs may be added or removed at runtime. File candidates reserve exclusive ownership during assembly but do not open, truncate, reconcile, or rotate the durable data file until the complete candidate has committed and accepts its first record. Flush and close never perform the first data-file open. A discarded, rejected, failed, or activated-but-unused candidate therefore cannot modify existing file contents. Two outputs in one candidate cannot claim the same normalized path. An existing file output holds its path lock; changing that output's path identity, buffering, rotation, encoder, delivery, or other resource-owning settings at the same path is rejected and requires a process restart.
+Levels, routes, processors, and outputs may be added or removed at runtime. File candidates reserve exclusive ownership during assembly but do not open, truncate, reconcile, or rotate the durable data file until the complete candidate has committed and accepts its first record. Flush and close never perform the first data-file open. Preparation may create missing parent directories and a `.logyard.lock` sidecar, but a discarded, rejected, failed, or activated-but-unused candidate cannot modify existing data-file contents. Two outputs in one candidate or one JVM cannot claim the same normalized path or two existing hard-link aliases of the same file. Cross-process hard-link alias detection is filesystem-dependent and is not guaranteed by pathname sidecar locks. An existing file output holds its path lock; changing that output's path identity, buffering, rotation, encoder, delivery, or other resource-owning settings at the same path is rejected and requires a process restart.
 
-The `[runtime]` fields `watch`, `reload_debounce`, `shutdown_timeout`, and `internal_status` belong to the installation rather than an individual routing plan. An in-place reload that changes any of them is rejected atomically; apply those settings through an application/framework configuration handoff or a process restart. Logyard never reports a candidate as applied while retaining watcher policy from an older snapshot.
+The `[runtime]` fields `watch`, `reload_debounce`, `shutdown_timeout`, and `internal_status` belong to the installation rather than an individual routing plan. Adapter-owned `context.mdc` capture policy has the same first-release boundary. An in-place reload that changes any of these settings is rejected atomically; apply them through an application/framework configuration handoff or a process restart. Logyard never reports a candidate as applied while retaining watcher or MDC capture policy from an older snapshot.
 
 Applications can trigger the same decision directly:
 

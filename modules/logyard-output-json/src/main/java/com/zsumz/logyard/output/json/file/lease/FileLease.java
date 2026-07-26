@@ -19,23 +19,32 @@ public final class FileLease implements AutoCloseable {
     private final Path lockPath;
     private final FileChannel channel;
     private final FileLock lock;
+    private final ActiveFileIdentityRegistry.Registration identity;
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    private FileLease(Path activePath, Path lockPath, FileChannel channel, FileLock lock) {
+    private FileLease(
+            Path activePath,
+            Path lockPath,
+            FileChannel channel,
+            FileLock lock,
+            ActiveFileIdentityRegistry.Registration identity) {
         this.activePath = activePath;
         this.lockPath = lockPath;
         this.channel = channel;
         this.lock = lock;
+        this.identity = identity;
     }
 
     public static FileLease acquire(Path activePath) {
         Path normalized = Objects.requireNonNull(activePath, "activePath").toAbsolutePath().normalize();
         Path parent = normalized.getParent();
+        ActiveFileIdentityRegistry.Registration identity = null;
         try {
             if (parent != null) {
                 Files.createDirectories(parent);
             }
             rejectSymbolicLink(normalized, "active output");
+            identity = ActiveFileIdentityRegistry.claim(normalized);
             Path lockPath = normalized.resolveSibling(normalized.getFileName() + ".logyard.lock");
             rejectSymbolicLink(lockPath, "output lock");
             FileChannel channel = FileChannel.open(
@@ -46,7 +55,7 @@ public final class FileLease implements AutoCloseable {
                 if (lock == null) {
                     throw new FileLeaseUnavailableException(normalized, false, null);
                 }
-                return new FileLease(normalized, lockPath, channel, lock);
+                return new FileLease(normalized, lockPath, channel, lock, identity);
             } catch (OverlappingFileLockException overlap) {
                 FileLeaseUnavailableException unavailable =
                         new FileLeaseUnavailableException(normalized, true, overlap);
@@ -60,7 +69,11 @@ public final class FileLease implements AutoCloseable {
                 throw failure;
             }
         } catch (IOException failure) {
+            closeIdentity(identity);
             throw new UncheckedIOException("failed to acquire Logyard output lock for " + normalized, failure);
+        } catch (RuntimeException | Error failure) {
+            closeIdentity(identity);
+            throw failure;
         }
     }
 
@@ -92,6 +105,7 @@ public final class FileLease implements AutoCloseable {
                 failure.addSuppressed(closeFailure);
             }
         }
+        identity.close();
         if (failure != null) {
             throw new UncheckedIOException("failed to release Logyard output lock " + lockPath, failure);
         }
@@ -108,6 +122,12 @@ public final class FileLease implements AutoCloseable {
             channel.close();
         } catch (IOException closeFailure) {
             failure.addSuppressed(closeFailure);
+        }
+    }
+
+    private static void closeIdentity(ActiveFileIdentityRegistry.Registration identity) {
+        if (identity != null) {
+            identity.close();
         }
     }
 }

@@ -63,4 +63,37 @@ final class ReloadFailureClassifierTest {
 
         assertEquals(ReloadFailureKind.INTERNAL_FAILURE, failure.kind());
     }
+
+    @Test
+    void sourceIoFailuresRemainTransient() {
+        assertEquals(
+                ReloadFailureKind.TRANSIENT_RESOURCE,
+                ReloadFailureClassifier.source(new UncheckedIOException(new IOException("source unavailable"))).kind());
+    }
+
+    @Test
+    void knownSourceLifecycleContentionIsBusy() throws Exception {
+        Path output = Files.createTempDirectory("logyard-source-busy-").resolve("events.jsonl");
+        try (FileLease lease = FileLease.acquire(output)) {
+            assertEquals(output.toAbsolutePath().normalize(), lease.activePath());
+            FileLeaseUnavailableException contention =
+                    assertThrows(FileLeaseUnavailableException.class, () -> FileLease.acquire(output));
+
+            assertEquals(ReloadFailureKind.BUSY, ReloadFailureClassifier.source(contention).kind());
+        }
+    }
+
+    @Test
+    void unknownSourceRuntimeFailureOpensTheInternalFailureCircuit() {
+        ReloadCandidatePreparer preparer = new ReloadCandidatePreparer(
+                () -> {
+                    throw new NullPointerException("source invariant");
+                },
+                java.util.Map.of());
+
+        ReloadCandidatePreparer.SnapshotRead read = preparer.read();
+
+        assertEquals(ReloadFailureKind.INTERNAL_FAILURE, read.failure().kind());
+        assertEquals(WatcherReloadOutcome.INTERNAL_FAILURE, read.failure().kind().watcherOutcome());
+    }
 }

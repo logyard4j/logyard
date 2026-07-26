@@ -134,4 +134,33 @@ final class ReloadDebouncerTest {
 
         assertEquals(6, attempts.get());
     }
+
+    @Test
+    void internalFailureCircuitWaitsForANewSourceSignal() {
+        AtomicLong clock = new AtomicLong(100L);
+        AtomicInteger attempts = new AtomicInteger();
+        ReloadDebouncer debouncer = new ReloadDebouncer(Duration.ofNanos(10L), clock::get);
+
+        debouncer.signalChange();
+        clock.set(110L);
+        debouncer.runIfDue(() -> {
+            attempts.incrementAndGet();
+            return WatcherReloadOutcome.INTERNAL_FAILURE;
+        });
+        clock.set(1_000L);
+        debouncer.signalReconciliation();
+        debouncer.runIfDue(() -> {
+            attempts.incrementAndGet();
+            return WatcherReloadOutcome.INTERNAL_FAILURE;
+        });
+        assertEquals(1, attempts.get());
+
+        debouncer.signalChange();
+        clock.set(1_010L);
+        debouncer.runIfDue(() -> {
+            attempts.incrementAndGet();
+            return WatcherReloadOutcome.APPLIED;
+        });
+        assertEquals(2, attempts.get());
+    }
 }

@@ -30,6 +30,12 @@ public final class ArchiveMaintenance implements AutoCloseable {
         worker.setDaemon(true);
     }
 
+    /**
+     * Reconciles archives and starts the worker.
+     *
+     * <p>The caller retains lease ownership if this method throws. A successful return transfers
+     * ownership to the maintenance worker, which releases the lease when it stops.</p>
+     */
     public static ArchiveMaintenance start(
             ArchiveNaming naming,
             RotationPolicy policy,
@@ -38,18 +44,9 @@ public final class ArchiveMaintenance implements AutoCloseable {
                 Objects.requireNonNull(naming, "naming"),
                 Objects.requireNonNull(policy, "policy"),
                 Objects.requireNonNull(lease, "lease"));
-        try {
-            maintenance.operations.reconcile();
-            maintenance.worker.start();
-            return maintenance;
-        } catch (RuntimeException | Error startupFailure) {
-            try {
-                lease.close();
-            } catch (RuntimeException closeFailure) {
-                startupFailure.addSuppressed(closeFailure);
-            }
-            throw startupFailure;
-        }
+        maintenance.operations.reconcile();
+        maintenance.worker.start();
+        return maintenance;
     }
 
     /** Queues maintenance without blocking the logging thread. Failure becomes sticky. */

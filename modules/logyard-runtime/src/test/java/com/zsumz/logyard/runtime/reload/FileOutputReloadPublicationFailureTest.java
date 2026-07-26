@@ -51,7 +51,7 @@ final class FileOutputReloadPublicationFailureTest {
 
         try {
             Files.writeString(source, fileConfig(output), StandardCharsets.UTF_8);
-            assertEquals(WatcherReloadOutcome.TRANSIENT_RETRY, coordinator.reloadForWatcher());
+            assertEquals(WatcherReloadOutcome.BUSY_RETRY, coordinator.reloadForWatcher());
             assertEquals("KEEP-ME\n", Files.readString(output, StandardCharsets.UTF_8));
 
             assertEquals(WatcherReloadOutcome.APPLIED, coordinator.reloadForWatcher());

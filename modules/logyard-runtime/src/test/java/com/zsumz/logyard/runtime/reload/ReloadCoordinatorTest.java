@@ -116,7 +116,7 @@ final class ReloadCoordinatorTest {
                     Map.of());
             fixture.write("debug", "4KiB");
 
-            assertEquals(WatcherReloadOutcome.TRANSIENT_RETRY, coordinator.reloadForWatcher());
+            assertEquals(WatcherReloadOutcome.BUSY_RETRY, coordinator.reloadForWatcher());
             assertEquals(Level.INFO, coordinator.currentConfig().rootLogger().level());
             assertEquals(WatcherReloadOutcome.APPLIED, coordinator.reloadForWatcher());
             assertEquals(Level.DEBUG, coordinator.currentConfig().rootLogger().level());

@@ -15,6 +15,7 @@ final class ReloadDebouncer {
     private final LongSupplier nanoTime;
     private long deadline = Long.MAX_VALUE;
     private int transientRetryExponent;
+    private boolean internalFailureCircuitOpen;
 
     ReloadDebouncer(Duration delay) {
         this(delay, System::nanoTime);
@@ -35,12 +36,13 @@ final class ReloadDebouncer {
     }
 
     void signalChange() {
+        internalFailureCircuitOpen = false;
         transientRetryExponent = 0;
         schedule(delayNanos);
     }
 
     void signalReconciliation() {
-        if (deadline == Long.MAX_VALUE) {
+        if (!internalFailureCircuitOpen && deadline == Long.MAX_VALUE) {
             signalChange();
         }
     }
@@ -60,6 +62,9 @@ final class ReloadDebouncer {
                 schedule(delayNanos);
             } else if (outcome == WatcherReloadOutcome.TRANSIENT_RETRY) {
                 schedule(transientRetryDelay());
+            } else if (outcome == WatcherReloadOutcome.INTERNAL_FAILURE) {
+                internalFailureCircuitOpen = true;
+                transientRetryExponent = 0;
             } else {
                 transientRetryExponent = 0;
             }

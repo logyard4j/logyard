@@ -19,6 +19,11 @@ enum ReloadFailureKind {
     }
 
     WatcherReloadOutcome watcherOutcome() {
-        return deterministicForDigest ? WatcherReloadOutcome.INVALID_CANDIDATE : WatcherReloadOutcome.TRANSIENT_RETRY;
+        return switch (this) {
+            case INVALID_CANDIDATE, RESTART_REQUIRED -> WatcherReloadOutcome.INVALID_CANDIDATE;
+            case BUSY -> WatcherReloadOutcome.BUSY_RETRY;
+            case TRANSIENT_RESOURCE -> WatcherReloadOutcome.TRANSIENT_RETRY;
+            case INTERNAL_FAILURE -> WatcherReloadOutcome.INTERNAL_FAILURE;
+        };
     }
 }

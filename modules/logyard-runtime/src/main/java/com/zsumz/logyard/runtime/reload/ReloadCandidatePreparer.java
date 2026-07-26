@@ -37,7 +37,7 @@ final class ReloadCandidatePreparer {
             return CandidatePreparation.failure(ReloadFailureClassifier.parsing(failure));
         }
         try {
-            RuntimeReloadPolicy.requireInstallationPolicyUnchanged(active.config().runtime(), config.runtime());
+            RuntimeReloadPolicy.requireSupportedChanges(active.config(), config);
         } catch (RuntimeException failure) {
             return CandidatePreparation.failure(ReloadFailureClassifier.policy(failure));
         }

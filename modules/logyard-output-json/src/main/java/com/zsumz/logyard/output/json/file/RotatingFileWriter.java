@@ -22,10 +22,10 @@ final class RotatingFileWriter implements AutoCloseable {
     private final RotationPolicy policy;
     private final ArchiveNaming naming;
     private final DataFileOpener dataFiles;
+    private final WriterLifecycle lifecycle = new WriterLifecycle();
     private FileLease lease;
     private ArchiveMaintenance maintenance;
     private BufferedFileWriter active;
-    private boolean closed;
 
     RotatingFileWriter(Path path, int bufferBytes, boolean append, RotationPolicy policy) {
         this(path, bufferBytes, append, policy, BufferedFileWriter::open);
@@ -44,21 +44,15 @@ final class RotatingFileWriter implements AutoCloseable {
             FileOutputPathValidator.validateOutput(this.path);
             lease = acquired;
         } catch (RuntimeException | Error failure) {
-            closeAfterInitializationFailure(failure, acquired::close);
+            FileWriterInitialization.closeAfterFailure(failure, acquired::close);
             FailureIsolation.prepareForRecovery(failure);
             throw failure;
         }
     }
 
     void initializeForDirectUse() {
-        ensureOpen();
-        try {
-            initialize();
-        } catch (RuntimeException | Error failure) {
-            closeAfterInitializationFailure(failure, this::close);
-            FailureIsolation.prepareForRecovery(failure);
-            throw failure;
-        }
+        lifecycle.requireUsable(path);
+        initialize();
     }
 
     void writeRecord(byte[] record, byte terminator) {
@@ -75,12 +69,14 @@ final class RotatingFileWriter implements AutoCloseable {
             rotate();
         }
         active.write(record, terminator);
+        lifecycle.operationSucceeded();
     }
 
     void flush() {
         ensureOpen();
         initialize();
         active.flush();
+        lifecycle.operationSucceeded();
         if (maintenance != null) {
             maintenance.throwIfFailed();
         }
@@ -92,6 +88,7 @@ final class RotatingFileWriter implements AutoCloseable {
             return;
         }
         active.flush();
+        lifecycle.operationSucceeded();
         if (maintenance != null) {
             maintenance.throwIfFailed();
         }
@@ -103,8 +100,10 @@ final class RotatingFileWriter implements AutoCloseable {
 
     WriterHealthSnapshot healthSnapshot() {
         ArchiveMaintenance currentMaintenance = maintenance;
+        Throwable writerFailure = lifecycle.failure();
         return new WriterHealthSnapshot(
-                closed,
+                lifecycle.state().name(),
+                writerFailure == null ? null : writerFailure.getClass().getName(),
                 !initialized() || currentMaintenance == null || currentMaintenance.workerAlive(),
                 currentMaintenance != null && currentMaintenance.closing(),
                 currentMaintenance == null ? null : currentMaintenance.failureType(),
@@ -114,10 +113,10 @@ final class RotatingFileWriter implements AutoCloseable {
 
     @Override
     public void close() {
-        if (closed) {
+        if (lifecycle.state() == WriterLifecycle.State.CLOSED) {
             return;
         }
-        closed = true;
+        lifecycle.closed();
         RuntimeException failure = null;
         if (active != null) {
             try {
@@ -145,13 +144,17 @@ final class RotatingFileWriter implements AutoCloseable {
     }
 
     private void rotate() {
-        active.close();
-        Path archive = naming.nextArchive();
+        BufferedFileWriter rotating = active;
+        active = null;
         try {
+            rotating.close();
+            Path archive = naming.nextArchive();
             moveActiveToArchive(archive);
-            active = dataFiles.open(path, bufferBytes, false);
             maintenance.submit(archive);
+            active = dataFiles.open(path, bufferBytes, false);
+            lifecycle.operationSucceeded();
         } catch (RuntimeException failure) {
+            lifecycle.operationFailed(failure);
             tryReopenAfterRotationFailure(failure);
             throw failure;
         }
@@ -161,27 +164,29 @@ final class RotatingFileWriter implements AutoCloseable {
         if (active != null) {
             return;
         }
-        BufferedFileWriter opened = dataFiles.open(path, bufferBytes, append);
-        try {
-            if (policy != null) {
-                maintenance = ArchiveMaintenance.start(naming, policy, lease);
-                lease = null;
-            }
-            active = opened;
-        } catch (RuntimeException | Error failure) {
+        lifecycle.requireUsable(path);
+        if (lifecycle.state() == WriterLifecycle.State.OPEN) {
             try {
-                opened.close();
-            } catch (RuntimeException closeFailure) {
-                failure.addSuppressed(closeFailure);
+                active = dataFiles.open(path, bufferBytes, Files.exists(path));
+                return;
+            } catch (RuntimeException | Error failure) {
+                lifecycle.operationFailed(failure);
+                throw failure;
             }
-            if (lease != null) {
-                try {
-                    lease.close();
-                } catch (RuntimeException closeFailure) {
-                    failure.addSuppressed(closeFailure);
-                }
+        }
+        try {
+            FileWriterInitialization initialization = new FileWriterInitialization(
+                    path, bufferBytes, append, policy, naming, lease, dataFiles);
+            initialization.initialize();
+            active = initialization.active();
+            maintenance = initialization.maintenance();
+            if (maintenance != null) {
                 lease = null;
             }
+            lifecycle.opened();
+        } catch (RuntimeException | Error failure) {
+            lease = null;
+            lifecycle.failed(failure);
             throw failure;
         }
     }
@@ -213,21 +218,6 @@ final class RotatingFileWriter implements AutoCloseable {
     }
 
     private void ensureOpen() {
-        if (closed) {
-            throw new IllegalStateException("Logyard JSON output is closed: " + path);
-        }
-    }
-
-    static void closeAfterInitializationFailure(Throwable failure, Runnable cleanup) {
-        try {
-            cleanup.run();
-        } catch (RuntimeException cleanupFailure) {
-            failure.addSuppressed(cleanupFailure);
-        }
-    }
-
-    @FunctionalInterface
-    interface DataFileOpener {
-        BufferedFileWriter open(Path path, int bufferBytes, boolean append);
+        lifecycle.requireUsable(path);
     }
 }

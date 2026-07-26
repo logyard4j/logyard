@@ -18,6 +18,9 @@ public enum WatcherReloadOutcome {
     /** Reading the source failed transiently; retry with a bounded backoff. */
     TRANSIENT_RETRY(ReloadResult.REJECTED),
 
+    /** An unexpected implementation failure opened the retry circuit until a new source signal arrives. */
+    INTERNAL_FAILURE(ReloadResult.REJECTED),
+
     /** The candidate deterministically failed validation; wait for different content. */
     INVALID_CANDIDATE(ReloadResult.REJECTED);
 

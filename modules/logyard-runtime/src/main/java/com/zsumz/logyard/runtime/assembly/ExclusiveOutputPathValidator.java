@@ -2,28 +2,52 @@ package com.zsumz.logyard.runtime.assembly;
 
 import com.zsumz.logyard.config.output.OutputConfig;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
-/** Rejects candidate outputs that require the same normalized exclusive resource. */
+/** Rejects candidate outputs that require the same normalized path or existing file identity. */
 final class ExclusiveOutputPathValidator {
     private ExclusiveOutputPathValidator() {
     }
 
     static void validate(Iterable<OutputConfig> outputs) {
-        Map<Path, String> owners = new LinkedHashMap<>();
+        List<Owner> owners = new ArrayList<>();
         for (OutputConfig output : outputs) {
             Path path = OutputSignatures.exclusivePath(output);
             if (path == null) {
                 continue;
             }
-            String existing = owners.putIfAbsent(path, output.name());
-            if (existing != null) {
-                throw new IllegalArgumentException(
-                        "outputs '" + existing + "' and '" + output.name()
-                                + "' both require exclusive access to " + path);
+            for (Owner owner : owners) {
+                if (refersToSameFile(path, owner.path())) {
+                    throw new IllegalArgumentException(
+                            "outputs '" + owner.name() + "' (" + owner.path() + ") and '" + output.name() + "' ("
+                                    + path + ") both require exclusive access to the same file");
+                }
             }
+            owners.add(new Owner(output.name(), path));
         }
+    }
+
+    static boolean refersToSameFile(Path left, Path right) {
+        Path normalizedLeft = left.toAbsolutePath().normalize();
+        Path normalizedRight = right.toAbsolutePath().normalize();
+        if (normalizedLeft.equals(normalizedRight)) {
+            return true;
+        }
+        try {
+            return Files.exists(normalizedLeft) && Files.exists(normalizedRight)
+                    && Files.isSameFile(normalizedLeft, normalizedRight);
+        } catch (IOException failure) {
+            throw new UncheckedIOException(
+                    "failed to compare exclusive output paths " + normalizedLeft + " and " + normalizedRight,
+                    failure);
+        }
+    }
+
+    private record Owner(String name, Path path) {
     }
 }

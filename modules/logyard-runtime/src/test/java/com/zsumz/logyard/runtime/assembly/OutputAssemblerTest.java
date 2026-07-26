@@ -86,6 +86,46 @@ final class OutputAssemblerTest {
     }
 
     @Test
+    void rejectsTheExactSameFilePathBeforeOpeningEitherOutput() throws Exception {
+        try (TestDirectory temporary = TestDirectory.create("logyard-exact-duplicate-output-")) {
+            Path path = temporary.path().resolve("events.jsonl");
+
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> LogyardRuntimeFactory.assemble(duplicateFileConfig(path, path), null));
+
+            assertTrue(Files.notExists(path));
+            assertTrue(Files.notExists(path.resolveSibling(path.getFileName() + ".logyard.lock")));
+        }
+    }
+
+    @Test
+    void rejectsHardLinkAliasesBeforeOpeningEitherOutput() throws Exception {
+        try (TestDirectory temporary = TestDirectory.create("logyard-hard-link-output-")) {
+            Path path = temporary.path().resolve("events.jsonl");
+            Path alias = temporary.path().resolve("audit.jsonl");
+            Files.writeString(path, "KEEP-ME\n", StandardCharsets.UTF_8);
+            try {
+                Files.createLink(alias, path);
+            } catch (UnsupportedOperationException | java.io.IOException | SecurityException unsupported) {
+                return;
+            }
+
+            IllegalArgumentException failure = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> LogyardRuntimeFactory.assemble(duplicateFileConfig(path, alias), null));
+
+            assertTrue(failure.getMessage().contains("'audit'"));
+            assertTrue(failure.getMessage().contains("'events'"));
+            assertTrue(failure.getMessage().contains(path.toAbsolutePath().normalize().toString()));
+            assertTrue(failure.getMessage().contains(alias.toAbsolutePath().normalize().toString()));
+            assertEquals("KEEP-ME\n", Files.readString(path, StandardCharsets.UTF_8));
+            assertTrue(Files.notExists(path.resolveSibling(path.getFileName() + ".logyard.lock")));
+            assertTrue(Files.notExists(alias.resolveSibling(alias.getFileName() + ".logyard.lock")));
+        }
+    }
+
+    @Test
     void closingAnActivatedUnusedAsyncFileOutputPreservesExistingContents() throws Exception {
         try (TestDirectory temporary = TestDirectory.create("logyard-unused-async-output-")) {
             Path path = temporary.path().resolve("application.jsonl");

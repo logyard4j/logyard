@@ -32,7 +32,7 @@ scripts/zolt-publication-check
 scripts/central-publish
 ```
 
-`scripts/ci` includes the focused durable-resource and reload failure-injection suite after the full Zolt test family. The remaining commands prove packaged consumers, SLF4J and `System.Logger` discovery, Spring Boot 3 and 4, Micronaut, Vert.x, Quarkus JVM/dev/native behavior, allocation budgets, GraalVM native images, the first-release compatibility policy, signatures, checksums, sources, Javadocs, BOM metadata, and the final Central-shaped family. Linux, macOS, and Windows filesystem behavior remains a required CI matrix.
+`scripts/ci` includes the focused durable-resource and reload failure-injection suite after the full Zolt test family. That focused suite permanently covers archive-startup failure, rotation replacement-open recovery, exact/normalized/hard-link path collisions, and restart-required MDC policy changes. The remaining commands prove packaged consumers, SLF4J and `System.Logger` discovery, Spring Boot 3 and 4, Micronaut, Vert.x, Quarkus JVM/dev/native behavior, allocation budgets, GraalVM native images, the first-release compatibility policy, signatures, checksums, sources, Javadocs, BOM metadata, and the final Central-shaped family. Linux, macOS, and Windows filesystem behavior remains a required CI matrix.
 
 During an RC, accept only fixes for data loss, secret disclosure, deadlock, unbounded resource use on a supported path, lifecycle corruption, lost valid configuration, framework startup failure, red release gates, or measured common-path performance regressions. Do not add APIs, integrations, or broader live-reload behavior during the RC.
 

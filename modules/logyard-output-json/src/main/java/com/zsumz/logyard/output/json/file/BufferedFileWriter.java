@@ -27,13 +27,14 @@ final class BufferedFileWriter implements AutoCloseable {
     static BufferedFileWriter open(Path path, int bufferBytes, boolean append) {
         FileChannel channel = null;
         try {
+            ByteBuffer buffer = ByteBuffer.allocate(bufferBytes);
             Set<java.nio.file.OpenOption> options = append
                     ? Set.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE,
                             StandardOpenOption.APPEND, LinkOption.NOFOLLOW_LINKS)
                     : Set.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE,
                             StandardOpenOption.TRUNCATE_EXISTING, LinkOption.NOFOLLOW_LINKS);
             channel = FileChannel.open(path, options);
-            return new BufferedFileWriter(path, channel, ByteBuffer.allocate(bufferBytes), append ? channel.size() : 0L);
+            return new BufferedFileWriter(path, channel, buffer, append ? channel.size() : 0L);
         } catch (IOException failure) {
             closeAfterOpenFailure(channel, failure);
             throw new UncheckedIOException("failed to open Logyard JSON output " + path, failure);

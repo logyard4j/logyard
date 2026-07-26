@@ -1,7 +1,6 @@
 package com.zsumz.logyard.output.json.file;
 
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
-import com.zsumz.logyard.api.diagnostics.HealthStatus;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.encoding.EventEncoder;
 import com.zsumz.logyard.api.spi.output.EventSink;
@@ -13,8 +12,6 @@ import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -187,32 +184,7 @@ public final class JsonFileSink implements EventSink, HealthContributor {
         synchronized (writerState) {
             snapshot = writer.healthSnapshot();
         }
-        String failureType = snapshot.maintenanceFailureType();
-        HealthStatus status;
-        if (closed || snapshot.closed()) {
-            status = HealthStatus.STOPPED;
-        } else if (failureType != null || !snapshot.maintenanceWorkerAlive()) {
-            status = HealthStatus.FAILED;
-        } else if (snapshot.maintenanceClosing()) {
-            status = HealthStatus.STOPPING;
-        } else if (snapshot.maintenanceQueueCapacity() > 0
-                && snapshot.maintenanceQueuedTasks() * 4L
-                        >= snapshot.maintenanceQueueCapacity() * 3L) {
-            status = HealthStatus.DEGRADED;
-        } else {
-            status = HealthStatus.HEALTHY;
-        }
-        Map<String, String> details = new LinkedHashMap<>();
-        details.put("format", "jsonl");
-        details.put("path", path.toString());
-        details.put("rotation", Boolean.toString(rotationPolicy != null));
-        if (failureType != null) {
-            details.put("maintenance_failure", failureType);
-        }
-        Map<String, Long> metrics = Map.of(
-                "maintenance_queue_capacity", (long) snapshot.maintenanceQueueCapacity(),
-                "maintenance_queue_depth", (long) snapshot.maintenanceQueuedTasks());
-        return new ComponentHealth(componentName, "json-file-output", status, details, metrics);
+        return JsonFileHealth.component(componentName, path, rotationPolicy != null, closed, snapshot);
     }
 
     private void ensureOpen() {
