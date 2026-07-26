@@ -1,5 +1,6 @@
 package com.zsumz.logyard.output.json.file;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -101,6 +102,46 @@ final class JsonFileSinkInitializationTest {
     }
 
     @Test
+    void zeroTimeoutInitializationRollbackReleasesItsLeaseBeforeReturning() throws Exception {
+        Path output = Files.createTempDirectory("logyard-zero-timeout-open-failure-").resolve("events.jsonl");
+        UncheckedIOException openFailure =
+                new UncheckedIOException("injected data-file open failure", new java.io.IOException("open failed"));
+        RotationPolicy zeroTimeoutRotation =
+                new RotationPolicy(1_024, 1, RotationPolicy.Compression.NONE, Duration.ZERO);
+        RotatingFileWriter writer = new RotatingFileWriter(
+                output,
+                1_024,
+                false,
+                zeroTimeoutRotation,
+                (ignoredPath, ignoredBuffer, ignoredAppend) -> {
+                    throw openFailure;
+                });
+
+        assertSame(openFailure, assertThrows(UncheckedIOException.class, writer::initializeForDirectUse));
+        assertFalse(threadAlive(maintenanceWorkerName(output)));
+        try (FileLease reacquired = FileLease.acquire(output)) {
+            assertEquals(output.toAbsolutePath().normalize(), reacquired.activePath());
+        }
+    }
+
+    @Test
+    void healthyRotatingOutputClosesNormallyWithAZeroShutdownTimeout() throws Exception {
+        Path output = Files.createTempDirectory("logyard-zero-timeout-close-").resolve("events.jsonl");
+        RotationPolicy zeroTimeoutRotation =
+                new RotationPolicy(1_024, 1, RotationPolicy.Compression.NONE, Duration.ZERO);
+        JsonFileSink sink = prepared(output, false, zeroTimeoutRotation);
+        sink.activate();
+        sink.accept(event(1));
+
+        assertDoesNotThrow(sink::close);
+
+        awaitThreadStopped(maintenanceWorkerName(output));
+        try (FileLease reacquired = FileLease.acquire(output)) {
+            assertEquals(output.toAbsolutePath().normalize(), reacquired.activePath());
+        }
+    }
+
+    @Test
     void rejectsAParentThatIsNotADirectoryBeforeAcquiringALease() throws Exception {
         Path directory = Files.createTempDirectory("logyard-parent-validation-");
         Path parent = directory.resolve("not-a-directory");
@@ -185,6 +226,14 @@ final class JsonFileSinkInitializationTest {
 
     private static boolean threadAlive(String name) {
         return Thread.getAllStackTraces().keySet().stream().anyMatch(thread -> thread.isAlive() && thread.getName().equals(name));
+    }
+
+    private static void awaitThreadStopped(String name) throws InterruptedException {
+        long deadline = System.nanoTime() + Duration.ofSeconds(2).toNanos();
+        while (threadAlive(name) && System.nanoTime() < deadline) {
+            Thread.sleep(5L);
+        }
+        assertFalse(threadAlive(name));
     }
 
     private static LogEvent event(int sequence) {

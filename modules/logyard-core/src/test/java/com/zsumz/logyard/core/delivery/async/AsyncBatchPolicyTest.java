@@ -18,7 +18,7 @@ final class AsyncBatchPolicyTest {
     void representsNonBatchDelegatesAsSingletonDelivery() {
         EventSink delegate = ignored -> { };
 
-        AsyncBatchPolicy policy = AsyncBatchPolicy.from(delivery(delegate));
+        AsyncBatchPolicy policy = AsyncBatchPolicy.from("test", delivery(delegate));
 
         assertFalse(policy.enabled());
         assertEquals(1, policy.maximumSize());
@@ -27,9 +27,15 @@ final class AsyncBatchPolicyTest {
 
     @Test
     void validatesTheBatchContractBeforeStartingAWorker() {
-        assertThrows(IllegalArgumentException.class, () -> AsyncBatchPolicy.from(delivery(new ConfigurableBatchSink(0, Duration.ZERO))));
-        assertThrows(IllegalArgumentException.class, () -> AsyncBatchPolicy.from(delivery(new ConfigurableBatchSink(1, Duration.ofMinutes(2)))));
-        assertTrue(AsyncBatchPolicy.from(delivery(new ConfigurableBatchSink(64, Duration.ofMillis(10)))).enabled());
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> AsyncBatchPolicy.from("test", delivery(new ConfigurableBatchSink(0, Duration.ZERO))));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> AsyncBatchPolicy.from("test", delivery(new ConfigurableBatchSink(1, Duration.ofMinutes(2)))));
+        assertTrue(AsyncBatchPolicy.from(
+                "test",
+                delivery(new ConfigurableBatchSink(64, Duration.ofMillis(10)))).enabled());
     }
 
     private static AsyncDelegateDelivery delivery(EventSink delegate) {

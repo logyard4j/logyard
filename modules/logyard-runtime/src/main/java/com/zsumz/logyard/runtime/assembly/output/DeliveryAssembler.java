@@ -1,9 +1,10 @@
 package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.api.Level;
+import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.api.spi.output.EventSink;
-import com.zsumz.logyard.config.output.CustomOutputConfig;
 import com.zsumz.logyard.config.delivery.DeliveryConfig;
+import com.zsumz.logyard.config.output.CustomOutputConfig;
 import com.zsumz.logyard.config.output.OutputConfig;
 import com.zsumz.logyard.core.delivery.FilteringSink;
 import com.zsumz.logyard.core.delivery.async.AsyncSink;
@@ -12,6 +13,7 @@ import com.zsumz.logyard.core.delivery.async.OverflowPolicy;
 import java.time.Duration;
 import java.util.EnumMap;
 import java.util.Objects;
+import java.util.function.Function;
 
 /** Applies bounded delivery and minimum-level policies to a raw output sink. */
 public final class DeliveryAssembler {
@@ -30,25 +32,50 @@ public final class DeliveryAssembler {
      * @return fully wrapped output sink
      */
     public static EventSink wrap(OutputConfig output, EventSink raw, DeliveryConfig delivery, Duration shutdownTimeout) {
+        return wrap(output, raw, delivery, shutdownTimeout, delivered -> new FilteringSink(output.minimumLevel(), delivered));
+    }
+
+    static EventSink wrap(
+            OutputConfig output,
+            EventSink raw,
+            DeliveryConfig delivery,
+            Duration shutdownTimeout,
+            Function<EventSink, EventSink> finalDecorator) {
         Objects.requireNonNull(output, "output");
         Objects.requireNonNull(raw, "raw");
         Objects.requireNonNull(delivery, "delivery");
         Objects.requireNonNull(shutdownTimeout, "shutdownTimeout");
+        Objects.requireNonNull(finalDecorator, "finalDecorator");
 
-        EventSink delivered;
-        if (output instanceof CustomOutputConfig) {
-            delivered = new AsyncSink(output.name(), raw, delivery.capacity(), overflowPolicy(delivery), shutdownTimeout, false);
-        } else if (delivery.asynchronous()) {
-            delivered = new AsyncSink(output.name(), raw, delivery.capacity(), overflowPolicy(delivery), shutdownTimeout);
-        } else {
-            delivered = raw;
+        EventSink owned = raw;
+        try {
+            if (output instanceof CustomOutputConfig) {
+                owned = new AsyncSink(output.name(), raw, delivery.capacity(), overflowPolicy(delivery), shutdownTimeout, false);
+            } else if (delivery.asynchronous()) {
+                owned = new AsyncSink(output.name(), raw, delivery.capacity(), overflowPolicy(delivery), shutdownTimeout);
+            }
+            return Objects.requireNonNull(finalDecorator.apply(owned), "delivery decorator returned null");
+        } catch (RuntimeException | Error failure) {
+            closeAfterConstructionFailure(owned, failure);
+            FailureIsolation.prepareForRecovery(failure);
+            throw failure;
         }
-        return new FilteringSink(output.minimumLevel(), delivered);
     }
 
     private static OverflowPolicy overflowPolicy(DeliveryConfig delivery) {
         EnumMap<Level, OverflowPolicy.Rule> rules = new EnumMap<>(Level.class);
         delivery.overflow().forEach((level, configured) -> rules.put(level, new OverflowPolicy.Rule(configured.action(), configured.after())));
         return new OverflowPolicy(rules);
+    }
+
+    private static void closeAfterConstructionFailure(EventSink owned, Throwable constructionFailure) {
+        try {
+            owned.close();
+        } catch (Throwable cleanupFailure) {
+            FailureIsolation.prepareForRecovery(cleanupFailure);
+            if (cleanupFailure != constructionFailure) {
+                constructionFailure.addSuppressed(cleanupFailure);
+            }
+        }
     }
 }

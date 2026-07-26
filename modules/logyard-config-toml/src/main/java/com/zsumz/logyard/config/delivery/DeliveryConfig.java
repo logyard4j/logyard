@@ -26,7 +26,9 @@ public record DeliveryConfig(
             throw new IllegalArgumentException(
                     "delivery capacity must be between " + MIN_CAPACITY + " and " + MAX_CAPACITY);
         }
-        overflow = Collections.unmodifiableMap(new EnumMap<>(overflow));
+        EnumMap<Level, OverflowRuleConfig> copiedOverflow = new EnumMap<>(Level.class);
+        copiedOverflow.putAll(Objects.requireNonNull(overflow, "overflow"));
+        overflow = Collections.unmodifiableMap(copiedOverflow);
     }
 
     public boolean asynchronous() {

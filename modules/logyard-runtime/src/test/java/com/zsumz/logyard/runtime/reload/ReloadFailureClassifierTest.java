@@ -24,6 +24,14 @@ final class ReloadFailureClassifierTest {
     }
 
     @Test
+    void invalidBatchPolicyIsAnInvalidCandidate() {
+        ReloadFailure failure = ReloadFailureClassifier.assembly(
+                new IllegalArgumentException("batch size must be between 1 and 4096"));
+
+        assertEquals(ReloadFailureKind.INVALID_CANDIDATE, failure.kind());
+    }
+
+    @Test
     void wrappedProviderValidationFailureIsAnInvalidCandidate() {
         ComponentInvocationException wrapped = assertThrows(
                 ComponentInvocationException.class,
@@ -62,6 +70,17 @@ final class ReloadFailureClassifierTest {
         ReloadFailure failure = ReloadFailureClassifier.assembly(new IllegalStateException("provider bug"));
 
         assertEquals(ReloadFailureKind.INTERNAL_FAILURE, failure.kind());
+    }
+
+    @Test
+    void hostileBatchPolicyCallbackIsAnInternalFailure() {
+        ComponentInvocationException wrapped = assertThrows(
+                ComponentInvocationException.class,
+                () -> ComponentInvocationBoundary.call("batch maximum-size inspection", () -> {
+                    throw new AssertionError("provider policy bug");
+                }));
+
+        assertEquals(ReloadFailureKind.INTERNAL_FAILURE, ReloadFailureClassifier.assembly(wrapped).kind());
     }
 
     @Test

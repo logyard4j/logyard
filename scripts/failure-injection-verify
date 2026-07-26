@@ -14,9 +14,11 @@ ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
   --directory "$ROOT" \
   --workspace \
   --member modules/logyard-output-json \
+  --test com.zsumz.logyard.output.json.file.ActiveDataFileFailureTest \
   --test com.zsumz.logyard.output.json.file.JsonFileSinkInitializationTest \
   --test com.zsumz.logyard.output.json.file.JsonFileSinkIdentityTest \
   --test com.zsumz.logyard.output.json.file.RotatingFileWriterFailureTest \
+  --test com.zsumz.logyard.output.json.file.rotation.ArchiveMaintenanceLifecycleTest \
   --no-progress \
   --color never
 
@@ -24,6 +26,7 @@ ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
   --directory "$ROOT" \
   --workspace \
   --member modules/logyard-runtime \
+  --test com.zsumz.logyard.runtime.assembly.output.DeliveryAssemblerOwnershipTest \
   --test com.zsumz.logyard.runtime.assembly.OutputAssemblerTest \
   --test com.zsumz.logyard.runtime.installation.FileOutputInstallationFailureTest \
   --test com.zsumz.logyard.runtime.reload.DuplicateOutputReloadTest \

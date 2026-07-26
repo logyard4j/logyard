@@ -32,7 +32,7 @@ final class WriterLifecycle {
         failure = cause;
     }
 
-    void operationFailed(Throwable cause) {
+    void recoverableOperationFailed(Throwable cause) {
         failure = cause;
     }
 
@@ -46,7 +46,7 @@ final class WriterLifecycle {
 
     void requireUsable(Path path) {
         if (state == State.FAILED) {
-            throw new IllegalStateException("Logyard JSON output initialization failed: " + path, failure);
+            throw new IllegalStateException("Logyard JSON output failed: " + path, failure);
         }
         if (state == State.CLOSED) {
             throw new IllegalStateException("Logyard JSON output is closed: " + path);

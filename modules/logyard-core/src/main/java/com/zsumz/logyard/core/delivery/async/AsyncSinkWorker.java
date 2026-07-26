@@ -40,7 +40,7 @@ final class AsyncSinkWorker {
         this.diagnostics = diagnostics;
         dropReporter = new AsyncDropReporter(metrics);
         delivery = new AsyncDelegateDelivery(delegate, metrics, diagnostics);
-        batching = AsyncBatchPolicy.from(delivery);
+        batching = AsyncBatchPolicy.from(name, delivery);
         thread = new Thread(this::drainLoop, "logyard-output-" + EmergencyText.threadComponent(name, 64));
         thread.setDaemon(true);
     }

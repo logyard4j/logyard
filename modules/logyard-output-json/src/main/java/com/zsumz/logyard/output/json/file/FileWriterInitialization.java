@@ -18,7 +18,7 @@ final class FileWriterInitialization {
     private final FileLease lease;
     private final DataFileOpener dataFiles;
     private ArchiveMaintenance maintenance;
-    private BufferedFileWriter active;
+    private ActiveDataFile active;
 
     FileWriterInitialization(
             Path path,
@@ -49,13 +49,13 @@ final class FileWriterInitialization {
             }
             closeAfterFailure(failure, maintenance == null
                     ? lease::close
-                    : () -> maintenance.close(policy.maintenanceShutdownTimeout()));
+                    : maintenance::abortBeforeUse);
             FailureIsolation.prepareForRecovery(failure);
             throw failure;
         }
     }
 
-    BufferedFileWriter active() {
+    ActiveDataFile active() {
         return active;
     }
 

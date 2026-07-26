@@ -275,6 +275,8 @@ rotate = { size = "32MiB", keep = 5, compression = "gzip" }
 
 The built-in JSON presets are `logyard`, `ecs`, and `compact`. Profiles can rename or drop fields and can nest, flatten, include, exclude, or prefix attributes.
 
+File output fails closed when an active write, flush, or rotation-close failure makes the final record boundary uncertain; buffered bytes are discarded, the channel is closed without retrying them, health remains failed, and later records are rejected. Archive-move and replacement-open failures remain recoverable only after the old active file closed cleanly. A zero runtime shutdown timeout starts no-wait daemon cleanup instead of reporting a deterministic timeout, while rollback of an output that never completed initialization always waits for its worker and lease to be released.
+
 ## Atomic reload
 
 Enable file watching explicitly:

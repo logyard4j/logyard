@@ -23,9 +23,9 @@ final class RotatingFileWriter implements AutoCloseable {
     private final ArchiveNaming naming;
     private final DataFileOpener dataFiles;
     private final WriterLifecycle lifecycle = new WriterLifecycle();
+    private final ActiveFileSession active = new ActiveFileSession(lifecycle);
     private FileLease lease;
     private ArchiveMaintenance maintenance;
-    private BufferedFileWriter active;
 
     RotatingFileWriter(Path path, int bufferBytes, boolean append, RotationPolicy policy) {
         this(path, bufferBytes, append, policy, BufferedFileWriter::open);
@@ -69,14 +69,12 @@ final class RotatingFileWriter implements AutoCloseable {
             rotate();
         }
         active.write(record, terminator);
-        lifecycle.operationSucceeded();
     }
 
     void flush() {
         ensureOpen();
         initialize();
         active.flush();
-        lifecycle.operationSucceeded();
         if (maintenance != null) {
             maintenance.throwIfFailed();
         }
@@ -84,18 +82,17 @@ final class RotatingFileWriter implements AutoCloseable {
 
     void flushIfInitialized() {
         ensureOpen();
-        if (active == null) {
+        if (!active.present()) {
             return;
         }
         active.flush();
-        lifecycle.operationSucceeded();
         if (maintenance != null) {
             maintenance.throwIfFailed();
         }
     }
 
     boolean initialized() {
-        return active != null;
+        return active.present();
     }
 
     WriterHealthSnapshot healthSnapshot() {
@@ -118,9 +115,9 @@ final class RotatingFileWriter implements AutoCloseable {
         }
         lifecycle.closed();
         RuntimeException failure = null;
-        if (active != null) {
+        if (active.present()) {
             try {
-                active.close();
+                active.detach().close();
             } catch (RuntimeException closeFailure) {
                 failure = closeFailure;
             }
@@ -144,33 +141,37 @@ final class RotatingFileWriter implements AutoCloseable {
     }
 
     private void rotate() {
-        BufferedFileWriter rotating = active;
-        active = null;
+        ActiveDataFile rotating = active.detach();
         try {
             rotating.close();
+        } catch (RuntimeException failure) {
+            lifecycle.failed(failure);
+            throw failure;
+        }
+        try {
             Path archive = naming.nextArchive();
             moveActiveToArchive(archive);
             maintenance.submit(archive);
-            active = dataFiles.open(path, bufferBytes, false);
+            active.attach(dataFiles.open(path, bufferBytes, false));
             lifecycle.operationSucceeded();
         } catch (RuntimeException failure) {
-            lifecycle.operationFailed(failure);
+            lifecycle.recoverableOperationFailed(failure);
             tryReopenAfterRotationFailure(failure);
             throw failure;
         }
     }
 
     private void initialize() {
-        if (active != null) {
+        if (active.present()) {
             return;
         }
         lifecycle.requireUsable(path);
         if (lifecycle.state() == WriterLifecycle.State.OPEN) {
             try {
-                active = dataFiles.open(path, bufferBytes, Files.exists(path));
+                active.attach(dataFiles.open(path, bufferBytes, Files.exists(path)));
                 return;
             } catch (RuntimeException | Error failure) {
-                lifecycle.operationFailed(failure);
+                lifecycle.recoverableOperationFailed(failure);
                 throw failure;
             }
         }
@@ -178,7 +179,7 @@ final class RotatingFileWriter implements AutoCloseable {
             FileWriterInitialization initialization = new FileWriterInitialization(
                     path, bufferBytes, append, policy, naming, lease, dataFiles);
             initialization.initialize();
-            active = initialization.active();
+            active.attach(initialization.active());
             maintenance = initialization.maintenance();
             if (maintenance != null) {
                 lease = null;
@@ -206,7 +207,7 @@ final class RotatingFileWriter implements AutoCloseable {
     private void tryReopenAfterRotationFailure(RuntimeException primaryFailure) {
         try {
             if (Files.exists(path)) {
-                active = dataFiles.open(path, bufferBytes, true);
+                active.attach(dataFiles.open(path, bufferBytes, true));
             }
         } catch (RuntimeException recoveryFailure) {
             primaryFailure.addSuppressed(recoveryFailure);

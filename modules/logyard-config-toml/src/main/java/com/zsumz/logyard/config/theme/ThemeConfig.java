@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public record ThemeConfig(
         String name,
@@ -12,6 +13,8 @@ public record ThemeConfig(
         Map<Level, TextStyleConfig> levels) {
     public ThemeConfig {
         roles = Collections.unmodifiableMap(new LinkedHashMap<>(roles));
-        levels = Collections.unmodifiableMap(new EnumMap<>(levels));
+        EnumMap<Level, TextStyleConfig> copiedLevels = new EnumMap<>(Level.class);
+        copiedLevels.putAll(Objects.requireNonNull(levels, "levels"));
+        levels = Collections.unmodifiableMap(copiedLevels);
     }
 }

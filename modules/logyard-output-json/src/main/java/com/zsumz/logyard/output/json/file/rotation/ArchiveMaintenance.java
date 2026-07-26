@@ -19,6 +19,7 @@ public final class ArchiveMaintenance implements AutoCloseable {
     private final ArrayBlockingQueue<Path> queue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
     private final AtomicReference<RuntimeException> failure = new AtomicReference<>();
     private final AtomicBoolean closing = new AtomicBoolean();
+    private final ArchiveQueuePoll queuePoll = new ArchiveQueuePoll(queue, closing);
     private final Thread worker;
 
     private ArchiveMaintenance(ArchiveNaming naming, RotationPolicy policy, FileLease lease) {
@@ -104,12 +105,15 @@ public final class ArchiveMaintenance implements AutoCloseable {
             throw new IllegalArgumentException("maintenance close timeout must not be negative");
         }
         closing.set(true);
+        queuePoll.interruptIfPolling(worker);
+        if (timeout.isZero()) {
+            throwIfFailed();
+            return;
+        }
         boolean interrupted = false;
         try {
             long millis = saturatedMillis(timeout);
-            if (millis > 0) {
-                worker.join(millis);
-            }
+            worker.join(millis);
         } catch (InterruptedException interruption) {
             interrupted = true;
         } finally {
@@ -124,6 +128,29 @@ public final class ArchiveMaintenance implements AutoCloseable {
         throwIfFailed();
     }
 
+    /**
+     * Aborts a writer initialization before any archive can have been submitted.
+     *
+     * <p>This rollback is not constrained by the runtime shutdown deadline: ownership must be
+     * released before failed construction returns.</p>
+     */
+    public void abortBeforeUse() {
+        closing.set(true);
+        queuePoll.interruptIfPolling(worker);
+        boolean interrupted = false;
+        while (worker.isAlive()) {
+            try {
+                worker.join();
+            } catch (InterruptedException interruption) {
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+        throwIfFailed();
+    }
+
     @Override
     public void close() {
         close(policy.maintenanceShutdownTimeout());
@@ -134,7 +161,7 @@ public final class ArchiveMaintenance implements AutoCloseable {
             while (!closing.get() || !queue.isEmpty()) {
                 Path archive;
                 try {
-                    archive = queue.poll(100L, java.util.concurrent.TimeUnit.MILLISECONDS);
+                    archive = queuePoll.next();
                 } catch (InterruptedException interrupted) {
                     if (!closing.get()) {
                         Thread.currentThread().interrupt();

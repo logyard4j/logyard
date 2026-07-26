@@ -86,14 +86,15 @@ final class RotatingFileWriterFailureTest {
 
         try {
             writer.initializeForDirectUse();
-            writer.writeRecord("x".repeat(1_023).getBytes(StandardCharsets.UTF_8), (byte) '\n');
+            String archivedRecord = "{\"event\":\"" + "x".repeat(1_011) + "\"}";
+            writer.writeRecord(archivedRecord.getBytes(StandardCharsets.UTF_8), (byte) '\n');
 
             assertThrows(UncheckedIOException.class, () ->
-                    writer.writeRecord("ROTATE".getBytes(StandardCharsets.UTF_8), (byte) '\n'));
+                    writer.writeRecord("{\"event\":\"rotate\"}".getBytes(StandardCharsets.UTF_8), (byte) '\n'));
             assertEquals(2, opens.get());
             assertNotNull(writer.healthSnapshot().writerFailureType());
 
-            writer.writeRecord("RECOVERED".getBytes(StandardCharsets.UTF_8), (byte) '\n');
+            writer.writeRecord("{\"event\":\"recovered\"}".getBytes(StandardCharsets.UTF_8), (byte) '\n');
             writer.flush();
             assertEquals(3, opens.get());
             assertNull(writer.healthSnapshot().writerFailureType());
@@ -101,7 +102,7 @@ final class RotatingFileWriterFailureTest {
             writer.close();
         }
 
-        assertEquals("RECOVERED\n", Files.readString(output, StandardCharsets.UTF_8));
+        assertEquals("{\"event\":\"recovered\"}\n", Files.readString(output, StandardCharsets.UTF_8));
         List<Path> archives;
         try (var files = Files.list(directory)) {
             archives = files.filter(path -> path.getFileName().toString()
@@ -109,7 +110,7 @@ final class RotatingFileWriterFailureTest {
                     .toList();
         }
         assertEquals(1, archives.size());
-        assertEquals("x".repeat(1_023) + "\n", Files.readString(archives.get(0), StandardCharsets.UTF_8));
+        assertEquals("{\"event\":\"" + "x".repeat(1_011) + "\"}\n", Files.readString(archives.get(0), StandardCharsets.UTF_8));
     }
 
     private static RotationPolicy rotation(RotationPolicy.Compression compression) {

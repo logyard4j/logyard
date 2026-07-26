@@ -4,20 +4,22 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Set;
 
 /** Single-owner byte buffer around a no-follow file channel. */
-final class BufferedFileWriter implements AutoCloseable {
+final class BufferedFileWriter implements ActiveDataFile {
     private final Path path;
-    private final FileChannel channel;
+    private final WritableByteChannel channel;
     private final ByteBuffer buffer;
     private long logicalBytes;
+    private boolean failed;
     private boolean closed;
 
-    private BufferedFileWriter(Path path, FileChannel channel, ByteBuffer buffer, long logicalBytes) {
+    BufferedFileWriter(Path path, WritableByteChannel channel, ByteBuffer buffer, long logicalBytes) {
         this.path = path;
         this.channel = channel;
         this.buffer = buffer;
@@ -44,11 +46,13 @@ final class BufferedFileWriter implements AutoCloseable {
         }
     }
 
-    long logicalBytes() {
+    @Override
+    public long logicalBytes() {
         return logicalBytes;
     }
 
-    void write(byte[] record, byte terminator) {
+    @Override
+    public void write(byte[] record, byte terminator) {
         ensureOpen();
         try {
             int recordBytes = Math.addExact(record.length, 1);
@@ -64,15 +68,18 @@ final class BufferedFileWriter implements AutoCloseable {
             }
             logicalBytes = Math.addExact(logicalBytes, recordBytes);
         } catch (IOException failure) {
+            discardAndClose(failure);
             throw new UncheckedIOException("failed to write Logyard JSON output " + path, failure);
         }
     }
 
-    void flush() {
+    @Override
+    public void flush() {
         ensureOpen();
         try {
             flushBuffer();
         } catch (IOException failure) {
+            discardAndClose(failure);
             throw new UncheckedIOException("failed to flush Logyard JSON output " + path, failure);
         }
     }
@@ -82,11 +89,12 @@ final class BufferedFileWriter implements AutoCloseable {
         if (closed) {
             return;
         }
-        closed = true;
         IOException failure = null;
         try {
             flushBuffer();
         } catch (IOException flushFailure) {
+            failed = true;
+            buffer.clear();
             failure = flushFailure;
         }
         try {
@@ -98,6 +106,7 @@ final class BufferedFileWriter implements AutoCloseable {
                 failure.addSuppressed(closeFailure);
             }
         }
+        closed = true;
         if (failure != null) {
             throw new UncheckedIOException("failed to close Logyard JSON output " + path, failure);
         }
@@ -115,7 +124,21 @@ final class BufferedFileWriter implements AutoCloseable {
         }
     }
 
+    private void discardAndClose(IOException failure) {
+        failed = true;
+        closed = true;
+        buffer.clear();
+        try {
+            channel.close();
+        } catch (IOException closeFailure) {
+            failure.addSuppressed(closeFailure);
+        }
+    }
+
     private void ensureOpen() {
+        if (failed) {
+            throw new IllegalStateException("Logyard JSON output failed: " + path);
+        }
         if (closed) {
             throw new IllegalStateException("Logyard JSON output is closed: " + path);
         }
