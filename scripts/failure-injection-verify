@@ -23,7 +23,9 @@ ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
   --test com.zsumz.logyard.output.json.file.RotatingFileWriterFailureTest \
   --test com.zsumz.logyard.output.json.file.rotation.ArchiveMaintenanceLifecycleTest \
   --test com.zsumz.logyard.output.json.flush.FlushDispatcherSinkSaturationTest \
+  --test com.zsumz.logyard.output.json.flush.FlushDiagnosticsTest \
   --test com.zsumz.logyard.output.json.flush.TimedFlushConcurrencyTest \
+  --test com.zsumz.logyard.output.json.flush.TimedFlushFailureIsolationTest \
   --test com.zsumz.logyard.output.json.flush.BoundedElasticFlushDispatcherTest \
   --test com.zsumz.logyard.output.json.stream.JsonLinesFlushConcurrencyTest \
   --test com.zsumz.logyard.output.json.stream.JsonLinesFatalFailureTest \

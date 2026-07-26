@@ -835,9 +835,16 @@ BOUND_CONTRACTS = {
     "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/TimedFlushController.java": (
         "dispatcher.dispatch(() -> runDispatched(due))",
     ),
+    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/FlushDiagnostics.java": (
+        "private final AtomicBoolean reportInFlight",
+        "new Thread(null, () -> write(failure), REPORTER_NAME, 0L, false)",
+        "reporter.setDaemon(true)",
+        "reporter.setContextClassLoader(null)",
+    ),
     "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/BoundedElasticFlushDispatcher.java": (
         "static final int MAXIMUM_WORKERS = 128",
-        "new BoundedElasticFlushDispatcher(MAXIMUM_WORKERS, Duration.ofMillis(100L))",
+        "static final Duration DEFAULT_IDLE_TIMEOUT = Duration.ofSeconds(2L)",
+        "new BoundedElasticFlushDispatcher(MAXIMUM_WORKERS, DEFAULT_IDLE_TIMEOUT)",
         "new ThreadPoolExecutor(",
         "new SynchronousQueue<>()",
         "new Thread(",
@@ -875,6 +882,12 @@ if output_limit is not None and flush_worker_limit is not None and flush_worker_
     errors.append(
         "shared JSON flush worker capacity must support every output allowed in one active configuration"
     )
+
+flush_diagnostics = (
+    ROOT / "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/FlushDiagnostics.java"
+).read_text(encoding="utf-8")
+if "Executor" in flush_diagnostics or "BlockingQueue" in flush_diagnostics:
+    errors.append("timed-flush diagnostics must not retain an executor or diagnostic queue")
 
 for relative in (
     "modules/logyard-jul/src/main/java/com/zsumz/logyard/jul/LogyardHandler.java",

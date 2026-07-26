@@ -12,8 +12,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** Runs blocking flush I/O on a shared bounded set of temporary daemon platform threads. */
 final class BoundedElasticFlushDispatcher implements FlushDispatcher {
     static final int MAXIMUM_WORKERS = 128;
+    static final Duration DEFAULT_IDLE_TIMEOUT = Duration.ofSeconds(2L);
     static final BoundedElasticFlushDispatcher INSTANCE =
-            new BoundedElasticFlushDispatcher(MAXIMUM_WORKERS, Duration.ofMillis(100L));
+            new BoundedElasticFlushDispatcher(MAXIMUM_WORKERS, DEFAULT_IDLE_TIMEOUT);
     static final String WORKER_NAME_PREFIX = "logyard-json-flush-worker-";
 
     private final ThreadPoolExecutor workers;

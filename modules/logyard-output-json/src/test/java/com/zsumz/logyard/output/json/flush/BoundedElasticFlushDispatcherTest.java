@@ -101,8 +101,26 @@ final class BoundedElasticFlushDispatcherTest {
         second.awaitCompletion();
 
         assertSame(firstWorker.get(), secondWorker.get());
+        awaitNoWorkers(dispatcher);
         assertNull(observed.get());
         awaitNoWorkers(dispatcher);
+    }
+
+    @Test
+    void productionKeepaliveReusesAWorkerAcrossTheDefaultFlushCadence() throws Exception {
+        BoundedElasticFlushDispatcher dispatcher =
+                new BoundedElasticFlushDispatcher(1, BoundedElasticFlushDispatcher.DEFAULT_IDLE_TIMEOUT);
+        AtomicReference<Thread> firstWorker = new AtomicReference<>();
+        FlushDispatcher.DispatchedFlush first = dispatcher.dispatch(() -> firstWorker.set(Thread.currentThread()));
+        first.awaitCompletion();
+
+        Thread.sleep(Duration.ofMillis(1_100L));
+
+        AtomicReference<Thread> secondWorker = new AtomicReference<>();
+        FlushDispatcher.DispatchedFlush second = dispatcher.dispatch(() -> secondWorker.set(Thread.currentThread()));
+        second.awaitCompletion();
+
+        assertSame(firstWorker.get(), secondWorker.get());
     }
 
     @Test
@@ -131,7 +149,7 @@ final class BoundedElasticFlushDispatcherTest {
     }
 
     private static void awaitNoWorkers(BoundedElasticFlushDispatcher dispatcher) {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2L);
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(4L);
         while (dispatcher.liveWorkers() != 0) {
             if (System.nanoTime() >= deadline) {
                 throw new AssertionError("flush workers did not retire");

@@ -3,6 +3,7 @@ package com.zsumz.logyard.output.json.flush;
 import com.zsumz.logyard.api.failure.FailureIsolation;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** Bounded, rate-limited diagnostics for failures escaping a timed-flush task. */
@@ -15,24 +16,68 @@ interface FlushDiagnostics {
     final class StderrFlushDiagnostics implements FlushDiagnostics {
         private static final long REPORT_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(10L);
         private static final int MAX_MESSAGE_CHARACTERS = 512;
+        private static final String REPORTER_NAME = "logyard-json-flush-diagnostic";
 
+        private final long reportIntervalNanos;
         private final AtomicLong nextReportNanos = new AtomicLong();
         private final AtomicLong suppressed = new AtomicLong();
+        private final AtomicBoolean reportInFlight = new AtomicBoolean();
+
+        StderrFlushDiagnostics() {
+            this(REPORT_INTERVAL_NANOS);
+        }
+
+        StderrFlushDiagnostics(long reportIntervalNanos) {
+            this.reportIntervalNanos = reportIntervalNanos;
+        }
 
         @Override
         public void report(Throwable failure) {
-            FailureIsolation.prepareForRecovery(failure);
             long now = System.nanoTime();
             long next = nextReportNanos.get();
-            if (now < next || !nextReportNanos.compareAndSet(next, saturatedAdd(now, REPORT_INTERVAL_NANOS))) {
+            if (!reserveReport(now, next)) {
                 suppressed.incrementAndGet();
                 return;
             }
-            long hidden = suppressed.getAndSet(0L);
             try {
-                System.err.println(message(failure, hidden));
+                Thread reporter = new Thread(null, () -> write(failure), REPORTER_NAME, 0L, false);
+                reporter.setDaemon(true);
+                reporter.setContextClassLoader(null);
+                reporter.start();
+            } catch (Throwable startFailure) {
+                reportInFlight.set(false);
+                suppressed.incrementAndGet();
+                FailureIsolation.prepareForRecovery(startFailure);
+            }
+        }
+
+        private boolean reserveReport(long now, long next) {
+            if (now < next || !reportInFlight.compareAndSet(false, true)) {
+                return false;
+            }
+            if (nextReportNanos.compareAndSet(next, saturatedAdd(now, reportIntervalNanos))) {
+                return true;
+            }
+            reportInFlight.set(false);
+            return false;
+        }
+
+        long suppressedReports() {
+            return suppressed.get();
+        }
+
+        boolean reportIsInFlight() {
+            return reportInFlight.get();
+        }
+
+        private void write(Throwable failure) {
+            try {
+                FailureIsolation.prepareForRecovery(failure);
+                System.err.println(message(failure, suppressed.getAndSet(0L)));
             } catch (Throwable reportingFailure) {
                 FailureIsolation.prepareForRecovery(reportingFailure);
+            } finally {
+                reportInFlight.set(false);
             }
         }
 

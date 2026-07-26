@@ -10,7 +10,7 @@ import java.util.Objects;
 /** Maintains at most one pending one-shot flush for a dirty JSON output. */
 @InternalApi
 public final class TimedFlushController implements AutoCloseable {
-    public static final Duration MAX_INTERVAL = Duration.ofMinutes(1L);
+    public static final Duration MAX_INTERVAL = TimedFlushInterval.MAXIMUM;
 
     private final Duration interval;
     private final FlushScheduler scheduler;
@@ -32,7 +32,7 @@ public final class TimedFlushController implements AutoCloseable {
     }
 
     TimedFlushController(Duration interval, FlushScheduler scheduler, FlushDispatcher dispatcher, FlushDiagnostics diagnostics, Runnable flushAction) {
-        this.interval = validInterval(interval);
+        this.interval = TimedFlushInterval.requireValid(interval);
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
         this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher");
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
@@ -70,7 +70,12 @@ public final class TimedFlushController implements AutoCloseable {
         try {
             attachScheduled(candidate, interval);
         } catch (Throwable schedulingFailure) {
-            FailureIsolation.prepareForRecovery(schedulingFailure);
+            try {
+                FailureIsolation.prepareForRecovery(schedulingFailure);
+            } catch (Throwable fatalFailure) {
+                abandon(candidate);
+                throw fatalFailure;
+            }
             diagnostics.report(schedulingFailure);
             runInline(candidate);
         }
@@ -113,9 +118,9 @@ public final class TimedFlushController implements AutoCloseable {
             due.attachDispatched(dispatcher.dispatch(() -> runDispatched(due)));
         } catch (Throwable dispatchFailure) {
             due.dispatchFailed();
+            scheduleRetryAfterDispatchFailure(due);
             FailureIsolation.prepareForRecovery(dispatchFailure);
             diagnostics.report(dispatchFailure);
-            scheduleRetryAfterDispatchFailure(due);
         }
     }
 
@@ -139,7 +144,7 @@ public final class TimedFlushController implements AutoCloseable {
         try {
             attachScheduled(retry, retryDelay);
         } catch (Throwable schedulingFailure) {
-            abandonRetry(retry);
+            abandon(retry);
             FailureIsolation.prepareForRecovery(schedulingFailure);
             diagnostics.report(schedulingFailure);
         }
@@ -223,17 +228,11 @@ public final class TimedFlushController implements AutoCloseable {
         }
     }
 
-    private void abandonRetry(TimedFlushTask retry) {
+    private void abandon(TimedFlushTask task) {
         synchronized (this) {
-            tasks.releaseAndRetire(retry, !closed);
+            tasks.releaseAndRetire(task, false);
         }
+        task.cancel();
     }
 
-    private static Duration validInterval(Duration interval) {
-        Objects.requireNonNull(interval, "flushInterval");
-        if (interval.isNegative() || interval.compareTo(MAX_INTERVAL) > 0) {
-            throw new IllegalArgumentException("flush interval must be between 0s and 1m");
-        }
-        return interval;
-    }
 }
