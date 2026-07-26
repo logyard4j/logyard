@@ -20,6 +20,7 @@ final class OutputAssembler {
     static AssembledOutputs assemble(LogyardConfig config, RuntimeAssembly current, ExtensionRegistry extensions) {
         Objects.requireNonNull(config, "config");
         Objects.requireNonNull(extensions, "extensions");
+        ExclusiveOutputPathValidator.validate(config.outputs().values());
         Map<String, EventSink> sinks = new LinkedHashMap<>();
         Map<String, OutputBinding> bindings = new LinkedHashMap<>();
         List<OutputPreparation> created = new ArrayList<>();

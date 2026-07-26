@@ -35,6 +35,8 @@ public interface OutputProvider {
      * @param context output-scoped runtime resources
      * @param configuration validated provider configuration
      * @return new sink
+     * @throws IllegalArgumentException when the candidate configuration is deterministically invalid
+     * @throws java.io.UncheckedIOException when a temporary transport or resource condition prevents creation
      */
     EventSink create(OutputProviderContext context, ProviderConfiguration configuration);
 }

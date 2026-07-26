@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+
+[[ -x "$ZOLT" ]] || {
+  printf 'failure-injection verification requires Zolt at %s\n' "$ZOLT" >&2
+  exit 2
+}
+
+"$ZOLT" test \
+  --directory "$ROOT" \
+  --workspace \
+  --member modules/logyard-output-json \
+  --test com.zsumz.logyard.output.json.file.JsonFileSinkInitializationTest \
+  --no-progress \
+  --color never
+
+"$ZOLT" test \
+  --directory "$ROOT" \
+  --workspace \
+  --member modules/logyard-runtime \
+  --test com.zsumz.logyard.runtime.assembly.OutputAssemblerTest \
+  --test com.zsumz.logyard.runtime.installation.FileOutputInstallationFailureTest \
+  --test com.zsumz.logyard.runtime.reload.DuplicateOutputReloadTest \
+  --test com.zsumz.logyard.runtime.reload.FileOutputReloadPublicationFailureTest \
+  --test com.zsumz.logyard.runtime.reload.RejectedConfigurationReconciliationTest \
+  --test com.zsumz.logyard.runtime.reload.ReloadCoordinatorTransientResourceTest \
+  --test com.zsumz.logyard.runtime.reload.ReloadFailureClassifierTest \
+  --no-progress \
+  --color never
+
+printf 'Focused durable-resource and reload failure-injection verification passed.\n'

@@ -13,7 +13,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring-boot.version>4.1.0</spring-boot.version>
     <spring-boot.web-starter>spring-boot-starter-webmvc</spring-boot.web-starter>
-    <logyard.version>0.7.0-SNAPSHOT</logyard.version>
+    <logyard.version>0.1.0-rc.1</logyard.version>
     <logyard.repository>file://${project.basedir}/../../target/release-bundle</logyard.repository>
   </properties>
 

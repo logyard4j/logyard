@@ -22,6 +22,9 @@ import java.util.Objects;
  *
  * <p>Encoding happens outside the writer-state monitor. Concurrent records are written atomically
  * in encoding-completion order, which keeps extension callbacks free to invoke other sink methods.</p>
+ *
+ * <p>A prepared sink reserves its path without opening the data file. Activation, an unused flush,
+ * and an unused close remain nondestructive; only the first accepted record opens the data file.</p>
  */
 public final class JsonFileSink implements EventSink, HealthContributor {
     public static final int MIN_BUFFER_BYTES = 1_024;
@@ -123,7 +126,7 @@ public final class JsonFileSink implements EventSink, HealthContributor {
     /**
      * Makes a successfully assembled output eligible for delivery.
      *
-     * <p>Activation itself performs no file I/O; the first accepted event or explicit flush opens the durable file.</p>
+     * <p>Activation and flushing an unused sink perform no file I/O. The first accepted event opens the durable file.</p>
      */
     public void activate() {
         if (closed) {
@@ -163,7 +166,7 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             if (!active) {
                 return;
             }
-            writer.flush();
+            writer.flushIfInitialized();
         }
     }
 
@@ -180,17 +183,21 @@ public final class JsonFileSink implements EventSink, HealthContributor {
 
     @Override
     public ComponentHealth health(String componentName) {
-        String failureType = writer.maintenanceFailureType();
+        WriterHealthSnapshot snapshot;
+        synchronized (writerState) {
+            snapshot = writer.healthSnapshot();
+        }
+        String failureType = snapshot.maintenanceFailureType();
         HealthStatus status;
-        if (closed || writer.closed()) {
+        if (closed || snapshot.closed()) {
             status = HealthStatus.STOPPED;
-        } else if (failureType != null || !writer.maintenanceWorkerAlive()) {
+        } else if (failureType != null || !snapshot.maintenanceWorkerAlive()) {
             status = HealthStatus.FAILED;
-        } else if (writer.maintenanceClosing()) {
+        } else if (snapshot.maintenanceClosing()) {
             status = HealthStatus.STOPPING;
-        } else if (writer.maintenanceQueueCapacity() > 0
-                && writer.maintenanceQueuedTasks() * 4L
-                        >= writer.maintenanceQueueCapacity() * 3L) {
+        } else if (snapshot.maintenanceQueueCapacity() > 0
+                && snapshot.maintenanceQueuedTasks() * 4L
+                        >= snapshot.maintenanceQueueCapacity() * 3L) {
             status = HealthStatus.DEGRADED;
         } else {
             status = HealthStatus.HEALTHY;
@@ -203,8 +210,8 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             details.put("maintenance_failure", failureType);
         }
         Map<String, Long> metrics = Map.of(
-                "maintenance_queue_capacity", (long) writer.maintenanceQueueCapacity(),
-                "maintenance_queue_depth", (long) writer.maintenanceQueuedTasks());
+                "maintenance_queue_capacity", (long) snapshot.maintenanceQueueCapacity(),
+                "maintenance_queue_depth", (long) snapshot.maintenanceQueuedTasks());
         return new ComponentHealth(componentName, "json-file-output", status, details, metrics);
     }
 

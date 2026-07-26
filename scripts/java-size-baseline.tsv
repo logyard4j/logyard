@@ -20,4 +20,3 @@ modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/encoding
 modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/encoding/JsonWriter.java	252
 modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/bootstrap/ConfigurationDiscovery.java	222
 modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/bootstrap/LogyardConfigurationSource.java	271
-modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/installation/ManagedRuntimeInstallation.java	290

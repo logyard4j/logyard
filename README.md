@@ -4,7 +4,7 @@ Structured logging for Java 21+, with one runtime shared by native, SLF4J 2, JUL
 
 Logyard captures an immutable event once, applies the configured enrichers and filters, then sends that event to synchronous or asynchronous console and JSON outputs. Configuration is explicit TOML, reloads are atomic, and disabled log levels do not evaluate arguments, suppliers, context, clocks, or thread metadata.
 
-Logyard is under active development. The `0.7.0-SNAPSHOT` coordinates below describe the current source build and are not yet published to Maven Central.
+Logyard is under active development. The `0.1.0-rc.1` coordinates below describe the first release candidate and are not yet published to Maven Central.
 
 ## Install
 
@@ -14,12 +14,12 @@ Most applications should use the SLF4J 2 provider:
 <dependency>
   <groupId>com.zsumz.logyard</groupId>
   <artifactId>logyard-slf4j2</artifactId>
-  <version>0.7.0-SNAPSHOT</version>
+  <version>0.1.0-rc.1</version>
 </dependency>
 ```
 
 ```kotlin
-implementation("com.zsumz.logyard:logyard-slf4j2:0.7.0-SNAPSHOT")
+implementation("com.zsumz.logyard:logyard-slf4j2:0.1.0-rc.1")
 ```
 
 Use `logyard-runtime` instead when the application calls Logyard's native API directly. Both artifacts include the runtime, TOML configuration, console output, and JSON file output.
@@ -30,7 +30,7 @@ Spring Boot 3.5 and 4.1 applications should use the starter:
 <dependency>
   <groupId>com.zsumz.logyard</groupId>
   <artifactId>logyard-spring-boot-starter</artifactId>
-  <version>0.7.0-SNAPSHOT</version>
+  <version>0.1.0-rc.1</version>
 </dependency>
 ```
 
@@ -59,7 +59,7 @@ The equivalent Gradle dependency replacement is:
 implementation("org.springframework.boot:spring-boot-starter-web") {
     exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
 }
-implementation("com.zsumz.logyard:logyard-spring-boot-starter:0.7.0-SNAPSHOT")
+implementation("com.zsumz.logyard:logyard-spring-boot-starter:0.1.0-rc.1")
 ```
 
 Quarkus 3.37 applications use the conventional runtime extension:
@@ -68,7 +68,7 @@ Quarkus 3.37 applications use the conventional runtime extension:
 <dependency>
   <groupId>com.zsumz.logyard</groupId>
   <artifactId>logyard-quarkus</artifactId>
-  <version>0.7.0-SNAPSHOT</version>
+  <version>0.1.0-rc.1</version>
 </dependency>
 ```
 
@@ -286,11 +286,11 @@ reload_debounce = "250ms"
 internal_status = "warn"
 ```
 
-A reload reads and parses a complete candidate configuration, assembles its resources, and publishes the new routing plan atomically. Invalid candidates are rejected while the current runtime remains active. Only deterministic failures tied to the candidate bytes, such as parsing, validation, and restart-required policy changes, are memoized. Source I/O, file-lease contention, and runtime capacity remain retryable for the same digest with bounded backoff. An unchanged active file is ignored.
+A reload reads and parses a complete candidate configuration, assembles its resources, and publishes the new routing plan atomically. Invalid candidates are rejected while the current runtime remains active. Only deterministic failures tied to the candidate bytes, such as parsing, provider validation, duplicate exclusive output paths, and restart-required policy changes, are memoized. Source I/O, file-lease contention, and runtime capacity remain retryable for the same digest with bounded backoff. An unchanged active file is ignored.
 
 Initial installation and framework handoff stabilize a reloadable source before commit so the active routing plan, watcher state, debounce, shutdown timeout, and internal diagnostics all come from one snapshot. If the source keeps changing through eight preparation attempts, installation fails explicitly instead of publishing a knowingly stale policy.
 
-Levels, routes, processors, context policy, and outputs may be added or removed at runtime. File candidates reserve exclusive ownership during assembly but do not open, truncate, reconcile, or rotate the durable data file until the complete candidate has committed and delivery begins. A discarded, rejected, or failed candidate therefore cannot modify existing file contents. An existing file output holds its path lock; changing that output's path identity, buffering, rotation, encoder, delivery, or other resource-owning settings at the same path is rejected and requires a process restart.
+Levels, routes, processors, context policy, and outputs may be added or removed at runtime. File candidates reserve exclusive ownership during assembly but do not open, truncate, reconcile, or rotate the durable data file until the complete candidate has committed and accepts its first record. Flush and close never perform the first data-file open. A discarded, rejected, failed, or activated-but-unused candidate therefore cannot modify existing file contents. Two outputs in one candidate cannot claim the same normalized path. An existing file output holds its path lock; changing that output's path identity, buffering, rotation, encoder, delivery, or other resource-owning settings at the same path is rejected and requires a process restart.
 
 The `[runtime]` fields `watch`, `reload_debounce`, `shutdown_timeout`, and `internal_status` belong to the installation rather than an individual routing plan. An in-place reload that changes any of them is rejected atomically; apply those settings through an application/framework configuration handoff or a process restart. Logyard never reports a candidate as applied while retaining watcher policy from an older snapshot.
 
@@ -304,7 +304,7 @@ Reload observer and diagnostic failures are isolated from the reload outcome. A 
 
 ## Extensions
 
-The stable SPI supports context providers, event processors, text formatters, event encoders, outputs, and health contributors. Providers are discovered with `ServiceLoader`, receive a bounded immutable configuration, and create runtime-owned instances.
+The stable SPI supports context providers, event processors, text formatters, event encoders, outputs, and health contributors. Providers are discovered with `ServiceLoader`, receive a bounded immutable configuration, and create runtime-owned instances. Provider creation may occur for a candidate that is later rejected or superseded; construction must not irreversibly modify durable external state, and every provider-created closeable component must release its resources from `close()`. Logyard invokes providers outside its lifecycle and reload state locks. Recursive Logyard installation, reconfiguration, or shutdown from provider lifecycle callbacks is unsupported.
 
 An event processor provider:
 
@@ -352,7 +352,7 @@ name = "north"
 root = { level = "info", outputs = ["console"], enrich = ["tenant"] }
 ```
 
-Provider names are explicit; duplicate names, unknown keys, missing required keys, and ambiguous providers fail during assembly.
+Provider names are explicit; duplicate names, unknown keys, missing required keys, and ambiguous providers fail during assembly. A provider should throw `IllegalArgumentException` for deterministically invalid candidate configuration and `UncheckedIOException` for a temporary I/O or resource condition; other provider failures are isolated and retried only with bounded watcher backoff.
 
 ## Diagnostics
 

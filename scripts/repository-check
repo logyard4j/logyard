@@ -59,6 +59,7 @@ required_files=(
   scripts/ci
   scripts/api-compatibility
   scripts/benchmark-smoke
+  scripts/failure-injection-verify
   scripts/framework-versions-check
   benchmarks/allocation-budgets.json
   scripts/javadoc

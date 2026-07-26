@@ -22,7 +22,7 @@
     <micronaut.version>4.10.9</micronaut.version>
     <micronaut.runtime>netty</micronaut.runtime>
     <exec.mainClass>com.zsumz.logyard.examples.micronaut.MicronautExampleApplication</exec.mainClass>
-    <logyard.version>0.7.0-SNAPSHOT</logyard.version>
+    <logyard.version>0.1.0-rc.1</logyard.version>
     <logyard.repository>file://${project.basedir}/../../target/release-bundle</logyard.repository>
   </properties>
 

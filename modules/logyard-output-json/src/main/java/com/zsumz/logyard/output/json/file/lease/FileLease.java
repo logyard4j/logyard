@@ -44,15 +44,19 @@ public final class FileLease implements AutoCloseable {
             try {
                 FileLock lock = channel.tryLock();
                 if (lock == null) {
-                    channel.close();
                     throw new FileLeaseUnavailableException(normalized, false, null);
                 }
                 return new FileLease(normalized, lockPath, channel, lock);
             } catch (OverlappingFileLockException overlap) {
-                channel.close();
-                throw new FileLeaseUnavailableException(normalized, true, overlap);
+                FileLeaseUnavailableException unavailable =
+                        new FileLeaseUnavailableException(normalized, true, overlap);
+                closeChannel(channel, unavailable);
+                throw unavailable;
+            } catch (IOException failure) {
+                closeChannel(channel, failure);
+                throw failure;
             } catch (RuntimeException | Error failure) {
-                channel.close();
+                closeChannel(channel, failure);
                 throw failure;
             }
         } catch (IOException failure) {
@@ -96,6 +100,14 @@ public final class FileLease implements AutoCloseable {
     private static void rejectSymbolicLink(Path path, String kind) throws IOException {
         if (Files.exists(path, LinkOption.NOFOLLOW_LINKS) && Files.isSymbolicLink(path)) {
             throw new IOException(kind + " must not be a symbolic link: " + path);
+        }
+    }
+
+    private static void closeChannel(FileChannel channel, Throwable failure) {
+        try {
+            channel.close();
+        } catch (IOException closeFailure) {
+            failure.addSuppressed(closeFailure);
         }
     }
 }

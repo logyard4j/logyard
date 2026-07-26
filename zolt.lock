@@ -4,7 +4,7 @@ projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:8c9
 
 [[package]]
 id = "com.zsumz.logyard:logyard-api"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -15,7 +15,7 @@ dependencies = []
 
 [[package]]
 id = "com.zsumz.logyard:logyard-config-toml"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -26,7 +26,7 @@ dependencies = []
 
 [[package]]
 id = "com.zsumz.logyard:logyard-core"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -37,7 +37,7 @@ dependencies = []
 
 [[package]]
 id = "com.zsumz.logyard:logyard-core"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "test"
 direct = true
@@ -48,7 +48,7 @@ dependencies = []
 
 [[package]]
 id = "com.zsumz.logyard:logyard-jul"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -59,7 +59,7 @@ dependencies = []
 
 [[package]]
 id = "com.zsumz.logyard:logyard-output-console"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -70,7 +70,7 @@ dependencies = []
 
 [[package]]
 id = "com.zsumz.logyard:logyard-output-json"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -81,7 +81,7 @@ dependencies = []
 
 [[package]]
 id = "com.zsumz.logyard:logyard-runtime"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -92,7 +92,7 @@ dependencies = []
 
 [[package]]
 id = "com.zsumz.logyard:logyard-slf4j2"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -103,7 +103,7 @@ dependencies = ["org.slf4j:slf4j-api:2.0.18:jar:compile"]
 
 [[package]]
 id = "com.zsumz.logyard:logyard-slf4j2"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "test"
 direct = true
@@ -114,7 +114,7 @@ dependencies = ["org.slf4j:slf4j-api:2.0.18:jar:compile"]
 
 [[package]]
 id = "com.zsumz.logyard:logyard-spring-boot"
-version = "0.7.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 source = "workspace"
 scope = "compile"
 direct = true

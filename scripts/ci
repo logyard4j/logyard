@@ -20,6 +20,7 @@ if [[ -x "$ZOLT" ]]; then
   "$ZOLT" build --directory "$ROOT" --workspace --all
   "$ZOLT" test --directory "$ROOT" --workspace --members "$test_members"
   "$ZOLT" run --directory "$ROOT" --workspace --member tests/logyard-integration-tests
+  "$ROOT/scripts/failure-injection-verify"
 else
   echo "NOTE: Zolt is not installed at $ZOLT; the JDK-only verification completed successfully."
 fi

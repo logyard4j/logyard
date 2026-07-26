@@ -16,7 +16,7 @@ class CompatibilityBaselineTest(unittest.TestCase):
                 """
 schema = 1
 version = "none"
-first_release = "0.7.0"
+first_release = "0.1.0-rc.1"
 reason = "first public release"
 repository = "https://repo.example.test"
 """,

@@ -4,6 +4,9 @@ import com.zsumz.logyard.core.runtime.RuntimeReloadDeferredException;
 import com.zsumz.logyard.output.json.file.lease.FileLeaseUnavailableException;
 
 import java.io.UncheckedIOException;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 
 /** Converts phase-specific exceptions into stable retry and memoization decisions. */
 final class ReloadFailureClassifier {
@@ -29,7 +32,7 @@ final class ReloadFailureClassifier {
         ReloadFailureKind kind;
         if (causedBy(failure, FileLeaseUnavailableException.class) || causedBy(failure, UncheckedIOException.class)) {
             kind = ReloadFailureKind.TRANSIENT_RESOURCE;
-        } else if (failure instanceof IllegalArgumentException) {
+        } else if (causedBy(failure, IllegalArgumentException.class)) {
             kind = ReloadFailureKind.INVALID_CANDIDATE;
         } else {
             kind = ReloadFailureKind.INTERNAL_FAILURE;
@@ -45,8 +48,9 @@ final class ReloadFailureClassifier {
     }
 
     private static boolean causedBy(Throwable failure, Class<? extends Throwable> type) {
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         Throwable current = failure;
-        while (current != null) {
+        while (current != null && seen.add(current)) {
             if (type.isInstance(current)) {
                 return true;
             }

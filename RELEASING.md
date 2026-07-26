@@ -17,7 +17,24 @@ sources and Javadoc packaging do not depend on native-image launcher properties.
 
 `compatibility-baseline.toml` is the reviewed source of truth for API compatibility. It explicitly declares `version = "none"` before the first public release. After publication, replace that policy with the previous immutable release and the SHA-256 of its API, runtime, JUL, Spring, and Quarkus JARs; `scripts/api-compatibility --baseline` downloads and verifies those exact artifacts before running japicmp. `--self-test` is only a tooling and filter smoke test.
 
-The publication check runs Zolt's complete whole-workspace Central planner and the packaged-artifact verifier together. Zolt must plan every native workspace member’s main artifact, sources, Javadocs, checksums, signatures, and atomic family metadata. A snapshot requires the release version to be the only blocker. Any metadata, POM, signing, routing, family, or artifact failure is fatal.
+The publication check runs Zolt's complete whole-workspace Central planner and the packaged-artifact verifier together. Zolt must plan every native workspace member’s main artifact, sources, Javadocs, checksums, signatures, and atomic family metadata. A snapshot requires the release version to be the only blocker; a release candidate must pass without blockers. Any metadata, POM, signing, routing, family, or artifact failure is fatal.
+
+Before tagging a release candidate, run the complete matrix:
+
+```sh
+scripts/ci
+scripts/api-compatibility --baseline
+scripts/examples-verify
+scripts/benchmark-smoke
+scripts/examples-native-verify
+scripts/release-bundle --sign
+scripts/zolt-publication-check
+scripts/central-publish
+```
+
+`scripts/ci` includes the focused durable-resource and reload failure-injection suite after the full Zolt test family. The remaining commands prove packaged consumers, SLF4J and `System.Logger` discovery, Spring Boot 3 and 4, Micronaut, Vert.x, Quarkus JVM/dev/native behavior, allocation budgets, GraalVM native images, the first-release compatibility policy, signatures, checksums, sources, Javadocs, BOM metadata, and the final Central-shaped family. Linux, macOS, and Windows filesystem behavior remains a required CI matrix.
+
+During an RC, accept only fixes for data loss, secret disclosure, deadlock, unbounded resource use on a supported path, lifecycle corruption, lost valid configuration, framework startup failure, red release gates, or measured common-path performance regressions. Do not add APIs, integrations, or broader live-reload behavior during the RC.
 
 Build the signed, deterministic Central Portal ZIP without uploading it:
 

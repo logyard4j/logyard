@@ -9,7 +9,30 @@ permissions:
   contents: write
 
 jobs:
+  native-gate:
+    name: Native release-candidate gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: graalvm/setup-graalvm@bef4b0e916c7dd079bf60fb95d49139f67e32c5f # v1.5.3
+        with:
+          java-version: '25'
+          distribution: graalvm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: maven
+          native-image-job-reports: 'true'
+      - name: Bootstrap the pinned Zolt revision
+        run: ./scripts/bootstrap-zolt
+      - name: Put Zolt on PATH
+        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+      - name: Build and run the published-shaped native consumers
+        run: |
+          ./scripts/release-bundle
+          LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-native-verify
+
   release:
+    needs: native-gate
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -52,6 +75,8 @@ jobs:
           ./scripts/api-compatibility --baseline
           ./scripts/release-bundle --sign
           ./scripts/zolt-publication-check
+          LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-verify
+          LOGYARD_BENCHMARK_SKIP_RELEASE=1 ./scripts/benchmark-smoke
       - name: Create the Central Portal archive
         env:
           LOGYARD_GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
@@ -83,8 +108,13 @@ jobs:
         run: |
           version="$(cat target/release-bundle/VERSION)"
           archive="target/logyard-$version-central-bundle.zip"
+          release_flags=()
+          if [[ "$version" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
           gh release create "$GITHUB_REF_NAME" \
             "$archive" "$archive.sha256" "$archive.asc" \
             --title "Logyard $version" \
             --generate-notes \
+            "${release_flags[@]}" \
             --verify-tag

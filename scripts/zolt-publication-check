@@ -36,6 +36,11 @@ if [[ "$status" -eq 0 ]]; then
   exit 0
 fi
 
+if [[ "$VERSION" != *-SNAPSHOT ]]; then
+  printf 'Zolt Central publication preflight failed for release %s.\n' "$VERSION" >&2
+  exit 1
+fi
+
 expected_members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli zolt-members "$ROOT" | tr ',' '\n' | wc -l | tr -d ' ')"
 blockers="$(awk '/^Blockers:$/ { inside = 1; next } inside && /^- / { print }' "$REPORT")"
 actual_blockers="$(printf '%s\n' "$blockers" | sed '/^$/d' | wc -l | tr -d ' ')"
