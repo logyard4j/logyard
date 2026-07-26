@@ -17,8 +17,11 @@ ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
   --test com.zsumz.logyard.output.json.file.ActiveDataFileFailureTest \
   --test com.zsumz.logyard.output.json.file.JsonFileSinkInitializationTest \
   --test com.zsumz.logyard.output.json.file.JsonFileSinkIdentityTest \
+  --test com.zsumz.logyard.output.json.file.JsonFileTimedFlushTest \
   --test com.zsumz.logyard.output.json.file.RotatingFileWriterFailureTest \
   --test com.zsumz.logyard.output.json.file.rotation.ArchiveMaintenanceLifecycleTest \
+  --test com.zsumz.logyard.output.json.stream.JsonLinesSinkFailureTest \
+  --test com.zsumz.logyard.output.json.stream.JsonLinesTimedFlushTest \
   --no-progress \
   --color never
 

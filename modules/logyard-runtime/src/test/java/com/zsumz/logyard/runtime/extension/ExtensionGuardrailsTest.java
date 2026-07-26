@@ -6,10 +6,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.spi.encoding.EventEncoder;
+import com.zsumz.logyard.api.spi.encoding.EventEncoderBoundary;
 import com.zsumz.logyard.api.spi.processing.EventProcessor;
 import org.junit.jupiter.api.Test;
 
 final class ExtensionGuardrailsTest {
+    @Test
+    void runtimeEncoderGuardDelegatesToTheSharedIdempotentBoundary() {
+        EventEncoder guarded = EventEncoderBoundary.guard(event -> "{}");
+        assertSame(guarded, ExtensionGuardrails.encoder(guarded));
+    }
+
     @Test
     void providerEnrichersCannotSilentlyDropEvents() {
         LogEvent event = new LogEvent(

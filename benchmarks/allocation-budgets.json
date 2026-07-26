@@ -152,6 +152,10 @@
       "maxBytesPerOperation": 4096
     },
     {
+      "benchmark": "com.zsumz.logyard.benchmarks.output.TimedFlushBenchmark.recordWhileFlushPending",
+      "maxBytesPerOperation": 1
+    },
+    {
       "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
       "params": {"mdcEntries": "0"},
       "maxBytesPerOperation": 5120

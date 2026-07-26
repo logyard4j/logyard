@@ -3,11 +3,14 @@ package com.zsumz.logyard.output.json.file;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.encoding.EventEncoder;
+import com.zsumz.logyard.api.spi.encoding.EventEncoderBoundary;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 import com.zsumz.logyard.output.json.encoding.JsonEncoder;
 import com.zsumz.logyard.output.json.encoding.ResourceAttributes;
 import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
+import com.zsumz.logyard.output.json.flush.FlushScheduler;
+import com.zsumz.logyard.output.json.flush.TimedFlushController;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -32,8 +35,7 @@ public final class JsonFileSink implements EventSink, HealthContributor {
     private final EventEncoder encoder;
     private final RotatingFileWriter writer;
     private final RotationPolicy rotationPolicy;
-    private final long flushIntervalNanos;
-    private long nextFlushNanos;
+    private final TimedFlushController timedFlush;
     private volatile boolean active;
     private volatile boolean closed;
 
@@ -68,31 +70,38 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             Duration flushInterval,
             boolean append,
             RotationPolicy rotationPolicy) {
-        this(path, encoder, bufferBytes, flushInterval, append, rotationPolicy, true);
+        this(
+                path,
+                encoder,
+                bufferBytes,
+                flushInterval,
+                append,
+                rotationPolicy,
+                true,
+                FlushScheduler.shared(),
+                BufferedFileWriter::open);
     }
 
-    private JsonFileSink(
+    JsonFileSink(
             Path path,
             EventEncoder encoder,
             int bufferBytes,
             Duration flushInterval,
             boolean append,
             RotationPolicy rotationPolicy,
-            boolean active) {
+            boolean active,
+            FlushScheduler scheduler,
+            DataFileOpener dataFiles) {
         this.path = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
-        this.encoder = Objects.requireNonNull(encoder, "encoder");
-        Objects.requireNonNull(flushInterval, "flushInterval");
-        if (flushInterval.isNegative()) {
-            throw new IllegalArgumentException("flush interval must not be negative");
-        }
+        this.encoder = EventEncoderBoundary.guard(encoder);
         if (bufferBytes < MIN_BUFFER_BYTES || bufferBytes > MAX_BUFFER_BYTES) {
             throw new IllegalArgumentException(
                     "JSON buffer must be between " + MIN_BUFFER_BYTES + " and " + MAX_BUFFER_BYTES + " bytes");
         }
         this.rotationPolicy = rotationPolicy;
-        flushIntervalNanos = saturatedNanos(flushInterval);
-        nextFlushNanos = System.nanoTime() + flushIntervalNanos;
-        writer = new RotatingFileWriter(this.path, bufferBytes, append, rotationPolicy);
+        timedFlush = new TimedFlushController(flushInterval, Objects.requireNonNull(scheduler, "scheduler"), this::flushOnDeadline);
+        writer = new RotatingFileWriter(
+                this.path, bufferBytes, append, rotationPolicy, Objects.requireNonNull(dataFiles, "dataFiles"));
         this.active = active;
         if (active) {
             writer.initializeForDirectUse();
@@ -117,7 +126,16 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             Duration flushInterval,
             boolean append,
             RotationPolicy rotationPolicy) {
-        return new JsonFileSink(path, encoder, bufferBytes, flushInterval, append, rotationPolicy, false);
+        return new JsonFileSink(
+                path,
+                encoder,
+                bufferBytes,
+                flushInterval,
+                append,
+                rotationPolicy,
+                false,
+                FlushScheduler.shared(),
+                BufferedFileWriter::open);
     }
 
     /**
@@ -147,11 +165,12 @@ public final class JsonFileSink implements EventSink, HealthContributor {
         byte[] json = encoder.encode(Objects.requireNonNull(event, "event")).getBytes(StandardCharsets.UTF_8);
         synchronized (writerState) {
             ensureOpen();
-            writer.writeRecord(json, (byte) '\n');
-            long now = System.nanoTime();
-            if (flushIntervalNanos == 0 || now >= nextFlushNanos) {
-                writer.flush();
-                nextFlushNanos = now + flushIntervalNanos;
+            try {
+                writer.writeRecord(json, (byte) '\n');
+                timedFlush.recordWritten();
+            } catch (RuntimeException | Error failure) {
+                timedFlush.cancelPending();
+                throw failure;
             }
         }
     }
@@ -163,7 +182,11 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             if (!active) {
                 return;
             }
-            writer.flushIfInitialized();
+            try {
+                writer.flushIfInitialized();
+            } finally {
+                timedFlush.flushed();
+            }
         }
     }
 
@@ -174,6 +197,7 @@ public final class JsonFileSink implements EventSink, HealthContributor {
                 return;
             }
             closed = true;
+            timedFlush.close();
             writer.close();
         }
     }
@@ -199,11 +223,16 @@ public final class JsonFileSink implements EventSink, HealthContributor {
         }
     }
 
-    private static long saturatedNanos(Duration duration) {
-        try {
-            return duration.toNanos();
-        } catch (ArithmeticException overflow) {
-            return Long.MAX_VALUE;
+    private void flushOnDeadline() {
+        synchronized (writerState) {
+            if (closed || !active) {
+                return;
+            }
+            try {
+                writer.flushIfInitialized();
+            } finally {
+                timedFlush.flushed();
+            }
         }
     }
 }

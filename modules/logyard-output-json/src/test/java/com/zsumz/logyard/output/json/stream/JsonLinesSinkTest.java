@@ -55,7 +55,7 @@ final class JsonLinesSinkTest {
             encodingStarted.countDown();
             await(allowEncoding);
             return event.messageTemplate();
-        }, Duration.ofDays(1L), false);
+        }, Duration.ofMinutes(1L), false);
         ExecutorService publisher = Executors.newSingleThreadExecutor();
         try {
             Future<?> accepted = publisher.submit(() -> sink.accept(event("pending")));

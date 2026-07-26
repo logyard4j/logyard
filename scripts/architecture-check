@@ -813,9 +813,16 @@ BOUND_CONTRACTS = {
         "MAX_PROVIDERS = 64",
         "duplicate Logyard",
     ),
-    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/extension/ExtensionGuardrails.java": (
+    "modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/encoding/EventEncoderBoundary.java": (
         "MAX_ENCODED_UTF8_BYTES = 1_048_576",
         "must return exactly one record without line breaks",
+    ),
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/extension/ExtensionGuardrails.java": (
+        "EventEncoderBoundary.guard(delegate)",
+    ),
+    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/SharedFlushScheduler.java": (
+        "new ScheduledThreadPoolExecutor(2",
+        "setRemoveOnCancelPolicy(true)",
     ),
     "modules/logyard-core/src/main/java/com/zsumz/logyard/core/processing/RateLimitProcessor.java": (
         "maxKeys > 4_096",

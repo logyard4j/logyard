@@ -1,12 +1,16 @@
 package com.zsumz.logyard.runtime.assembly.output;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
 import com.zsumz.logyard.api.spi.encoding.EventEncoder;
+import com.zsumz.logyard.api.spi.encoding.EventEncoderBoundary;
+import com.zsumz.logyard.api.spi.encoding.EventEncoderProvider;
 import com.zsumz.logyard.api.spi.formatting.TextFormatter;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.loading.LogyardConfigLoader;
@@ -16,6 +20,7 @@ import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 final class OutputResolverTest {
@@ -44,6 +49,51 @@ final class OutputResolverTest {
         assertEquals("application/json; charset=utf-8", encoder.mediaType());
         assertTrue(encoded.contains("\"msg\":\"hello\""));
         assertTrue(encoded.contains("\"service.name\":\"test-service\""));
+    }
+
+    @Test
+    void runtimeResolvedProviderEncoderUsesTheSharedRecordBoundary() {
+        AtomicReference<String> encoded = new AtomicReference<>("{}");
+        EventEncoderProvider provider = new EventEncoderProvider() {
+            @Override
+            public String name() {
+                return "contract";
+            }
+
+            @Override
+            public EventEncoder create(ProviderConfiguration configuration) {
+                return event -> encoded.get();
+            }
+        };
+        LogyardConfig config = LogyardConfigLoader.parse("""
+                schema = 1
+                [service]
+                name = "test-service"
+                [delivery]
+                mode = "sync"
+                [encoders.contract]
+                type = "custom"
+                provider = "contract"
+                [loggers]
+                root = { level = "info", outputs = ["console"] }
+                [outputs.console]
+                type = "console"
+                """, "provider-encoder.toml", Path.of("."), Map.of());
+        ExtensionRegistry extensions = new ExtensionRegistry(Map.of(), Map.of("contract", provider), Map.of(), Map.of());
+        EventEncoder resolved = EncoderResolver.resolve(config, "contract", EncoderResolver.resource(config), extensions);
+
+        for (String invalid : new String[] {
+                null,
+                "first\nsecond",
+                "first\rsecond",
+                "x".repeat(EventEncoderBoundary.MAX_ENCODED_UTF8_BYTES + 1),
+                "\u00e9".repeat(EventEncoderBoundary.MAX_ENCODED_UTF8_BYTES / 2 + 1)
+        }) {
+            encoded.set(invalid);
+            assertThrows(RuntimeException.class, () -> resolved.encode(event()));
+        }
+        encoded.set("{\"valid\":true}");
+        assertEquals("{\"valid\":true}", resolved.encode(event()));
     }
 
     private static LogyardConfig config() {
