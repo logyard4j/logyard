@@ -63,22 +63,7 @@ public final class TimedFlushController implements AutoCloseable {
             tasks.own(candidate);
         }
 
-        scheduleInitial(candidate);
-    }
-
-    private void scheduleInitial(TimedFlushTask candidate) {
-        try {
-            attachScheduled(candidate, interval);
-        } catch (Throwable schedulingFailure) {
-            try {
-                FailureIsolation.prepareForRecovery(schedulingFailure);
-            } catch (Throwable fatalFailure) {
-                abandon(candidate);
-                throw fatalFailure;
-            }
-            diagnostics.report(schedulingFailure);
-            runInline(candidate);
-        }
+        scheduleOrRunInline(candidate, interval);
     }
 
     public void flushed() { cancelPending(); }
@@ -141,13 +126,7 @@ public final class TimedFlushController implements AutoCloseable {
             tasks.own(retry);
             retryDelay = dispatchRetry.nextDelay();
         }
-        try {
-            attachScheduled(retry, retryDelay);
-        } catch (Throwable schedulingFailure) {
-            abandon(retry);
-            FailureIsolation.prepareForRecovery(schedulingFailure);
-            diagnostics.report(schedulingFailure);
-        }
+        scheduleOrRunInline(retry, retryDelay);
     }
 
     private void runDispatched(TimedFlushTask due) {
@@ -225,6 +204,24 @@ public final class TimedFlushController implements AutoCloseable {
         }
         if (cancel) {
             candidate.cancel();
+        }
+    }
+
+    private void scheduleOrRunInline(TimedFlushTask task, Duration delay) {
+        try {
+            attachScheduled(task, delay);
+        } catch (Throwable schedulingFailure) {
+            try {
+                FailureIsolation.prepareForRecovery(schedulingFailure);
+            } catch (Throwable fatalFailure) {
+                abandon(task);
+                throw fatalFailure;
+            }
+            try {
+                runInline(task);
+            } finally {
+                diagnostics.report(schedulingFailure);
+            }
         }
     }
 

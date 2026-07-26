@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.PrintStream;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -109,6 +111,42 @@ final class TimedFlushFailureIsolationTest {
         assertEquals(1, scheduled.pendingCount());
         scheduled.runNext();
         assertEquals(1, flushes.get());
+        controller.close();
+    }
+
+    @Test
+    void recoverableRetrySchedulingFailureFlushesInlineWithoutAnotherRecord() {
+        ManualFlushScheduler scheduled = new ManualFlushScheduler();
+        AtomicInteger schedules = new AtomicInteger();
+        FlushScheduler scheduler = (delay, action) -> {
+            if (schedules.incrementAndGet() == 2) {
+                throw new RejectedExecutionException("injected retry scheduling failure");
+            }
+            return scheduled.schedule(delay, action);
+        };
+        RejectOnceDispatcher dispatcher = new RejectOnceDispatcher();
+        List<Throwable> diagnostics = new ArrayList<>();
+        AtomicInteger flushes = new AtomicInteger();
+        AtomicReference<TimedFlushController> reference = new AtomicReference<>();
+        TimedFlushController controller = new TimedFlushController(
+                Duration.ofSeconds(1L), scheduler, dispatcher, diagnostics::add, () -> {
+                    flushes.incrementAndGet();
+                    reference.get().flushCompleted();
+                });
+        reference.set(controller);
+
+        controller.recordWritten();
+        scheduled.runNext();
+
+        assertEquals(1, flushes.get());
+        assertEquals(1, dispatcher.attempts.get());
+        assertEquals(2, schedules.get());
+        assertEquals(2, diagnostics.size());
+        assertEquals(0, scheduled.pendingCount());
+
+        controller.recordWritten();
+        assertEquals(3, schedules.get());
+        assertEquals(1, scheduled.pendingCount());
         controller.close();
     }
 
