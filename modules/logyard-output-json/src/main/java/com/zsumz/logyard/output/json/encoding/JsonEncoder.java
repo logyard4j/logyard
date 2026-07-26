@@ -1,23 +1,19 @@
 package com.zsumz.logyard.output.json.encoding;
 
-import com.zsumz.logyard.api.event.ExceptionSnapshot;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.spi.encoding.EventEncoder;
 
 import java.time.Instant;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.Objects;
 import java.util.Set;
 
-/** Direct, non-thread-safe JSON encoder for Logyard's event model. No event tree is created. */
+/** Thread-safe direct JSON encoder for Logyard's event model. No event tree is created. */
 public final class JsonEncoder implements EventEncoder {
     private final ResourceAttributes resource;
     private final JsonProfile profile;
     private final JsonWriter json = new JsonWriter(1024);
-    private final IdentityHashMap<ExceptionSnapshot, Boolean> renderedExceptions = new IdentityHashMap<>();
-    private int remainingExceptionNodes;
+    private final JsonExceptionWriter exceptions = new JsonExceptionWriter(json);
 
     public JsonEncoder(ResourceAttributes resource) {
         this(resource, JsonProfile.named("logyard"));
@@ -29,10 +25,9 @@ public final class JsonEncoder implements EventEncoder {
     }
 
     @Override
-    public String encode(LogEvent event) {
+    public synchronized String encode(LogEvent event) {
         Objects.requireNonNull(event, "event");
-        renderedExceptions.clear();
-        remainingExceptionNodes = CaptureLimits.MAX_EVENT_EXCEPTION_NODES;
+        exceptions.reset();
         json.reset();
         try {
             return encodeEvent(event);
@@ -71,7 +66,7 @@ public final class JsonEncoder implements EventEncoder {
         }
         if (event.exception() != null && profile.emits("exception")) {
             first = beginField(first, profile.outputName("exception"));
-            exception(event.exception(), 0);
+            exceptions.write(event.exception());
         }
         if (json.traversalTruncated() || event.renderedMessageTruncated()) {
             first = beginField(first, "logyard.output.truncated");
@@ -166,72 +161,6 @@ public final class JsonEncoder implements EventEncoder {
         }
         json.name(outputName);
         return false;
-    }
-
-    private void exception(ExceptionSnapshot exception, int depth) {
-        if (depth >= ExceptionSnapshot.MAX_CAUSE_DEPTH) {
-            json.markTraversalTruncated();
-            json.string("[maximum exception rendering depth reached]");
-            return;
-        }
-        if (remainingExceptionNodes == 0 || renderedExceptions.put(exception, Boolean.TRUE) != null) {
-            json.markTraversalTruncated();
-            json.string("[shared or bounded exception reference]");
-            return;
-        }
-        remainingExceptionNodes--;
-        json.beginObject();
-        json.field("type", exception.type());
-        if (exception.message() != null) {
-            json.comma();
-            json.field("message", exception.message());
-        }
-        json.comma();
-        json.name("stacktrace");
-        json.beginArray();
-        for (int index = 0; index < exception.frames().size(); index++) {
-            if (!json.claimEntry()) {
-                if (index > 0) {
-                    json.comma();
-                }
-                json.string("[output traversal budget exhausted]");
-                break;
-            }
-            if (index > 0) {
-                json.comma();
-            }
-            json.string(exception.frames().get(index).toString());
-        }
-        json.endArray();
-        if (exception.truncated()) {
-            json.comma();
-            json.field("truncated", true);
-        }
-        if (!exception.suppressed().isEmpty()) {
-            json.comma();
-            json.name("suppressed");
-            json.beginArray();
-            for (int index = 0; index < exception.suppressed().size(); index++) {
-                if (!json.claimEntry()) {
-                    if (index > 0) {
-                        json.comma();
-                    }
-                    json.string("[output traversal budget exhausted]");
-                    break;
-                }
-                if (index > 0) {
-                    json.comma();
-                }
-                exception(exception.suppressed().get(index), depth + 1);
-            }
-            json.endArray();
-        }
-        if (exception.cause() != null) {
-            json.comma();
-            json.name("cause");
-            exception(exception.cause(), depth + 1);
-        }
-        json.endObject();
     }
 
     private String encodeTruncatedFallback(LogEvent event) {

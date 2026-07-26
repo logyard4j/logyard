@@ -815,7 +815,11 @@ BOUND_CONTRACTS = {
     ),
     "modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/encoding/EventEncoderBoundary.java": (
         "MAX_ENCODED_UTF8_BYTES = 1_048_576",
+        "record.length() > MAX_ENCODED_UTF8_BYTES",
         "must return exactly one record without line breaks",
+    ),
+    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/encoding/JsonEncoder.java": (
+        "public synchronized String encode(LogEvent event)",
     ),
     "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/extension/ExtensionGuardrails.java": (
         "EventEncoderBoundary.guard(delegate)",
@@ -823,6 +827,14 @@ BOUND_CONTRACTS = {
     "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/SharedFlushScheduler.java": (
         "new ScheduledThreadPoolExecutor(2",
         "setRemoveOnCancelPolicy(true)",
+    ),
+    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/TimedFlushController.java": (
+        "dispatcher.dispatch(() -> runDispatched(due))",
+    ),
+    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/VirtualThreadFlushDispatcher.java": (
+        "Thread.ofVirtual()",
+        ".inheritInheritableThreadLocals(false)",
+        "thread.setContextClassLoader(null)",
     ),
     "modules/logyard-core/src/main/java/com/zsumz/logyard/core/processing/RateLimitProcessor.java": (
         "maxKeys > 4_096",

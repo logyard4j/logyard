@@ -50,14 +50,21 @@ public final class EventEncoderBoundary {
 
     private static String validRecord(String candidate) {
         String record = Objects.requireNonNull(candidate, "event encoder returned null");
+        if (record.length() > MAX_ENCODED_UTF8_BYTES) {
+            throw oversizedRecord();
+        }
         if (record.indexOf('\r') >= 0 || record.indexOf('\n') >= 0) {
             throw new IllegalArgumentException("event encoder must return exactly one record without line breaks");
         }
         if (utf8LengthExceedsBoundary(record)) {
-            throw new IllegalArgumentException(
-                    "event encoder record exceeds " + MAX_ENCODED_UTF8_BYTES + " UTF-8 bytes");
+            throw oversizedRecord();
         }
         return record;
+    }
+
+    private static IllegalArgumentException oversizedRecord() {
+        return new IllegalArgumentException(
+                "event encoder record exceeds " + MAX_ENCODED_UTF8_BYTES + " UTF-8 bytes");
     }
 
     private static boolean containsControl(String value) {

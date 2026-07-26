@@ -7,7 +7,8 @@ import com.zsumz.logyard.api.event.LogEvent;
  *
  * <p>Logyard rejects {@code null}, embedded CR/LF framing, invalid media types, and
  * records larger than the runtime encoder bound. An encoder instance belongs to
- * one output in one immutable runtime plan and should not retain application
+ * one output in one immutable runtime plan, may be invoked concurrently, and
+ * must therefore be thread-safe or reentrant. It should not retain application
  * objects beyond an invocation.</p>
  */
 @FunctionalInterface

@@ -95,6 +95,10 @@ final class RotatingFileWriter implements AutoCloseable {
         return active.present();
     }
 
+    boolean terminallyFailed() {
+        return lifecycle.state() == WriterLifecycle.State.FAILED;
+    }
+
     WriterHealthSnapshot healthSnapshot() {
         ArchiveMaintenance currentMaintenance = maintenance;
         Throwable writerFailure = lifecycle.failure();

@@ -6,6 +6,7 @@ import com.zsumz.logyard.api.spi.encoding.EventEncoderBoundary;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.output.json.flush.FlushScheduler;
 import com.zsumz.logyard.output.json.flush.TimedFlushController;
 import java.io.IOException;
@@ -60,7 +61,7 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
                 writer.write(encoded);
                 writer.write('\n');
                 timedFlush.recordWritten();
-            } catch (IOException failure) {
+            } catch (Throwable failure) {
                 throw fail("failed to write Logyard JSON event", failure);
             }
         }
@@ -72,7 +73,7 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
             requireOpen();
             try {
                 writer.flush();
-            } catch (IOException failure) {
+            } catch (Throwable failure) {
                 throw fail("failed to flush Logyard JSON output", failure);
             } finally {
                 timedFlush.flushed();
@@ -83,12 +84,13 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
     @Override
     public void close() {
         synchronized (writerState) {
-            if (state.closed()) {
+            if (!state.startClose()) {
                 return;
             }
-            timedFlush.close();
-            IOException primaryFailure = state.failure();
-            state.close();
+        }
+        timedFlush.close();
+        synchronized (writerState) {
+            Throwable primaryFailure = state.failure();
             if (primaryFailure != null) {
                 closeAfterFailure(primaryFailure);
                 return;
@@ -99,8 +101,8 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
                 } else {
                     writer.flush();
                 }
-            } catch (IOException failure) {
-                throw new UncheckedIOException("failed to close Logyard JSON output", failure);
+            } catch (Throwable failure) {
+                throw fail("failed to close Logyard JSON output", failure);
             }
         }
     }
@@ -125,37 +127,52 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
 
     private void flushOnDeadline() {
         synchronized (writerState) {
-            if (state.closed() || state.failed()) {
+            if (!timedFlush.flushIsCurrent() || state.failed()) {
                 return;
             }
             try {
                 writer.flush();
-            } catch (IOException failure) {
+            } catch (Throwable failure) {
                 throw fail("failed to flush Logyard JSON output on schedule", failure);
             } finally {
-                timedFlush.flushed();
+                timedFlush.flushCompleted();
             }
         }
     }
 
-    private UncheckedIOException fail(String message, IOException failure) {
+    private RuntimeException fail(String message, Throwable failure) {
+        FailureIsolation.prepareForRecovery(failure);
         state.failed(failure);
         timedFlush.cancelPending();
-        return new UncheckedIOException(message, failure);
+        return unchecked(message, failure);
     }
 
-    private void closeAfterFailure(IOException primaryFailure) {
+    private void closeAfterFailure(Throwable primaryFailure) {
         if (!closeWriter) {
             return;
         }
         try {
             writer.close();
-        } catch (IOException cleanupFailure) {
+        } catch (Throwable cleanupFailure) {
+            FailureIsolation.prepareForRecovery(cleanupFailure);
             if (cleanupFailure != primaryFailure) {
                 primaryFailure.addSuppressed(cleanupFailure);
             }
-            throw new UncheckedIOException("failed to close failed Logyard JSON output", primaryFailure);
+            throw unchecked("failed to close failed Logyard JSON output", primaryFailure);
         }
+    }
+
+    private static RuntimeException unchecked(String message, Throwable failure) {
+        if (failure instanceof IOException checked) {
+            return new UncheckedIOException(message, checked);
+        }
+        if (failure instanceof RuntimeException unchecked) {
+            return unchecked;
+        }
+        if (failure instanceof Error error) {
+            throw error;
+        }
+        return new IllegalStateException(message, failure);
     }
 
     private void requireOpen() {

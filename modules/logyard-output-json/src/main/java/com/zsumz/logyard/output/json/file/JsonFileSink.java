@@ -55,12 +55,7 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             Duration flushInterval,
             boolean append,
             RotationPolicy rotationPolicy) {
-        this(path,
-                new JsonEncoder(Objects.requireNonNull(resource, "resource")),
-                bufferBytes,
-                flushInterval,
-                append,
-                rotationPolicy);
+        this(path, new JsonEncoder(Objects.requireNonNull(resource, "resource")), bufferBytes, flushInterval, append, rotationPolicy);
     }
 
     public JsonFileSink(
@@ -169,7 +164,9 @@ public final class JsonFileSink implements EventSink, HealthContributor {
                 writer.writeRecord(json, (byte) '\n');
                 timedFlush.recordWritten();
             } catch (RuntimeException | Error failure) {
-                timedFlush.cancelPending();
+                if (writer.terminallyFailed()) {
+                    timedFlush.cancelPending();
+                }
                 throw failure;
             }
         }
@@ -197,7 +194,9 @@ public final class JsonFileSink implements EventSink, HealthContributor {
                 return;
             }
             closed = true;
-            timedFlush.close();
+        }
+        timedFlush.close();
+        synchronized (writerState) {
             writer.close();
         }
     }
@@ -225,13 +224,13 @@ public final class JsonFileSink implements EventSink, HealthContributor {
 
     private void flushOnDeadline() {
         synchronized (writerState) {
-            if (closed || !active) {
+            if (!timedFlush.flushIsCurrent() || closed || !active) {
                 return;
             }
             try {
                 writer.flushIfInitialized();
             } finally {
-                timedFlush.flushed();
+                timedFlush.flushCompleted();
             }
         }
     }

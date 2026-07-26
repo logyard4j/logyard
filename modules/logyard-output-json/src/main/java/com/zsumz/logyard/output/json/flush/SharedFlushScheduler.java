@@ -29,7 +29,12 @@ final class SharedFlushScheduler implements FlushScheduler {
 
         @Override
         public Thread newThread(Runnable task) {
-            Thread thread = new Thread(task, "logyard-json-flush-" + sequence.incrementAndGet());
+            Thread thread = new Thread(
+                    null,
+                    task,
+                    "logyard-json-flush-deadline-" + sequence.incrementAndGet(),
+                    0L,
+                    false);
             thread.setDaemon(true);
             thread.setContextClassLoader(null);
             return thread;

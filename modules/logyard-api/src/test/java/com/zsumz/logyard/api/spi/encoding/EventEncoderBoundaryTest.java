@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class EventEncoderBoundaryTest {
     private static final LogEvent EVENT = new LogEvent(
@@ -27,6 +28,9 @@ final class EventEncoderBoundaryTest {
         EventEncoder exactAscii = EventEncoderBoundary.guard(
                 event -> "a".repeat(EventEncoderBoundary.MAX_ENCODED_UTF8_BYTES));
         assertEquals(EventEncoderBoundary.MAX_ENCODED_UTF8_BYTES, exactAscii.encode(EVENT).length());
+        EventEncoder exactMultibyte = EventEncoderBoundary.guard(
+                event -> "\u00e9".repeat(EventEncoderBoundary.MAX_ENCODED_UTF8_BYTES / 2));
+        assertEquals(EventEncoderBoundary.MAX_ENCODED_UTF8_BYTES / 2, exactMultibyte.encode(EVENT).length());
 
         assertRejected(
                 event -> "a".repeat(EventEncoderBoundary.MAX_ENCODED_UTF8_BYTES + 1),
@@ -71,6 +75,16 @@ final class EventEncoderBoundaryTest {
     void guardingIsIdempotent() {
         EventEncoder guarded = EventEncoderBoundary.guard(event -> "{}");
         assertSame(guarded, EventEncoderBoundary.guard(guarded));
+    }
+
+    @Test
+    void rejectsImpossibleCharacterCountsBeforeFramingAndUtf8Scans() {
+        EventEncoder guarded = EventEncoderBoundary.guard(
+                event -> "a".repeat(EventEncoderBoundary.MAX_ENCODED_UTF8_BYTES) + '\n');
+
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class, () -> guarded.encode(EVENT));
+
+        assertTrue(failure.getMessage().contains("UTF-8 bytes"));
     }
 
     private static void assertRejected(EventEncoder encoder, Class<? extends Throwable> failureType) {

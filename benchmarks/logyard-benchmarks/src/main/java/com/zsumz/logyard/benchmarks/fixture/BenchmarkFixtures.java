@@ -28,7 +28,7 @@ public final class BenchmarkFixtures {
         return new ObservedRuntime(runtime(level, outputCount, sink), sink);
     }
 
-    private static DefaultLogyardRuntime runtime(Level level, int outputCount, EventSink sink) {
+    public static DefaultLogyardRuntime runtime(Level level, int outputCount, EventSink sink) {
         Map<String, EventSink> outputs = new LinkedHashMap<>();
         for (int index = 0; index < outputCount; index++) {
             outputs.put("output-" + index, sink);

@@ -4,9 +4,12 @@ import com.zsumz.logyard.output.json.testing.ManualFlushScheduler;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 final class TimedFlushControllerTest {
@@ -14,7 +17,7 @@ final class TimedFlushControllerTest {
     void oneTaskCoversEveryRecordUntilTheOutputIsFlushed() {
         ManualFlushScheduler scheduler = new ManualFlushScheduler();
         AtomicInteger flushes = new AtomicInteger();
-        TimedFlushController controller = new TimedFlushController(Duration.ofSeconds(1L), scheduler, flushes::incrementAndGet);
+        TimedFlushController controller = controller(Duration.ofSeconds(1L), scheduler, flushes::incrementAndGet);
 
         controller.recordWritten();
         controller.recordWritten();
@@ -33,8 +36,7 @@ final class TimedFlushControllerTest {
     @Test
     void explicitFlushAndCloseCancelPendingTasks() {
         ManualFlushScheduler scheduler = new ManualFlushScheduler();
-        TimedFlushController controller = new TimedFlushController(Duration.ofSeconds(1L), scheduler, () -> {
-        });
+        TimedFlushController controller = controller(Duration.ofSeconds(1L), scheduler, () -> { });
 
         controller.recordWritten();
         controller.flushed();
@@ -50,7 +52,7 @@ final class TimedFlushControllerTest {
     void zeroIntervalFlushesSynchronouslyWithoutScheduling() {
         ManualFlushScheduler scheduler = new ManualFlushScheduler();
         AtomicInteger flushes = new AtomicInteger();
-        TimedFlushController controller = new TimedFlushController(Duration.ZERO, scheduler, flushes::incrementAndGet);
+        TimedFlushController controller = controller(Duration.ZERO, scheduler, flushes::incrementAndGet);
 
         controller.recordWritten();
         controller.recordWritten();
@@ -69,7 +71,7 @@ final class TimedFlushControllerTest {
             return () -> {
             };
         };
-        TimedFlushController controller = new TimedFlushController(Duration.ofSeconds(1L), immediate, flushes::incrementAndGet);
+        TimedFlushController controller = controller(Duration.ofSeconds(1L), immediate, flushes::incrementAndGet);
 
         controller.recordWritten();
         controller.recordWritten();
@@ -86,6 +88,8 @@ final class TimedFlushControllerTest {
                 (delay, action) -> {
                     throw new IllegalStateException("scheduler unavailable");
                 },
+                new ImmediateDispatcher(),
+                failure -> { },
                 flushes::incrementAndGet);
 
         controller.recordWritten();
@@ -101,5 +105,50 @@ final class TimedFlushControllerTest {
         assertThrows(IllegalArgumentException.class, () -> new TimedFlushController(
                 Duration.ofMinutes(1L).plusNanos(1L), () -> {
                 }));
+    }
+
+    @Test
+    void uncheckedTaskFailureCrossesTheBoundedDiagnosticBoundary() {
+        ManualFlushScheduler scheduler = new ManualFlushScheduler();
+        List<Throwable> reported = new ArrayList<>();
+        IllegalStateException failure = new IllegalStateException("injected");
+        TimedFlushController controller = new TimedFlushController(
+                Duration.ofSeconds(1L), scheduler, new ImmediateDispatcher(), reported::add, () -> {
+                    throw failure;
+                });
+
+        controller.recordWritten();
+        scheduler.runNext();
+
+        assertEquals(1, reported.size());
+        assertSame(failure, reported.get(0));
+        controller.recordWritten();
+        assertEquals(2, scheduler.scheduledCount());
+        controller.close();
+    }
+
+    private static TimedFlushController controller(Duration interval, FlushScheduler scheduler, Runnable action) {
+        return new TimedFlushController(interval, scheduler, new ImmediateDispatcher(), failure -> { }, action);
+    }
+
+    private static final class ImmediateDispatcher implements FlushDispatcher {
+        @Override
+        public DispatchedFlush dispatch(Runnable action) {
+            action.run();
+            return new DispatchedFlush() {
+                @Override
+                public void cancel() {
+                }
+
+                @Override
+                public void awaitCompletion() {
+                }
+
+                @Override
+                public boolean completed() {
+                    return true;
+                }
+            };
+        }
     }
 }

@@ -1,8 +1,11 @@
 package com.zsumz.logyard.output.json.flush;
 
 import com.zsumz.logyard.api.annotation.InternalApi;
+import com.zsumz.logyard.api.failure.FailureIsolation;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /** Maintains at most one pending one-shot flush for a dirty JSON output. */
@@ -12,17 +15,29 @@ public final class TimedFlushController implements AutoCloseable {
 
     private final Duration interval;
     private final FlushScheduler scheduler;
+    private final FlushDispatcher dispatcher;
+    private final FlushDiagnostics diagnostics;
     private final Runnable flushAction;
-    private PendingFlush pending;
+    private final List<TimedFlushTask> retiring = new ArrayList<>(1);
+    private TimedFlushTask owned;
+    private boolean transportCompleted;
+    private boolean rescheduleNeeded;
     private boolean closed;
 
     public TimedFlushController(Duration interval, Runnable flushAction) {
-        this(interval, SharedFlushScheduler.INSTANCE, flushAction);
+        this(interval, SharedFlushScheduler.INSTANCE, VirtualThreadFlushDispatcher.INSTANCE, FlushDiagnostics.STDERR, flushAction);
     }
 
     public TimedFlushController(Duration interval, FlushScheduler scheduler, Runnable flushAction) {
+        this(interval, scheduler, VirtualThreadFlushDispatcher.INSTANCE, FlushDiagnostics.STDERR, flushAction);
+    }
+
+    TimedFlushController(
+            Duration interval, FlushScheduler scheduler, FlushDispatcher dispatcher, FlushDiagnostics diagnostics, Runnable flushAction) {
         this.interval = validInterval(interval);
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
+        this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher");
+        this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
         this.flushAction = Objects.requireNonNull(flushAction, "flushAction");
     }
 
@@ -37,42 +52,45 @@ public final class TimedFlushController implements AutoCloseable {
             return;
         }
 
-        PendingFlush candidate;
+        TimedFlushTask candidate;
         synchronized (this) {
-            if (closed || pending != null) {
+            if (closed) {
                 return;
             }
-            candidate = new PendingFlush();
-            pending = candidate;
+            if (owned != null) {
+                rescheduleNeeded |= transportCompleted;
+                return;
+            }
+            candidate = new TimedFlushTask();
+            owned = candidate;
         }
 
         try {
             FlushScheduler.ScheduledFlush scheduled = scheduler.schedule(interval, () -> runDue(candidate));
-            candidate.attach(scheduled);
+            candidate.attachScheduled(scheduled);
+            boolean cancel;
             synchronized (this) {
-                if (pending != candidate) {
-                    candidate.cancel();
-                }
+                cancel = owned != candidate;
             }
-        } catch (RuntimeException schedulingFailure) {
-            synchronized (this) {
-                if (pending == candidate) {
-                    pending = null;
-                }
+            if (cancel) {
+                candidate.cancel();
             }
-            flushAction.run();
+        } catch (Throwable schedulingFailure) {
+            FailureIsolation.prepareForRecovery(schedulingFailure);
+            diagnostics.report(schedulingFailure);
+            runInline(candidate);
         }
     }
 
-    public void flushed() {
-        cancelPending();
-    }
+    public void flushed() { cancelPending(); }
 
     public void cancelPending() {
-        PendingFlush canceled;
+        TimedFlushTask canceled;
         synchronized (this) {
-            canceled = pending;
-            pending = null;
+            canceled = owned;
+            owned = null;
+            transportCompleted = false;
+            rescheduleNeeded = false;
         }
         if (canceled != null) {
             canceled.cancel();
@@ -81,20 +99,100 @@ public final class TimedFlushController implements AutoCloseable {
 
     @Override
     public void close() {
+        List<TimedFlushTask> canceled;
         synchronized (this) {
             closed = true;
+            canceled = new ArrayList<>(retiring.size() + 1);
+            canceled.addAll(retiring);
+            if (owned != null) {
+                canceled.add(owned);
+            }
+            retiring.clear();
+            owned = null;
+            transportCompleted = false;
+            rescheduleNeeded = false;
         }
-        cancelPending();
+        canceled.forEach(TimedFlushTask::cancel);
+        canceled.forEach(TimedFlushTask::awaitCompletion);
     }
 
-    private void runDue(PendingFlush due) {
+    private void runDue(TimedFlushTask due) {
+        if (!due.beginDispatch()) {
+            return;
+        }
+        try {
+            due.attachDispatched(dispatcher.dispatch(() -> runDispatched(due)));
+        } catch (Throwable dispatchFailure) {
+            due.dispatchFailed();
+            complete(due);
+            FailureIsolation.prepareForRecovery(dispatchFailure);
+            diagnostics.report(dispatchFailure);
+        }
+    }
+
+    private void runDispatched(TimedFlushTask due) {
+        due.runner(Thread.currentThread());
+        try {
+            synchronized (this) {
+                if (owned != due || closed) {
+                    return;
+                }
+            }
+            flushAction.run();
+        } catch (Throwable failure) {
+            FailureIsolation.prepareForRecovery(failure);
+            diagnostics.report(failure);
+        } finally {
+            complete(due);
+        }
+    }
+
+    private void runInline(TimedFlushTask due) {
+        due.runner(Thread.currentThread());
+        try {
+            synchronized (this) {
+                if (owned != due || closed) {
+                    return;
+                }
+            }
+            flushAction.run();
+        } finally {
+            complete(due);
+        }
+    }
+
+    /** Reports whether the caller still owns the current zero-interval or dispatched flush. */
+    public synchronized boolean flushIsCurrent() {
+        return !closed && (interval.isZero() || owned != null && owned.runsOnCurrentThread());
+    }
+
+    /** Completes the current dispatched flush while its transport serialization lock is still held. */
+    public void flushCompleted() {
         synchronized (this) {
-            if (pending != due || closed) {
+            if (owned == null || !owned.runsOnCurrentThread()) {
                 return;
             }
-            pending = null;
+            transportCompleted = true;
         }
-        flushAction.run();
+    }
+
+    private void complete(TimedFlushTask due) {
+        boolean scheduleNext = false;
+        synchronized (this) {
+            retiring.removeIf(TimedFlushTask::completed);
+            if (owned == due) {
+                owned = null;
+                scheduleNext = !closed && transportCompleted && rescheduleNeeded;
+                transportCompleted = false;
+                rescheduleNeeded = false;
+            }
+            if (!closed) {
+                retiring.add(due);
+            }
+        }
+        if (scheduleNext) {
+            recordWritten();
+        }
     }
 
     private static Duration validInterval(Duration interval) {
@@ -103,24 +201,5 @@ public final class TimedFlushController implements AutoCloseable {
             throw new IllegalArgumentException("flush interval must be between 0s and 1m");
         }
         return interval;
-    }
-
-    private static final class PendingFlush {
-        private FlushScheduler.ScheduledFlush scheduled;
-        private boolean canceled;
-
-        synchronized void attach(FlushScheduler.ScheduledFlush value) {
-            scheduled = Objects.requireNonNull(value, "scheduled flush");
-            if (canceled) {
-                scheduled.cancel();
-            }
-        }
-
-        synchronized void cancel() {
-            canceled = true;
-            if (scheduled != null) {
-                scheduled.cancel();
-            }
-        }
     }
 }

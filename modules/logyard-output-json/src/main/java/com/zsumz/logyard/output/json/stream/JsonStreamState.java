@@ -2,12 +2,11 @@ package com.zsumz.logyard.output.json.stream;
 
 import com.zsumz.logyard.api.diagnostics.HealthStatus;
 
-import java.io.IOException;
-
 /** Sticky lifecycle and first-failure record for one JSON stream transport. */
 final class JsonStreamState {
     private Stage stage = Stage.OPEN;
-    private IOException failure;
+    private Throwable failure;
+    private boolean closeStarted;
 
     void requireOpen() {
         if (stage == Stage.FAILED) {
@@ -18,7 +17,7 @@ final class JsonStreamState {
         }
     }
 
-    void failed(IOException cause) {
+    void failed(Throwable cause) {
         if (failure == null) {
             failure = cause;
         }
@@ -29,7 +28,7 @@ final class JsonStreamState {
         return failure != null;
     }
 
-    IOException failure() {
+    Throwable failure() {
         return failure;
     }
 
@@ -37,12 +36,15 @@ final class JsonStreamState {
         return failure == null ? null : failure.getClass().getName();
     }
 
-    boolean closed() {
-        return stage == Stage.CLOSED;
-    }
-
-    void close() {
-        stage = Stage.CLOSED;
+    boolean startClose() {
+        if (closeStarted) {
+            return false;
+        }
+        closeStarted = true;
+        if (stage == Stage.OPEN) {
+            stage = Stage.CLOSED;
+        }
+        return true;
     }
 
     HealthStatus healthStatus() {

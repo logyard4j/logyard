@@ -104,7 +104,8 @@ final class JsonFileTimedFlushTest {
                 (path, bufferBytes, append) -> dataFile);
         sink.accept(event("first"));
 
-        assertThrows(UncheckedIOException.class, scheduler::runNext);
+        scheduler.runNext();
+        await(() -> sink.health("json").status() == HealthStatus.FAILED);
         var health = sink.health("json");
         assertEquals(HealthStatus.FAILED, health.status());
         assertEquals(UncheckedIOException.class.getName(), health.details().get("writer_failure"));
@@ -150,6 +151,43 @@ final class JsonFileTimedFlushTest {
         }
     }
 
+    @Test
+    void maintenanceRejectionPreservesTheEarlierAcceptedRecordDeadline() throws Exception {
+        Path output = Files.createTempDirectory("logyard-maintenance-deadline-").resolve("events.jsonl");
+        ManualFlushScheduler scheduler = new ManualFlushScheduler();
+        CountingDataFile dataFile = new CountingDataFile();
+        JsonFileSink sink = new JsonFileSink(
+                output,
+                LogEvent::messageTemplate,
+                1_024,
+                Duration.ofSeconds(1L),
+                false,
+                new com.zsumz.logyard.output.json.file.rotation.RotationPolicy(
+                        1_024,
+                        2,
+                        com.zsumz.logyard.output.json.file.rotation.RotationPolicy.Compression.NONE,
+                        Duration.ofSeconds(1L)),
+                true,
+                scheduler,
+                (path, bufferBytes, append) -> dataFile);
+        sink.accept(event("accepted"));
+        assertEquals(1, scheduler.pendingCount());
+
+        interruptMaintenanceWorker(output);
+        await(() -> sink.health("json").status() == HealthStatus.FAILED);
+        assertThrows(IllegalStateException.class, () -> sink.accept(event("rejected")));
+
+        assertEquals(1, scheduler.pendingCount());
+        assertEquals(1, scheduler.scheduledCount());
+        scheduler.runNext();
+        await(() -> dataFile.flushes.get() == 1);
+        assertEquals(0, scheduler.pendingCount());
+        assertEquals(HealthStatus.FAILED, sink.health("json").status());
+        assertTrue(sink.health("json").details().containsKey("maintenance_failure"));
+        assertThrows(IllegalStateException.class, sink::close);
+        assertEquals(1, dataFile.closes.get());
+    }
+
     private static LogEvent event(String message) {
         return new LogEvent(0L, 0L, Level.INFO, "test.Logger", "test", message, null, AttributeSet.EMPTY, null, 1L, "test");
     }
@@ -161,6 +199,25 @@ final class JsonFileTimedFlushTest {
                 throw new AssertionError("timed flush did not complete before the test deadline");
             }
             Thread.sleep(10L);
+        }
+    }
+
+    private static void interruptMaintenanceWorker(Path output) throws Exception {
+        String name = "logyard-archive-maintenance-" + output.getFileName().toString().replaceAll("[^A-Za-z0-9_-]", "_");
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2L);
+        while (true) {
+            Thread worker = Thread.getAllStackTraces().keySet().stream()
+                    .filter(thread -> thread.isAlive() && thread.getName().equals(name))
+                    .findFirst()
+                    .orElse(null);
+            if (worker != null) {
+                worker.interrupt();
+                return;
+            }
+            if (System.nanoTime() >= deadline) {
+                throw new AssertionError("archive maintenance worker did not start");
+            }
+            Thread.onSpinWait();
         }
     }
 

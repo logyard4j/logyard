@@ -308,7 +308,7 @@ Reload observer and diagnostic failures are isolated from the reload outcome. A 
 
 ## Extensions
 
-The stable SPI supports context providers, event processors, text formatters, event encoders, outputs, and health contributors. Providers are discovered with `ServiceLoader`, receive a bounded immutable configuration, and create runtime-owned instances. Provider creation may occur for a candidate that is later rejected or superseded; construction must not irreversibly modify durable external state, and every provider-created closeable component must release its resources from `close()`. Logyard invokes providers outside its lifecycle and reload state locks. Recursive Logyard installation, reconfiguration, or shutdown from provider lifecycle callbacks is unsupported.
+The stable SPI supports context providers, event processors, text formatters, event encoders, outputs, and health contributors. Providers are discovered with `ServiceLoader`, receive a bounded immutable configuration, and create runtime-owned instances. Provider creation may occur for a candidate that is later rejected or superseded; construction must not irreversibly modify durable external state, and every provider-created closeable component must release its resources from `close()`. Logyard invokes providers outside its lifecycle and reload state locks. Synchronous outputs may invoke one custom `EventEncoder` concurrently, so custom encoders must be thread-safe or reentrant; Logyard synchronizes only its built-in `JsonEncoder` and does not serialize extension code at the sink. Recursive Logyard installation, reconfiguration, or shutdown from provider lifecycle callbacks is unsupported.
 
 An event processor provider:
 

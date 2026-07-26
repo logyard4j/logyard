@@ -24,6 +24,10 @@
       "maxBytesPerOperation": 2048
     },
     {
+      "benchmark": "com.zsumz.logyard.benchmarks.encoding.ConcurrentJsonEncoderBenchmark.encodeOnSharedInstance",
+      "maxBytesPerOperation": 2048
+    },
+    {
       "benchmark": "com.zsumz.logyard.benchmarks.encoding.EncodingBenchmark.redactionWithoutMatch",
       "maxBytesPerOperation": 1
     },
@@ -154,6 +158,18 @@
     {
       "benchmark": "com.zsumz.logyard.benchmarks.output.TimedFlushBenchmark.recordWhileFlushPending",
       "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "maxBytesPerOperation": 2048
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.output.JsonSinkBenchmark.directFile",
+      "maxBytesPerOperation": 256
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeJson",
+      "maxBytesPerOperation": 3072
     },
     {
       "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
