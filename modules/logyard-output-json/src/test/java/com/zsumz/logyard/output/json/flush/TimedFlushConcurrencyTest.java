@@ -28,7 +28,7 @@ final class TimedFlushConcurrencyTest {
         try {
             first.recordWritten();
             second.recordWritten();
-            assertTrue(blocked.await(2L, TimeUnit.SECONDS), "two virtual flush workers did not block");
+            assertTrue(blocked.await(2L, TimeUnit.SECONDS), "two platform flush workers did not block");
 
             third.recordWritten();
             assertTrue(fast.await(2L, TimeUnit.SECONDS), "blocked transports starved an independent deadline");

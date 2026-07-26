@@ -22,6 +22,8 @@ import java.util.Set;
 
 /** Decodes output transports and their per-output delivery and formatting options. */
 final class OutputSectionDecoder {
+    static final int MAXIMUM_OUTPUTS = 128;
+
     private OutputSectionDecoder() {
     }
 
@@ -33,8 +35,8 @@ final class OutputSectionDecoder {
         if (raw.isEmpty()) {
             throw new ConfigurationException(source + ": outputs: at least one named output is required");
         }
-        if (raw.size() > 128) {
-            throw new ConfigurationException(source + ": outputs: at most 128 outputs are supported");
+        if (raw.size() > MAXIMUM_OUTPUTS) {
+            throw new ConfigurationException(source + ": outputs: at most " + MAXIMUM_OUTPUTS + " outputs are supported");
         }
 
         Map<String, OutputConfig> result = new LinkedHashMap<>();

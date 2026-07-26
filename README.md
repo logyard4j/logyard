@@ -277,6 +277,8 @@ The built-in JSON presets are `logyard`, `ecs`, and `compact`. Profiles can rena
 
 For a positive `flush` interval, Logyard schedules one flush after the first unflushed record; sparse traffic is pushed to the underlying stream or file channel without waiting for another event. Additional records share that pending flush, while `flush = "0s"` flushes synchronously after every record. Flush bounds Logyard's process buffering only: it does not currently promise an operating-system `fsync` or durable-storage barrier.
 
+When constructing `JsonLinesSink` directly, a caller-supplied `Writer` must not recursively call `flush()` or `close()` on the same sink from its own lifecycle methods. Those reentrant transport lifecycle callbacks are unsupported.
+
 File output fails closed when an active write, flush, or rotation-close failure makes the final record boundary uncertain; buffered bytes are discarded, the channel is closed without retrying them, health remains failed, and later records are rejected. Archive-move and replacement-open failures remain recoverable only after the old active file closed cleanly. A zero runtime shutdown timeout starts no-wait daemon cleanup instead of reporting a deterministic timeout, while rollback of an output that never completed initialization always waits for its worker and lease to be released.
 
 ## Atomic reload
@@ -308,7 +310,7 @@ Reload observer and diagnostic failures are isolated from the reload outcome. A 
 
 ## Extensions
 
-The stable SPI supports context providers, event processors, text formatters, event encoders, outputs, and health contributors. Providers are discovered with `ServiceLoader`, receive a bounded immutable configuration, and create runtime-owned instances. Provider creation may occur for a candidate that is later rejected or superseded; construction must not irreversibly modify durable external state, and every provider-created closeable component must release its resources from `close()`. Logyard invokes providers outside its lifecycle and reload state locks. Synchronous outputs may invoke one custom `EventEncoder` concurrently, so custom encoders must be thread-safe or reentrant; Logyard synchronizes only its built-in `JsonEncoder` and does not serialize extension code at the sink. Recursive Logyard installation, reconfiguration, or shutdown from provider lifecycle callbacks is unsupported.
+The stable SPI supports context providers, event processors, text formatters, event encoders, outputs, and health contributors. Providers are discovered with `ServiceLoader`, receive a bounded immutable configuration, and create runtime-owned instances. Provider creation may occur for a candidate that is later rejected or superseded; construction must not irreversibly modify durable external state, and every provider-created closeable component must release its resources from `close()`. Logyard invokes providers outside its lifecycle and reload state locks. Synchronous outputs may invoke one shared custom `EventEncoder` concurrently, so custom encoders must be thread-safe and should permit reentrant logging callbacks; Logyard synchronizes only its built-in `JsonEncoder` and does not serialize extension code at the sink. Recursive Logyard installation, reconfiguration, or shutdown from provider lifecycle callbacks is unsupported.
 
 An event processor provider:
 

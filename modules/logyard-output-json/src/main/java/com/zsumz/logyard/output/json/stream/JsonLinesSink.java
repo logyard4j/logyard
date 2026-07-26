@@ -22,6 +22,9 @@ import java.util.Objects;
  *
  * <p>Encoding happens outside the writer-state monitor. Concurrent records are written atomically
  * with unspecified relative order, which keeps extension callbacks free to invoke other sink methods.</p>
+ *
+ * <p>A caller-supplied {@link Writer} must not recursively invoke lifecycle methods such as
+ * {@link #flush()} or {@link #close()} on this same sink. Reentrant Writer lifecycle callbacks are unsupported.</p>
  */
 public final class JsonLinesSink implements EventSink, HealthContributor {
     private final Object writerState = new Object();

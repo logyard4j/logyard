@@ -5,8 +5,8 @@ import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.output.json.testing.FlushWorkerAssertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
@@ -17,20 +17,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class JsonFileFlushConcurrencyTest {
-    @TempDir
-    Path directory;
-
     @Test
     void twoBlockedFilesDoNotStarveAnIndependentFastFile() throws Exception {
+        Path directory = Files.createTempDirectory("logyard-file-flush-concurrency-");
         CountDownLatch blocked = new CountDownLatch(2);
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch fast = new CountDownLatch(1);
         GateDataFile firstFile = new GateDataFile(blocked, release);
         GateDataFile secondFile = new GateDataFile(blocked, release);
         GateDataFile fastFile = new GateDataFile(fast, new CountDownLatch(0));
-        JsonFileSink first = sink("first.jsonl", firstFile);
-        JsonFileSink second = sink("second.jsonl", secondFile);
-        JsonFileSink third = sink("third.jsonl", fastFile);
+        JsonFileSink first = sink(directory, "first.jsonl", firstFile);
+        JsonFileSink second = sink(directory, "second.jsonl", secondFile);
+        JsonFileSink third = sink(directory, "third.jsonl", fastFile);
         try {
             first.accept(event("first"));
             second.accept(event("second"));
@@ -51,7 +49,7 @@ final class JsonFileFlushConcurrencyTest {
         FlushWorkerAssertions.awaitNoFlushWorkers();
     }
 
-    private JsonFileSink sink(String filename, ActiveDataFile dataFile) {
+    private static JsonFileSink sink(Path directory, String filename, ActiveDataFile dataFile) {
         return new JsonFileSink(
                 directory.resolve(filename),
                 LogEvent::messageTemplate,

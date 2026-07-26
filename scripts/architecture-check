@@ -818,6 +818,10 @@ BOUND_CONTRACTS = {
         "record.length() > MAX_ENCODED_UTF8_BYTES",
         "must return exactly one record without line breaks",
     ),
+    "modules/logyard-config-toml/src/main/java/com/zsumz/logyard/config/loading/OutputSectionDecoder.java": (
+        "static final int MAXIMUM_OUTPUTS = 128",
+        "raw.size() > MAXIMUM_OUTPUTS",
+    ),
     "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/encoding/JsonEncoder.java": (
         "public synchronized String encode(LogEvent event)",
     ),
@@ -832,7 +836,8 @@ BOUND_CONTRACTS = {
         "dispatcher.dispatch(() -> runDispatched(due))",
     ),
     "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/BoundedElasticFlushDispatcher.java": (
-        "new BoundedElasticFlushDispatcher(64, Duration.ofMillis(100L))",
+        "static final int MAXIMUM_WORKERS = 128",
+        "new BoundedElasticFlushDispatcher(MAXIMUM_WORKERS, Duration.ofMillis(100L))",
         "new ThreadPoolExecutor(",
         "new SynchronousQueue<>()",
         "new Thread(",
@@ -849,6 +854,27 @@ for relative, fragments in BOUND_CONTRACTS.items():
     for fragment in fragments:
         if fragment not in text:
             errors.append(f"{relative}: missing bound contract {fragment!r}")
+
+def integer_constant(relative: str, name: str) -> int | None:
+    text = (ROOT / relative).read_text(encoding="utf-8")
+    match = re.search(rf"\b{re.escape(name)}\s*=\s*([0-9][0-9_]*)\s*;", text)
+    if match is None:
+        errors.append(f"{relative}: missing integer constant {name}")
+        return None
+    return int(match.group(1).replace("_", ""))
+
+output_limit = integer_constant(
+    "modules/logyard-config-toml/src/main/java/com/zsumz/logyard/config/loading/OutputSectionDecoder.java",
+    "MAXIMUM_OUTPUTS",
+)
+flush_worker_limit = integer_constant(
+    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/BoundedElasticFlushDispatcher.java",
+    "MAXIMUM_WORKERS",
+)
+if output_limit is not None and flush_worker_limit is not None and flush_worker_limit < output_limit:
+    errors.append(
+        "shared JSON flush worker capacity must support every output allowed in one active configuration"
+    )
 
 for relative in (
     "modules/logyard-jul/src/main/java/com/zsumz/logyard/jul/LogyardHandler.java",
@@ -868,6 +894,11 @@ if "LoggingEventAware" not in slf4j_logger:
     errors.append("LogyardSlf4jLogger must implement LoggingEventAware")
 
 fallback_stub_root = ROOT / "scripts/verify-support/junit-stub-src"
+for candidate in sorted((ROOT / "modules").glob("*/src/test/java/**/*.java")):
+    if "@TempDir" in candidate.read_text(encoding="utf-8"):
+        errors.append(
+            f"{candidate.relative_to(ROOT)}: fallback-suite tests must create temporary directories explicitly"
+        )
 for candidate in sorted(ROOT.rglob("*.java")):
     if "target" in candidate.parts:
         continue

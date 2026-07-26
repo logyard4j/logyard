@@ -18,9 +18,9 @@ public final class TimedFlushController implements AutoCloseable {
     private final FlushDiagnostics diagnostics;
     private final Runnable flushAction;
     private final TimedFlushTasks tasks = new TimedFlushTasks();
+    private final FlushDispatchRetry dispatchRetry = new FlushDispatchRetry();
     private boolean transportCompleted;
     private boolean rescheduleNeeded;
-    private boolean retryExhausted;
     private boolean closed;
 
     public TimedFlushController(Duration interval, Runnable flushAction) {
@@ -59,10 +59,7 @@ public final class TimedFlushController implements AutoCloseable {
                 rescheduleNeeded |= transportCompleted;
                 return;
             }
-            if (retryExhausted) {
-                return;
-            }
-            candidate = new TimedFlushTask(false);
+            candidate = new TimedFlushTask();
             tasks.own(candidate);
         }
 
@@ -71,7 +68,7 @@ public final class TimedFlushController implements AutoCloseable {
 
     private void scheduleInitial(TimedFlushTask candidate) {
         try {
-            attachScheduled(candidate);
+            attachScheduled(candidate, interval);
         } catch (Throwable schedulingFailure) {
             FailureIsolation.prepareForRecovery(schedulingFailure);
             diagnostics.report(schedulingFailure);
@@ -87,7 +84,7 @@ public final class TimedFlushController implements AutoCloseable {
             canceled = tasks.release();
             transportCompleted = false;
             rescheduleNeeded = false;
-            retryExhausted = false;
+            dispatchRetry.reset();
         }
         if (canceled != null) {
             canceled.cancel();
@@ -102,7 +99,7 @@ public final class TimedFlushController implements AutoCloseable {
             canceled = tasks.drain();
             transportCompleted = false;
             rescheduleNeeded = false;
-            retryExhausted = false;
+            dispatchRetry.reset();
         }
         canceled.forEach(TimedFlushTask::cancel);
         canceled.forEach(TimedFlushTask::awaitCompletion);
@@ -124,6 +121,7 @@ public final class TimedFlushController implements AutoCloseable {
 
     private void scheduleRetryAfterDispatchFailure(TimedFlushTask rejected) {
         TimedFlushTask retry;
+        Duration retryDelay;
         synchronized (this) {
             if (!tasks.owns(rejected)) {
                 return;
@@ -131,15 +129,15 @@ public final class TimedFlushController implements AutoCloseable {
             tasks.releaseAndRetire(rejected, !closed);
             transportCompleted = false;
             rescheduleNeeded = false;
-            if (closed || rejected.retry()) {
+            if (closed) {
                 return;
             }
-            retry = new TimedFlushTask(true);
+            retry = new TimedFlushTask();
             tasks.own(retry);
-            retryExhausted = true;
+            retryDelay = dispatchRetry.nextDelay();
         }
         try {
-            attachScheduled(retry);
+            attachScheduled(retry, retryDelay);
         } catch (Throwable schedulingFailure) {
             abandonRetry(retry);
             FailureIsolation.prepareForRecovery(schedulingFailure);
@@ -199,7 +197,9 @@ public final class TimedFlushController implements AutoCloseable {
             if (tasks.owns(due)) {
                 tasks.release();
                 scheduleNext = !closed && transportCompleted && rescheduleNeeded;
-                retryExhausted &= !transportCompleted;
+                if (transportCompleted) {
+                    dispatchRetry.reset();
+                }
                 transportCompleted = false;
                 rescheduleNeeded = false;
             }
@@ -212,8 +212,8 @@ public final class TimedFlushController implements AutoCloseable {
         }
     }
 
-    private void attachScheduled(TimedFlushTask candidate) {
-        candidate.attachScheduled(scheduler.schedule(interval, () -> runDue(candidate)));
+    private void attachScheduled(TimedFlushTask candidate, Duration delay) {
+        candidate.attachScheduled(scheduler.schedule(delay, () -> runDue(candidate)));
         boolean cancel;
         synchronized (this) {
             cancel = !tasks.owns(candidate);
