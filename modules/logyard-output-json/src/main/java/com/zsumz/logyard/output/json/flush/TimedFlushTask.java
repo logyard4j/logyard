@@ -4,11 +4,20 @@ import java.util.Objects;
 
 /** Cancellation and completion state for one pending or dispatched flush. */
 final class TimedFlushTask {
+    private final boolean retry;
     private FlushScheduler.ScheduledFlush scheduled;
     private FlushDispatcher.DispatchedFlush dispatched;
     private Thread runner;
     private boolean canceled;
     private boolean dispatching;
+
+    TimedFlushTask(boolean retry) {
+        this.retry = retry;
+    }
+
+    boolean retry() {
+        return retry;
+    }
 
     void attachScheduled(FlushScheduler.ScheduledFlush value) {
         boolean cancel;

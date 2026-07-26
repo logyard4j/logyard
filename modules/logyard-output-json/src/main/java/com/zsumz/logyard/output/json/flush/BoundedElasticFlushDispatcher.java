@@ -1,0 +1,134 @@
+package com.zsumz.logyard.output.json.flush;
+
+import java.time.Duration;
+import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/** Runs blocking flush I/O on a shared bounded set of temporary daemon platform threads. */
+final class BoundedElasticFlushDispatcher implements FlushDispatcher {
+    static final BoundedElasticFlushDispatcher INSTANCE = new BoundedElasticFlushDispatcher(64, Duration.ofMillis(100L));
+    static final String WORKER_NAME_PREFIX = "logyard-json-flush-worker-";
+
+    private final ThreadPoolExecutor workers;
+
+    BoundedElasticFlushDispatcher(int maximumWorkers, Duration idleTimeout) {
+        if (maximumWorkers < 1) {
+            throw new IllegalArgumentException("maximumWorkers must be positive");
+        }
+        Objects.requireNonNull(idleTimeout, "idleTimeout");
+        if (idleTimeout.isZero() || idleTimeout.isNegative()) {
+            throw new IllegalArgumentException("idleTimeout must be positive");
+        }
+        workers = new ThreadPoolExecutor(
+                0,
+                maximumWorkers,
+                idleTimeout.toNanos(),
+                TimeUnit.NANOSECONDS,
+                new SynchronousQueue<>(),
+                new FlushWorkerFactory(),
+                new ThreadPoolExecutor.AbortPolicy());
+    }
+
+    @Override
+    public DispatchedFlush dispatch(Runnable action) {
+        DispatchTask dispatched = new DispatchTask(action);
+        workers.execute(dispatched);
+        return dispatched;
+    }
+
+    int liveWorkers() {
+        return workers.getPoolSize();
+    }
+
+    private static final class FlushWorkerFactory implements ThreadFactory {
+        private final AtomicInteger sequence = new AtomicInteger();
+
+        @Override
+        public Thread newThread(Runnable task) {
+            Thread thread = new Thread(
+                    null,
+                    task,
+                    WORKER_NAME_PREFIX + sequence.incrementAndGet(),
+                    0L,
+                    false);
+            thread.setDaemon(true);
+            thread.setContextClassLoader(null);
+            return thread;
+        }
+    }
+
+    private static final class DispatchTask implements Runnable, DispatchedFlush {
+        private final Runnable action;
+        private final CountDownLatch completed = new CountDownLatch(1);
+        private Thread runner;
+        private boolean canceled;
+
+        private DispatchTask(Runnable action) {
+            this.action = Objects.requireNonNull(action, "action");
+        }
+
+        @Override
+        public void run() {
+            Thread current = Thread.currentThread();
+            synchronized (this) {
+                if (canceled) {
+                    completed.countDown();
+                    return;
+                }
+                runner = current;
+            }
+            try {
+                action.run();
+            } finally {
+                try {
+                    if (current.getContextClassLoader() != null) {
+                        current.setContextClassLoader(null);
+                    }
+                } finally {
+                    synchronized (this) {
+                        runner = null;
+                    }
+                    completed.countDown();
+                }
+            }
+        }
+
+        @Override
+        public void cancel() {
+            Thread running;
+            synchronized (this) {
+                canceled = true;
+                running = runner;
+            }
+            if (running != null) {
+                running.interrupt();
+            }
+        }
+
+        @Override
+        public void awaitCompletion() {
+            boolean interrupted = false;
+            while (true) {
+                try {
+                    completed.await();
+                    break;
+                } catch (InterruptedException interruption) {
+                    interrupted = true;
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        @Override
+        public boolean completed() {
+            return completed.getCount() == 0L;
+        }
+    }
+}

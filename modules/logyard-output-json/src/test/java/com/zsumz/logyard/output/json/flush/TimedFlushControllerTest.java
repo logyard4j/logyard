@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -127,6 +129,72 @@ final class TimedFlushControllerTest {
         controller.close();
     }
 
+    @Test
+    void rejectedDispatchSchedulesOneRetryAndFlushesTheOriginalRecord() {
+        ManualFlushScheduler scheduler = new ManualFlushScheduler();
+        RejectingDispatcher dispatcher = new RejectingDispatcher(1);
+        List<Throwable> reported = new ArrayList<>();
+        AtomicInteger flushes = new AtomicInteger();
+        AtomicReference<TimedFlushController> reference = new AtomicReference<>();
+        TimedFlushController controller = new TimedFlushController(
+                Duration.ofSeconds(1L), scheduler, dispatcher, reported::add, () -> {
+                    flushes.incrementAndGet();
+                    reference.get().flushCompleted();
+                });
+        reference.set(controller);
+
+        controller.recordWritten();
+        scheduler.runNext();
+        assertEquals(0, flushes.get());
+        assertEquals(2, scheduler.scheduledCount());
+        assertEquals(1, scheduler.pendingCount());
+
+        scheduler.runNext();
+        assertEquals(1, flushes.get());
+        assertEquals(2, dispatcher.attempts.get());
+        assertEquals(2, scheduler.scheduledCount());
+        assertEquals(0, scheduler.pendingCount());
+        assertEquals(1, reported.size());
+        controller.close();
+    }
+
+    @Test
+    void permanentDispatchRejectionStopsAfterTheSingleRetry() {
+        ManualFlushScheduler scheduler = new ManualFlushScheduler();
+        RejectingDispatcher dispatcher = new RejectingDispatcher(Integer.MAX_VALUE);
+        AtomicInteger flushes = new AtomicInteger();
+        TimedFlushController controller = new TimedFlushController(
+                Duration.ofSeconds(1L), scheduler, dispatcher, failure -> { }, flushes::incrementAndGet);
+
+        controller.recordWritten();
+        scheduler.runNext();
+        scheduler.runNext();
+        controller.recordWritten();
+
+        assertEquals(0, flushes.get());
+        assertEquals(2, dispatcher.attempts.get());
+        assertEquals(2, scheduler.scheduledCount());
+        assertEquals(0, scheduler.pendingCount());
+        controller.close();
+    }
+
+    @Test
+    void closeCancelsTheDispatchRetry() {
+        ManualFlushScheduler scheduler = new ManualFlushScheduler();
+        RejectingDispatcher dispatcher = new RejectingDispatcher(Integer.MAX_VALUE);
+        TimedFlushController controller = new TimedFlushController(
+                Duration.ofSeconds(1L), scheduler, dispatcher, failure -> { }, () -> { });
+
+        controller.recordWritten();
+        scheduler.runNext();
+        assertEquals(1, scheduler.pendingCount());
+
+        controller.close();
+
+        assertEquals(0, scheduler.pendingCount());
+        assertThrows(IllegalStateException.class, scheduler::runNext);
+    }
+
     private static TimedFlushController controller(Duration interval, FlushScheduler scheduler, Runnable action) {
         return new TimedFlushController(interval, scheduler, new ImmediateDispatcher(), failure -> { }, action);
     }
@@ -149,6 +217,23 @@ final class TimedFlushControllerTest {
                     return true;
                 }
             };
+        }
+    }
+
+    private static final class RejectingDispatcher implements FlushDispatcher {
+        private final int rejectedAttempts;
+        private final AtomicInteger attempts = new AtomicInteger();
+
+        private RejectingDispatcher(int rejectedAttempts) {
+            this.rejectedAttempts = rejectedAttempts;
+        }
+
+        @Override
+        public DispatchedFlush dispatch(Runnable action) {
+            if (attempts.getAndIncrement() < rejectedAttempts) {
+                throw new RejectedExecutionException("injected dispatch rejection");
+            }
+            return new ImmediateDispatcher().dispatch(action);
         }
     }
 }

@@ -831,9 +831,12 @@ BOUND_CONTRACTS = {
     "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/TimedFlushController.java": (
         "dispatcher.dispatch(() -> runDispatched(due))",
     ),
-    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/VirtualThreadFlushDispatcher.java": (
-        "Thread.ofVirtual()",
-        ".inheritInheritableThreadLocals(false)",
+    "modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/flush/BoundedElasticFlushDispatcher.java": (
+        "new BoundedElasticFlushDispatcher(64, Duration.ofMillis(100L))",
+        "new ThreadPoolExecutor(",
+        "new SynchronousQueue<>()",
+        "new Thread(",
+        "thread.setDaemon(true)",
         "thread.setContextClassLoader(null)",
     ),
     "modules/logyard-core/src/main/java/com/zsumz/logyard/core/processing/RateLimitProcessor.java": (

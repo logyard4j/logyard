@@ -68,6 +68,9 @@ final class EventEncoderBoundaryTest {
         assertMediaTypeRejected(null, NullPointerException.class);
         assertMediaTypeRejected("  ", IllegalArgumentException.class);
         assertMediaTypeRejected("x".repeat(EventEncoderBoundary.MAX_MEDIA_TYPE_CHARACTERS + 1), IllegalArgumentException.class);
+        assertMediaTypeRejected(
+                "application/json" + " ".repeat(EventEncoderBoundary.MAX_MEDIA_TYPE_CHARACTERS),
+                IllegalArgumentException.class);
         assertMediaTypeRejected("application/json\u0007", IllegalArgumentException.class);
     }
 

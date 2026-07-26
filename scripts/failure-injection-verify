@@ -18,16 +18,19 @@ ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
   --test com.zsumz.logyard.output.json.file.ActiveDataFileFailureTest \
   --test com.zsumz.logyard.output.json.file.JsonFileSinkInitializationTest \
   --test com.zsumz.logyard.output.json.file.JsonFileSinkIdentityTest \
+  --test com.zsumz.logyard.output.json.file.JsonFileFlushConcurrencyTest \
   --test com.zsumz.logyard.output.json.file.JsonFileTimedFlushTest \
   --test com.zsumz.logyard.output.json.file.RotatingFileWriterFailureTest \
   --test com.zsumz.logyard.output.json.file.rotation.ArchiveMaintenanceLifecycleTest \
   --test com.zsumz.logyard.output.json.flush.TimedFlushConcurrencyTest \
-  --test com.zsumz.logyard.output.json.flush.VirtualThreadFlushDispatcherTest \
+  --test com.zsumz.logyard.output.json.flush.BoundedElasticFlushDispatcherTest \
   --test com.zsumz.logyard.output.json.stream.JsonLinesFlushConcurrencyTest \
   --test com.zsumz.logyard.output.json.stream.JsonLinesFatalFailureTest \
   --test com.zsumz.logyard.output.json.stream.JsonLinesSinkCloseFailureTest \
   --test com.zsumz.logyard.output.json.stream.JsonLinesSinkFailureTest \
   --test com.zsumz.logyard.output.json.stream.JsonLinesTimedFlushTest \
+  --jvm-arg=-Djdk.virtualThreadScheduler.parallelism=2 \
+  --jvm-arg=-Djdk.virtualThreadScheduler.maxPoolSize=2 \
   --no-progress \
   --color never
 

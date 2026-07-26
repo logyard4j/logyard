@@ -3,6 +3,7 @@ package com.zsumz.logyard.output.json.stream;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.output.json.testing.FlushWorkerAssertions;
 import com.zsumz.logyard.output.json.testing.ManualFlushScheduler;
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +45,7 @@ final class JsonLinesFlushConcurrencyTest {
             second.close();
             third.close();
         }
+        FlushWorkerAssertions.awaitNoFlushWorkers();
     }
 
     @Test

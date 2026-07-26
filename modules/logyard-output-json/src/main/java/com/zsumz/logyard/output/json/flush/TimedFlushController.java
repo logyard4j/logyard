@@ -4,7 +4,6 @@ import com.zsumz.logyard.api.annotation.InternalApi;
 import com.zsumz.logyard.api.failure.FailureIsolation;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -18,22 +17,21 @@ public final class TimedFlushController implements AutoCloseable {
     private final FlushDispatcher dispatcher;
     private final FlushDiagnostics diagnostics;
     private final Runnable flushAction;
-    private final List<TimedFlushTask> retiring = new ArrayList<>(1);
-    private TimedFlushTask owned;
+    private final TimedFlushTasks tasks = new TimedFlushTasks();
     private boolean transportCompleted;
     private boolean rescheduleNeeded;
+    private boolean retryExhausted;
     private boolean closed;
 
     public TimedFlushController(Duration interval, Runnable flushAction) {
-        this(interval, SharedFlushScheduler.INSTANCE, VirtualThreadFlushDispatcher.INSTANCE, FlushDiagnostics.STDERR, flushAction);
+        this(interval, SharedFlushScheduler.INSTANCE, BoundedElasticFlushDispatcher.INSTANCE, FlushDiagnostics.STDERR, flushAction);
     }
 
     public TimedFlushController(Duration interval, FlushScheduler scheduler, Runnable flushAction) {
-        this(interval, scheduler, VirtualThreadFlushDispatcher.INSTANCE, FlushDiagnostics.STDERR, flushAction);
+        this(interval, scheduler, BoundedElasticFlushDispatcher.INSTANCE, FlushDiagnostics.STDERR, flushAction);
     }
 
-    TimedFlushController(
-            Duration interval, FlushScheduler scheduler, FlushDispatcher dispatcher, FlushDiagnostics diagnostics, Runnable flushAction) {
+    TimedFlushController(Duration interval, FlushScheduler scheduler, FlushDispatcher dispatcher, FlushDiagnostics diagnostics, Runnable flushAction) {
         this.interval = validInterval(interval);
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
         this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher");
@@ -57,24 +55,23 @@ public final class TimedFlushController implements AutoCloseable {
             if (closed) {
                 return;
             }
-            if (owned != null) {
+            if (tasks.occupied()) {
                 rescheduleNeeded |= transportCompleted;
                 return;
             }
-            candidate = new TimedFlushTask();
-            owned = candidate;
+            if (retryExhausted) {
+                return;
+            }
+            candidate = new TimedFlushTask(false);
+            tasks.own(candidate);
         }
 
+        scheduleInitial(candidate);
+    }
+
+    private void scheduleInitial(TimedFlushTask candidate) {
         try {
-            FlushScheduler.ScheduledFlush scheduled = scheduler.schedule(interval, () -> runDue(candidate));
-            candidate.attachScheduled(scheduled);
-            boolean cancel;
-            synchronized (this) {
-                cancel = owned != candidate;
-            }
-            if (cancel) {
-                candidate.cancel();
-            }
+            attachScheduled(candidate);
         } catch (Throwable schedulingFailure) {
             FailureIsolation.prepareForRecovery(schedulingFailure);
             diagnostics.report(schedulingFailure);
@@ -87,10 +84,10 @@ public final class TimedFlushController implements AutoCloseable {
     public void cancelPending() {
         TimedFlushTask canceled;
         synchronized (this) {
-            canceled = owned;
-            owned = null;
+            canceled = tasks.release();
             transportCompleted = false;
             rescheduleNeeded = false;
+            retryExhausted = false;
         }
         if (canceled != null) {
             canceled.cancel();
@@ -102,15 +99,10 @@ public final class TimedFlushController implements AutoCloseable {
         List<TimedFlushTask> canceled;
         synchronized (this) {
             closed = true;
-            canceled = new ArrayList<>(retiring.size() + 1);
-            canceled.addAll(retiring);
-            if (owned != null) {
-                canceled.add(owned);
-            }
-            retiring.clear();
-            owned = null;
+            canceled = tasks.drain();
             transportCompleted = false;
             rescheduleNeeded = false;
+            retryExhausted = false;
         }
         canceled.forEach(TimedFlushTask::cancel);
         canceled.forEach(TimedFlushTask::awaitCompletion);
@@ -124,9 +116,34 @@ public final class TimedFlushController implements AutoCloseable {
             due.attachDispatched(dispatcher.dispatch(() -> runDispatched(due)));
         } catch (Throwable dispatchFailure) {
             due.dispatchFailed();
-            complete(due);
             FailureIsolation.prepareForRecovery(dispatchFailure);
             diagnostics.report(dispatchFailure);
+            scheduleRetryAfterDispatchFailure(due);
+        }
+    }
+
+    private void scheduleRetryAfterDispatchFailure(TimedFlushTask rejected) {
+        TimedFlushTask retry;
+        synchronized (this) {
+            if (!tasks.owns(rejected)) {
+                return;
+            }
+            tasks.releaseAndRetire(rejected, !closed);
+            transportCompleted = false;
+            rescheduleNeeded = false;
+            if (closed || rejected.retry()) {
+                return;
+            }
+            retry = new TimedFlushTask(true);
+            tasks.own(retry);
+            retryExhausted = true;
+        }
+        try {
+            attachScheduled(retry);
+        } catch (Throwable schedulingFailure) {
+            abandonRetry(retry);
+            FailureIsolation.prepareForRecovery(schedulingFailure);
+            diagnostics.report(schedulingFailure);
         }
     }
 
@@ -134,7 +151,7 @@ public final class TimedFlushController implements AutoCloseable {
         due.runner(Thread.currentThread());
         try {
             synchronized (this) {
-                if (owned != due || closed) {
+                if (!tasks.owns(due) || closed) {
                     return;
                 }
             }
@@ -151,7 +168,7 @@ public final class TimedFlushController implements AutoCloseable {
         due.runner(Thread.currentThread());
         try {
             synchronized (this) {
-                if (owned != due || closed) {
+                if (!tasks.owns(due) || closed) {
                     return;
                 }
             }
@@ -163,13 +180,13 @@ public final class TimedFlushController implements AutoCloseable {
 
     /** Reports whether the caller still owns the current zero-interval or dispatched flush. */
     public synchronized boolean flushIsCurrent() {
-        return !closed && (interval.isZero() || owned != null && owned.runsOnCurrentThread());
+        return !closed && (interval.isZero() || tasks.owned() != null && tasks.owned().runsOnCurrentThread());
     }
 
     /** Completes the current dispatched flush while its transport serialization lock is still held. */
     public void flushCompleted() {
         synchronized (this) {
-            if (owned == null || !owned.runsOnCurrentThread()) {
+            if (tasks.owned() == null || !tasks.owned().runsOnCurrentThread()) {
                 return;
             }
             transportCompleted = true;
@@ -179,19 +196,36 @@ public final class TimedFlushController implements AutoCloseable {
     private void complete(TimedFlushTask due) {
         boolean scheduleNext = false;
         synchronized (this) {
-            retiring.removeIf(TimedFlushTask::completed);
-            if (owned == due) {
-                owned = null;
+            if (tasks.owns(due)) {
+                tasks.release();
                 scheduleNext = !closed && transportCompleted && rescheduleNeeded;
+                retryExhausted &= !transportCompleted;
                 transportCompleted = false;
                 rescheduleNeeded = false;
             }
             if (!closed) {
-                retiring.add(due);
+                tasks.retire(due);
             }
         }
         if (scheduleNext) {
             recordWritten();
+        }
+    }
+
+    private void attachScheduled(TimedFlushTask candidate) {
+        candidate.attachScheduled(scheduler.schedule(interval, () -> runDue(candidate)));
+        boolean cancel;
+        synchronized (this) {
+            cancel = !tasks.owns(candidate);
+        }
+        if (cancel) {
+            candidate.cancel();
+        }
+    }
+
+    private void abandonRetry(TimedFlushTask retry) {
+        synchronized (this) {
+            tasks.releaseAndRetire(retry, !closed);
         }
     }
 

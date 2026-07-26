@@ -18,7 +18,7 @@ import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-/** End-to-end deadline-to-virtual-thread dispatch throughput. */
+/** End-to-end deadline-to-bounded-worker dispatch throughput. */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)

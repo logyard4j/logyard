@@ -21,7 +21,7 @@ import java.util.Objects;
  * Thread-safe JSONL sink with bounded, time-based flushing.
  *
  * <p>Encoding happens outside the writer-state monitor. Concurrent records are written atomically
- * in encoding-completion order, which keeps extension callbacks free to invoke other sink methods.</p>
+ * with unspecified relative order, which keeps extension callbacks free to invoke other sink methods.</p>
  */
 public final class JsonLinesSink implements EventSink, HealthContributor {
     private final Object writerState = new Object();
@@ -141,9 +141,9 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
     }
 
     private RuntimeException fail(String message, Throwable failure) {
-        FailureIsolation.prepareForRecovery(failure);
         state.failed(failure);
         timedFlush.cancelPending();
+        FailureIsolation.prepareForRecovery(failure);
         return unchecked(message, failure);
     }
 

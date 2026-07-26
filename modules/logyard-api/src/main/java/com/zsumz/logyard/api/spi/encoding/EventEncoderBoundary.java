@@ -15,7 +15,7 @@ public final class EventEncoderBoundary {
     /** Maximum UTF-8 bytes allowed in one encoded event record. */
     public static final int MAX_ENCODED_UTF8_BYTES = 1_048_576;
 
-    /** Maximum characters allowed in the normalized encoder media type. */
+    /** Maximum characters accepted in the supplied encoder media type. */
     public static final int MAX_MEDIA_TYPE_CHARACTERS = 128;
 
     private EventEncoderBoundary() {
@@ -37,15 +37,19 @@ public final class EventEncoderBoundary {
 
     private static String validMediaType(String candidate) {
         String supplied = Objects.requireNonNull(candidate, "encoder media type");
+        if (supplied.length() > MAX_MEDIA_TYPE_CHARACTERS) {
+            throw invalidMediaType();
+        }
         String mediaType = supplied.trim();
-        if (mediaType.isEmpty()
-                || mediaType.length() > MAX_MEDIA_TYPE_CHARACTERS
-                || containsControl(supplied)) {
-            throw new IllegalArgumentException(
-                    "event encoder media type must be 1 to " + MAX_MEDIA_TYPE_CHARACTERS
-                            + " characters without controls");
+        if (mediaType.isEmpty() || containsControl(supplied)) {
+            throw invalidMediaType();
         }
         return mediaType;
+    }
+
+    private static IllegalArgumentException invalidMediaType() {
+        return new IllegalArgumentException(
+                "event encoder media type must be 1 to " + MAX_MEDIA_TYPE_CHARACTERS + " characters without controls");
     }
 
     private static String validRecord(String candidate) {

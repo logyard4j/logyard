@@ -21,7 +21,7 @@ import java.util.Objects;
  * Exclusive UTF-8 JSONL file output with optional record-boundary rotation.
  *
  * <p>Encoding happens outside the writer-state monitor. Concurrent records are written atomically
- * in encoding-completion order, which keeps extension callbacks free to invoke other sink methods.</p>
+ * with unspecified relative order, which keeps extension callbacks free to invoke other sink methods.</p>
  *
  * <p>A prepared sink reserves its path without opening the data file. Activation, an unused flush,
  * and an unused close remain nondestructive; only the first accepted record opens the data file.</p>
