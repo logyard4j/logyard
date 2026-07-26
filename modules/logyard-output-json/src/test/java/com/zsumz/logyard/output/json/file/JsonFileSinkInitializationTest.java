@@ -14,6 +14,7 @@ import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.encoding.EventEncoder;
 import com.zsumz.logyard.output.json.file.lease.FileLease;
+import com.zsumz.logyard.output.json.file.lease.FileLeaseUnavailableException;
 import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
 
 import java.io.UncheckedIOException;
@@ -126,18 +127,18 @@ final class JsonFileSinkInitializationTest {
 
     @Test
     void healthyRotatingOutputClosesNormallyWithAZeroShutdownTimeout() throws Exception {
-        Path output = Files.createTempDirectory("logyard-zero-timeout-close-").resolve("events.jsonl");
         RotationPolicy zeroTimeoutRotation =
                 new RotationPolicy(1_024, 1, RotationPolicy.Compression.NONE, Duration.ZERO);
-        JsonFileSink sink = prepared(output, false, zeroTimeoutRotation);
-        sink.activate();
-        sink.accept(event(1));
+        Path directory = Files.createTempDirectory("logyard-zero-timeout-close-");
 
-        assertDoesNotThrow(sink::close);
+        for (int iteration = 0; iteration < 100; iteration++) {
+            Path output = directory.resolve("events-" + iteration + ".jsonl");
+            JsonFileSink sink = prepared(output, false, zeroTimeoutRotation);
+            sink.activate();
+            sink.accept(event(iteration));
 
-        awaitThreadStopped(maintenanceWorkerName(output));
-        try (FileLease reacquired = FileLease.acquire(output)) {
-            assertEquals(output.toAbsolutePath().normalize(), reacquired.activePath());
+            assertDoesNotThrow(sink::close);
+            awaitLeaseReleased(output);
         }
     }
 
@@ -228,12 +229,24 @@ final class JsonFileSinkInitializationTest {
         return Thread.getAllStackTraces().keySet().stream().anyMatch(thread -> thread.isAlive() && thread.getName().equals(name));
     }
 
-    private static void awaitThreadStopped(String name) throws InterruptedException {
+    private static void awaitLeaseReleased(Path output) throws InterruptedException {
         long deadline = System.nanoTime() + Duration.ofSeconds(2).toNanos();
-        while (threadAlive(name) && System.nanoTime() < deadline) {
-            Thread.sleep(5L);
+        while (true) {
+            try (FileLease acquired = FileLease.acquire(output)) {
+                assertEquals(output.toAbsolutePath().normalize(), acquired.activePath());
+                return;
+            } catch (FileLeaseUnavailableException unavailable) {
+                if (System.nanoTime() >= deadline) {
+                    throw new AssertionError("file lease was not released before the cleanup deadline: " + output, unavailable);
+                }
+            }
+            try {
+                Thread.sleep(5L);
+            } catch (InterruptedException interruption) {
+                Thread.currentThread().interrupt();
+                throw interruption;
+            }
         }
-        assertFalse(threadAlive(name));
     }
 
     private static LogEvent event(int sequence) {
