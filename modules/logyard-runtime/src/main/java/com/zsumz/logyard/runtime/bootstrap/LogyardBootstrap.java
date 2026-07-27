@@ -1,8 +1,8 @@
 package com.zsumz.logyard.runtime.bootstrap;
 
 import com.zsumz.logyard.runtime.installation.ConfigurationInstallationRequest;
-import com.zsumz.logyard.runtime.installation.RuntimeInstallationLease;
-import com.zsumz.logyard.runtime.installation.RuntimeInstallationManager;
+import com.zsumz.logyard.runtime.installation.process.RuntimeInstallationLease;
+import com.zsumz.logyard.runtime.installation.process.RuntimeInstallationManager;
 
 import java.nio.file.Path;
 import java.util.Objects;

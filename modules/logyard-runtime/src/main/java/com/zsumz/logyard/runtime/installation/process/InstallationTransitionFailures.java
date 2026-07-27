@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
 
 /** Central lifecycle-transition diagnostics shared by acquisition and handoff paths. */
 final class InstallationTransitionFailures {

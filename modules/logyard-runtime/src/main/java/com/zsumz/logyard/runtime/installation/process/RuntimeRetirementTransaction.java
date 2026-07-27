@@ -1,5 +1,6 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
 
+import com.zsumz.logyard.runtime.installation.RuntimeInstallation;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;

@@ -62,7 +62,7 @@ public class Slf4jProviderRecoveryBenchmark {
         while (true) {
             try {
                 return LogyardBootstrap.acquire(RuntimeOwner.APPLICATION, source);
-            } catch (com.zsumz.logyard.runtime.installation.RuntimeTransitionInProgressException transition) {
+            } catch (com.zsumz.logyard.runtime.installation.process.RuntimeTransitionInProgressException transition) {
                 if (System.nanoTime() >= deadline) {
                     throw transition;
                 }

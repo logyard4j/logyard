@@ -440,6 +440,35 @@ if reload_root_types != expected_reload_root_types:
         f"{sorted(reload_root_types)}"
     )
 
+installation_root = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/installation"
+installation_root_types = {
+    source.name
+    for source in installation_root.glob("*.java")
+    if source.name != "package-info.java"
+}
+expected_installation_root_types = {
+    "ActiveRuntimeConfiguration.java",
+    "ConfigurationInstallationRequest.java",
+    "ConfigurationSnapshotStabilizer.java",
+    "ConfigurationWatchHandshake.java",
+    "ConfigurationWatcherCatchUp.java",
+    "ConfigurationWatcherPolicy.java",
+    "DeferredWatcherReload.java",
+    "GlobalRuntimeAccess.java",
+    "ManagedRuntimeInstallation.java",
+    "PreparedRuntimeConfiguration.java",
+    "RuntimeConfigurationCleanup.java",
+    "RuntimeInstallation.java",
+    "RuntimeInstallationClosure.java",
+    "RuntimeInstallationTransitions.java",
+    "StabilizedConfiguration.java",
+}
+if installation_root_types != expected_installation_root_types:
+    errors.append(
+        "runtime installation root must contain only configuration lifecycle types and shared ports; found "
+        + ", ".join(sorted(installation_root_types))
+    )
+
 production_types: dict[str, str] = {}
 for source, _ in main_files:
     if source.name == "package-info.java":

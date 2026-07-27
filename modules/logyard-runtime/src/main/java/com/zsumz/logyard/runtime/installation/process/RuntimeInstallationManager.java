@@ -1,7 +1,11 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
 
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.reload.ReloadResult;
+import com.zsumz.logyard.runtime.installation.ConfigurationInstallationRequest;
+import com.zsumz.logyard.runtime.installation.GlobalRuntimeAccess;
+import com.zsumz.logyard.runtime.installation.ManagedRuntimeInstallation;
+import com.zsumz.logyard.runtime.installation.RuntimeInstallation;
 
 import java.util.Map;
 import java.util.Objects;
@@ -21,7 +25,10 @@ public final class RuntimeInstallationManager {
     private final RuntimeInstallationRetirements retirements = new RuntimeInstallationRetirements();
     private final RuntimeInstallationState state = new RuntimeInstallationState();
 
-    RuntimeInstallationManager(GlobalRuntimeAccess globalRuntime, RuntimeShutdownHookRegistrar shutdownHooks, Supplier<Map<String, String>> environment) {
+    public RuntimeInstallationManager(
+            GlobalRuntimeAccess globalRuntime,
+            RuntimeShutdownHookRegistrar shutdownHooks,
+            Supplier<Map<String, String>> environment) {
         this(globalRuntime, shutdownHooks, environment, ManagedRuntimeInstallation::open);
     }
 

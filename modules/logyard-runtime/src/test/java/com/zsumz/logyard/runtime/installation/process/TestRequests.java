@@ -1,4 +1,6 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
+
+import com.zsumz.logyard.runtime.installation.ConfigurationInstallationRequest;
 
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 

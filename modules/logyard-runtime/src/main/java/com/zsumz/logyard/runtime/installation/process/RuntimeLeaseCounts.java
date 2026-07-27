@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
 
 import java.util.EnumMap;
 

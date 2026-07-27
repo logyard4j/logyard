@@ -18,7 +18,7 @@ import java.util.concurrent.CompletionStage;
 import static com.zsumz.logyard.runtime.installation.RuntimeInstallationTransitions.Phase.RECONFIGURING;
 import static com.zsumz.logyard.runtime.installation.RuntimeInstallationTransitions.Phase.RELOADING;
 
-final class ManagedRuntimeInstallation implements RuntimeInstallation {
+public final class ManagedRuntimeInstallation implements RuntimeInstallation {
     private final RuntimeInstallationTransitions transitions = new RuntimeInstallationTransitions();
     private final DefaultLogyardRuntime runtime;
     private final Map<String, String> environment;
@@ -28,7 +28,7 @@ final class ManagedRuntimeInstallation implements RuntimeInstallation {
         this.environment = Map.copyOf(environment);
     }
 
-    static ManagedRuntimeInstallation open(
+    public static ManagedRuntimeInstallation open(
             ConfigurationInstallationRequest request,
             Map<String, String> environment) {
         DeferredWatcherReload reload = new DeferredWatcherReload();

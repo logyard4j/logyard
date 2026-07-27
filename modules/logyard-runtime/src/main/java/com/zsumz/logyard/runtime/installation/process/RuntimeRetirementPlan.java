@@ -1,4 +1,6 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
+
+import com.zsumz.logyard.runtime.installation.RuntimeInstallation;
 
 /** Shared retirement transaction selected atomically for execution outside the lifecycle lock. */
 record RuntimeRetirementPlan(RuntimeRetirementTransaction transaction) {

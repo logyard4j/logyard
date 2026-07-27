@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
 
 /** Result of one atomic lifecycle-shutdown decision. */
 record RuntimeShutdownPlan(

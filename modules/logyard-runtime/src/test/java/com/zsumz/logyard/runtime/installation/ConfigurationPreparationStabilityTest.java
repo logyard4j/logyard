@@ -5,6 +5,8 @@ import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.runtime.diagnostics.StderrReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
+import com.zsumz.logyard.runtime.installation.process.RuntimeInstallationLease;
+import com.zsumz.logyard.runtime.installation.process.RuntimeInstallationManager;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

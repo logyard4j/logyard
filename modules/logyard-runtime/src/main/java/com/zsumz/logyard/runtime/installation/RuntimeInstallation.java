@@ -7,7 +7,7 @@ import java.time.Duration;
 import java.util.concurrent.CompletionStage;
 
 /** Resource-owning runtime installation managed by the process lifecycle state machine. */
-interface RuntimeInstallation {
+public interface RuntimeInstallation {
     LogyardRuntime runtime();
 
     /**

@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
 
 /** Lifecycle participant holding a lease on the process-wide runtime. */
 enum RuntimeOwner {

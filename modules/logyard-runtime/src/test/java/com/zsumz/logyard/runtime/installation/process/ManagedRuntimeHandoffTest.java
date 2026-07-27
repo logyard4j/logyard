@@ -1,4 +1,7 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
+
+import com.zsumz.logyard.runtime.installation.ConfigurationInstallationRequest;
+import com.zsumz.logyard.runtime.installation.GlobalRuntimeAccess;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

@@ -1,6 +1,8 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
 
 import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
+import com.zsumz.logyard.runtime.installation.GlobalRuntimeAccess;
+import com.zsumz.logyard.runtime.installation.RuntimeInstallation;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;

@@ -2,7 +2,7 @@ package com.zsumz.logyard.runtime.bootstrap;
 
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.reload.ReloadResult;
-import com.zsumz.logyard.runtime.installation.RuntimeInstallationLease;
+import com.zsumz.logyard.runtime.installation.process.RuntimeInstallationLease;
 
 import java.nio.file.Path;
 import java.util.Objects;

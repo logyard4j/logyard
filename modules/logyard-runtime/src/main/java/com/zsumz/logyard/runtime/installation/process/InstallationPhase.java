@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
 
 /** Explicit process lifecycle phases; transitional phases reject recursive acquisition. */
 enum InstallationPhase {

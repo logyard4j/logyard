@@ -1,7 +1,8 @@
-package com.zsumz.logyard.runtime.installation;
+package com.zsumz.logyard.runtime.installation.process;
 
 import com.zsumz.logyard.api.Logyard;
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.runtime.installation.GlobalRuntimeAccess;
 
 import java.util.function.BooleanSupplier;
 
