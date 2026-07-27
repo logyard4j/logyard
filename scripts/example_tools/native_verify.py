@@ -3,10 +3,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from .contracts import require_micronaut_events, require_quarkus_events, require_spring_boot_events
 from .events import EventLog
 from .maven import MavenExample, MavenExampleRunner
+from .scenarios import spring_boot_example
 from .server import ExecutableHttpExample, HttpExampleRunner, HttpRequestExpectation
-from .verify import require_micronaut_events, require_quarkus_events, require_spring_boot_events, spring_boot_example
 from .versions import framework_versions
 
 
