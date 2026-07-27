@@ -1,8 +1,10 @@
-package com.zsumz.logyard.core.runtime;
+package com.zsumz.logyard.core.runtime.retirement;
 
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.routing.PlanEpoch;
+import com.zsumz.logyard.core.runtime.RuntimePlan;
+import com.zsumz.logyard.core.runtime.RuntimeReloadDeferredException;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -13,13 +15,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /** Coordinates bounded scheduling, observation, and shutdown waiting for retired runtime plans. */
-final class RuntimeRetirements {
+public final class RuntimeRetirements {
     private final ConcurrentLinkedQueue<CompletableFuture<Void>> pending = new ConcurrentLinkedQueue<>();
     private final RetirementExecutor executor;
     private final RuntimeRetirementDiagnostics diagnostics;
     private final RetirementSequence sequence = new RetirementSequence();
 
-    RuntimeRetirements() {
+    public RuntimeRetirements() {
         this(new RetirementExecutor(), new StderrRuntimeRetirementDiagnostics());
     }
 
@@ -28,11 +30,16 @@ final class RuntimeRetirements {
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
     }
 
-    int pendingCount() {
+    public int pendingCount() {
         return pending.size();
     }
 
-    void replacePlan(RuntimePlan previousPlan, PlanEpoch previousEpoch, RuntimePlan nextPlan, Runnable activation) {
+    /** Flushes the active plan's unique output identities. */
+    public void flush(RuntimePlan plan) {
+        RuntimeOutputs.flush(Objects.requireNonNull(plan, "plan"));
+    }
+
+    public void replacePlan(RuntimePlan previousPlan, PlanEpoch previousEpoch, RuntimePlan nextPlan, Runnable activation) {
         Objects.requireNonNull(previousPlan, "previousPlan");
         Objects.requireNonNull(previousEpoch, "previousEpoch");
         Objects.requireNonNull(nextPlan, "nextPlan");
@@ -57,13 +64,13 @@ final class RuntimeRetirements {
         }
     }
 
-    CompletableFuture<Void> finishPlan(RuntimePlan plan, PlanEpoch epoch) {
+    public CompletableFuture<Void> finishPlan(RuntimePlan plan, PlanEpoch epoch) {
         Objects.requireNonNull(plan, "plan");
         Objects.requireNonNull(epoch, "epoch");
         return observe(sequence.retire(epoch, () -> RuntimeOutputs.closeAll(plan), executor::scheduleFinal));
     }
 
-    void await(Duration timeout) {
+    public void await(Duration timeout) {
         long timeoutNanos = saturatedNanos(Objects.requireNonNull(timeout, "timeout"));
         long startedAt = System.nanoTime();
         for (CompletableFuture<Void> retirement : pending) {

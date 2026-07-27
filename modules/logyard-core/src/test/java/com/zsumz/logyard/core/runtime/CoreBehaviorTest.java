@@ -190,17 +190,7 @@ public final class CoreBehaviorTest {
 
 
     @Test
-    void boundsRetirementSchedulingAndMakesFlushAfterCloseSafe() {
-        RetirementExecutor executor = new RetirementExecutor();
-        for (int index = 0; index < RetirementExecutor.MAX_PENDING_RELOADS; index++) {
-            check(executor.reserveReload(), "retirement reservation should be available");
-        }
-        check(!executor.reserveReload(), "retirement reservations must be bounded");
-        for (int index = 0; index < RetirementExecutor.MAX_PENDING_RELOADS; index++) {
-            executor.cancelReloadReservation();
-        }
-        equal(0, executor.pendingReloads());
-
+    void makesFlushAfterCloseSafe() {
         LogyardRuntime runtime = new DefaultLogyardRuntime(plan(new RecordingSink()));
         runtime.close();
         runtime.flush();

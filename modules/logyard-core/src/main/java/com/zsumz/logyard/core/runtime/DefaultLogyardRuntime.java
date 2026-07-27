@@ -11,6 +11,7 @@ import com.zsumz.logyard.core.level.RuntimeLevelOverride;
 import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
+import com.zsumz.logyard.core.runtime.retirement.RuntimeRetirements;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -232,7 +233,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             }
         }
         try {
-            RuntimeOutputs.flush(snapshot.plan());
+            retirements.flush(snapshot.plan());
         } finally {
             snapshot.epoch().release();
         }
