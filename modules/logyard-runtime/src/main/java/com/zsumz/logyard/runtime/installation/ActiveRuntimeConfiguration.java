@@ -2,8 +2,8 @@ package com.zsumz.logyard.runtime.installation;
 
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
-import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
-import com.zsumz.logyard.runtime.reload.ReloadCoordinator;
+import com.zsumz.logyard.runtime.reload.coordination.ReloadCoordinator;
+import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatcher;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
 import java.util.function.Supplier;

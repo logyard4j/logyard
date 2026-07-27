@@ -2,7 +2,7 @@ package com.zsumz.logyard.runtime.installation;
 
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
-import com.zsumz.logyard.runtime.reload.ConfigurationWatchRegistration;
+import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatchRegistration;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

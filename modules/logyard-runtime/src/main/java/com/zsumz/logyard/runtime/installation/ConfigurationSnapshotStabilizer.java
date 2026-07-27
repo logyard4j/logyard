@@ -4,8 +4,8 @@ import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.runtime.diagnostics.StderrReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
-import com.zsumz.logyard.runtime.reload.ConfigurationWatchRegistration;
-import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
+import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatchRegistration;
+import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatcher;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
 import java.util.Map;

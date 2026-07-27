@@ -1,6 +1,6 @@
 package com.zsumz.logyard.runtime.installation;
 
-import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
+import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatcher;
 
 import java.io.IOException;
 

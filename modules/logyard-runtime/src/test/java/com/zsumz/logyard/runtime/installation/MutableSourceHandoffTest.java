@@ -4,7 +4,7 @@ import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
-import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
+import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatcher;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

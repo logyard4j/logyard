@@ -411,6 +411,23 @@ if runtime_root_types != expected_runtime_root_types:
         + ", ".join(sorted(runtime_root_types))
     )
 
+reload_root = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload"
+reload_root_types = {
+    source.name
+    for source in reload_root.glob("*.java")
+    if source.name != "package-info.java"
+}
+expected_reload_root_types = {
+    "ConfigurationSnapshot.java",
+    "ConfigurationSnapshotReader.java",
+    "WatcherReloadOutcome.java",
+}
+if reload_root_types != expected_reload_root_types:
+    errors.append(
+        "runtime reload root must contain only shared snapshots and cross-boundary outcomes; found "
+        f"{sorted(reload_root_types)}"
+    )
+
 production_types: dict[str, str] = {}
 for source, _ in main_files:
     if source.name == "package-info.java":
@@ -706,14 +723,14 @@ runtime_sources = [
     (source, source.read_text(encoding="utf-8"))
     for source in sorted((ROOT / "modules/logyard-runtime/src/main/java").rglob("*.java"))
 ]
-reload_coordinator_source = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload/ReloadCoordinator.java"
+reload_coordinator_source = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload/coordination/ReloadCoordinator.java"
 reload_coordinator_text = reload_coordinator_source.read_text(encoding="utf-8")
 if "synchronized" in reload_coordinator_text or "ReentrantLock" in reload_coordinator_text:
     errors.append(
         f"{reload_coordinator_source.relative_to(ROOT)}: reload coordination must use non-blocking generation ownership"
     )
 
-reload_state_source = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload/ReloadState.java"
+reload_state_source = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload/coordination/ReloadState.java"
 reload_state_text = reload_state_source.read_text(encoding="utf-8")
 for forbidden_state_collaborator in (
     "ConfigurationSnapshotReader",
@@ -810,7 +827,7 @@ FAILURE_BOUNDARY_CONTRACTS = {
         "ComponentInvocationBoundary.call(",
     "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/extension/ProviderResolver.java":
         "ComponentInvocationBoundary.call(",
-    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload/ConfigurationWatchLoop.java":
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload/watcher/ConfigurationWatchLoop.java":
         "ComponentInvocationBoundary.invoke(",
 }
 for relative, required_fragment in FAILURE_BOUNDARY_CONTRACTS.items():

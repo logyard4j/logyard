@@ -3,7 +3,7 @@ package com.zsumz.logyard.runtime.installation;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
-import com.zsumz.logyard.runtime.reload.ConfigurationWatcher;
+import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatcher;
 
 import java.util.Objects;
 
