@@ -1,8 +1,5 @@
 package com.zsumz.logyard.api.event;
 
-import com.zsumz.logyard.api.failure.FailureIsolation;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -32,7 +29,7 @@ public final class ExceptionSnapshot {
     private final ExceptionSnapshot cause;
     private final boolean truncated;
 
-    private ExceptionSnapshot(
+    ExceptionSnapshot(
             String type,
             String message,
             List<StackTraceElement> frames,
@@ -54,10 +51,7 @@ public final class ExceptionSnapshot {
      * @return immutable snapshot, or {@code null} for a null throwable
      */
     public static ExceptionSnapshot capture(Throwable throwable) {
-        if (throwable == null) {
-            return null;
-        }
-        return capture(throwable, CaptureContext.currentOrCreate(), 0);
+        return ExceptionSnapshotCapture.capture(throwable, CaptureContext.currentOrCreate());
     }
 
     /**
@@ -124,161 +118,6 @@ public final class ExceptionSnapshot {
     }
 
     static ExceptionSnapshot capture(Throwable throwable, CaptureContext context) {
-        return throwable == null ? null : capture(throwable, context, 0);
+        return ExceptionSnapshotCapture.capture(throwable, context);
     }
-
-    private static ExceptionSnapshot capture(Throwable throwable, CaptureContext context, int depth) {
-        if (depth >= MAX_CAUSE_DEPTH) {
-            context.markTruncated();
-            return marker("[maximum cause depth reached]");
-        }
-        CaptureContext.ReferenceState reference = context.enterException(throwable);
-        if (reference == CaptureContext.ReferenceState.CYCLE) {
-            context.markTruncated();
-            return marker("[circular exception reference]");
-        }
-        if (reference == CaptureContext.ReferenceState.SHARED) {
-            context.markTruncated();
-            return marker("[shared exception reference]");
-        }
-        if (!context.claimExceptionNode()) {
-            context.leaveException(throwable);
-            return marker("[event exception budget exhausted]");
-        }
-        try {
-            boolean truncated = false;
-            CapturedText capturedType = context.captureExceptionTypeText(
-                    throwable.getClass().getName(),
-                    CaptureLimits.MAX_NAME_CHARS);
-            String type = capturedType.value();
-            if (type == null || type.isBlank()) {
-                type = "[exception type omitted]";
-                truncated = true;
-                context.markTruncated();
-            } else {
-                truncated = capturedType.truncated();
-            }
-            String message;
-            try {
-                CapturedText capturedMessage = context.captureExceptionMessageText(
-                        throwable.getMessage(),
-                        MAX_MESSAGE_CHARS);
-                message = capturedMessage.value();
-                truncated |= capturedMessage.truncated();
-            } catch (Throwable failure) {
-                FailureIsolation.prepareForRecovery(failure);
-                CapturedText failedMessage = context.captureExceptionMessageText(
-                        "[message accessor failed: " + failure.getClass().getName() + ']',
-                        MAX_MESSAGE_CHARS);
-                message = failedMessage.value();
-                truncated = true;
-            }
-
-            StackTraceElement[] sourceFrames;
-            try {
-                sourceFrames = throwable.getStackTrace();
-                if (sourceFrames == null) {
-                    sourceFrames = new StackTraceElement[0];
-                }
-            } catch (Throwable failure) {
-                FailureIsolation.prepareForRecovery(failure);
-                sourceFrames = new StackTraceElement[] {
-                        new StackTraceElement(
-                                "logyard.exception",
-                                "unavailable",
-                                "stack trace accessor failed: " + failure.getClass().getName(),
-                                -1)
-                };
-                truncated = true;
-            }
-            int frameCount = Math.min(sourceFrames.length, MAX_FRAMES_PER_NODE);
-            List<StackTraceElement> frames = new ArrayList<>(frameCount);
-            for (int index = 0; index < frameCount; index++) {
-                if (!context.canCaptureExceptionFrame() || !context.claimFrame()) {
-                    truncated = true;
-                    context.markTruncated();
-                    break;
-                }
-                StackTraceElement frame = sourceFrames[index];
-                if (frame != null) {
-                    ExceptionFrameCapture.Result capturedFrame = ExceptionFrameCapture.capture(frame, context);
-                    frames.add(capturedFrame.frame());
-                    truncated |= capturedFrame.truncated();
-                }
-            }
-            if (sourceFrames.length > frames.size()) {
-                truncated = true;
-                context.markTruncated();
-            }
-
-            Throwable sourceCause;
-            try {
-                sourceCause = throwable.getCause();
-            } catch (Throwable failure) {
-                FailureIsolation.prepareForRecovery(failure);
-                sourceCause = null;
-                truncated = true;
-            }
-            ExceptionSnapshot cause = null;
-            if (sourceCause == throwable) {
-                truncated = true;
-                context.markTruncated();
-            } else if (sourceCause != null) {
-                cause = capture(sourceCause, context, depth + 1);
-            }
-            if (cause != null && cause.truncated()) {
-                truncated = true;
-            }
-
-            Throwable[] sourceSuppressed;
-            try {
-                sourceSuppressed = throwable.getSuppressed();
-                if (sourceSuppressed == null) {
-                    sourceSuppressed = new Throwable[0];
-                }
-            } catch (Throwable failure) {
-                FailureIsolation.prepareForRecovery(failure);
-                sourceSuppressed = new Throwable[0];
-                truncated = true;
-            }
-            int suppressedCount = Math.min(sourceSuppressed.length, MAX_SUPPRESSED_PER_NODE);
-            List<ExceptionSnapshot> suppressed = new ArrayList<>(suppressedCount);
-            for (int index = 0; index < suppressedCount; index++) {
-                if (!context.claimEntry()) {
-                    truncated = true;
-                    break;
-                }
-                Throwable current = sourceSuppressed[index];
-                if (current != null) {
-                    suppressed.add(capture(current, context, depth + 1));
-                }
-            }
-            if (sourceSuppressed.length > suppressed.size()) {
-                truncated = true;
-                context.markTruncated();
-            }
-
-            for (ExceptionSnapshot current : suppressed) {
-                if (current.truncated()) {
-                    truncated = true;
-                    break;
-                }
-            }
-
-            return new ExceptionSnapshot(type, message, frames, suppressed, cause, truncated);
-        } finally {
-            context.leaveException(throwable);
-        }
-    }
-
-    private static ExceptionSnapshot marker(String message) {
-        return new ExceptionSnapshot(
-                "com.zsumz.logyard.api.event.ExceptionSnapshot",
-                message,
-                List.of(),
-                List.of(),
-                null,
-                true);
-    }
-
 }
