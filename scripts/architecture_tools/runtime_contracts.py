@@ -15,6 +15,7 @@ def check_runtime_contracts(root: Path, state: CheckState) -> None:
     _check_bound_contracts(root, state)
     _check_flush_capacity(root, state)
     _check_adapter_reentry(root, state)
+    _check_lifecycle_state_boundaries(root, state)
     _check_fallback_tests(root, state)
 
 
@@ -153,6 +154,24 @@ def _check_adapter_reentry(root: Path, state: CheckState) -> None:
         state.add_error("LogyardSlf4jLogger must not implement LocationAwareLogger")
     if "LoggingEventAware" not in slf4j:
         state.add_error("LogyardSlf4jLogger must implement LoggingEventAware")
+
+
+def _check_lifecycle_state_boundaries(root: Path, state: CheckState) -> None:
+    contracts = {
+        "modules/logyard-slf4j2/src/main/java/com/zsumz/logyard/slf4j/LogyardServiceProvider.java": ("ProviderState", "Closed.INSTANCE"),
+        "modules/logyard-slf4j2/src/main/java/com/zsumz/logyard/slf4j/internal/factory/SwitchableLoggerFactory.java": ("FactoryState", "AwaitingInstallation.INSTANCE"),
+        "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/adapter/PublicationGate.java": ("PublicationAdmissionState",),
+        "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/installation/process/RuntimeStartTransaction.java": ("ShutdownBoundary",),
+        "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/installation/process/RuntimeRetirementTransaction.java": ("ShutdownBoundary",),
+        "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/installation/process/RuntimeInstallationState.java": ("ManagedInstallationState", "ProcessShutdownState"),
+        "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/diagnostics/AdapterDiagnostics.java": ("DiagnosticRateLimiter",),
+        "modules/logyard-slf4j2/src/main/java/com/zsumz/logyard/slf4j/internal/diagnostics/ProviderDiagnostics.java": ("DiagnosticRateLimiter",),
+    }
+    for relative, required in contracts.items():
+        text = (root / relative).read_text(encoding="utf-8")
+        for collaborator in required:
+            if collaborator not in text:
+                state.add_error(f"{relative}: must retain its explicit {collaborator} boundary")
 
 
 def _check_fallback_tests(root: Path, state: CheckState) -> None:
