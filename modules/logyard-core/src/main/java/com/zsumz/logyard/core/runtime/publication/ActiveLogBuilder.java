@@ -14,7 +14,7 @@ final class ActiveLogBuilder implements LogBuilder {
     private String eventName;
     private String messageTemplate;
     private Throwable throwable;
-    private boolean logged;
+    private PublicationPhase phase = PublicationPhase.DRAFT;
 
     ActiveLogBuilder(DefaultLogyardLogger logger, Level level) {
         this.logger = logger;
@@ -58,7 +58,7 @@ final class ActiveLogBuilder implements LogBuilder {
 
     private void publish(String template) {
         ensureUnpublished();
-        logged = true;
+        phase = PublicationPhase.PUBLISHED;
         try {
             logger.publish(level, eventName, template, new PendingEventFields(arguments, attributes), throwable);
         } finally {
@@ -67,7 +67,7 @@ final class ActiveLogBuilder implements LogBuilder {
     }
 
     private void ensureUnpublished() {
-        if (logged) {
+        if (phase == PublicationPhase.PUBLISHED) {
             throw new IllegalStateException("a Logyard LogBuilder can only publish once");
         }
     }
@@ -78,5 +78,10 @@ final class ActiveLogBuilder implements LogBuilder {
         eventName = null;
         messageTemplate = null;
         throwable = null;
+    }
+
+    private enum PublicationPhase {
+        DRAFT,
+        PUBLISHED
     }
 }

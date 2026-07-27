@@ -123,13 +123,8 @@ public final class ManagedRuntimeInstallation implements RuntimeInstallation {
             ComponentInvocationBoundary.invoke("configuration watcher close", closing.active()::closeWatcher, failures);
         }
         ComponentInvocationBoundary.invoke("installed runtime close", () -> {
-            boolean closedByGlobal = false;
-            try {
-                closedByGlobal = globalRuntime.shutdownIfCurrent(runtime);
-            } finally {
-                if (!closedByGlobal) {
-                    runtime.close();
-                }
+            if (!globalRuntime.shutdownIfCurrent(runtime)) {
+                runtime.close();
             }
         }, failures);
         return RuntimeInstallationClosure.withFailures(runtime.retirementCompletion(), failures);

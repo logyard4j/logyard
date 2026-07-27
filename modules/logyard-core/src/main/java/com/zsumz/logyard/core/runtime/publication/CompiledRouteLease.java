@@ -7,7 +7,7 @@ import java.util.Objects;
 /** Closeable ownership token for one acquired compiled route. */
 final class CompiledRouteLease implements AutoCloseable {
     private final CompiledRoute route;
-    private boolean released;
+    private LeasePhase phase = LeasePhase.HELD;
 
     CompiledRouteLease(CompiledRoute route) {
         this.route = Objects.requireNonNull(route, "route");
@@ -19,9 +19,14 @@ final class CompiledRouteLease implements AutoCloseable {
 
     @Override
     public void close() {
-        if (!released) {
-            released = true;
+        if (phase == LeasePhase.HELD) {
+            phase = LeasePhase.RELEASED;
             route.epoch().release();
         }
+    }
+
+    private enum LeasePhase {
+        HELD,
+        RELEASED
     }
 }

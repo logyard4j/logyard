@@ -20,21 +20,17 @@ final class RuntimeInstallationState {
     private volatile RuntimeInstallation publishedInstallation;
     private RuntimeOwner configurationAuthority;
     private long generation;
-    private boolean shutdownHookInstalled;
-    private boolean terminating;
-
+    private ShutdownHookPhase shutdownHookPhase = ShutdownHookPhase.NOT_INSTALLED;
+    private TerminationMode terminationMode = TerminationMode.REUSABLE;
     boolean isActive(RuntimeInstallation candidate) {
         return publishedInstallation == candidate;
     }
-
     synchronized int leaseCount(RuntimeOwner owner) {
         return leaseCounts.get(owner);
     }
-
     synchronized boolean startCancellationPending() {
         return pendingStart != null && pendingStart.cancelled();
     }
-
     synchronized AcquisitionPlan reserve(RuntimeOwner owner, Supplier<LogyardRuntime> globalRuntime) {
         LogyardRuntime observedGlobal = globalRuntime.get();
         if (acquisitionBlocked()) {
@@ -51,9 +47,8 @@ final class RuntimeInstallationState {
         }
         phase = InstallationPhase.STARTING;
         pendingStart = new RuntimeStartTransaction(++generation);
-        return AcquisitionPlan.start(pendingStart, !shutdownHookInstalled);
+        return AcquisitionPlan.start(pendingStart, shutdownHookPhase == ShutdownHookPhase.NOT_INSTALLED);
     }
-
     private AcquisitionPlan reserveActive(RuntimeOwner owner, LogyardRuntime observedGlobal) {
         if (observedGlobal != installation.runtime()) {
             return AcquisitionPlan.closeStale(retire(installation));
@@ -66,7 +61,6 @@ final class RuntimeInstallationState {
         leaseCounts.increment(owner);
         return AcquisitionPlan.shared(installation);
     }
-
     synchronized RuntimeRetirementPlan release(RuntimeOwner owner, RuntimeInstallation candidate) {
         if (installation != candidate || phase == InstallationPhase.CLOSING || phase == InstallationPhase.TERMINATED) {
             return RuntimeRetirementPlan.none();
@@ -123,7 +117,7 @@ final class RuntimeInstallationState {
     }
 
     synchronized void shutdownHookInstalled() {
-        shutdownHookInstalled = true;
+        shutdownHookPhase = ShutdownHookPhase.INSTALLED;
     }
 
     synchronized void commitReconfiguration(RuntimeOwner owner, AcquisitionPlan plan) {
@@ -148,7 +142,7 @@ final class RuntimeInstallationState {
 
     synchronized RuntimeShutdownPlan shutdown(RuntimeInstallation expected, boolean terminateProcess) {
         if (terminateProcess) {
-            terminating = true;
+            terminationMode = TerminationMode.PROCESS_TERMINATING;
         }
         if (phase == InstallationPhase.STARTING) {
             if (expected != null && (pendingStart == null || pendingStart.candidate() != expected)) {
@@ -170,7 +164,7 @@ final class RuntimeInstallationState {
             return RuntimeShutdownPlan.rejected();
         }
         if (phase == InstallationPhase.EMPTY) {
-            phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
+            phase = terminalOrEmptyPhase();
             return terminateProcess ? ALLOWED_SHUTDOWN : RuntimeShutdownPlan.rejected();
         }
         return RuntimeShutdownPlan.retire(retire(installation));
@@ -183,7 +177,7 @@ final class RuntimeInstallationState {
                 && installation == retirement.installation()) {
             pendingRetirement = null;
             installation = null;
-            phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
+            phase = terminalOrEmptyPhase();
         }
     }
 
@@ -209,11 +203,18 @@ final class RuntimeInstallationState {
     private void returnToIdleAfterCancelledStart() {
         pendingStart = null;
         installation = null;
-        phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
+        phase = terminalOrEmptyPhase();
     }
 
     private RuntimeRetirementPlan beginRetirement(RuntimeInstallation candidate) {
         pendingRetirement = new RuntimeRetirementTransaction(candidate, ++generation);
         return RuntimeRetirementPlan.close(pendingRetirement);
     }
+
+    private InstallationPhase terminalOrEmptyPhase() {
+        return terminationMode == TerminationMode.PROCESS_TERMINATING
+                ? InstallationPhase.TERMINATED
+                : InstallationPhase.EMPTY;
+    }
+
 }
