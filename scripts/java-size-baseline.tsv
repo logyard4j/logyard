@@ -7,7 +7,6 @@ modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/BoundedPrintfPatte
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/CaptureContext.java	274
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/ExceptionSnapshot.java	284
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/LogEvent.java	300
-modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/MessageFormatWorkBudget.java	277
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/MessageFormatter.java	284
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/ValueCapture.java	253
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/config/ProviderConfiguration.java	264
