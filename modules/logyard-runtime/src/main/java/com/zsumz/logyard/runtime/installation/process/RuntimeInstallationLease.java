@@ -1,12 +1,12 @@
 package com.zsumz.logyard.runtime.installation.process;
 
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.api.lifecycle.CloseLifecycle;
 import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.runtime.installation.GlobalRuntimeAccess;
 import com.zsumz.logyard.runtime.installation.RuntimeInstallation;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Internal ownership lease returned to bootstrap and adapter façades. */
 public final class RuntimeInstallationLease implements AutoCloseable {
@@ -15,7 +15,7 @@ public final class RuntimeInstallationLease implements AutoCloseable {
     private final RuntimeOwner owner;
     private final RuntimeInstallation installation;
     private final LogyardRuntime runtime;
-    private final AtomicBoolean closed = new AtomicBoolean();
+    private final CloseLifecycle lifecycle = new CloseLifecycle();
 
     static RuntimeInstallationLease managed(
             RuntimeInstallationManager manager,
@@ -49,7 +49,7 @@ public final class RuntimeInstallationLease implements AutoCloseable {
     }
 
     public boolean active() {
-        if (closed.get()) {
+        if (lifecycle.closed()) {
             return false;
         }
         return installation == null
@@ -74,7 +74,7 @@ public final class RuntimeInstallationLease implements AutoCloseable {
 
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true) || installation == null) {
+        if (!lifecycle.beginClose() || installation == null) {
             return;
         }
         manager.release(owner, installation);

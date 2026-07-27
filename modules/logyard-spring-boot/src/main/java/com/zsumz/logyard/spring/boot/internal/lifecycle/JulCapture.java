@@ -1,10 +1,10 @@
 package com.zsumz.logyard.spring.boot.internal.lifecycle;
 
+import com.zsumz.logyard.api.lifecycle.CloseLifecycle;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.jul.LogyardHandler;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
@@ -96,11 +96,11 @@ final class JulCapture {
 
     /** Operation-owned claim on the process JUL bridge. */
     static final class Lease implements AutoCloseable {
-        private final AtomicBoolean closed = new AtomicBoolean();
+        private final CloseLifecycle lifecycle = new CloseLifecycle();
 
         @Override
         public void close() {
-            if (closed.compareAndSet(false, true)) {
+            if (lifecycle.beginClose()) {
                 release();
             }
         }

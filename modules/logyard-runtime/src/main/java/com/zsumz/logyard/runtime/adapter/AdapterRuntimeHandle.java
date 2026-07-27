@@ -1,12 +1,12 @@
 package com.zsumz.logyard.runtime.adapter;
 
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.api.lifecycle.CloseLifecycle;
 import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
 import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 /** One ownership-aware lease on the runtime selected for a compatibility adapter. */
@@ -14,7 +14,7 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
     private final RuntimeBundle bundle;
     private final LogyardRuntime runtime;
     private final Supplier<ContextPolicySnapshot> contextPolicySource;
-    private final AtomicBoolean closed = new AtomicBoolean();
+    private final CloseLifecycle lifecycle = new CloseLifecycle();
 
     AdapterRuntimeHandle(RuntimeBundle bundle) {
         this.bundle = Objects.requireNonNull(bundle, "bundle");
@@ -41,12 +41,12 @@ public final class AdapterRuntimeHandle implements AdapterRuntimeAccess {
 
     @Override
     public boolean initialized() {
-        return !closed.get() && bundle.active();
+        return lifecycle.open() && bundle.active();
     }
 
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true)) {
+        if (!lifecycle.beginClose()) {
             return;
         }
         bundle.close();

@@ -1,5 +1,7 @@
 package com.zsumz.logyard.output.json.file.lease;
 
+import com.zsumz.logyard.api.lifecycle.CloseLifecycle;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.channels.FileChannel;
@@ -11,7 +13,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Process-wide exclusive ownership of one active output path. */
 public final class FileLease implements AutoCloseable {
@@ -20,7 +21,7 @@ public final class FileLease implements AutoCloseable {
     private final FileChannel channel;
     private final FileLock lock;
     private final ActiveFileIdentityRegistry.Registration identity;
-    private final AtomicBoolean closed = new AtomicBoolean();
+    private final CloseLifecycle lifecycle = new CloseLifecycle();
 
     private FileLease(
             Path activePath,
@@ -87,7 +88,7 @@ public final class FileLease implements AutoCloseable {
 
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true)) {
+        if (!lifecycle.beginClose()) {
             return;
         }
         IOException failure = null;

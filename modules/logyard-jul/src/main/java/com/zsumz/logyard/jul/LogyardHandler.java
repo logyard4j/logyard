@@ -1,6 +1,7 @@
 package com.zsumz.logyard.jul;
 
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.api.lifecycle.CloseLifecycle;
 import com.zsumz.logyard.jul.internal.event.JulEventMapper;
 import com.zsumz.logyard.runtime.adapter.AdapterReentryGuard;
 import com.zsumz.logyard.runtime.adapter.AdapterRuntimeAccess;
@@ -11,7 +12,6 @@ import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
 
 import java.util.Objects;
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.ErrorManager;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
@@ -23,7 +23,7 @@ public final class LogyardHandler extends Handler {
     private final JulEventMapper mapper;
     private final AdapterReentryGuard reentry = new AdapterReentryGuard();
     private final PublicationGate publications = new PublicationGate();
-    private final AtomicBoolean closed = new AtomicBoolean();
+    private final CloseLifecycle lifecycle = new CloseLifecycle();
 
     /** Logging-properties-compatible constructor with lazy process bootstrap. */
     public LogyardHandler() {
@@ -43,7 +43,7 @@ public final class LogyardHandler extends Handler {
 
     @Override
     public void publish(LogRecord record) {
-        if (record == null || closed.get() || !isLoggable(record) || !reentry.enter()) {
+        if (record == null || lifecycle.closed() || !isLoggable(record) || !reentry.enter()) {
             return;
         }
         if (!publications.tryEnter()) {
@@ -63,7 +63,7 @@ public final class LogyardHandler extends Handler {
 
     @Override
     public void flush() {
-        if (closed.get() || !runtime.initialized()) {
+        if (lifecycle.closed() || !runtime.initialized()) {
             return;
         }
         try {
@@ -76,7 +76,7 @@ public final class LogyardHandler extends Handler {
 
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true)) {
+        if (!lifecycle.beginClose()) {
             return;
         }
         if (!publications.retireAndAwaitDrain(PUBLICATION_DRAIN_TIMEOUT)) {

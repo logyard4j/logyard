@@ -1,10 +1,10 @@
 package com.zsumz.logyard.runtime.adapter;
 
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.api.lifecycle.CloseLifecycle;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 public final class LazyAdapterRuntime implements AdapterRuntimeAccess {
     private final String adapterName;
     private final AtomicReference<AdapterRuntimeHandle> handle = new AtomicReference<>();
-    private final AtomicBoolean closed = new AtomicBoolean();
+    private final CloseLifecycle lifecycle = new CloseLifecycle();
 
     public LazyAdapterRuntime(String adapterName) {
         this.adapterName = requireName(adapterName);
@@ -26,13 +26,13 @@ public final class LazyAdapterRuntime implements AdapterRuntimeAccess {
     @Override
     public boolean initialized() {
         AdapterRuntimeHandle current = handle.get();
-        return !closed.get() && current != null && current.initialized();
+        return lifecycle.open() && current != null && current.initialized();
     }
 
     /** Returns whether the currently resolved adapter lease participates in managed ownership. */
     public boolean ownsRuntime() {
         AdapterRuntimeHandle current = handle.get();
-        return !closed.get() && current != null && current.initialized() && current.ownsRuntime();
+        return lifecycle.open() && current != null && current.initialized() && current.ownsRuntime();
     }
 
     /** Returns a lazy context-policy source that follows whichever runtime is currently resolved. */
@@ -42,7 +42,7 @@ public final class LazyAdapterRuntime implements AdapterRuntimeAccess {
 
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true)) {
+        if (!lifecycle.beginClose()) {
             return;
         }
         AdapterRuntimeHandle current = handle.getAndSet(null);
@@ -53,7 +53,7 @@ public final class LazyAdapterRuntime implements AdapterRuntimeAccess {
 
     private AdapterRuntimeHandle handle() {
         while (true) {
-            if (closed.get()) {
+            if (lifecycle.closed()) {
                 throw new IllegalStateException("Logyard adapter runtime access is closed");
             }
             AdapterRuntimeHandle current = handle.get();
@@ -68,7 +68,7 @@ public final class LazyAdapterRuntime implements AdapterRuntimeAccess {
             }
 
             AdapterRuntimeHandle candidate = AdapterRuntimeResolver.resolve(adapterName);
-            if (closed.get()) {
+            if (lifecycle.closed()) {
                 candidate.close();
                 throw new IllegalStateException("Logyard adapter runtime access is closed");
             }
