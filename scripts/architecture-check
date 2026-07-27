@@ -599,6 +599,14 @@ production_sources = {source.relative_to(ROOT).as_posix() for source, _ in main_
 for baseline_source in sorted(size_baseline.keys() - production_sources):
     errors.append(f"{SIZE_BASELINE.relative_to(ROOT)}: unknown production source {baseline_source}")
 
+for baseline_source in sorted(size_baseline):
+    line_count = len((ROOT / baseline_source).read_text(encoding="utf-8").splitlines())
+    if line_count <= MAX_NEW_PRODUCTION_LINES:
+        errors.append(
+            f"{SIZE_BASELINE.relative_to(ROOT)}: {baseline_source} is {line_count} lines and no longer needs "
+            "a grandfathered size exception"
+        )
+
 for source, _ in main_files:
     relative = source.relative_to(ROOT).as_posix()
     line_count = len(source.read_text(encoding="utf-8").splitlines())
