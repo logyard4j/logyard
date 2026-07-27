@@ -16,7 +16,7 @@ final class ReloadDebouncer {
     private final LongSupplier nanoTime;
     private long deadline = Long.MAX_VALUE;
     private int transientRetryExponent;
-    private boolean internalFailureCircuitOpen;
+    private CircuitState circuitState = CircuitState.READY;
 
     ReloadDebouncer(Duration delay) {
         this(delay, System::nanoTime);
@@ -37,13 +37,13 @@ final class ReloadDebouncer {
     }
 
     void signalChange() {
-        internalFailureCircuitOpen = false;
+        circuitState = CircuitState.READY;
         transientRetryExponent = 0;
         schedule(delayNanos);
     }
 
     void signalReconciliation() {
-        if (!internalFailureCircuitOpen && deadline == Long.MAX_VALUE) {
+        if (circuitState == CircuitState.READY && deadline == Long.MAX_VALUE) {
             signalChange();
         }
     }
@@ -64,7 +64,7 @@ final class ReloadDebouncer {
             } else if (outcome == WatcherReloadOutcome.TRANSIENT_RETRY) {
                 schedule(transientRetryDelay());
             } else if (outcome == WatcherReloadOutcome.INTERNAL_FAILURE) {
-                internalFailureCircuitOpen = true;
+                circuitState = CircuitState.INTERNAL_FAILURE_LOCKED;
                 transientRetryExponent = 0;
             } else {
                 transientRetryExponent = 0;
@@ -95,5 +95,10 @@ final class ReloadDebouncer {
         } catch (ArithmeticException overflow) {
             return Long.MAX_VALUE;
         }
+    }
+
+    private enum CircuitState {
+        READY,
+        INTERNAL_FAILURE_LOCKED
     }
 }

@@ -15,7 +15,7 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 final class ConfigurationWatchLoop implements Runnable {
@@ -30,8 +30,8 @@ final class ConfigurationWatchLoop implements Runnable {
     private final ReloadDebouncer debouncer;
     private final Supplier<WatcherReloadOutcome> reload;
     private final WatcherDiagnosticBoundary diagnostics;
-    private final AtomicBoolean stopped = new AtomicBoolean();
-    private boolean registrationValid = true;
+    private final AtomicReference<WatcherPhase> phase = new AtomicReference<>(WatcherPhase.RUNNING);
+    private RegistrationPhase registrationPhase = RegistrationPhase.REGISTERED;
     private long nextReconciliation;
     private long nextRegistrationAttempt;
 
@@ -54,7 +54,7 @@ final class ConfigurationWatchLoop implements Runnable {
     public void run() {
         Throwable terminalFailure = null;
         try {
-            while (!stopped.get()) {
+            while (running()) {
                 WatchKey key = watchService.poll(POLL_MILLIS, TimeUnit.MILLISECONDS);
                 if (key != null && consume(key)) {
                     debouncer.signalChange();
@@ -68,7 +68,7 @@ final class ConfigurationWatchLoop implements Runnable {
         } catch (ClosedWatchServiceException ignored) {
             // Expected during close.
         } catch (InterruptedException interrupted) {
-            if (!stopped.get()) {
+            if (running()) {
                 terminalFailure = interrupted;
                 Thread.currentThread().interrupt();
             }
@@ -77,14 +77,14 @@ final class ConfigurationWatchLoop implements Runnable {
             terminalFailure = failure;
         } finally {
             terminalFailure = closeAfterRun(terminalFailure);
-            if (terminalFailure != null && !stopped.get()) {
+            if (terminalFailure != null && running()) {
                 diagnostics.watcherStopped(source, terminalFailure);
             }
         }
     }
 
     boolean stop() {
-        if (!stopped.compareAndSet(false, true)) {
+        if (!phase.compareAndSet(WatcherPhase.RUNNING, WatcherPhase.STOPPED)) {
             return false;
         }
         try {
@@ -110,7 +110,7 @@ final class ConfigurationWatchLoop implements Runnable {
             }
         }
         if (!key.reset()) {
-            registrationValid = false;
+            registrationPhase = RegistrationPhase.RETRY_PENDING;
             nextRegistrationAttempt = System.nanoTime();
             relevant = true;
         }
@@ -123,10 +123,10 @@ final class ConfigurationWatchLoop implements Runnable {
             debouncer.signalReconciliation();
             nextReconciliation = saturatedDeadline(now, RECONCILIATION_NANOS);
         }
-        if (!registrationValid && now - nextRegistrationAttempt >= 0L) {
+        if (registrationPhase == RegistrationPhase.RETRY_PENDING && now - nextRegistrationAttempt >= 0L) {
             try {
                 registration.reregister();
-                registrationValid = true;
+                registrationPhase = RegistrationPhase.REGISTERED;
                 debouncer.signalChange();
             } catch (IOException | RuntimeException failure) {
                 diagnostics.rejected(source, failure);
@@ -151,5 +151,19 @@ final class ConfigurationWatchLoop implements Runnable {
             terminalFailure.addSuppressed(closeFailure);
             return terminalFailure;
         }
+    }
+
+    private boolean running() {
+        return phase.get() == WatcherPhase.RUNNING;
+    }
+
+    private enum WatcherPhase {
+        RUNNING,
+        STOPPED
+    }
+
+    private enum RegistrationPhase {
+        REGISTERED,
+        RETRY_PENDING
     }
 }
