@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Thread-safe runtime with compiled routes and lease-protected atomic plan replacement. */
 public final class DefaultLogyardRuntime implements LogyardRuntime {
@@ -32,14 +31,13 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     private final RuntimeRetirements retirements;
     private final RuntimeLifecycle lifecycle;
     private final RuntimePlanReplacement planReplacement;
-    private final AtomicBoolean closed = new AtomicBoolean();
 
     public DefaultLogyardRuntime(RuntimePlan plan) {
         state = RuntimePlanReplacement.initial(plan);
-        publication = new RuntimePublication(this, loggerName -> compileRoute(loggerName, state), closed::get);
-        levelOverrideManager = new RuntimeLevelOverrideManager(publication);
         retirements = new RuntimeRetirements();
-        lifecycle = new RuntimeLifecycle(publication, retirements, closed);
+        lifecycle = new RuntimeLifecycle(retirements);
+        publication = new RuntimePublication(this, loggerName -> compileRoute(loggerName, state), lifecycle::closed);
+        levelOverrideManager = new RuntimeLevelOverrideManager(publication);
         planReplacement = new RuntimePlanReplacement(publication, retirements);
     }
 
@@ -75,7 +73,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     @Override
     public RuntimeHealth health() {
-        return lifecycle.health(this::currentGeneration);
+        return lifecycle.health(this::currentGeneration, publication::loggerCount);
     }
 
     public synchronized void reload(RuntimePlan nextPlan) {

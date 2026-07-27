@@ -7,27 +7,22 @@ import com.zsumz.logyard.core.runtime.retirement.RuntimeRetirements;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 /** Coordinates lease-aware runtime observation, flushing, and final plan retirement. */
 public final class RuntimeLifecycle {
-    private final RuntimePublication publication;
     private final RuntimeRetirements retirements;
-    private final AtomicBoolean closed;
+    private final AtomicReference<Phase> phase = new AtomicReference<>(Phase.RUNNING);
     private final CompletableFuture<Void> retirementCompletion = new CompletableFuture<>();
 
-    public RuntimeLifecycle(
-            RuntimePublication publication,
-            RuntimeRetirements retirements,
-            AtomicBoolean closed) {
-        this.publication = Objects.requireNonNull(publication, "publication");
+    public RuntimeLifecycle(RuntimeRetirements retirements) {
         this.retirements = Objects.requireNonNull(retirements, "retirements");
-        this.closed = Objects.requireNonNull(closed, "closed");
     }
 
     public boolean closed() {
-        return closed.get();
+        return phase.get() != Phase.RUNNING;
     }
 
     public void requireOpen() {
@@ -36,15 +31,15 @@ public final class RuntimeLifecycle {
         }
     }
 
-    public RuntimeHealth health(Supplier<RuntimeGeneration> currentGeneration) {
+    public RuntimeHealth health(Supplier<RuntimeGeneration> currentGeneration, IntSupplier loggerCount) {
         RuntimeGenerationLease lease = acquire(currentGeneration);
         if (lease == null) {
-            return RuntimeHealthReporter.stopped(publication.loggerCount());
+            return RuntimeHealthReporter.stopped(loggerCount.getAsInt());
         }
         try (lease) {
             RuntimeGeneration snapshot = lease.generation();
             return RuntimeHealthReporter.running(
-                    publication.loggerCount(), retirements.pendingCount(), snapshot.plan(), snapshot.epoch());
+                    loggerCount.getAsInt(), retirements.pendingCount(), snapshot.plan(), snapshot.epoch());
         }
     }
 
@@ -60,7 +55,7 @@ public final class RuntimeLifecycle {
 
     /** Starts shutdown while the runtime owner holds its state lock. */
     public boolean beginClose() {
-        return closed.compareAndSet(false, true);
+        return phase.compareAndSet(Phase.RUNNING, Phase.CLOSING);
     }
 
     /** Retires the final plan after the runtime owner has made new operations ineligible. */
@@ -72,9 +67,11 @@ public final class RuntimeLifecycle {
                 } else {
                     retirementCompletion.completeExceptionally(failure);
                 }
+                phase.set(Phase.CLOSED);
             });
         } catch (RuntimeException | Error failure) {
             retirementCompletion.completeExceptionally(failure);
+            phase.set(Phase.CLOSED);
             throw failure;
         }
         retirements.await(current.plan().shutdownTimeout());
@@ -87,6 +84,12 @@ public final class RuntimeLifecycle {
     private RuntimeGenerationLease acquire(Supplier<RuntimeGeneration> currentGeneration) {
         return RuntimeGenerationLease.acquire(
                 Objects.requireNonNull(currentGeneration, "currentGeneration"),
-                closed::get);
+                this::closed);
+    }
+
+    private enum Phase {
+        RUNNING,
+        CLOSING,
+        CLOSED
     }
 }
