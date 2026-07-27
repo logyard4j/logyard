@@ -41,7 +41,7 @@ final class ManagedRuntimeReconfiguration {
         PreparedRuntimeConfiguration prepared = null;
         RuntimeAssembly candidate = null;
         ActiveRuntimeConfiguration replacement = null;
-        boolean currentWatcherRetirementAttempted = false;
+        CurrentWatcherRecovery currentWatcher = new CurrentWatcherRecovery(transitions, watcherReload);
         try {
             ConfigurationSnapshot snapshot = PreparedRuntimeConfiguration.read(request);
             if (current.canReuseImmutableSource(request, snapshot)) {
@@ -52,17 +52,14 @@ final class ManagedRuntimeReconfiguration {
             prepared.activateOutputs();
             replacement = prepared.activate(runtime);
             replacement.activateWatcher();
-            currentWatcherRetirementAttempted = true;
-            current.closeWatcher();
+            currentWatcher.retire(current);
             return commitReplacement(current, replacement, candidate, currentAssembly);
         } catch (RuntimeException | Error failure) {
             if (prepared != null && replacement == null) {
                 prepared.closeWatcher(failure);
             }
             RuntimeConfigurationCleanup.closeReplacement(replacement, candidate, currentAssembly, failure);
-            if (currentWatcherRetirementAttempted) {
-                restartCurrentWatcher(current, failure);
-            }
+            currentWatcher.restartAfterFailure(current, failure);
             transitions.finish(RECONFIGURING);
             throw failure;
         }
@@ -98,14 +95,4 @@ final class ManagedRuntimeReconfiguration {
                 new IllegalStateException("runtime reconfiguration was superseded by shutdown"));
     }
 
-    private void restartCurrentWatcher(ActiveRuntimeConfiguration current, Throwable primaryFailure) {
-        try {
-            ActiveRuntimeConfiguration restarted = current.restartWatcher(watcherReload);
-            if (!transitions.replaceDuring(RECONFIGURING, current, restarted)) {
-                restarted.closeWatcher();
-            }
-        } catch (RuntimeException restartFailure) {
-            primaryFailure.addSuppressed(restartFailure);
-        }
-    }
 }

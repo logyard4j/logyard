@@ -1,6 +1,7 @@
 package com.zsumz.logyard.quarkus.runtime.logging;
 
 import com.zsumz.logyard.api.LogyardRuntime;
+import com.zsumz.logyard.api.lifecycle.CloseLifecycle;
 import com.zsumz.logyard.runtime.adapter.AdapterReentryGuard;
 import com.zsumz.logyard.runtime.context.ContextPolicyRegistry;
 import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
@@ -8,7 +9,6 @@ import com.zsumz.logyard.runtime.adapter.PublicationGate;
 
 import java.util.Objects;
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
@@ -19,7 +19,7 @@ public final class QuarkusLogHandler extends Handler {
     private final QuarkusEventMapper mapper;
     private final AdapterReentryGuard reentry = new AdapterReentryGuard();
     private final PublicationGate publications = new PublicationGate();
-    private final AtomicBoolean closed = new AtomicBoolean();
+    private final CloseLifecycle lifecycle = new CloseLifecycle();
 
     /**
      * Creates a handler that borrows a framework-owned runtime.
@@ -34,7 +34,7 @@ public final class QuarkusLogHandler extends Handler {
 
     @Override
     public void publish(LogRecord record) {
-        if (record == null || closed.get() || !isLoggable(record) || !reentry.enter()) {
+        if (record == null || lifecycle.closed() || !isLoggable(record) || !reentry.enter()) {
             return;
         }
         if (!publications.tryEnter()) {
@@ -54,7 +54,7 @@ public final class QuarkusLogHandler extends Handler {
 
     @Override
     public void flush() {
-        if (closed.get()) {
+        if (lifecycle.closed()) {
             return;
         }
         try {
@@ -71,7 +71,7 @@ public final class QuarkusLogHandler extends Handler {
      */
     @Override
     public void close() {
-        if (closed.compareAndSet(false, true)) {
+        if (lifecycle.beginClose()) {
             if (!publications.retireAndAwaitDrain(PUBLICATION_DRAIN_TIMEOUT)) {
                 AdapterDiagnostics.adapterFailure(
                         "quarkus",

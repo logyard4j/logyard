@@ -68,6 +68,7 @@ def check_package_layout(root: Path, state: CheckState) -> None:
         {
             "ActiveRuntimeConfiguration.java", "ConfigurationInstallationRequest.java", "ConfigurationSnapshotStabilizer.java",
             "ConfigurationWatchHandshake.java", "ConfigurationWatcherCatchUp.java", "ConfigurationWatcherPolicy.java",
+            "CurrentWatcherRecovery.java",
             "DeferredWatcherReload.java", "GlobalRuntimeAccess.java", "ManagedRuntimeInstallation.java",
             "ManagedRuntimeReconfiguration.java", "PreparedRuntimeConfiguration.java", "RuntimeConfigurationCleanup.java", "RuntimeInstallation.java",
             "RuntimeInstallationClosure.java", "RuntimeInstallationTransitions.java", "StabilizedConfiguration.java",

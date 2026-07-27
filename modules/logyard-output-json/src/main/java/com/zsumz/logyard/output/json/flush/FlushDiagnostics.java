@@ -3,8 +3,8 @@ package com.zsumz.logyard.output.json.flush;
 import com.zsumz.logyard.api.failure.FailureIsolation;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Bounded, rate-limited diagnostics for failures escaping a timed-flush task. */
 @FunctionalInterface
@@ -21,7 +21,7 @@ interface FlushDiagnostics {
         private final long reportIntervalNanos;
         private final AtomicLong nextReportNanos = new AtomicLong();
         private final AtomicLong suppressed = new AtomicLong();
-        private final AtomicBoolean reportInFlight = new AtomicBoolean();
+        private final AtomicReference<ReporterPhase> reporterPhase = new AtomicReference<>(ReporterPhase.AVAILABLE);
 
         StderrFlushDiagnostics() {
             this(REPORT_INTERVAL_NANOS);
@@ -45,20 +45,20 @@ interface FlushDiagnostics {
                 reporter.setContextClassLoader(null);
                 reporter.start();
             } catch (Throwable startFailure) {
-                reportInFlight.set(false);
+                releaseReporter();
                 suppressed.incrementAndGet();
                 FailureIsolation.prepareForRecovery(startFailure);
             }
         }
 
         private boolean reserveReport(long now, long next) {
-            if (now < next || !reportInFlight.compareAndSet(false, true)) {
+            if (now < next || !reporterPhase.compareAndSet(ReporterPhase.AVAILABLE, ReporterPhase.RUNNING)) {
                 return false;
             }
             if (nextReportNanos.compareAndSet(next, saturatedAdd(now, reportIntervalNanos))) {
                 return true;
             }
-            reportInFlight.set(false);
+            releaseReporter();
             return false;
         }
 
@@ -67,7 +67,7 @@ interface FlushDiagnostics {
         }
 
         boolean reportIsInFlight() {
-            return reportInFlight.get();
+            return reporterPhase.get() == ReporterPhase.RUNNING;
         }
 
         private void write(Throwable failure) {
@@ -77,8 +77,17 @@ interface FlushDiagnostics {
             } catch (Throwable reportingFailure) {
                 FailureIsolation.prepareForRecovery(reportingFailure);
             } finally {
-                reportInFlight.set(false);
+                releaseReporter();
             }
+        }
+
+        private void releaseReporter() {
+            reporterPhase.set(ReporterPhase.AVAILABLE);
+        }
+
+        private enum ReporterPhase {
+            AVAILABLE,
+            RUNNING
         }
 
         private static String message(Throwable failure, long hidden) {

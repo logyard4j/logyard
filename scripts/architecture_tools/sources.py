@@ -119,6 +119,8 @@ def _check_imports(
 
 def _check_source_safety(root: Path, source: Path, text: str, member: str, state: CheckState) -> None:
     relative = source.relative_to(root)
+    if "AtomicBoolean" in text or re.search(r"\bvolatile\s+boolean\b", text):
+        state.add_error(f"{relative}: lifecycle and ownership state must use named phases, not mutable Boolean flags")
     if "printStackTrace(" in text:
         state.add_error(f"{relative}: printStackTrace is forbidden")
     for pattern, description in UNBOUNDED:

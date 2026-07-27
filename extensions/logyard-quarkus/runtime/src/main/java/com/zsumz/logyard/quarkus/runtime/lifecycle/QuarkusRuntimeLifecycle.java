@@ -1,5 +1,6 @@
 package com.zsumz.logyard.quarkus.runtime.lifecycle;
 
+import com.zsumz.logyard.api.lifecycle.CloseLifecycle;
 import com.zsumz.logyard.quarkus.runtime.logging.QuarkusLogHandler;
 import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
 import com.zsumz.logyard.runtime.bootstrap.LogyardConfigurationSource;
@@ -8,14 +9,13 @@ import com.zsumz.logyard.runtime.bootstrap.RuntimeOwner;
 import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Handler;
 
 /** Owns the Quarkus framework lease and its non-owning logging handler as one lifecycle. */
 public final class QuarkusRuntimeLifecycle implements AutoCloseable {
     private final RuntimeBundle bundle;
     private final QuarkusLogHandler handler;
-    private final AtomicBoolean closed = new AtomicBoolean();
+    private final CloseLifecycle lifecycle = new CloseLifecycle();
 
     private QuarkusRuntimeLifecycle(RuntimeBundle bundle) {
         this.bundle = Objects.requireNonNull(bundle, "bundle");
@@ -50,7 +50,7 @@ public final class QuarkusRuntimeLifecycle implements AutoCloseable {
     /** Retires the handler, flushes captured events, and releases the framework lease exactly once. */
     @Override
     public void close() {
-        if (!closed.compareAndSet(false, true)) {
+        if (!lifecycle.beginClose()) {
             return;
         }
         closeBoundary("handler retirement", handler::close);

@@ -9,7 +9,7 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Provisional ownership of a parent-directory watch registration.
@@ -24,7 +24,7 @@ public final class ConfigurationWatchRegistration implements AutoCloseable {
     private final Path parent;
     private final Path filename;
     private final WatchService watchService;
-    private final AtomicBoolean claimed = new AtomicBoolean();
+    private final AtomicReference<ClaimPhase> claimPhase = new AtomicReference<>(ClaimPhase.AVAILABLE);
 
     private ConfigurationWatchRegistration(Path source, Path parent, Path filename, WatchService watchService) {
         this.source = Objects.requireNonNull(source, "source");
@@ -66,7 +66,7 @@ public final class ConfigurationWatchRegistration implements AutoCloseable {
     }
 
     void claim() {
-        if (!claimed.compareAndSet(false, true)) {
+        if (!claimPhase.compareAndSet(ClaimPhase.AVAILABLE, ClaimPhase.CLAIMED)) {
             throw new IllegalStateException("configuration watch registration is already claimed");
         }
     }
@@ -106,5 +106,10 @@ public final class ConfigurationWatchRegistration implements AutoCloseable {
         } catch (IOException failure) {
             throw new UncheckedIOException("failed to close Logyard configuration watch registration", failure);
         }
+    }
+
+    private enum ClaimPhase {
+        AVAILABLE,
+        CLAIMED
     }
 }

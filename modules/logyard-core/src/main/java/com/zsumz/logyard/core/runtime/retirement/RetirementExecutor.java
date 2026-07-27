@@ -7,8 +7,8 @@ import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * One bounded daemon per runtime for output retirement.
@@ -25,8 +25,7 @@ final class RetirementExecutor {
             new ArrayBlockingQueue<>(MAX_PENDING_RELOADS + 1);
     private final Semaphore reloadPermits = new Semaphore(MAX_PENDING_RELOADS);
     private final AtomicInteger pendingReloads = new AtomicInteger();
-    private final AtomicBoolean started = new AtomicBoolean();
-    private final AtomicBoolean finalRetirementCompleted = new AtomicBoolean();
+    private final AtomicReference<WorkerPhase> workerPhase = new AtomicReference<>(WorkerPhase.NOT_STARTED);
     private final Thread worker = new Thread(
             this::runLoop,
             "logyard-plan-retirement-" + NEXT_ID.incrementAndGet());
@@ -70,7 +69,7 @@ final class RetirementExecutor {
             try {
                 task.run();
             } finally {
-                finalRetirementCompleted.set(true);
+                workerPhase.set(WorkerPhase.FINAL_RETIREMENT_COMPLETED);
             }
         }, false);
     }
@@ -87,7 +86,7 @@ final class RetirementExecutor {
             }
             throw new IllegalStateException("Logyard retirement queue capacity invariant was violated");
         }
-        if (started.compareAndSet(false, true)) {
+        if (workerPhase.compareAndSet(WorkerPhase.NOT_STARTED, WorkerPhase.RUNNING)) {
             worker.start();
         }
     }
@@ -113,8 +112,14 @@ final class RetirementExecutor {
     }
 
     private boolean shouldStop() {
-        return finalRetirementCompleted.get()
+        return workerPhase.get() == WorkerPhase.FINAL_RETIREMENT_COMPLETED
                 && pendingReloads.get() == 0
                 && queue.isEmpty();
+    }
+
+    private enum WorkerPhase {
+        NOT_STARTED,
+        RUNNING,
+        FINAL_RETIREMENT_COMPLETED
     }
 }

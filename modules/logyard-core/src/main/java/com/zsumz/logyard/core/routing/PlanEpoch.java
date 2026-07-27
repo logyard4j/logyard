@@ -4,7 +4,6 @@ import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -17,7 +16,7 @@ public final class PlanEpoch {
     private final AtomicInteger state = new AtomicInteger();
     private final AtomicReference<Runnable> cleanup = new AtomicReference<>();
     private final AtomicReference<Consumer<Runnable>> scheduler = new AtomicReference<>();
-    private final AtomicBoolean cleanupScheduled = new AtomicBoolean();
+    private final AtomicReference<CleanupPhase> cleanupPhase = new AtomicReference<>(CleanupPhase.PENDING);
     private final CompletableFuture<Void> completion = new CompletableFuture<>();
 
     public boolean tryAcquire() {
@@ -62,7 +61,7 @@ public final class PlanEpoch {
     }
 
     private void scheduleCleanup() {
-        if (!cleanupScheduled.compareAndSet(false, true)) {
+        if (!cleanupPhase.compareAndSet(CleanupPhase.PENDING, CleanupPhase.SCHEDULED)) {
             return;
         }
         ComponentInvocationBoundary.invoke(
@@ -78,5 +77,10 @@ public final class PlanEpoch {
                 (component, failure) -> completion.completeExceptionally(failure))) {
             completion.complete(null);
         }
+    }
+
+    private enum CleanupPhase {
+        PENDING,
+        SCHEDULED
     }
 }

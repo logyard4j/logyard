@@ -4,7 +4,6 @@ import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
-import com.zsumz.logyard.core.runtime.RuntimeReloadDeferredException;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -44,23 +43,13 @@ public final class RuntimeRetirements {
         Objects.requireNonNull(previousEpoch, "previousEpoch");
         Objects.requireNonNull(nextPlan, "nextPlan");
         Objects.requireNonNull(activation, "activation");
-        if (!executor.reserveReload()) {
-            throw new RuntimeReloadDeferredException("Logyard has " + RetirementExecutor.MAX_PENDING_RELOADS
-                    + " pending plan retirements; wait for output closure before reloading again");
-        }
-
-        boolean retirementScheduled = false;
-        try {
+        try (ReloadReservation reservation = ReloadReservation.acquire(executor)) {
             activation.run();
             observe(sequence.retire(
                     previousEpoch,
                     () -> RuntimeOutputs.closeNotReused(previousPlan, nextPlan),
                     executor::scheduleReload));
-            retirementScheduled = true;
-        } finally {
-            if (!retirementScheduled) {
-                executor.cancelReloadReservation();
-            }
+            reservation.transferToRetirementTask();
         }
     }
 

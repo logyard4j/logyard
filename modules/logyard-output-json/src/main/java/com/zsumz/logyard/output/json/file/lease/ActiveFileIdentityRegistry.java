@@ -1,5 +1,7 @@
 package com.zsumz.logyard.output.json.file.lease;
 
+import com.zsumz.logyard.api.lifecycle.CloseLifecycle;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,7 +31,7 @@ final class ActiveFileIdentityRegistry {
 
     static final class Registration implements AutoCloseable {
         private final Path path;
-        private boolean closed;
+        private final CloseLifecycle lifecycle = new CloseLifecycle();
 
         private Registration(Path path) {
             this.path = path;
@@ -38,8 +40,7 @@ final class ActiveFileIdentityRegistry {
         @Override
         public void close() {
             synchronized (ActiveFileIdentityRegistry.class) {
-                if (!closed) {
-                    closed = true;
+                if (lifecycle.beginClose()) {
                     OWNED_PATHS.remove(path);
                 }
             }
