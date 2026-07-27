@@ -16,8 +16,7 @@ final class BufferedFileWriter implements ActiveDataFile {
     private final WritableByteChannel channel;
     private final ByteBuffer buffer;
     private long logicalBytes;
-    private boolean failed;
-    private boolean closed;
+    private Phase phase = Phase.OPEN;
 
     BufferedFileWriter(Path path, WritableByteChannel channel, ByteBuffer buffer, long logicalBytes) {
         this.path = path;
@@ -86,14 +85,15 @@ final class BufferedFileWriter implements ActiveDataFile {
 
     @Override
     public void close() {
-        if (closed) {
+        if (phase != Phase.OPEN) {
             return;
         }
         IOException failure = null;
+        Phase nextPhase = Phase.CLOSED;
         try {
             flushBuffer();
         } catch (IOException flushFailure) {
-            failed = true;
+            nextPhase = Phase.FAILED;
             buffer.clear();
             failure = flushFailure;
         }
@@ -106,7 +106,7 @@ final class BufferedFileWriter implements ActiveDataFile {
                 failure.addSuppressed(closeFailure);
             }
         }
-        closed = true;
+        phase = nextPhase;
         if (failure != null) {
             throw new UncheckedIOException("failed to close Logyard JSON output " + path, failure);
         }
@@ -125,8 +125,7 @@ final class BufferedFileWriter implements ActiveDataFile {
     }
 
     private void discardAndClose(IOException failure) {
-        failed = true;
-        closed = true;
+        phase = Phase.FAILED;
         buffer.clear();
         try {
             channel.close();
@@ -136,11 +135,12 @@ final class BufferedFileWriter implements ActiveDataFile {
     }
 
     private void ensureOpen() {
-        if (failed) {
-            throw new IllegalStateException("Logyard JSON output failed: " + path);
-        }
-        if (closed) {
-            throw new IllegalStateException("Logyard JSON output is closed: " + path);
+        switch (phase) {
+            case OPEN -> {
+                return;
+            }
+            case FAILED -> throw new IllegalStateException("Logyard JSON output failed: " + path);
+            case CLOSED -> throw new IllegalStateException("Logyard JSON output is closed: " + path);
         }
     }
 
@@ -153,5 +153,11 @@ final class BufferedFileWriter implements ActiveDataFile {
         } catch (IOException closeFailure) {
             failure.addSuppressed(closeFailure);
         }
+    }
+
+    private enum Phase {
+        OPEN,
+        FAILED,
+        CLOSED
     }
 }

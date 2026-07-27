@@ -16,8 +16,7 @@ final class JsonFileLifecycle implements AutoCloseable {
     private final RotatingFileWriter writer;
     private final RotationPolicy rotationPolicy;
     private final TimedFlushController timedFlush;
-    private volatile boolean active;
-    private volatile boolean closed;
+    private volatile FilePhase phase;
 
     JsonFileLifecycle(
             Path path,
@@ -36,7 +35,7 @@ final class JsonFileLifecycle implements AutoCloseable {
         this.rotationPolicy = rotationPolicy;
         timedFlush = new TimedFlushController(flushInterval, Objects.requireNonNull(scheduler, "scheduler"), this::flushOnDeadline);
         writer = new RotatingFileWriter(this.path, bufferBytes, append, rotationPolicy, Objects.requireNonNull(dataFiles, "dataFiles"));
-        this.active = active;
+        phase = active ? FilePhase.ACTIVE : FilePhase.PREPARED;
         if (active) {
             writer.initializeForDirectUse();
         }
@@ -52,7 +51,7 @@ final class JsonFileLifecycle implements AutoCloseable {
 
     void activate() {
         ensureOpen();
-        active = true;
+        phase = FilePhase.ACTIVE;
     }
 
     void requireActive() {
@@ -79,7 +78,7 @@ final class JsonFileLifecycle implements AutoCloseable {
     void flush() {
         synchronized (writerState) {
             ensureOpen();
-            if (!active) {
+            if (phase == FilePhase.PREPARED) {
                 return;
             }
             try {
@@ -95,16 +94,16 @@ final class JsonFileLifecycle implements AutoCloseable {
         synchronized (writerState) {
             snapshot = writer.healthSnapshot();
         }
-        return JsonFileHealth.component(componentName, path, rotationPolicy != null, closed, snapshot);
+        return JsonFileHealth.component(componentName, path, rotationPolicy != null, phase == FilePhase.CLOSED, snapshot);
     }
 
     @Override
     public void close() {
         synchronized (writerState) {
-            if (closed) {
+            if (phase == FilePhase.CLOSED) {
                 return;
             }
-            closed = true;
+            phase = FilePhase.CLOSED;
         }
         timedFlush.close();
         synchronized (writerState) {
@@ -114,7 +113,7 @@ final class JsonFileLifecycle implements AutoCloseable {
 
     private void flushOnDeadline() {
         synchronized (writerState) {
-            if (!timedFlush.flushIsCurrent() || closed || !active) {
+            if (!timedFlush.flushIsCurrent() || phase != FilePhase.ACTIVE) {
                 return;
             }
             try {
@@ -126,14 +125,20 @@ final class JsonFileLifecycle implements AutoCloseable {
     }
 
     private void ensureOpen() {
-        if (closed) {
+        if (phase == FilePhase.CLOSED) {
             throw new IllegalStateException("Logyard JSON output is closed: " + path);
         }
     }
 
     private void ensureActive() {
-        if (!active) {
+        if (phase == FilePhase.PREPARED) {
             throw new IllegalStateException("Logyard JSON output is not active: " + path);
         }
+    }
+
+    private enum FilePhase {
+        PREPARED,
+        ACTIVE,
+        CLOSED
     }
 }

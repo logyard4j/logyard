@@ -29,7 +29,7 @@ public final class ConsoleSink implements EventSink, HealthContributor {
     private final PrintStream stream;
     private final boolean closeStream;
     private final ConsoleEventRenderer renderer;
-    private volatile boolean closed;
+    private volatile StreamPhase phase = StreamPhase.OPEN;
 
     public ConsoleSink(PrintStream stream, boolean colors, ConsoleTheme theme) {
         this(stream, colors, theme, ColorCapability.TRUECOLOR, ZoneId.systemDefault(), true, true, false, null);
@@ -102,10 +102,10 @@ public final class ConsoleSink implements EventSink, HealthContributor {
     @Override
     public void close() {
         synchronized (streamState) {
-            if (closed) {
+            if (phase == StreamPhase.CLOSED) {
                 return;
             }
-            closed = true;
+            phase = StreamPhase.CLOSED;
             if (closeStream) {
                 stream.close();
             } else {
@@ -119,14 +119,19 @@ public final class ConsoleSink implements EventSink, HealthContributor {
         return new ComponentHealth(
                 componentName,
                 "console-output",
-                closed ? HealthStatus.STOPPED : HealthStatus.HEALTHY,
+                phase == StreamPhase.CLOSED ? HealthStatus.STOPPED : HealthStatus.HEALTHY,
                 renderer.healthDetails(),
                 Map.of());
     }
 
     private void ensureOpen() {
-        if (closed) {
+        if (phase == StreamPhase.CLOSED) {
             throw new IllegalStateException("Logyard console output is closed");
         }
+    }
+
+    private enum StreamPhase {
+        OPEN,
+        CLOSED
     }
 }

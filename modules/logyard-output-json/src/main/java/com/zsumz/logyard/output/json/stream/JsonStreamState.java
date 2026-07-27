@@ -6,13 +6,12 @@ import com.zsumz.logyard.api.diagnostics.HealthStatus;
 final class JsonStreamState {
     private Stage stage = Stage.OPEN;
     private Throwable failure;
-    private boolean closeStarted;
 
     void requireOpen() {
-        if (stage == Stage.FAILED) {
+        if (stage == Stage.FAILED || stage == Stage.CLOSING_FAILED || stage == Stage.CLOSED_FAILED) {
             throw new IllegalStateException("Logyard JSON stream output failed", failure);
         }
-        if (stage == Stage.CLOSED) {
+        if (stage == Stage.CLOSING || stage == Stage.CLOSED) {
             throw new IllegalStateException("Logyard JSON stream output is closed");
         }
     }
@@ -21,7 +20,11 @@ final class JsonStreamState {
         if (failure == null) {
             failure = cause;
         }
-        stage = Stage.FAILED;
+        stage = switch (stage) {
+            case OPEN -> Stage.FAILED;
+            case FAILED -> Stage.FAILED;
+            case CLOSING, CLOSING_FAILED, CLOSED, CLOSED_FAILED -> Stage.CLOSED_FAILED;
+        };
     }
 
     boolean failed() {
@@ -37,27 +40,40 @@ final class JsonStreamState {
     }
 
     boolean startClose() {
-        if (closeStarted) {
-            return false;
-        }
-        closeStarted = true;
-        if (stage == Stage.OPEN) {
-            stage = Stage.CLOSED;
-        }
-        return true;
+        return switch (stage) {
+            case OPEN -> transitionTo(Stage.CLOSING);
+            case FAILED -> transitionTo(Stage.CLOSING_FAILED);
+            case CLOSING, CLOSING_FAILED, CLOSED, CLOSED_FAILED -> false;
+        };
+    }
+
+    void completeClose() {
+        stage = switch (stage) {
+            case CLOSING -> Stage.CLOSED;
+            case CLOSING_FAILED -> Stage.CLOSED_FAILED;
+            case OPEN, FAILED, CLOSED, CLOSED_FAILED -> stage;
+        };
     }
 
     HealthStatus healthStatus() {
         return switch (stage) {
-            case OPEN -> HealthStatus.HEALTHY;
-            case FAILED -> HealthStatus.FAILED;
+            case OPEN, CLOSING -> HealthStatus.HEALTHY;
+            case FAILED, CLOSING_FAILED, CLOSED_FAILED -> HealthStatus.FAILED;
             case CLOSED -> HealthStatus.STOPPED;
         };
+    }
+
+    private boolean transitionTo(Stage next) {
+        stage = next;
+        return true;
     }
 
     private enum Stage {
         OPEN,
         FAILED,
-        CLOSED
+        CLOSING,
+        CLOSING_FAILED,
+        CLOSED,
+        CLOSED_FAILED
     }
 }

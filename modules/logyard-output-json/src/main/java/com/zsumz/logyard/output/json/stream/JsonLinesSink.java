@@ -107,6 +107,7 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
             } catch (Throwable failure) {
                 throw fail("failed to close Logyard JSON output", failure);
             }
+            state.completeClose();
         }
     }
 
@@ -152,10 +153,12 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
 
     private void closeAfterFailure(Throwable primaryFailure) {
         if (!closeWriter) {
+            state.completeClose();
             return;
         }
         try {
             writer.close();
+            state.completeClose();
         } catch (Throwable cleanupFailure) {
             FailureIsolation.prepareForRecovery(cleanupFailure);
             if (cleanupFailure != primaryFailure) {
