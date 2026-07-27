@@ -12,6 +12,9 @@ import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.runtime.management.RuntimeHealthReporter;
+import com.zsumz.logyard.core.runtime.management.RuntimeGeneration;
+import com.zsumz.logyard.core.runtime.management.RuntimeLevelOverrideChange;
+import com.zsumz.logyard.core.runtime.management.RuntimeLevelOverrideManager;
 import com.zsumz.logyard.core.runtime.management.RuntimeManagementView;
 import com.zsumz.logyard.core.runtime.publication.RuntimePublication;
 import com.zsumz.logyard.core.runtime.retirement.RuntimeRetirements;
@@ -22,22 +25,23 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Predicate;
 
 /** Thread-safe runtime with compiled routes and lease-protected atomic plan replacement. */
 public final class DefaultLogyardRuntime implements LogyardRuntime {
-    private volatile RuntimeState state;
+    private volatile RuntimeGeneration state;
     private final RuntimePublication publication;
+    private final RuntimeLevelOverrideManager levelOverrideManager;
     private final RuntimeRetirements retirements = new RuntimeRetirements();
     private final CompletableFuture<Void> retirementCompletion = new CompletableFuture<>();
     private final AtomicBoolean closed = new AtomicBoolean();
 
     public DefaultLogyardRuntime(RuntimePlan plan) {
-        state = new RuntimeState(
+        state = new RuntimeGeneration(
                 Objects.requireNonNull(plan, "plan"),
                 RuntimeLevelOverrides.empty(),
                 new PlanEpoch());
         publication = new RuntimePublication(this, loggerName -> compileRoute(loggerName, state), closed::get);
+        levelOverrideManager = new RuntimeLevelOverrideManager(publication);
     }
 
     @Override
@@ -76,7 +80,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             return stoppedHealth();
         }
 
-        RuntimeState snapshot;
+        RuntimeGeneration snapshot;
         while (true) {
             snapshot = state;
             if (snapshot.epoch().tryAcquire()) {
@@ -96,8 +100,8 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     public synchronized void reload(RuntimePlan nextPlan) {
         Objects.requireNonNull(nextPlan, "nextPlan");
         requireOpen();
-        RuntimeState previous = state;
-        RuntimeState next = new RuntimeState(nextPlan, previous.levelOverrides(), new PlanEpoch());
+        RuntimeGeneration previous = state;
+        RuntimeGeneration next = new RuntimeGeneration(nextPlan, previous.levelOverrides(), new PlanEpoch());
         Map<String, CompiledRoute> compiled = publication.compileRoutes(
                 name -> compileRoute(name, next),
                 ignored -> true);
@@ -111,28 +115,17 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             String loggerName,
             RuntimeLevelOverride override) {
         requireOpen();
-        RuntimeState current = state;
-        RuntimeLevelOverrides nextOverrides = current.levelOverrides().withLevel(loggerName, override);
-        publishLevelOverrides(current, nextOverrides, loggerName);
+        levelOverrideManager.set(state, loggerName, override).ifPresent(this::installState);
     }
 
     public synchronized void clearLevelOverride(String loggerName) {
         requireOpen();
-        RuntimeState current = state;
-        RuntimeLevelOverrides nextOverrides = current.levelOverrides().withoutLevel(loggerName);
-        publishLevelOverrides(current, nextOverrides, loggerName);
+        levelOverrideManager.clear(state, loggerName).ifPresent(this::installState);
     }
 
     public synchronized void clearAllLevelOverrides() {
         requireOpen();
-        RuntimeState current = state;
-        RuntimeLevelOverrides nextOverrides = current.levelOverrides().clear();
-        if (nextOverrides == current.levelOverrides()) {
-            return;
-        }
-        RuntimeState next = new RuntimeState(current.plan(), nextOverrides, current.epoch());
-        Map<String, CompiledRoute> compiled = compileExistingControls(next, ignored -> true);
-        publishState(next, compiled);
+        levelOverrideManager.clearAll(state).ifPresent(this::installState);
     }
 
     public Map<String, RuntimeLevelOverride> levelOverrides() {
@@ -145,7 +138,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     }
 
     public Set<String> knownLoggerNames() {
-        RuntimeState snapshot = state;
+        RuntimeGeneration snapshot = state;
         return RuntimeManagementView.knownLoggerNames(publication.loggerNames(), snapshot.plan(), snapshot.levelOverrides());
     }
 
@@ -161,45 +154,23 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
      */
     public RuntimeLoggerLevelSnapshot loggerLevelSnapshot(String loggerName) {
         Objects.requireNonNull(loggerName, "loggerName");
-        RuntimeState snapshot = state;
+        RuntimeGeneration snapshot = state;
         return RuntimeManagementView.loggerLevelSnapshot(loggerName, snapshot.plan(), snapshot.levelOverrides());
     }
 
     public synchronized RuntimeManagementSnapshot managementSnapshot() {
-        RuntimeState snapshot = state;
+        RuntimeGeneration snapshot = state;
         return RuntimeManagementView.snapshot(publication.loggerNames(), snapshot.plan(), snapshot.levelOverrides());
     }
 
-    private void publishLevelOverrides(
-            RuntimeState current,
-            RuntimeLevelOverrides nextOverrides,
-            String changedLogger) {
-        if (nextOverrides == current.levelOverrides()) {
-            return;
-        }
-        RuntimeState next = new RuntimeState(current.plan(), nextOverrides, current.epoch());
-        Map<String, CompiledRoute> compiled = compileExistingControls(
-                next,
-                loggerName -> nextOverrides.affects(changedLogger, loggerName));
-        publishState(next, compiled);
-    }
-
-    private Map<String, CompiledRoute> compileExistingControls(
-            RuntimeState next,
-            Predicate<String> affected) {
-        return publication.compileRoutes(name -> compileRoute(name, next), affected);
-    }
-
-    private void publishState(
-            RuntimeState next,
-            Map<String, CompiledRoute> compiled) {
-        state = next;
-        publication.installRoutes(compiled);
+    private void installState(RuntimeLevelOverrideChange change) {
+        state = change.generation();
+        publication.installRoutes(change.compiledRoutes());
     }
 
     @Override
     public void flush() {
-        RuntimeState snapshot;
+        RuntimeGeneration snapshot;
         while (true) {
             if (closed.get()) {
                 return;
@@ -218,7 +189,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     @Override
     public void close() {
-        RuntimeState current;
+        RuntimeGeneration current;
         synchronized (this) {
             if (!closed.compareAndSet(false, true)) {
                 return;
@@ -245,7 +216,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         return retirementCompletion;
     }
 
-    private static CompiledRoute compileRoute(String loggerName, RuntimeState state) {
+    private static CompiledRoute compileRoute(String loggerName, RuntimeGeneration state) {
         return RuntimePublication.compileRoute(loggerName, state.plan(), state.levelOverrides(), state.epoch());
     }
 
@@ -263,9 +234,4 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         }
     }
 
-    private record RuntimeState(
-            RuntimePlan plan,
-            RuntimeLevelOverrides levelOverrides,
-            PlanEpoch epoch) {
-    }
 }
