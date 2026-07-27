@@ -34,7 +34,7 @@ java -jar extensions/logyard-quarkus/benchmarks/target/logyard-quarkus-benchmark
   '.*QuarkusEventMappingBenchmark\.(mapFreshRecord|mapCopiedRecord).*' \
   -wi 2 -i 3 -f 1 -w 500ms -r 500ms -prof gc -rf json -rff "$QUARKUS_RESULTS"
 
-PYTHONPATH="$ROOT/scripts" python3 -m release_tools.benchmark_allocations \
+PYTHONPATH="$ROOT/scripts" python3 -m benchmark_tools.allocations \
   benchmarks/allocation-budgets.json \
   "$CORE_RESULTS" \
   "$QUARKUS_RESULTS"

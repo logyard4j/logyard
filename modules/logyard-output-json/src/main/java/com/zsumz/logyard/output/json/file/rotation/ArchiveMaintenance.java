@@ -20,15 +20,13 @@ public final class ArchiveMaintenance implements AutoCloseable {
     private final AtomicReference<RuntimeException> failure = new AtomicReference<>();
     private final AtomicBoolean closing = new AtomicBoolean();
     private final ArchiveQueuePoll queuePoll = new ArchiveQueuePoll(queue, closing);
-    private final Thread worker;
+    private final ArchiveMaintenanceWorker worker;
 
     private ArchiveMaintenance(ArchiveNaming naming, RotationPolicy policy, FileLease lease) {
         this.policy = policy;
         this.lease = lease;
         operations = new ArchiveOperations(naming, policy);
-        worker = new Thread(this::runLoop, "logyard-archive-maintenance-" + sanitizeThreadName(
-                lease.activePath().getFileName().toString()));
-        worker.setDaemon(true);
+        worker = new ArchiveMaintenanceWorker(lease.activePath(), this::runLoop);
     }
 
     /**
@@ -85,7 +83,7 @@ public final class ArchiveMaintenance implements AutoCloseable {
 
     /** Whether the maintenance worker is still running. */
     public boolean workerAlive() {
-        return worker.isAlive();
+        return worker.alive();
     }
 
     /** Whether close has begun. */
@@ -105,26 +103,12 @@ public final class ArchiveMaintenance implements AutoCloseable {
             throw new IllegalArgumentException("maintenance close timeout must not be negative");
         }
         closing.set(true);
-        queuePoll.interruptIfPolling(worker);
+        worker.interruptIfPolling(queuePoll);
         if (timeout.isZero()) {
             throwIfFailed();
             return;
         }
-        boolean interrupted = false;
-        try {
-            long millis = saturatedMillis(timeout);
-            worker.join(millis);
-        } catch (InterruptedException interruption) {
-            interrupted = true;
-        } finally {
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        if (worker.isAlive()) {
-            throw new IllegalStateException(
-                    "archive maintenance did not stop within " + timeout + " for " + lease.activePath());
-        }
+        worker.await(timeout, lease.activePath());
         throwIfFailed();
     }
 
@@ -136,18 +120,8 @@ public final class ArchiveMaintenance implements AutoCloseable {
      */
     public void abortBeforeUse() {
         closing.set(true);
-        queuePoll.interruptIfPolling(worker);
-        boolean interrupted = false;
-        while (worker.isAlive()) {
-            try {
-                worker.join();
-            } catch (InterruptedException interruption) {
-                interrupted = true;
-            }
-        }
-        if (interrupted) {
-            Thread.currentThread().interrupt();
-        }
+        worker.interruptIfPolling(queuePoll);
+        worker.awaitStopped();
         throwIfFailed();
     }
 
@@ -196,23 +170,4 @@ public final class ArchiveMaintenance implements AutoCloseable {
         failure.compareAndSet(null, maintenanceFailure);
     }
 
-    private static long saturatedMillis(Duration timeout) {
-        try {
-            long millis = timeout.toMillis();
-            return timeout.isZero() ? 0L : Math.max(1L, millis);
-        } catch (ArithmeticException overflow) {
-            return Long.MAX_VALUE;
-        }
-    }
-
-    private static String sanitizeThreadName(String value) {
-        StringBuilder result = new StringBuilder(Math.min(value.length(), 48));
-        for (int index = 0; index < value.length() && result.length() < 48; index++) {
-            char character = value.charAt(index);
-            result.append(Character.isLetterOrDigit(character) || character == '-' || character == '_'
-                    ? character
-                    : '_');
-        }
-        return result.toString();
-    }
 }

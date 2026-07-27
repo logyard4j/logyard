@@ -1,6 +1,0 @@
-# Zolt's native BOM owns every Zolt workspace member. These two entries are the
-# explicit hybrid-build seam for artifacts produced by the official Quarkus
-# Maven reactor and merged into Logyard's single atomic Central bundle.
-[dependencyManagement]
-"com.zsumz.logyard:logyard-quarkus" = { workspace = "extensions/logyard-quarkus/runtime" }
-"com.zsumz.logyard:logyard-quarkus-deployment" = { workspace = "extensions/logyard-quarkus/deployment" }

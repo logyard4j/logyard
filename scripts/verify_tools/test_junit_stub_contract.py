@@ -7,9 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSERTIONS = ROOT / "scripts/verify-support/junit-stub-src/org/junit/jupiter/api/Assertions.java"
-STATIC_ASSERTION = re.compile(
-    r"import\s+static\s+org\.junit\.jupiter\.api\.Assertions\.(?P<method>[A-Za-z0-9_]+)\s*;"
-)
+STATIC_ASSERTION = re.compile(r"import\s+static\s+org\.junit\.jupiter\.api\.Assertions\.(?P<method>[A-Za-z0-9_]+)\s*;")
 STUB_METHOD = re.compile(r"public\s+static\s+(?:<[^>]+>\s+)?[A-Za-z0-9_<>, ?]+\s+(?P<method>assert[A-Za-z0-9_]+)\s*\(")
 
 
@@ -21,9 +19,4 @@ class JunitStubContractTest(unittest.TestCase):
             for source in source_root.rglob("*.java"):
                 if "target" not in source.parts:
                     used.update(STATIC_ASSERTION.findall(source.read_text(encoding="utf-8")))
-
         self.assertEqual(set(), used - declared, f"fallback JUnit Assertions is missing: {sorted(used - declared)}")
-
-
-if __name__ == "__main__":
-    unittest.main()

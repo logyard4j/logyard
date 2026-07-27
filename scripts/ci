@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
-test_members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli test-members "$ROOT")"
+source "$ROOT/scripts/lib/logyard-release.sh"
+
+ZOLT="$(logyard_require_zolt)"
+test_members="$(logyard_test_members | paste -sd, -)"
 cd "$ROOT"
 
 ./scripts/repository-check

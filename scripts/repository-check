@@ -70,8 +70,8 @@ required_files=(
   scripts/examples-verify
   scripts/release-bundle
   scripts/release-verify
+  scripts/lib/logyard-release.sh
   modules/logyard-bom/zolt.toml
-  modules/logyard-bom/publication-overlay.toml
   modules/logyard-spring-boot-starter/zolt.toml
   modules/logyard-spring-boot/src/main/resources/META-INF/spring.factories
   modules/logyard-spring-boot/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
@@ -83,10 +83,8 @@ required_files=(
   examples/quarkus/src/main/resources/application.properties
   extensions/logyard-quarkus/pom.xml
   extensions/logyard-quarkus/runtime/pom.xml
-  extensions/logyard-quarkus/runtime/publication.toml
   extensions/logyard-quarkus/runtime/src/main/resources/META-INF/quarkus-extension.yaml
   extensions/logyard-quarkus/deployment/pom.xml
-  extensions/logyard-quarkus/deployment/publication.toml
   extensions/logyard-quarkus/deployment/src/main/java/com/zsumz/logyard/quarkus/deployment/LogyardQuarkusProcessor.java
   scripts/example_tools/quarkus_dev.py
   scripts/examples-native-verify
@@ -113,7 +111,7 @@ generated_python_artifact="$(
 while IFS= read -r python_source; do
   source_lines="$(wc -l < "$python_source")"
   [[ "$source_lines" -le 300 ]] || fail "$python_source exceeds the 300-line Python tooling limit"
-done < <(find scripts/architecture_tools scripts/example_tools scripts/release_tools -type f -name '*.py' -print | sort)
+done < <(find scripts/architecture_tools scripts/benchmark_tools scripts/example_tools scripts/verify_tools -type f -name '*.py' -print | sort)
 
 if find . -path './.git' -prune -o -path './.zolt' -prune -o \
     -path './target' -prune -o \
@@ -124,16 +122,18 @@ if find . -path './.git' -prune -o -path './.zolt' -prune -o \
   fail 'Maven or Gradle project files are checked in outside the Quarkus extension reactor; Zolt is the default project model'
 fi
 
-for script in scripts/*; do
+while IFS= read -r script; do
   [[ -f "$script" ]] || continue
   bash -n "$script"
-done
+done < <(find scripts -type f \( -path 'scripts/lib/*.sh' -o -perm -u+x \) -print | sort)
 
 if grep -R -nE 'uses: [^[:space:]]+@(main|master|v[0-9]+([.][0-9]+)*)($|[[:space:]])' .github/workflows; then
   fail 'GitHub Actions must use immutable commit SHAs'
 fi
 
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m unittest discover -s scripts/release_tools -t scripts -p 'test_*.py'
+for package in scripts/benchmark_tools scripts/example_tools scripts/verify_tools; do
+  PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m unittest discover -s "$package" -t scripts -p 'test_*.py'
+done
 
 ./scripts/framework-versions-check
 ./scripts/architecture-check

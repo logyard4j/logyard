@@ -43,7 +43,8 @@ jobs:
           java-version: '21'
       - name: Verify the release tag
         run: |
-          version="$(PYTHONPATH="$GITHUB_WORKSPACE/scripts" python3 -m release_tools.manifest_cli version "$GITHUB_WORKSPACE")"
+          source "$GITHUB_WORKSPACE/scripts/lib/logyard-release.sh"
+          version="$(logyard_release_version)"
           [[ "$version" != *-SNAPSHOT ]] || {
             echo "release versions must not end in -SNAPSHOT" >&2
             exit 1
@@ -84,7 +85,9 @@ jobs:
         run: |
           version="$(cat target/release-bundle/VERSION)"
           archive="$GITHUB_WORKSPACE/target/logyard-$version-central-bundle.zip"
-          PYTHONPATH="$GITHUB_WORKSPACE/scripts" python3 -m release_tools.central target/release-bundle "$archive"
+          export LOGYARD_CENTRAL_SKIP_RELEASE=1
+          export LOGYARD_CENTRAL_BUNDLE="$archive"
+          ./scripts/central-publish
           sha256sum "$archive" > "$archive.sha256"
           if [[ -n "$LOGYARD_GPG_PASSPHRASE" ]]; then
             printf '%s' "$LOGYARD_GPG_PASSPHRASE" \

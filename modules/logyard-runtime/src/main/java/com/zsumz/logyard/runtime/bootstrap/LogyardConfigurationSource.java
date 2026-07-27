@@ -4,130 +4,49 @@ import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Objects;
 
-/**
- * Opaque configuration content with a stable description and deterministic base directory.
- *
- * <p>Applications create sources through the static factories. File sources can be watched;
- * classpath, text, and built-in sources can be re-read explicitly but have no watcher.</p>
- */
+/** Opaque configuration content with stable diagnostics, identity, and optional file-watch path. */
 public final class LogyardConfigurationSource {
-    private static final int MAX_DESCRIPTION_CHARS = 2_048;
-    private static final String SAFE_DEFAULTS = """
-            schema = 1
+    private final ConfigurationSourceDescriptor descriptor;
 
-            [runtime]
-            watch = false
-
-            [delivery]
-            mode = "async"
-            capacity = 2048
-
-            [delivery.overflow]
-            trace = "drop"
-            debug = "drop"
-            info = "drop"
-            warn = "stderr"
-            error = "stderr"
-
-            [loggers]
-            root = { level = "info", outputs = ["console"] }
-
-            [outputs.console]
-            type = "console"
-            stream = "stderr"
-            color = { mode = "auto", theme = "ember" }
-            """;
-
-    private final String description;
-    private final Path baseDirectory;
-    private final Path watchPath;
-    private final Object identity;
-    private final ContentReader reader;
-
-    private LogyardConfigurationSource(
-            String description,
-            Path baseDirectory,
-            Path watchPath,
-            Object identity,
-            ContentReader reader) {
-        this.description = description(description);
-        this.baseDirectory = normalizeDirectory(baseDirectory);
-        this.watchPath = watchPath == null ? null : watchPath.toAbsolutePath().normalize();
-        this.identity = Objects.requireNonNull(identity, "identity");
-        this.reader = Objects.requireNonNull(reader, "reader");
+    private LogyardConfigurationSource(ConfigurationSourceDescriptor descriptor) {
+        this.descriptor = descriptor;
     }
 
     /**
      * Creates a reloadable filesystem source.
-     *
      * @param path configuration file path
-     * @return file-backed source
+     * @return filesystem configuration source
      */
     public static LogyardConfigurationSource file(Path path) {
-        Path normalized = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
-        Path parent = normalized.getParent();
-        Path base = parent == null ? Path.of(".").toAbsolutePath().normalize() : parent;
-        return new LogyardConfigurationSource(
-                normalized.toString(),
-                base,
-                normalized,
-                new FileSourceIdentity(normalized),
-                () -> ConfigurationSourceReader.readFile(normalized));
+        return new LogyardConfigurationSource(ConfigurationSourceFactory.file(path));
     }
 
     /**
-     * Creates a classpath resource source.
-     *
-     * @param loader resource class loader
-     * @param resource classpath resource without a leading slash
-     * @param baseDirectory base for relative output paths
-     * @return classpath-backed source
+     * Creates a classpath resource source with an explicit base directory for relative output paths.
+     * @param loader class loader used to resolve the resource
+     * @param resource classpath resource name
+     * @param baseDirectory base directory for relative output paths
+     * @return classpath configuration source
      */
-    public static LogyardConfigurationSource classpath(
-            ClassLoader loader,
-            String resource,
-            Path baseDirectory) {
-        Objects.requireNonNull(loader, "loader");
-        String normalized = resource(resource);
-        Path base = normalizeDirectory(baseDirectory);
-        return new LogyardConfigurationSource(
-                "classpath:" + normalized,
-                base,
-                null,
-                new ClasspathSourceIdentity(loader, normalized, base),
-                () -> ConfigurationSourceReader.readClasspath(loader, normalized));
+    public static LogyardConfigurationSource classpath(ClassLoader loader, String resource, Path baseDirectory) {
+        return new LogyardConfigurationSource(ConfigurationSourceFactory.classpath(loader, resource, baseDirectory));
     }
 
     /**
      * Creates an immutable bounded-text source for tests and framework handoff.
-     *
-     * @param description safe diagnostic description
-     * @param toml TOML configuration
-     * @param baseDirectory base for relative output paths
-     * @return in-memory source
+     * @param description source description for diagnostics
+     * @param toml TOML configuration content
+     * @param baseDirectory base directory for relative output paths
+     * @return text configuration source
      */
-    public static LogyardConfigurationSource text(
-            String description,
-            String toml,
-            Path baseDirectory) {
-        byte[] content = ConfigurationSourceReader.encodeText(toml);
-        String normalizedDescription = description(description);
-        Path base = normalizeDirectory(baseDirectory);
-        return new LogyardConfigurationSource(
-                normalizedDescription,
-                base,
-                null,
-                new TextSourceIdentity(normalizedDescription, base),
-                () -> content.clone());
+    public static LogyardConfigurationSource text(String description, String toml, Path baseDirectory) {
+        return new LogyardConfigurationSource(ConfigurationSourceFactory.text(description, toml, baseDirectory));
     }
 
     /**
-     * Creates the built-in safe configuration: root INFO, stderr console, bounded asynchronous
-     * nonblocking delivery, no file output, and no watcher.
-     *
-     * @return safe default source
+     * Creates the built-in safe configuration with the current directory as its base.
+     * @return safe default configuration source
      */
     public static LogyardConfigurationSource defaults() {
         return defaults(Path.of("."));
@@ -135,103 +54,30 @@ public final class LogyardConfigurationSource {
 
     /**
      * Creates the built-in safe configuration with a caller-selected base directory.
-     *
-     * @param baseDirectory base for any future relative paths
-     * @return safe default source
+     * @param baseDirectory base directory for relative output paths
+     * @return safe default configuration source
      */
     public static LogyardConfigurationSource defaults(Path baseDirectory) {
-        return text("built-in safe defaults", SAFE_DEFAULTS, baseDirectory);
+        return new LogyardConfigurationSource(ConfigurationSourceFactory.defaults(baseDirectory));
     }
 
     /**
      * Returns the stable source description used in diagnostics.
-     *
-     * @return source description
+     * @return stable source description
      */
     public String description() {
-        return description;
+        return descriptor.description();
     }
 
     ConfigurationSnapshot snapshot() throws IOException {
-        return ConfigurationSnapshot.capture(
-                description,
-                baseDirectory,
-                watchPath,
-                reader.read());
+        return descriptor.snapshot();
     }
 
     Path watchPath() {
-        return watchPath;
+        return descriptor.watchPath();
     }
 
     Object identity() {
-        return identity;
-    }
-
-    private static String description(String value) {
-        String normalized = Objects.requireNonNull(value, "description").trim();
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("configuration source description must not be blank");
-        }
-        if (normalized.length() > MAX_DESCRIPTION_CHARS) {
-            throw new IllegalArgumentException("configuration source description exceeds " + MAX_DESCRIPTION_CHARS + " characters");
-        }
-        StringBuilder safe = new StringBuilder(normalized.length());
-        for (int index = 0; index < normalized.length(); index++) {
-            char character = normalized.charAt(index);
-            safe.append(Character.isISOControl(character) ? '?' : character);
-        }
-        return safe.toString();
-    }
-
-    private static String resource(String value) {
-        String normalized = Objects.requireNonNull(value, "resource").trim();
-        while (normalized.startsWith("/")) {
-            normalized = normalized.substring(1);
-        }
-        if (normalized.isEmpty() || normalized.indexOf('\\') >= 0) {
-            throw new IllegalArgumentException("classpath resource must be a non-blank forward-slash path");
-        }
-        return normalized;
-    }
-
-    private static Path normalizeDirectory(Path directory) {
-        return Objects.requireNonNull(directory, "baseDirectory").toAbsolutePath().normalize();
-    }
-
-    @FunctionalInterface
-    private interface ContentReader {
-        byte[] read() throws IOException;
-    }
-
-    private record FileSourceIdentity(Path path) {
-    }
-
-    private record TextSourceIdentity(String description, Path baseDirectory) {
-    }
-
-    private static final class ClasspathSourceIdentity {
-        private final ClassLoader loader;
-        private final String resource;
-        private final Path baseDirectory;
-
-        private ClasspathSourceIdentity(ClassLoader loader, String resource, Path baseDirectory) {
-            this.loader = loader;
-            this.resource = resource;
-            this.baseDirectory = baseDirectory;
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            return other instanceof ClasspathSourceIdentity identity
-                    && loader == identity.loader
-                    && resource.equals(identity.resource)
-                    && baseDirectory.equals(identity.baseDirectory);
-        }
-
-        @Override
-        public int hashCode() {
-            return 31 * (31 * System.identityHashCode(loader) + resource.hashCode()) + baseDirectory.hashCode();
-        }
+        return descriptor.identity();
     }
 }

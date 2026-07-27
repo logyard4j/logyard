@@ -19,6 +19,11 @@ members = [
     "modules/logyard-system-logger",
 ]
 
+[bom.versions]
+# These two published artifacts are produced by Quarkus' official Maven extension reactor.
+"com.zsumz.logyard:logyard-quarkus" = "0.1.0-rc.1"
+"com.zsumz.logyard:logyard-quarkus-deployment" = "0.1.0-rc.1"
+
 [package.metadata]
 name = "Logyard Bill of Materials"
 description = "Dependency management for the complete Logyard module family."

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-release.sh"
 TARGET="${LOGYARD_PACKAGE_VERIFY_TARGET:-$ROOT/target/package-verify}"
 JAVAC="${JAVAC:-javac}"
 JAVA="${JAVA:-java}"
@@ -22,7 +22,7 @@ while IFS=$'\t' read -r member module_name version artifact_count; do
     printf 'package verification failed: publication versions do not match\n' >&2
     exit 1
   fi
-done < <(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli jar-records "$ROOT")
+done < <(logyard_native_jar_records)
 [[ ${#members[@]} -gt 0 ]] || {
   printf 'package verification failed: no publishable JAR modules were discovered\n' >&2
   exit 1
@@ -116,7 +116,7 @@ while IFS=$'\t' read -r module_path member module_name version artifact_count; d
   if "$JAR" tf "$main" | grep -qE '(^|/)test(s)?/|Test\\.class$'; then
     fail "$member main jar contains test classes"
   fi
-done < <(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli maven-records "$ROOT")
+done < <(logyard_maven_publication_records)
 
 [[ "$maven_module_count" -gt 0 ]] || fail "no Maven-built extension publications were discovered"
 quarkus_runtime="$ROOT/extensions/logyard-quarkus/runtime/target/logyard-quarkus-$VERSION.jar"

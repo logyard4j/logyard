@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-release.sh"
 TARGET="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
 SIGN=false
 
@@ -23,8 +23,8 @@ if [[ "${LOGYARD_RELEASE_SKIP_PACKAGE:-0}" != "1" ]]; then
   "$ROOT/scripts/package"
   "$ROOT/scripts/package-verify"
 fi
-
-PYTHONPATH="$ROOT/scripts" python3 -m release_tools.assemble "$ROOT" "$TARGET"
+"$ROOT/scripts/zolt-publication-check"
+logyard_assemble_release_bundle "$TARGET"
 
 if "$SIGN"; then
   GPG="${GPG:-gpg}"
@@ -40,10 +40,10 @@ if "$SIGN"; then
     else
       "$GPG" --batch --yes --local-user "$signing_key" --armor --detach-sign "$artifact"
     fi
-  done < <(find "$TARGET" -type f \( -name '*.jar' -o -name '*.pom' \) -print | LC_ALL=C sort)
+  done < <(logyard_primary_bundle_files "$TARGET")
 fi
 
-PYTHONPATH="$ROOT/scripts" python3 -m release_tools.checksums "$TARGET"
+logyard_write_checksums "$TARGET"
 
 if "$SIGN"; then
   "$ROOT/scripts/release-verify" --require-signatures

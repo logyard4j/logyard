@@ -14,8 +14,6 @@ import java.util.function.Supplier;
 
 /** Lifecycle façade for a parent-directory configuration watch. */
 public final class ConfigurationWatcher implements AutoCloseable {
-    private static final int MAX_THREAD_COMPONENT_LENGTH = 48;
-
     private enum Lifecycle {
         PREPARED,
         RUNNING,
@@ -26,7 +24,7 @@ public final class ConfigurationWatcher implements AutoCloseable {
     private final Path source;
     private final Duration closeTimeout;
     private final ConfigurationWatchLoop watchLoop;
-    private final Thread worker;
+    private final ConfigurationWatchWorker worker;
     private final AtomicReference<Lifecycle> lifecycle = new AtomicReference<>(Lifecycle.PREPARED);
 
     private ConfigurationWatcher(
@@ -43,16 +41,15 @@ public final class ConfigurationWatcher implements AutoCloseable {
                 Objects.requireNonNull(debounce, "debounce"),
                 Objects.requireNonNull(reload, "reload"),
                 Objects.requireNonNull(diagnostics, "diagnostics"));
-        worker = new Thread(
+        worker = new ConfigurationWatchWorker(
+                source,
                 () -> {
                     try {
                         watchLoop.run();
                     } finally {
                         lifecycle.set(Lifecycle.STOPPED);
                     }
-                },
-                "logyard-config-watch-" + safeThreadSegment(registration.filename().toString()));
-        worker.setDaemon(true);
+                });
     }
 
     public static ConfigurationWatcher start(
@@ -172,40 +169,6 @@ public final class ConfigurationWatcher implements AutoCloseable {
     }
 
     private void awaitWorker() {
-        if (closeTimeout.isZero() || !worker.isAlive()) {
-            return;
-        }
-        boolean interrupted = false;
-        try {
-            long millis = saturatedMillis(closeTimeout);
-            worker.join(millis);
-        } catch (InterruptedException interruption) {
-            interrupted = true;
-        } finally {
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        if (worker.isAlive()) {
-            throw new IllegalStateException("configuration watcher did not stop within " + closeTimeout + " for " + source);
-        }
-    }
-
-    private static long saturatedMillis(Duration duration) {
-        try {
-            long millis = duration.toMillis();
-            return Math.max(1L, millis);
-        } catch (ArithmeticException overflow) {
-            return Long.MAX_VALUE;
-        }
-    }
-
-    private static String safeThreadSegment(String value) {
-        StringBuilder result = new StringBuilder(Math.min(value.length(), MAX_THREAD_COMPONENT_LENGTH));
-        for (int index = 0; index < value.length() && result.length() < MAX_THREAD_COMPONENT_LENGTH; index++) {
-            char character = value.charAt(index);
-            result.append(Character.isLetterOrDigit(character) || character == '-' || character == '_' ? character : '_');
-        }
-        return result.toString();
+        worker.await(closeTimeout, source);
     }
 }

@@ -29,6 +29,7 @@
         <quarkus.version>3.37.3</quarkus.version>
         <source-plugin.version>3.3.1</source-plugin.version>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
+        <flatten-maven-plugin.version>1.7.3</flatten-maven-plugin.version>
     </properties>
 
     <repositories>
@@ -57,6 +58,35 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>zsumz</id>
+            <name>zsumz</name>
+            <email>shawn@zsumz.com</email>
+            <url>https://github.com/zsumz</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/zsumz/logyard.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/zsumz/logyard.git</developerConnection>
+        <tag>v${project.version}</tag>
+        <url>https://github.com/zsumz/logyard</url>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/zsumz/logyard/issues</url>
+    </issueManagement>
 
     <build>
         <pluginManagement>
@@ -93,6 +123,29 @@
                         <failOnWarnings>true</failOnWarnings>
                         <sourcepath>${project.basedir}/src/main/java</sourcepath>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>flatten-maven-plugin</artifactId>
+                    <version>${flatten-maven-plugin.version}</version>
+                    <configuration>
+                        <flattenMode>oss</flattenMode>
+                        <outputDirectory>${project.build.directory}</outputDirectory>
+                        <flattenedPomFilename>publication-pom.xml</flattenedPomFilename>
+                        <updatePomFile>true</updatePomFile>
+                        <pomElements>
+                            <repositories>flatten</repositories>
+                        </pomElements>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>flatten-publication-pom</id>
+                            <phase>process-resources</phase>
+                            <goals>
+                                <goal>flatten</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>

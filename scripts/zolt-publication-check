@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
-ZOLT_JAVA_HOME="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.jdk_home)"
-VERSION="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli version "$ROOT")"
+source "$ROOT/scripts/lib/logyard-release.sh"
+
+ZOLT="$(logyard_require_zolt)"
+ZOLT_JAVA_HOME="$(logyard_jdk_home)"
+VERSION="$(logyard_release_version)"
 mkdir -p "$ROOT/target"
 REPORT="$(mktemp "$ROOT/target/zolt-central-readiness.XXXXXX")"
 
@@ -41,7 +42,7 @@ if [[ "$VERSION" != *-SNAPSHOT ]]; then
   exit 1
 fi
 
-expected_members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli zolt-members "$ROOT" | tr ',' '\n' | wc -l | tr -d ' ')"
+expected_members="$(logyard_publish_member_count)"
 blockers="$(awk '/^Blockers:$/ { inside = 1; next } inside && /^- / { print }' "$REPORT")"
 actual_blockers="$(printf '%s\n' "$blockers" | sed '/^$/d' | wc -l | tr -d ' ')"
 version_blockers="$(printf '%s\n' "$blockers" | grep -Fc ': release version —' || true)"

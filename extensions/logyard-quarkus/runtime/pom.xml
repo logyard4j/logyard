@@ -13,6 +13,14 @@
     <artifactId>logyard-quarkus</artifactId>
     <name>Logyard Quarkus Runtime</name>
     <description>Runtime logging capture and lifecycle integration for Quarkus.</description>
+    <url>https://github.com/zsumz/logyard</url>
+
+    <scm>
+        <connection>scm:git:https://github.com/zsumz/logyard.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/zsumz/logyard.git</developerConnection>
+        <tag>v${project.version}</tag>
+        <url>https://github.com/zsumz/logyard</url>
+    </scm>
 
     <dependencies>
         <dependency>
@@ -51,6 +59,10 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-extension-maven-plugin</artifactId>

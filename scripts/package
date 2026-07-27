@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
-[[ -x "$ZOLT" ]] || {
-  printf 'package failed: Zolt was not found; run scripts/bootstrap-zolt or set ZOLT to an executable path\n' >&2
-  exit 1
-}
-ZOLT_JAVA_HOME="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.jdk_home)"
-members="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli zolt-members "$ROOT")"
+source "$ROOT/scripts/lib/logyard-release.sh"
+
+ZOLT="$(logyard_require_zolt)"
+ZOLT_JAVA_HOME="$(logyard_jdk_home)"
+members="$(logyard_publish_members | paste -sd, -)"
 STAGING="$ROOT/target/maven-build-repository"
 MAVEN_CACHE="$ROOT/target/maven-package-repository"
-STAGING_URI="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.path_cli "$STAGING")"
+STAGING_URI="$(logyard_file_uri "$STAGING")"
 
 JAVA_HOME="$ZOLT_JAVA_HOME" PATH="$ZOLT_JAVA_HOME/bin:$PATH" "$ZOLT" package \
   --directory "$ROOT" \
@@ -21,10 +18,7 @@ JAVA_HOME="$ZOLT_JAVA_HOME" PATH="$ZOLT_JAVA_HOME/bin:$PATH" "$ZOLT" package \
   --no-progress \
   --color never
 
-PYTHONPATH="$ROOT/scripts" python3 -m release_tools.assemble \
-  "$ROOT" \
-  "$STAGING" \
-  --metadata-only-build-system maven
+logyard_stage_native_repository "$STAGING"
 
 rm -rf "$MAVEN_CACHE"
 mkdir -p "$MAVEN_CACHE"

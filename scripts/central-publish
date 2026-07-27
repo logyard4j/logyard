@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-release.sh"
 RELEASE_TARGET="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
 ARCHIVE="${LOGYARD_CENTRAL_BUNDLE:-$ROOT/target/logyard-central-bundle.zip}"
 CENTRAL_BASE_URL="${CENTRAL_BASE_URL:-https://central.sonatype.com}"
@@ -40,7 +40,7 @@ if "$WAIT" && ! "$UPLOAD"; then
   usage
 fi
 
-version="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli version "$ROOT")"
+version="$(logyard_release_version)"
 if "$UPLOAD" && [[ "$version" == *-SNAPSHOT ]]; then
   printf 'Central publication failed: release version %s is a snapshot\n' "$version" >&2
   exit 1
@@ -50,7 +50,7 @@ if [[ "${LOGYARD_CENTRAL_SKIP_RELEASE:-0}" != "1" ]]; then
   "$ROOT/scripts/release-bundle" --sign
 fi
 "$ROOT/scripts/release-verify" --require-signatures
-PYTHONPATH="$ROOT/scripts" python3 -m release_tools.central "$RELEASE_TARGET" "$ARCHIVE"
+logyard_create_central_archive "$RELEASE_TARGET" "$ARCHIVE"
 
 if ! "$UPLOAD"; then
   printf 'Central Portal upload skipped. Re-run with --upload after setting Central credentials.\n'
@@ -96,7 +96,11 @@ while true; do
       --header "Authorization: Bearer $bearer_token" \
       "$CENTRAL_BASE_URL/api/v1/publisher/status?id=$deployment_id"
   )"
-  state="$(python3 -c 'import json, sys; print(json.load(sys.stdin)["deploymentState"])' <<<"$status_json")"
+  state="$(printf '%s' "$status_json" | sed -n 's/.*"deploymentState"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+  [[ -n "$state" ]] || {
+    printf 'Central publication failed: Portal status omitted deploymentState: %s\n' "$status_json" >&2
+    exit 1
+  }
   if [[ "$state" != "$last_state" ]]; then
     printf 'Central Portal deployment state: %s\n' "$state"
     last_state="$state"

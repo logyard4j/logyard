@@ -6,12 +6,8 @@ import com.zsumz.logyard.output.json.file.rotation.ArchiveMaintenance;
 import com.zsumz.logyard.output.json.file.rotation.ArchiveNaming;
 import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 
 /** Single-owner record writer that rotates only between complete JSON Lines records. */
@@ -24,6 +20,7 @@ final class RotatingFileWriter implements AutoCloseable {
     private final DataFileOpener dataFiles;
     private final WriterLifecycle lifecycle = new WriterLifecycle();
     private final ActiveFileSession active = new ActiveFileSession(lifecycle);
+    private final FileRotationTransition rotation;
     private FileLease lease;
     private ArchiveMaintenance maintenance;
 
@@ -38,6 +35,7 @@ final class RotatingFileWriter implements AutoCloseable {
         this.policy = policy;
         this.dataFiles = Objects.requireNonNull(dataFiles, "dataFiles");
         naming = policy == null ? null : new ArchiveNaming(this.path);
+        rotation = policy == null ? null : new FileRotationTransition(this.path, bufferBytes, naming, dataFiles, lifecycle);
         FileOutputPathValidator.validateParent(this.path);
         FileLease acquired = FileLease.acquire(this.path);
         try {
@@ -66,7 +64,7 @@ final class RotatingFileWriter implements AutoCloseable {
         if (policy != null
                 && active.logicalBytes() > 0
                 && wouldExceed(active.logicalBytes(), recordBytes, policy.maximumBytes())) {
-            rotate();
+            rotation.rotate(active, maintenance);
         }
         active.write(record, terminator);
     }
@@ -144,27 +142,6 @@ final class RotatingFileWriter implements AutoCloseable {
         }
     }
 
-    private void rotate() {
-        ActiveDataFile rotating = active.detach();
-        try {
-            rotating.close();
-        } catch (RuntimeException failure) {
-            lifecycle.failed(failure);
-            throw failure;
-        }
-        try {
-            Path archive = naming.nextArchive();
-            moveActiveToArchive(archive);
-            maintenance.submit(archive);
-            active.attach(dataFiles.open(path, bufferBytes, false));
-            lifecycle.operationSucceeded();
-        } catch (RuntimeException failure) {
-            lifecycle.recoverableOperationFailed(failure);
-            tryReopenAfterRotationFailure(failure);
-            throw failure;
-        }
-    }
-
     private void initialize() {
         if (active.present()) {
             return;
@@ -193,28 +170,6 @@ final class RotatingFileWriter implements AutoCloseable {
             lease = null;
             lifecycle.failed(failure);
             throw failure;
-        }
-    }
-
-    private void moveActiveToArchive(Path archive) {
-        try {
-            try {
-                Files.move(path, archive, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException unsupported) {
-                Files.move(path, archive);
-            }
-        } catch (IOException failure) {
-            throw new UncheckedIOException("failed to rotate Logyard JSON output " + path, failure);
-        }
-    }
-
-    private void tryReopenAfterRotationFailure(RuntimeException primaryFailure) {
-        try {
-            if (Files.exists(path)) {
-                active.attach(dataFiles.open(path, bufferBytes, true));
-            }
-        } catch (RuntimeException recoveryFailure) {
-            primaryFailure.addSuppressed(recoveryFailure);
         }
     }
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-release.sh"
 TARGET="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
 REQUIRE_SIGNATURES=false
 
@@ -19,15 +19,105 @@ if [[ $# -eq 1 ]]; then
   REQUIRE_SIGNATURES=true
 fi
 
-arguments=("$ROOT" "$TARGET")
-if "$REQUIRE_SIGNATURES"; then
-  arguments+=(--require-signatures)
-fi
-PYTHONPATH="$ROOT/scripts" python3 -m release_tools.verify "${arguments[@]}"
+VERSION="$(logyard_release_version)"
+[[ -d "$TARGET" ]] || logyard_release_fail "release bundle does not exist: $TARGET"
+[[ "$(tr -d '[:space:]' < "$TARGET/VERSION")" == "$VERSION" ]] \
+  || logyard_release_fail 'VERSION does not match the workspace'
 
+EXPECTED_PRIMARY="$(mktemp "$ROOT/target/release-verify-primary.XXXXXX")"
+EXPECTED_FILES="$(mktemp "$ROOT/target/release-verify-files.XXXXXX")"
+ACTUAL_FILES="$(mktemp "$ROOT/target/release-verify-actual.XXXXXX")"
+cleanup() {
+  rm -f "$EXPECTED_PRIMARY" "$EXPECTED_FILES" "$ACTUAL_FILES"
+}
+trap cleanup EXIT
+
+append_native_publication() {
+  local member="$1"
+  local manifest="$ROOT/$member/zolt.toml"
+  local artifact group source destination file
+  artifact="$(logyard_manifest_value "$manifest" project name)"
+  group="$(logyard_manifest_value "$manifest" project group)"
+  source="$ROOT/$member/target"
+  destination="$TARGET/$(logyard_group_path "$group")/$artifact/$VERSION"
+  for file in "$artifact-$VERSION.pom"; do
+    logyard_require_file "$destination/$file"
+    cmp -s "$source/publish/$file" "$destination/$file" || logyard_release_fail "$file does not match Zolt's generated publication POM"
+    printf '%s\n' "$destination/$file" >> "$EXPECTED_PRIMARY"
+  done
+  if [[ -f "$source/$artifact-$VERSION.jar" ]]; then
+    for file in "$artifact-$VERSION.jar" "$artifact-$VERSION-sources.jar" "$artifact-$VERSION-javadoc.jar"; do
+      logyard_require_file "$destination/$file"
+      cmp -s "$source/$file" "$destination/$file" || logyard_release_fail "$file does not match Zolt's packaged artifact"
+      printf '%s\n' "$destination/$file" >> "$EXPECTED_PRIMARY"
+    done
+  fi
+  if [[ -f "$source/publish/$artifact-$VERSION-cyclonedx.json" ]]; then
+    file="$artifact-$VERSION-cyclonedx.json"
+    logyard_require_file "$destination/$file"
+    cmp -s "$source/publish/$file" "$destination/$file" || logyard_release_fail "$file does not match Zolt's generated SBOM"
+    printf '%s\n' "$destination/$file" >> "$EXPECTED_PRIMARY"
+  fi
+}
+
+while IFS= read -r member; do
+  append_native_publication "$member"
+done < <(logyard_publish_members)
+
+while IFS=$'\t' read -r module artifact module_name record_version artifact_count; do
+  [[ "$record_version" == "$VERSION" ]] || logyard_release_fail "$module does not use release version $VERSION"
+  source="$ROOT/$module/target"
+  destination="$TARGET/com/zsumz/logyard/$artifact/$VERSION"
+  for file in "$artifact-$VERSION.jar" "$artifact-$VERSION-sources.jar" "$artifact-$VERSION-javadoc.jar" "$artifact-$VERSION.pom"; do
+    logyard_require_file "$destination/$file"
+    source_file="$source/$file"
+    [[ "$file" == *.pom ]] && source_file="$source/publication-pom.xml"
+    cmp -s "$source_file" "$destination/$file" || logyard_release_fail "$file does not match Maven's generated publication artifact"
+    printf '%s\n' "$destination/$file" >> "$EXPECTED_PRIMARY"
+  done
+  grep -Fq '<licenses>' "$destination/$artifact-$VERSION.pom" || logyard_release_fail "$artifact POM lacks license metadata"
+  grep -Fq '<developers>' "$destination/$artifact-$VERSION.pom" || logyard_release_fail "$artifact POM lacks developer metadata"
+  grep -Fq '<scm>' "$destination/$artifact-$VERSION.pom" || logyard_release_fail "$artifact POM lacks SCM metadata"
+  ! grep -Fq '<repositories>' "$destination/$artifact-$VERSION.pom" || logyard_release_fail "$artifact POM leaks a build repository"
+done < <(logyard_maven_publication_records)
+
+grep -Fq '<artifactId>logyard-quarkus</artifactId>' "$TARGET/com/zsumz/logyard/logyard-bom/$VERSION/logyard-bom-$VERSION.pom" \
+  || logyard_release_fail 'Zolt-native BOM does not manage logyard-quarkus'
+grep -Fq '<artifactId>logyard-quarkus-deployment</artifactId>' "$TARGET/com/zsumz/logyard/logyard-bom/$VERSION/logyard-bom-$VERSION.pom" \
+  || logyard_release_fail 'Zolt-native BOM does not manage logyard-quarkus-deployment'
+
+sort -u "$EXPECTED_PRIMARY" -o "$EXPECTED_PRIMARY"
+signed=false
+signature_label=
 if "$REQUIRE_SIGNATURES" || find "$TARGET" -type f -name '*.asc' -print -quit | grep -q .; then
+  signed=true
+  signature_label=', signatures'
+fi
+printf '%s\n' "$TARGET/VERSION" > "$EXPECTED_FILES"
+while IFS= read -r artifact; do
+  printf '%s\n' "$artifact" >> "$EXPECTED_FILES"
+  for algorithm in md5 sha1 sha256; do
+    printf '%s\n' "$artifact.$algorithm" >> "$EXPECTED_FILES"
+  done
+  if "$signed"; then
+    printf '%s\n' "$artifact.asc" >> "$EXPECTED_FILES"
+    for algorithm in md5 sha1 sha256; do
+      printf '%s\n' "$artifact.asc.$algorithm" >> "$EXPECTED_FILES"
+    done
+  fi
+done < "$EXPECTED_PRIMARY"
+sort -u "$EXPECTED_FILES" -o "$EXPECTED_FILES"
+find "$TARGET" -type f -print | LC_ALL=C sort > "$ACTUAL_FILES"
+diff -u "$EXPECTED_FILES" "$ACTUAL_FILES" || logyard_release_fail 'bundle files differ from the complete publication contract'
+logyard_verify_checksums "$TARGET"
+
+if "$signed"; then
   GPG="${GPG:-gpg}"
   while IFS= read -r signature; do
     "$GPG" --batch --verify "$signature" "${signature%.asc}"
   done < <(find "$TARGET" -type f -name '*.asc' -print | LC_ALL=C sort)
 fi
+
+printf 'Release bundle verified: %s publications, complete Zolt and Maven artifact contracts, checksums%s.\n' \
+  "$(( $(logyard_publish_member_count) + 2 ))" \
+  "$signature_label"

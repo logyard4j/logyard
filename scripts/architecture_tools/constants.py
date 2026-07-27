@@ -4,7 +4,7 @@ import re
 
 
 PREFIX = "com.zsumz.logyard."
-MAX_NEW_PRODUCTION_LINES = 240
+MAX_NEW_PRODUCTION_LINES = 220
 MAX_GRANDFATHERED_PRODUCTION_LINES = 300
 MAX_TEST_OR_EXAMPLE_LINES = 300
 PACKAGE = re.compile(r"(?m)^package\s+([A-Za-z_][\w.]*)\s*;")

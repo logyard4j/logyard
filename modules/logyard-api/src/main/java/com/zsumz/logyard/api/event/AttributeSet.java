@@ -12,50 +12,40 @@ import java.util.function.Supplier;
 public final class AttributeSet {
     /** Shared empty attribute set. */
     public static final AttributeSet EMPTY = new AttributeSet(new String[0], null, new Object[0], false);
-    final String[] keys, normalizedKeyIdentities;
+
+    final String[] keys;
+    final String[] normalizedKeyIdentities;
     final Object[] values;
     final boolean captureTruncated;
+
     AttributeSet(String[] keys, String[] normalizedKeyIdentities, Object[] values, boolean captureTruncated) {
         this.keys = keys;
         this.normalizedKeyIdentities = normalizedKeyIdentities;
         this.values = values;
         this.captureTruncated = captureTruncated;
     }
-    /**
-     * Returns the number of attributes.
-     *
-     * @return attribute count
+
+    /** Returns the number of attributes.
+     * @return number of attributes
      */
     public int size() { return keys.length; }
-
-    /**
-     * Returns whether this set contains no attributes.
-     *
-     * @return {@code true} when empty
+    /** Reports whether this set is empty.
+     * @return whether this set is empty
      */
     public boolean isEmpty() { return keys.length == 0; }
-
-    /**
-     * Returns the key at an insertion-order index.
-     *
+    /** Returns an insertion-ordered key.
      * @param index zero-based attribute index
-     * @return attribute key
+     * @return insertion-ordered key
      */
     public String keyAt(int index) { return keys[index]; }
-
-    /**
-     * Returns the value at an insertion-order index.
-     *
+    /** Returns an insertion-ordered captured value.
      * @param index zero-based attribute index
-     * @return captured attribute value
+     * @return insertion-ordered captured value
      */
     public Object valueAt(int index) { return values[index]; }
-
-    /**
-     * Returns the value associated with a key.
-     *
-     * @param key attribute key
-     * @return captured value, or {@code null} when the key is absent
+    /** Finds a value by its exact captured key.
+     * @param key exact captured key
+     * @return captured value, or {@code null}
      */
     public Object get(String key) {
         for (int index = keys.length - 1; index >= 0; index--) {
@@ -65,11 +55,8 @@ public final class AttributeSet {
         }
         return null;
     }
-
-    /**
-     * Visits attributes in insertion order.
-     *
-     * @param consumer attribute consumer
+    /** Visits attributes in insertion order.
+     * @param consumer receives attributes in insertion order
      */
     public void forEach(BiConsumer<String, Object> consumer) {
         Objects.requireNonNull(consumer, "consumer");
@@ -77,11 +64,8 @@ public final class AttributeSet {
             consumer.accept(keys[index], values[index]);
         }
     }
-
-    /**
-     * Returns a mutable insertion-ordered copy of these attributes.
-     *
-     * @return mutable attribute map
+    /** Creates a mutable insertion-ordered copy.
+     * @return mutable insertion-ordered copy
      */
     public Map<String, Object> toMap() {
         Map<String, Object> result = new LinkedHashMap<>();
@@ -93,14 +77,9 @@ public final class AttributeSet {
         return AttributeSetOperations.withSystemAttribute(this, key, value);
     }
 
-    /**
-     * Returns the right-biased merge of this set and another set.
-     *
-     * <p>Exact literal keys are replaced by the right-hand value. Ambiguous normalized keys retain
-     * both values under deterministic bounded collision suffixes rather than silently erasing one.</p>
-     *
-     * @param other attributes to append or replace
-     * @return immutable merged attributes
+    /** Merges attributes with right-hand precedence.
+     * @param other attributes to merge right-biased
+     * @return merged immutable attributes
      */
     public AttributeSet mergedWith(AttributeSet other) {
         Objects.requireNonNull(other, "other");
@@ -113,55 +92,35 @@ public final class AttributeSet {
         return builder(size() + other.size()).putAll(this).putAll(other).build();
     }
 
-    /**
-     * Returns a builder sized for a typical event.
-     *
-     * @return new bounded builder
+    /** Creates a builder with typical event capacity.
+     * @return builder with typical event capacity
      */
     public static Builder builder() { return new Builder(8, false); }
-
-    /**
-     * Returns a builder sized for an expected number of attributes.
-     *
+    /** Creates a builder sized for an expected attribute count.
      * @param expectedSize expected attribute count
-     * @return new bounded builder
+     * @return bounded builder
      */
     public static Builder builder(int expectedSize) { return new Builder(expectedSize, false); }
-
-    /**
-     * Returns a builder authorized to emit Logyard-owned diagnostic attributes.
-     *
-     * <p>This is an implementation contract for Logyard modules. Applications must use
-     * {@link #builder()} and cannot write the reserved {@code logyard.*} namespace.</p>
-     *
-     * @return trusted system-attribute builder
+    /** Creates a builder permitted to write Logyard-owned diagnostic attributes.
+     * @return trusted bounded builder
      */
     @InternalApi
     public static Builder systemBuilder() { return new Builder(8, true); }
-
-    /**
-     * Returns a sized builder authorized to emit Logyard-owned diagnostic attributes.
-     *
+    /** Creates a trusted builder sized for an expected attribute count.
      * @param expectedSize expected attribute count
-     * @return trusted system-attribute builder
+     * @return trusted bounded builder
      */
     @InternalApi
     public static Builder systemBuilder(int expectedSize) { return new Builder(expectedSize, true); }
-
-    /**
-     * Creates a set containing one attribute.
-     *
+    /** Creates an immutable one-entry set.
      * @param key attribute key
      * @param value attribute value
      * @return one-entry immutable set
      */
     public static AttributeSet of(String key, Object value) { return builder(1).put(key, value).build(); }
-
-    /**
-     * Returns whether a key belongs to Logyard's reserved system-diagnostic namespace.
-     *
+    /** Tests whether a key is in Logyard's reserved namespace.
      * @param key attribute key
-     * @return {@code true} for a case-insensitive {@code logyard.*} prefix
+     * @return whether the key is in the case-insensitive {@code logyard.*} namespace
      */
     public static boolean isReservedKey(String key) {
         return key != null && key.regionMatches(true, 0, "logyard.", 0, "logyard.".length());
@@ -169,130 +128,83 @@ public final class AttributeSet {
 
     /** Mutable, bounded assembler for an immutable {@link AttributeSet}. */
     public static final class Builder {
-        private final AttributeAccumulator attributes;
-        private final boolean systemAttributesAllowed;
+        private final AttributeSetBuilderState state;
 
         private Builder(int expectedSize, boolean systemAttributesAllowed) {
-            attributes = new AttributeAccumulator(expectedSize);
-            this.systemAttributesAllowed = systemAttributesAllowed;
+            state = new AttributeSetBuilderState(expectedSize, systemAttributesAllowed);
         }
 
-        /**
-         * Adds or replaces an attribute.
-         *
+        /** Adds or replaces an attribute.
          * @param key attribute key
          * @param value attribute value
          * @return this builder
          */
         public Builder put(String key, Object value) {
-            String storageKey = normalizeKey(key);
-            attributes.put(key, storageKey, storageKey != key, value);
+            state.put(key, value);
             return this;
         }
-
-        /**
-         * Evaluates and captures a value supplier while building an enabled event.
-         * The supplier is never retained by the resulting immutable attribute set.
-         *
+        /** Evaluates and captures an attribute supplier.
          * @param key attribute key
-         * @param supplier attribute supplier
+         * @param supplier value supplier evaluated during capture
          * @return this builder
          */
         public Builder putSupplied(String key, Supplier<?> supplier) {
-            String storageKey = normalizeKey(key);
-            Objects.requireNonNull(supplier, "valueSupplier");
-            attributes.putSupplied(key, storageKey, storageKey != key, supplier);
+            state.putSupplied(key, supplier);
             return this;
         }
-
-        /**
-         * Returns the number of attributes currently held by the builder.
-         *
-         * @return attribute count
+        /** Returns the current attribute count.
+         * @return current attribute count
          */
-        public int size() { return attributes.size(); }
-
-        /**
-         * Returns whether no further user attributes can be accepted without truncation.
-         *
-         * @return {@code true} when full
+        public int size() { return state.size(); }
+        /** Reports whether no additional user attribute fits without truncation.
+         * @return whether no additional user attribute fits without truncation
          */
-        public boolean isFull() { return attributes.isFull(); }
-
-        /**
-         * Records that a source contained additional attributes which could not be captured.
-         *
+        public boolean isFull() { return state.isFull(); }
+        /** Records omitted source attributes.
          * @return this builder
          */
-        public Builder markTruncated() { attributes.markTruncated(); return this; }
-
-        /**
-         * Preserves capture-level shortening without claiming that attribute entries were omitted.
-         *
+        public Builder markTruncated() {
+            state.markTruncated();
+            return this;
+        }
+        /** Preserves event-level capture shortening.
          * @return this builder
          */
         @InternalApi
-        public Builder markCaptureTruncated() { attributes.markCaptureTruncated(); return this; }
-
-        /**
-         * Adds all attributes from an immutable set.
-         *
-         * @param attributes attributes to add
+        public Builder markCaptureTruncated() {
+            state.markCaptureTruncated();
+            return this;
+        }
+        /** Adds every attribute from an immutable set.
+         * @param attributes immutable attributes to add
          * @return this builder
          */
         public Builder putAll(AttributeSet attributes) {
-            Objects.requireNonNull(attributes, "attributes");
-            for (int index = 0; index < attributes.size(); index++) {
-                this.attributes.putCaptured(
-                        attributes.keyAt(index),
-                        attributes.normalizedKeyIdentities == null ? null : attributes.normalizedKeyIdentities[index],
-                        attributes.valueAt(index));
-            }
-            if (attributes.captureTruncated) {
-                this.attributes.markCaptureTruncated();
-            }
+            state.putAll(Objects.requireNonNull(attributes, "attributes"));
             return this;
         }
-
-        /**
-         * Adds all entries from a map in iteration order.
-         *
-         * @param attributes attributes to add
+        /** Adds map entries in iteration order.
+         * @param attributes map entries to add in iteration order
          * @return this builder
          */
         public Builder putAll(Map<String, ?> attributes) {
-            Objects.requireNonNull(attributes, "attributes");
-            for (Map.Entry<String, ?> entry : attributes.entrySet()) {
-                put(entry.getKey(), entry.getValue());
-                if (this.attributes.truncated() && isFull()) {
-                    break;
-                }
-            }
+            state.putAll(Objects.requireNonNull(attributes, "attributes"));
             return this;
         }
-
-        /**
-         * Captures all values and returns an immutable attribute set.
-         *
+        /** Captures values into an immutable attribute set.
          * @return immutable captured attributes
          */
-        public AttributeSet build() { return attributes.build(); }
-
-        /**
-         * Adds a key which has already passed the shared bounded normalization policy.
-         *
-         * @param key normalized key identity
+        public AttributeSet build() { return state.build(); }
+        /** Adds a key that passed Logyard's bounded normalization policy.
+         * @param key key that passed Logyard's bounded normalization policy
          * @param value attribute value
          * @return this builder
          */
         @InternalApi
         public Builder putNormalized(NormalizedAttributeKey key, Object value) {
-            NormalizedAttributeKey normalized = Objects.requireNonNull(key, "key");
-            attributes.put(normalized.original(), normalized.storageKey(), normalized.truncated(), value);
+            state.putNormalized(key, value);
             return this;
         }
-
-        private String normalizeKey(String key) { return AttributeKey.normalizeStorage(key, systemAttributesAllowed); }
     }
 
     AttributeSet recapture(CaptureContext context) { return AttributeSetOperations.recapture(this, context); }

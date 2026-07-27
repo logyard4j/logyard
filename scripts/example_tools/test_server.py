@@ -19,7 +19,3 @@ class HttpExampleRunnerTest(unittest.TestCase):
 
         self.assertEqual(43123, port)
         self.assertEqual(4, port_file.read_text.call_count)
-
-
-if __name__ == "__main__":
-    unittest.main()

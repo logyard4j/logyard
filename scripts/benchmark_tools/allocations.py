@@ -14,11 +14,7 @@ def main() -> None:
 
     budgets = read_json(arguments.budget_file)["budgets"]
     scaling_budgets = read_json(arguments.budget_file).get("scalingBudgets", [])
-    results = [
-        result
-        for result_file in arguments.result_file
-        for result in read_json(result_file)
-    ]
+    results = [result for result_file in arguments.result_file for result in read_json(result_file)]
     failures: list[str] = []
     for budget in budgets:
         result = find_result(results, budget)
@@ -39,10 +35,7 @@ def main() -> None:
 
     if failures:
         raise SystemExit("Allocation budget check failed:\n  " + "\n  ".join(failures))
-    print(
-        f"Allocation budgets passed for {len(budgets)} benchmark scenarios "
-        f"and {len(scaling_budgets)} scaling relationship(s)."
-    )
+    print(f"Allocation budgets passed for {len(budgets)} benchmark scenarios and {len(scaling_budgets)} scaling relationship(s).")
 
 
 def read_json(path: Path) -> Any:
@@ -53,12 +46,7 @@ def read_json(path: Path) -> Any:
 def find_result(results: list[dict[str, Any]], budget: dict[str, Any]) -> dict[str, Any] | None:
     expected_params = budget.get("params", {})
     return next(
-        (
-            result
-            for result in results
-            if result.get("benchmark") == budget["benchmark"]
-            and result.get("params", {}) == expected_params
-        ),
+        (result for result in results if result.get("benchmark") == budget["benchmark"] and result.get("params", {}) == expected_params),
         None,
     )
 
@@ -69,11 +57,7 @@ def result_label(budget: dict[str, Any]) -> str:
     return budget["benchmark"] + suffix
 
 
-def check_scaling(
-    results: list[dict[str, Any]],
-    budget: dict[str, Any],
-    failures: list[str],
-) -> None:
+def check_scaling(results: list[dict[str, Any]], budget: dict[str, Any], failures: list[str]) -> None:
     small = find_result(results, {"benchmark": budget["benchmark"], "params": budget["smallParams"]})
     large = find_result(results, {"benchmark": budget["benchmark"], "params": budget["largeParams"]})
     label = budget["benchmark"] + " scaling"
@@ -91,15 +75,9 @@ def check_scaling(
         failures.append(f"{label}: small-case allocation and timing metrics must be positive")
         return
     if large_allocation > small_allocation * float(budget["maxAllocationRatio"]):
-        failures.append(
-            f"{label}: allocation ratio {large_allocation / small_allocation:.3f} exceeds "
-            f"{float(budget['maxAllocationRatio']):.3f}"
-        )
+        failures.append(f"{label}: allocation ratio {large_allocation / small_allocation:.3f} exceeds {float(budget['maxAllocationRatio']):.3f}")
     if large_time > small_time * float(budget["maxTimeRatio"]):
-        failures.append(
-            f"{label}: time ratio {large_time / small_time:.3f} exceeds "
-            f"{float(budget['maxTimeRatio']):.3f}"
-        )
+        failures.append(f"{label}: time ratio {large_time / small_time:.3f} exceeds {float(budget['maxTimeRatio']):.3f}")
 
 
 def metric_score(result: dict[str, Any], *path: str) -> float | None:

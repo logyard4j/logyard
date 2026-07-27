@@ -7,7 +7,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 
-/** Maintains at most one pending one-shot flush for a dirty JSON output. */
+/** Schedules at most one pending one-shot flush while {@link TimedFlushState} owns its transitions. */
 @InternalApi
 public final class TimedFlushController implements AutoCloseable {
     public static final Duration MAX_INTERVAL = TimedFlushInterval.MAXIMUM;
@@ -17,11 +17,7 @@ public final class TimedFlushController implements AutoCloseable {
     private final FlushDispatcher dispatcher;
     private final FlushDiagnostics diagnostics;
     private final Runnable flushAction;
-    private final TimedFlushTasks tasks = new TimedFlushTasks();
-    private final FlushDispatchRetry dispatchRetry = new FlushDispatchRetry();
-    private boolean transportCompleted;
-    private boolean rescheduleNeeded;
-    private boolean closed;
+    private final TimedFlushState state = new TimedFlushState();
 
     public TimedFlushController(Duration interval, Runnable flushAction) {
         this(interval, SharedFlushScheduler.INSTANCE, BoundedElasticFlushDispatcher.INSTANCE, FlushDiagnostics.STDERR, flushAction);
@@ -41,58 +37,40 @@ public final class TimedFlushController implements AutoCloseable {
 
     public void recordWritten() {
         if (interval.isZero()) {
-            synchronized (this) {
-                if (closed) {
-                    return;
-                }
+            if (!state.closed()) {
+                flushAction.run();
             }
-            flushAction.run();
             return;
         }
-
-        TimedFlushTask candidate;
-        synchronized (this) {
-            if (closed) {
-                return;
-            }
-            if (tasks.occupied()) {
-                rescheduleNeeded |= transportCompleted;
-                return;
-            }
-            candidate = new TimedFlushTask();
-            tasks.own(candidate);
+        TimedFlushTask task = state.reserveForRecord();
+        if (task != null) {
+            scheduleOrRunInline(task, interval);
         }
-
-        scheduleOrRunInline(candidate, interval);
     }
 
-    public void flushed() { cancelPending(); }
+    public void flushed() {
+        cancel(state.cancelPending());
+    }
 
     public void cancelPending() {
-        TimedFlushTask canceled;
-        synchronized (this) {
-            canceled = tasks.release();
-            transportCompleted = false;
-            rescheduleNeeded = false;
-            dispatchRetry.reset();
-        }
-        if (canceled != null) {
-            canceled.cancel();
-        }
+        cancel(state.cancelPending());
     }
 
     @Override
     public void close() {
-        List<TimedFlushTask> canceled;
-        synchronized (this) {
-            closed = true;
-            canceled = tasks.drain();
-            transportCompleted = false;
-            rescheduleNeeded = false;
-            dispatchRetry.reset();
-        }
+        List<TimedFlushTask> canceled = state.close();
         canceled.forEach(TimedFlushTask::cancel);
         canceled.forEach(TimedFlushTask::awaitCompletion);
+    }
+
+    /** Reports whether the caller still owns the current zero-interval or dispatched flush. */
+    public boolean flushIsCurrent() {
+        return state.flushIsCurrent(interval);
+    }
+
+    /** Completes the current dispatched flush while its transport serialization lock is still held. */
+    public void flushCompleted() {
+        state.flushCompleted();
     }
 
     private void runDue(TimedFlushTask due) {
@@ -110,34 +88,18 @@ public final class TimedFlushController implements AutoCloseable {
     }
 
     private void scheduleRetryAfterDispatchFailure(TimedFlushTask rejected) {
-        TimedFlushTask retry;
-        Duration retryDelay;
-        synchronized (this) {
-            if (!tasks.owns(rejected)) {
-                return;
-            }
-            tasks.releaseAndRetire(rejected, !closed);
-            transportCompleted = false;
-            rescheduleNeeded = false;
-            if (closed) {
-                return;
-            }
-            retry = new TimedFlushTask();
-            tasks.own(retry);
-            retryDelay = dispatchRetry.nextDelay();
+        TimedFlushState.Retry retry = state.replaceAfterDispatchFailure(rejected);
+        if (retry != null) {
+            scheduleOrRunInline(retry.task(), retry.delay());
         }
-        scheduleOrRunInline(retry, retryDelay);
     }
 
     private void runDispatched(TimedFlushTask due) {
         due.runner(Thread.currentThread());
         try {
-            synchronized (this) {
-                if (!tasks.owns(due) || closed) {
-                    return;
-                }
+            if (state.canRun(due)) {
+                flushAction.run();
             }
-            flushAction.run();
         } catch (Throwable failure) {
             FailureIsolation.prepareForRecovery(failure);
             diagnostics.report(failure);
@@ -149,61 +111,24 @@ public final class TimedFlushController implements AutoCloseable {
     private void runInline(TimedFlushTask due) {
         due.runner(Thread.currentThread());
         try {
-            synchronized (this) {
-                if (!tasks.owns(due) || closed) {
-                    return;
-                }
+            if (state.canRun(due)) {
+                flushAction.run();
             }
-            flushAction.run();
         } finally {
             complete(due);
         }
     }
 
-    /** Reports whether the caller still owns the current zero-interval or dispatched flush. */
-    public synchronized boolean flushIsCurrent() {
-        return !closed && (interval.isZero() || tasks.owned() != null && tasks.owned().runsOnCurrentThread());
-    }
-
-    /** Completes the current dispatched flush while its transport serialization lock is still held. */
-    public void flushCompleted() {
-        synchronized (this) {
-            if (tasks.owned() == null || !tasks.owned().runsOnCurrentThread()) {
-                return;
-            }
-            transportCompleted = true;
-        }
-    }
-
     private void complete(TimedFlushTask due) {
-        boolean scheduleNext = false;
-        synchronized (this) {
-            if (tasks.owns(due)) {
-                tasks.release();
-                scheduleNext = !closed && transportCompleted && rescheduleNeeded;
-                if (transportCompleted) {
-                    dispatchRetry.reset();
-                }
-                transportCompleted = false;
-                rescheduleNeeded = false;
-            }
-            if (!closed) {
-                tasks.retire(due);
-            }
-        }
-        if (scheduleNext) {
+        if (state.complete(due)) {
             recordWritten();
         }
     }
 
-    private void attachScheduled(TimedFlushTask candidate, Duration delay) {
-        candidate.attachScheduled(scheduler.schedule(delay, () -> runDue(candidate)));
-        boolean cancel;
-        synchronized (this) {
-            cancel = !tasks.owns(candidate);
-        }
-        if (cancel) {
-            candidate.cancel();
+    private void attachScheduled(TimedFlushTask task, Duration delay) {
+        task.attachScheduled(scheduler.schedule(delay, () -> runDue(task)));
+        if (!state.owns(task)) {
+            task.cancel();
         }
     }
 
@@ -214,7 +139,8 @@ public final class TimedFlushController implements AutoCloseable {
             try {
                 FailureIsolation.prepareForRecovery(schedulingFailure);
             } catch (Throwable fatalFailure) {
-                abandon(task);
+                state.abandon(task);
+                task.cancel();
                 throw fatalFailure;
             }
             try {
@@ -225,11 +151,9 @@ public final class TimedFlushController implements AutoCloseable {
         }
     }
 
-    private void abandon(TimedFlushTask task) {
-        synchronized (this) {
-            tasks.releaseAndRetire(task, false);
+    private static void cancel(TimedFlushTask task) {
+        if (task != null) {
+            task.cancel();
         }
-        task.cancel();
     }
-
 }

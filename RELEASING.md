@@ -1,6 +1,6 @@
 # Releasing Logyard
 
-Zolt owns the eleven Java library publications and the native `logyard-bom` workspace member. The official Quarkus Maven reactor owns `logyard-quarkus` and `logyard-quarkus-deployment`; `modules/logyard-bom/publication-overlay.toml` adds those two artifacts when the repository assembles the final atomic family bundle.
+Zolt owns the eleven Java library publications and the native `logyard-bom` workspace member. The official Quarkus Maven reactor owns `logyard-quarkus` and `logyard-quarkus-deployment`; its flattened standalone POMs and artifacts join the native family in one atomic Central Portal bundle. `modules/logyard-bom/zolt.toml` declares both Quarkus coordinates in `[bom.versions]`, so the published BOM manages the complete fourteen-artifact family.
 
 Build and verify the Maven-layout repository:
 
@@ -17,7 +17,7 @@ sources and Javadoc packaging do not depend on native-image launcher properties.
 
 `compatibility-baseline.toml` is the reviewed source of truth for API compatibility. It explicitly declares `version = "none"` before the first public release. After publication, replace that policy with the previous immutable release and the SHA-256 of its API, runtime, JUL, Spring, and Quarkus JARs; `scripts/api-compatibility --baseline` downloads and verifies those exact artifacts before running japicmp. `--self-test` is only a tooling and filter smoke test.
 
-The publication check runs Zolt's complete whole-workspace Central planner and the packaged-artifact verifier together. Zolt must plan every native workspace member’s main artifact, sources, Javadocs, checksums, signatures, and atomic family metadata. A snapshot requires the release version to be the only blocker; a release candidate must pass without blockers. Any metadata, POM, signing, routing, family, or artifact failure is fatal.
+The publication check runs Zolt's complete whole-workspace Central planner and the packaged-artifact verifier together. Zolt must plan every native workspace member’s main artifact, sources, Javadocs, CycloneDX SBOM, checksums, signatures, and atomic family metadata. A snapshot requires the release version to be the only blocker; a release candidate must pass without blockers. Any metadata, POM, signing, routing, family, SBOM, or artifact failure is fatal.
 
 Before tagging a release candidate, run the complete matrix:
 
@@ -54,6 +54,6 @@ Use `scripts/central-publish --upload --automatic --wait` only when the release 
 
 The upload path rejects snapshot versions. Central releases are immutable, and upload never occurs unless `--upload` is explicit.
 
-Do not use live `zolt publish --workspace --central` for Logyard yet: that Zolt family contains only the native workspace members and cannot include the two artifacts built by Quarkus Maven. `scripts/central-publish` is the sole upload path because it validates and uploads all fourteen publications in one Central Portal bundle.
+Do not use live `zolt publish --workspace --central` as the Logyard release command. That Zolt family contains only the native workspace members and cannot include the two artifacts built by Quarkus Maven. `scripts/zolt-publication-check` is mandatory evidence that the native family is Central-ready; `scripts/central-publish` is the sole upload path because it validates and uploads all fourteen publications in one Central Portal bundle.
 
 The tag-triggered release workflow expects `CENTRAL_TOKEN_USERNAME` and `CENTRAL_TOKEN_PASSWORD` GitHub Actions secrets and waits for automatic publication to reach `PUBLISHED`. The protocol and credential format follow the [Central Portal Publisher API](https://central.sonatype.org/publish/publish-portal-api/).

@@ -1,6 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PYTHONPATH="$ROOT/scripts" python3 -m release_tools.framework_versions "$ROOT"
+
+framework_version() {
+  local key="$1"
+  sed -n "/^\[frameworks\]/,/^\[/ { s/^[[:space:]]*$key[[:space:]]*=[[:space:]]*\"\\([^\"]*\\)\".*$/\\1/p; }" \
+    "$ROOT/framework-versions.toml" | head -n 1
+}
+
+require_fragment() {
+  local path="$1"
+  local fragment="$2"
+  grep -Fq "$fragment" "$ROOT/$path" || {
+    printf 'framework version check failed: %s is missing %s\n' "$path" "$fragment" >&2
+    exit 1
+  }
+}
+
+spring_boot_baseline="$(framework_version spring_boot_baseline)"
+spring_boot_current="$(framework_version spring_boot_current)"
+quarkus="$(framework_version quarkus)"
+micronaut="$(framework_version micronaut)"
+vertx="$(framework_version vertx)"
+jmh="$(framework_version jmh)"
+for version in "$spring_boot_baseline" "$spring_boot_current" "$quarkus" "$micronaut" "$vertx" "$jmh"; do
+  [[ -n "$version" ]] || {
+    printf 'framework version check failed: framework-versions.toml is incomplete\n' >&2
+    exit 1
+  }
+done
+
+require_fragment modules/logyard-spring-boot/zolt.toml "\"org.springframework.boot:spring-boot\" = \"$spring_boot_baseline\""
+require_fragment modules/logyard-spring-boot-starter/zolt.toml "version = \"$spring_boot_baseline\""
+require_fragment examples/spring-boot/pom.xml "<spring-boot.version>$spring_boot_current</spring-boot.version>"
+require_fragment extensions/logyard-quarkus/pom.xml "<quarkus.version>$quarkus</quarkus.version>"
+require_fragment examples/quarkus/pom.xml "<quarkus.version>$quarkus</quarkus.version>"
+require_fragment extensions/logyard-quarkus/runtime/pom.xml "<artifactId>quarkus-core</artifactId>"
+require_fragment extensions/logyard-quarkus/deployment/pom.xml "<artifactId>quarkus-core-deployment</artifactId>"
+require_fragment examples/micronaut/pom.xml "<micronaut.version>$micronaut</micronaut.version>"
+require_fragment examples/vertx/pom.xml "<vertx.version>$vertx</vertx.version>"
+require_fragment benchmarks/logyard-benchmarks/zolt.toml "\"org.openjdk.jmh:jmh-core\" = \"$jmh\""
+require_fragment extensions/logyard-quarkus/benchmarks/pom.xml "<jmh.version>$jmh</jmh.version>"
+require_fragment README.md "plain SLF4J 2, Vert.x $vertx, Micronaut $micronaut, Spring Boot $spring_boot_baseline and $spring_boot_current, and Quarkus $quarkus"
+
+printf 'Framework versions are aligned across 12 declarations.\n'

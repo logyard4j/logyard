@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-release.sh"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
 JAPICMP_VERSION="0.26.1"
 JAPICMP_SHA256="4b4f0301861d97cd2a05af3f7fa9173cc1dd3831b1284b2b9e2f81c4f1c2f858"
@@ -38,6 +38,56 @@ require_file() {
     printf 'error: required jar does not exist: %s\n' "$1" >&2
     exit 2
   }
+}
+
+baseline_value() {
+  local key="$1"
+  sed -n "/^\[artifacts\]/q; s/^[[:space:]]*$key[[:space:]]*=[[:space:]]*\"\\([^\"]*\\)\".*$/\\1/p" \
+    "$BASELINE_MANIFEST" | head -n 1
+}
+
+baseline_artifact_value() {
+  local surface="$1"
+  local field="$2"
+  local line
+  line="$(sed -n "/^[[:space:]]*$surface[[:space:]]*=/p" "$BASELINE_MANIFEST" | head -n 1)"
+  [[ -n "$line" ]] || return
+  printf '%s\n' "$line" | sed -n "s/.*$field[[:space:]]*=[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p"
+}
+
+fetch_baseline_artifact() {
+  local surface="$1"
+  local artifact checksum group repository source temporary destination actual
+  artifact="$(baseline_artifact_value "$surface" artifact)"
+  checksum="$(baseline_artifact_value "$surface" sha256)"
+  [[ -n "$artifact" && "$checksum" =~ ^[0-9a-f]{64}$ ]] || {
+    printf 'error: compatibility baseline artifact %s is incomplete\n' "$surface" >&2
+    exit 2
+  }
+  group="$(baseline_value group)"
+  group="${group:-com.zsumz.logyard}"
+  repository="$(baseline_value repository)"
+  [[ -n "$repository" ]] || {
+    printf 'error: compatibility baseline has no repository\n' >&2
+    exit 2
+  }
+  source="${repository%/}/$(logyard_group_path "$group")/$artifact/$baseline_version/$artifact-$baseline_version.jar"
+  destination="$BASELINE_DIR/$artifact-$baseline_version.jar"
+  mkdir -p "$BASELINE_DIR"
+  temporary="$(mktemp "$BASELINE_DIR/.${artifact}.XXXXXX")"
+  if ! curl -fsSL "$source" -o "$temporary"; then
+    rm -f "$temporary"
+    printf 'error: unable to fetch compatibility baseline artifact: %s\n' "$source" >&2
+    exit 2
+  fi
+  actual="$(digest "$temporary")"
+  [[ "$actual" == "$checksum" ]] || {
+    rm -f "$temporary"
+    printf 'error: compatibility baseline checksum mismatch for %s\n' "$artifact" >&2
+    exit 2
+  }
+  mv "$temporary" "$destination"
+  printf '%s\n' "$destination"
 }
 
 install_japicmp() {
@@ -88,27 +138,41 @@ compare() {
 
 mode=""
 if [[ "$#" -eq 1 && "$1" == "--baseline" ]]; then
-  baseline_status=()
-  while IFS= read -r baseline_line; do
-    baseline_status+=("$baseline_line")
-  done < <(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.compatibility_baseline status "$BASELINE_MANIFEST")
-  baseline_version="${baseline_status[0]}"
+  [[ "$(sed -n 's/^[[:space:]]*schema[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$BASELINE_MANIFEST" | head -n 1)" == 1 ]] || {
+    printf 'error: compatibility baseline schema must be 1\n' >&2
+    exit 2
+  }
+  baseline_version="$(baseline_value version)"
+  [[ -n "$baseline_version" ]] || {
+    printf 'error: compatibility baseline has no version\n' >&2
+    exit 2
+  }
   if [[ "$baseline_version" == "none" ]]; then
-    current_version="$(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.manifest_cli version "$ROOT")"
+    current_version="$(logyard_release_version)"
     current_release="${current_version%-SNAPSHOT}"
-    [[ "$current_release" == "${baseline_status[1]}" ]] || {
+    first_release="$(baseline_value first_release)"
+    reason="$(baseline_value reason)"
+    [[ -n "$first_release" && -n "$reason" ]] || {
+      printf 'error: absent compatibility baseline requires first_release and reason\n' >&2
+      exit 2
+    }
+    [[ "$current_release" == "$first_release" ]] || {
       printf 'error: absent compatibility baseline applies only to first release %s, not %s\n' \
-        "${baseline_status[1]}" "$current_version" >&2
+        "$first_release" "$current_version" >&2
       exit 2
     }
     printf 'API compatibility baseline: none for first release %s (%s)\n' \
-      "${baseline_status[1]}" "${baseline_status[2]}"
+      "$first_release" "$reason"
     exit 0
   fi
+  [[ "$baseline_version" != *-SNAPSHOT ]] || {
+    printf 'error: compatibility baseline must identify an immutable release\n' >&2
+    exit 2
+  }
   baseline_jars=()
-  while IFS= read -r baseline_jar; do
-    baseline_jars+=("$baseline_jar")
-  done < <(PYTHONPATH="$ROOT/scripts" python3 -m release_tools.compatibility_baseline fetch "$BASELINE_MANIFEST" "$BASELINE_DIR")
+  for surface in api runtime jul spring quarkus; do
+    baseline_jars+=("$(fetch_baseline_artifact "$surface")")
+  done
   [[ "${#baseline_jars[@]}" -eq 5 ]] || {
     printf 'error: compatibility baseline resolved %d jars instead of 5\n' "${#baseline_jars[@]}" >&2
     exit 2
