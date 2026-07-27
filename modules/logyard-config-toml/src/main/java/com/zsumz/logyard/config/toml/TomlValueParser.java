@@ -9,10 +9,12 @@ import java.util.Map;
 final class TomlValueParser {
     private final TomlCursor cursor;
     private final TomlTableBuilder tables;
+    private final TomlStringParser strings;
 
     TomlValueParser(TomlCursor cursor, TomlTableBuilder tables) {
         this.cursor = cursor;
         this.tables = tables;
+        strings = new TomlStringParser(cursor);
     }
 
     Object parseValue() {
@@ -21,8 +23,8 @@ final class TomlValueParser {
             cursor.fail("expected a value");
         }
         return switch (cursor.peek()) {
-            case '"' -> parseBasicString();
-            case '\'' -> parseLiteralString();
+            case '"' -> strings.parseBasic();
+            case '\'' -> strings.parseLiteral();
             case '[' -> parseArray();
             case '{' -> parseInlineTable();
             default -> parseBareValue();
@@ -46,10 +48,10 @@ final class TomlValueParser {
 
     private String parseKeySegment() {
         if (cursor.peek() == '"') {
-            return parseBasicString();
+            return strings.parseBasic();
         }
         if (cursor.peek() == '\'') {
-            return parseLiteralString();
+            return strings.parseLiteral();
         }
         int start = cursor.mark();
         while (!cursor.eof()) {
@@ -64,86 +66,6 @@ final class TomlValueParser {
             cursor.fail("expected a bare or quoted key");
         }
         return cursor.textFrom(start);
-    }
-
-    private String parseBasicString() {
-        cursor.expect('"');
-        StringBuilder result = new StringBuilder();
-        while (!cursor.eof()) {
-            char character = cursor.take();
-            if (character == '"') {
-                return result.toString();
-            }
-            validateStringCharacter(character, "basic");
-            if (character != '\\') {
-                result.append(character);
-                continue;
-            }
-            appendEscape(result);
-        }
-        cursor.fail("unterminated basic string");
-        throw new AssertionError("unreachable");
-    }
-
-    private void appendEscape(StringBuilder result) {
-        if (cursor.eof()) {
-            cursor.fail("unterminated escape sequence");
-        }
-        char escape = cursor.take();
-        switch (escape) {
-            case 'b' -> result.append('\b');
-            case 't' -> result.append('\t');
-            case 'n' -> result.append('\n');
-            case 'f' -> result.append('\f');
-            case 'r' -> result.append('\r');
-            case '"' -> result.append('"');
-            case '\\' -> result.append('\\');
-            case 'u' -> result.appendCodePoint(parseHexCodePoint(4));
-            case 'U' -> result.appendCodePoint(parseHexCodePoint(8));
-            default -> cursor.fail("unknown string escape \\" + escape + "'");
-        }
-    }
-
-    private int parseHexCodePoint(int digits) {
-        int result = 0;
-        for (int count = 0; count < digits; count++) {
-            if (cursor.eof()) {
-                cursor.fail("incomplete Unicode escape");
-            }
-            int digit = Character.digit(cursor.take(), 16);
-            if (digit < 0) {
-                cursor.fail("Unicode escape contains a non-hex character");
-            }
-            result = (result << 4) | digit;
-        }
-        if (!Character.isValidCodePoint(result) || (result >= 0xD800 && result <= 0xDFFF)) {
-            cursor.fail("Unicode escape is not a valid scalar value");
-        }
-        return result;
-    }
-
-    private String parseLiteralString() {
-        cursor.expect('\'');
-        StringBuilder result = new StringBuilder();
-        while (!cursor.eof()) {
-            char character = cursor.take();
-            if (character == '\'') {
-                return result.toString();
-            }
-            validateStringCharacter(character, "literal");
-            result.append(character);
-        }
-        cursor.fail("unterminated literal string");
-        throw new AssertionError("unreachable");
-    }
-
-    private void validateStringCharacter(char character, String kind) {
-        if (character == '\n' || character == '\r') {
-            cursor.fail(kind + " strings may not contain a raw newline");
-        }
-        if (character < 0x20 && character != '\t') {
-            cursor.fail(kind + " strings may not contain control characters");
-        }
     }
 
     private List<Object> parseArray() {

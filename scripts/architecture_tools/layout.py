@@ -69,7 +69,7 @@ def check_package_layout(root: Path, state: CheckState) -> None:
             "ActiveRuntimeConfiguration.java", "ConfigurationInstallationRequest.java", "ConfigurationSnapshotStabilizer.java",
             "ConfigurationWatchHandshake.java", "ConfigurationWatcherCatchUp.java", "ConfigurationWatcherPolicy.java",
             "DeferredWatcherReload.java", "GlobalRuntimeAccess.java", "ManagedRuntimeInstallation.java",
-            "PreparedRuntimeConfiguration.java", "RuntimeConfigurationCleanup.java", "RuntimeInstallation.java",
+            "ManagedRuntimeReconfiguration.java", "PreparedRuntimeConfiguration.java", "RuntimeConfigurationCleanup.java", "RuntimeInstallation.java",
             "RuntimeInstallationClosure.java", "RuntimeInstallationTransitions.java", "StabilizedConfiguration.java",
         },
         "runtime installation root must contain only configuration lifecycle types and shared ports",

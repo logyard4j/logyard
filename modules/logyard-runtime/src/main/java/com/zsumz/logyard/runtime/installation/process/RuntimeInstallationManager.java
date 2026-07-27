@@ -1,7 +1,6 @@
 package com.zsumz.logyard.runtime.installation.process;
 
 import com.zsumz.logyard.api.LogyardRuntime;
-import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.runtime.installation.ConfigurationInstallationRequest;
 import com.zsumz.logyard.runtime.installation.GlobalRuntimeAccess;
 import com.zsumz.logyard.runtime.installation.ManagedRuntimeInstallation;
@@ -9,8 +8,6 @@ import com.zsumz.logyard.runtime.installation.RuntimeInstallation;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletionStage;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /** Process-wide coordinator for runtime identity, configuration handoff, and ownership. */
@@ -19,11 +16,10 @@ public final class RuntimeInstallationManager {
             new RuntimeInstallationManager(new LogyardGlobalRuntimeAccess(), new InstallationShutdownHook(), System::getenv);
 
     private final GlobalRuntimeAccess globalRuntime;
-    private final RuntimeShutdownHookRegistrar shutdownHooks;
-    private final Supplier<Map<String, String>> environment;
-    private final RuntimeInstallationFactory installations;
-    private final RuntimeInstallationRetirements retirements = new RuntimeInstallationRetirements();
     private final RuntimeInstallationState state = new RuntimeInstallationState();
+    private final RuntimeInstallationRetirementCoordinator retirements;
+    private final RuntimeInstallationStarter starter;
+    private final InstallationAcquisitionReconfiguration reconfiguration;
 
     public RuntimeInstallationManager(
             GlobalRuntimeAccess globalRuntime,
@@ -38,9 +34,17 @@ public final class RuntimeInstallationManager {
             Supplier<Map<String, String>> environment,
             RuntimeInstallationFactory installations) {
         this.globalRuntime = Objects.requireNonNull(globalRuntime, "globalRuntime");
-        this.shutdownHooks = Objects.requireNonNull(shutdownHooks, "shutdownHooks");
-        this.environment = Objects.requireNonNull(environment, "environment");
-        this.installations = Objects.requireNonNull(installations, "installations");
+        retirements = new RuntimeInstallationRetirementCoordinator(state, this.globalRuntime);
+        starter = new RuntimeInstallationStarter(
+                state,
+                this.globalRuntime,
+                Objects.requireNonNull(shutdownHooks, "shutdownHooks"),
+                Objects.requireNonNull(environment, "environment"),
+                Objects.requireNonNull(installations, "installations"),
+                retirements,
+                this::shutdownAtExit,
+                this::shutdownManaged);
+        reconfiguration = new InstallationAcquisitionReconfiguration(state, retirements);
     }
 
     public static RuntimeInstallationManager process() {
@@ -72,7 +76,7 @@ public final class RuntimeInstallationManager {
     }
 
     void release(RuntimeOwner owner, RuntimeInstallation candidate) {
-        retire(state.release(owner, candidate));
+        retirements.retire(state.release(owner, candidate));
     }
 
     private RuntimeInstallationLease acquire(RuntimeOwner owner, ConfigurationInstallationRequest request) {
@@ -82,73 +86,13 @@ public final class RuntimeInstallationManager {
         return switch (plan.action()) {
             case BORROW -> RuntimeInstallationLease.borrowed(globalRuntime, plan.borrowedRuntime());
             case SHARE -> managedLease(owner, plan.installation());
-            case START -> start(owner, request, plan);
-            case RECONFIGURE -> reconfigure(owner, request, plan);
+            case START -> managedLease(owner, starter.start(owner, request, plan));
+            case RECONFIGURE -> managedLease(owner, reconfiguration.reconfigure(owner, request, plan));
             case CLOSE_STALE -> {
-                retire(plan.retirement());
+                retirements.retire(plan.retirement());
                 throw InstallationTransitionFailures.forPhase(InstallationPhase.CLOSING);
             }
         };
-    }
-
-    private RuntimeInstallationLease start(RuntimeOwner owner, ConfigurationInstallationRequest request, AcquisitionPlan plan) {
-        RuntimeInstallation candidate = null;
-        RuntimeStartTransaction transaction = Objects.requireNonNull(plan.startTransaction(), "start transaction");
-        try {
-            candidate = installations.open(request, Map.copyOf(environment.get()));
-            state.registerStartCandidate(transaction, candidate);
-            RuntimeInstallation starting = candidate;
-            LogyardRuntime candidateRuntime = candidate.runtime();
-            if (!transaction.publish(() -> globalRuntime.install(candidateRuntime, () -> shutdownManaged(starting)))) {
-                state.requireActiveStart(transaction);
-            }
-            state.requireActiveStart(transaction);
-            installShutdownHook(plan);
-            state.commitStart(transaction, candidate, owner);
-            transaction.completeWithoutRetirement();
-            return managedLease(owner, candidate);
-        } catch (RuntimeException | Error failure) {
-            abortStart(transaction, candidate, failure);
-            throw failure;
-        }
-    }
-
-    private void installShutdownHook(AcquisitionPlan plan) {
-        if (plan.installShutdownHook() && shutdownHooks.install(this::shutdownAtExit)) {
-            state.shutdownHookInstalled();
-        }
-    }
-
-    private void abortStart(RuntimeStartTransaction transaction, RuntimeInstallation candidate, Throwable primaryFailure) {
-        RuntimeRetirementPlan retirement = state.abortStart(transaction, candidate);
-        if (!retirement.required()) {
-            transaction.completeWithoutRetirement();
-            return;
-        }
-        retire(retirement, transaction::completeShutdownBoundary, cleanupFailure -> {
-            if (cleanupFailure != null) {
-                primaryFailure.addSuppressed(cleanupFailure);
-            }
-            state.completeStartRetirement(transaction);
-            transaction.completeFinalRetirement();
-        });
-    }
-
-    private RuntimeInstallationLease reconfigure(
-            RuntimeOwner owner,
-            ConfigurationInstallationRequest request,
-            AcquisitionPlan plan) {
-        try {
-            ReloadResult result = Objects.requireNonNull(plan.installation().reconfigure(request), "runtime reconfiguration result");
-            if (result == ReloadResult.REJECTED) {
-                throw InstallationTransitionFailures.rejectedHandoff();
-            }
-            state.commitReconfiguration(owner, plan);
-            return managedLease(owner, plan.installation());
-        } catch (RuntimeException | Error failure) {
-            retire(state.rollbackReconfiguration(owner, plan));
-            throw failure;
-        }
     }
 
     private RuntimeInstallationLease managedLease(RuntimeOwner owner, RuntimeInstallation installation) {
@@ -165,7 +109,7 @@ public final class RuntimeInstallationManager {
 
     private boolean requestShutdown(RuntimeInstallation expected, boolean terminateProcess) {
         RuntimeShutdownPlan shutdown = state.shutdown(expected, terminateProcess);
-        retire(shutdown.retirement());
+        retirements.retire(shutdown.retirement());
         RuntimeRetirementTransaction closing = shutdown.retirement().transaction();
         if (closing != null && !closing.awaitShutdownBoundary()) {
             globalRuntime.detachIfCurrent(closing.installation().runtime());
@@ -179,39 +123,5 @@ public final class RuntimeInstallationManager {
             cancelledStart.awaitShutdownBoundary();
         }
         return shutdown.accepted();
-    }
-
-    private void retire(RuntimeRetirementPlan retirement) {
-        retire(retirement, null, null);
-    }
-
-    private CompletionStage<Void> retire(
-            RuntimeRetirementPlan retirement,
-            Runnable shutdownBoundary,
-            Consumer<Throwable> completion) {
-        if (!retirement.required()) {
-            if (shutdownBoundary != null) {
-                shutdownBoundary.run();
-            }
-            return java.util.concurrent.CompletableFuture.completedFuture(null);
-        }
-        RuntimeRetirementTransaction transaction = retirement.transaction();
-        if (shutdownBoundary != null) {
-            transaction.onShutdownBoundary(shutdownBoundary);
-        }
-        if (completion != null) {
-            transaction.onFinalRetirement(completion);
-        }
-        if (!transaction.claim()) {
-            return transaction.finalRetirement();
-        }
-
-        CompletionStage<Void> finalRetirement = retirements.close(transaction.installation(), globalRuntime);
-        transaction.completeShutdownBoundary();
-        retirements.observe(finalRetirement, failure -> {
-            state.completeRetirement(transaction);
-            transaction.completeFinalRetirement(failure);
-        });
-        return finalRetirement;
     }
 }
