@@ -1,19 +1,22 @@
-package com.zsumz.logyard.core.runtime;
+package com.zsumz.logyard.core.runtime.management;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.RouteResolver;
+import com.zsumz.logyard.core.runtime.RuntimeLoggerLevelSnapshot;
+import com.zsumz.logyard.core.runtime.RuntimeManagementSnapshot;
+import com.zsumz.logyard.core.runtime.RuntimePlan;
 
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
 /** Builds point-in-time management views from one immutable runtime generation. */
-final class RuntimeManagementView {
+public final class RuntimeManagementView {
     private RuntimeManagementView() {
     }
 
-    static Set<String> knownLoggerNames(
+    public static Set<String> knownLoggerNames(
             Set<String> activeLoggerNames,
             RuntimePlan plan,
             RuntimeLevelOverrides overrides) {
@@ -23,7 +26,7 @@ final class RuntimeManagementView {
         return Set.copyOf(names);
     }
 
-    static RuntimeLoggerLevelSnapshot loggerLevelSnapshot(
+    public static RuntimeLoggerLevelSnapshot loggerLevelSnapshot(
             String loggerName,
             RuntimePlan plan,
             RuntimeLevelOverrides overrides) {
@@ -35,7 +38,7 @@ final class RuntimeManagementView {
                 overrides.resolve(loggerName));
     }
 
-    static RuntimeManagementSnapshot snapshot(
+    public static RuntimeManagementSnapshot snapshot(
             Set<String> activeLoggerNames,
             RuntimePlan plan,
             RuntimeLevelOverrides overrides) {

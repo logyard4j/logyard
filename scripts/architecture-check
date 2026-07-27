@@ -391,6 +391,26 @@ if delivery_root_types != {"CompositeSink.java", "FilteringSink.java"}:
         + ", ".join(sorted(delivery_root_types))
     )
 
+runtime_root = ROOT / "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime"
+runtime_root_types = {
+    source.name
+    for source in runtime_root.glob("*.java")
+    if source.name != "package-info.java"
+}
+expected_runtime_root_types = {
+    "DefaultLogyardRuntime.java",
+    "RuntimeLoggerLevelSnapshot.java",
+    "RuntimeManagementSnapshot.java",
+    "RuntimePlan.java",
+    "RuntimePlans.java",
+    "RuntimeReloadDeferredException.java",
+}
+if runtime_root_types != expected_runtime_root_types:
+    errors.append(
+        "core runtime root must contain only its facade, plan contracts, and compatibility types; found "
+        + ", ".join(sorted(runtime_root_types))
+    )
+
 production_types: dict[str, str] = {}
 for source, _ in main_files:
     if source.name == "package-info.java":
@@ -467,8 +487,14 @@ allowed_api_facade_cycle = {
     "com.zsumz.logyard.api.event",
     "com.zsumz.logyard.api.ingress",
 }
+allowed_core_runtime_facade_cycle = {
+    "com.zsumz.logyard.core.runtime",
+    "com.zsumz.logyard.core.runtime.management",
+    "com.zsumz.logyard.core.runtime.publication",
+    "com.zsumz.logyard.core.runtime.retirement",
+}
 for component in package_components:
-    if component != allowed_api_facade_cycle:
+    if component != allowed_api_facade_cycle and component != allowed_core_runtime_facade_cycle:
         errors.append(
             "production package dependency cycle: "
             + " <-> ".join(sorted(component))
@@ -766,11 +792,11 @@ FAILURE_BOUNDARY_CONTRACTS = {
         "ComponentInvocationBoundary.invoke(",
     "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/async/AsyncSinkHealth.java":
         "ComponentInvocationBoundary.invoke(",
-    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/RetirementExecutor.java":
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/retirement/RetirementExecutor.java":
         "ComponentInvocationBoundary.report(",
-    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/RuntimeHealthReporter.java":
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/management/RuntimeHealthReporter.java":
         "ComponentInvocationBoundary.invoke(",
-    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/RuntimeOutputs.java":
+    "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/retirement/RuntimeOutputs.java":
         "ComponentInvocationBoundary.invoke(",
     "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/EventSinkCleanup.java":
         "ComponentInvocationBoundary.invoke(",

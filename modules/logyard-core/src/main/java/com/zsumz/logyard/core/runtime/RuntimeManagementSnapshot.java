@@ -18,7 +18,7 @@ public final class RuntimeManagementSnapshot {
     private final RuntimeLevelOverrides levelOverrides;
     private final Set<String> knownLoggerNames;
 
-    RuntimeManagementSnapshot(
+    public RuntimeManagementSnapshot(
             RouteDefinition root,
             Map<String, RouteDefinition> loggerRules,
             Map<String, Level> baseConfiguredLevels,

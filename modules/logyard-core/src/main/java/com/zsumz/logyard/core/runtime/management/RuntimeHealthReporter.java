@@ -1,4 +1,4 @@
-package com.zsumz.logyard.core.runtime;
+package com.zsumz.logyard.core.runtime.management;
 
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.diagnostics.HealthStatus;
@@ -7,6 +7,7 @@ import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.routing.PlanEpoch;
+import com.zsumz.logyard.core.runtime.RuntimePlan;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -17,11 +18,11 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Renders bounded runtime and output health snapshots from an acquired plan epoch. */
-final class RuntimeHealthReporter {
+public final class RuntimeHealthReporter {
     private RuntimeHealthReporter() {
     }
 
-    static RuntimeHealth running(int loggerCount, int pendingRetirements, RuntimePlan plan, PlanEpoch epoch) {
+    public static RuntimeHealth running(int loggerCount, int pendingRetirements, RuntimePlan plan, PlanEpoch epoch) {
         List<ComponentHealth> components = new ArrayList<>();
         Map<String, String> runtimeDetails = new LinkedHashMap<>();
         runtimeDetails.put("closed", "false");
@@ -42,7 +43,7 @@ final class RuntimeHealthReporter {
         return RuntimeHealth.from(components);
     }
 
-    static RuntimeHealth stopped(int loggerCount) {
+    public static RuntimeHealth stopped(int loggerCount) {
         return new RuntimeHealth(
                 Instant.now(),
                 HealthStatus.STOPPED,
