@@ -1,12 +1,10 @@
 package com.zsumz.logyard.runtime.installation.process;
 
 import com.zsumz.logyard.runtime.installation.RuntimeInstallation;
+
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /** Single-owner token separating a cancelled start's bounded shutdown boundary from final asynchronous retirement. */
 final class RuntimeStartTransaction {
@@ -19,8 +17,7 @@ final class RuntimeStartTransaction {
     }
 
     private final long generation;
-    private final Thread owner = Thread.currentThread();
-    private final CompletableFuture<Void> shutdownBoundary = new CompletableFuture<>();
+    private final ShutdownBoundary shutdownBoundary = ShutdownBoundary.ownedByCurrentThread();
     private final CompletableFuture<Void> finalRetirement = new CompletableFuture<>();
     private RuntimeInstallation candidate;
     private Publication publication = Publication.OPEN;
@@ -82,12 +79,12 @@ final class RuntimeStartTransaction {
     }
 
     void completeWithoutRetirement() {
-        shutdownBoundary.complete(null);
+        shutdownBoundary.complete();
         finalRetirement.complete(null);
     }
 
     void completeShutdownBoundary() {
-        shutdownBoundary.complete(null);
+        shutdownBoundary.complete();
     }
 
     void completeFinalRetirement() {
@@ -95,32 +92,11 @@ final class RuntimeStartTransaction {
     }
 
     boolean awaitShutdownBoundary() {
-        if (Thread.currentThread() == owner) {
-            return shutdownBoundary.isDone();
-        }
-        Duration timeout = candidate == null ? Duration.ofSeconds(3L) : candidate.shutdownTimeout();
-        try {
-            shutdownBoundary.get(saturatedNanos(timeout), TimeUnit.NANOSECONDS);
-            return true;
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            return false;
-        } catch (ExecutionException impossible) {
-            return true;
-        } catch (TimeoutException timeoutElapsed) {
-            return false;
-        }
+        Duration timeout = candidate == null ? ShutdownBoundary.DEFAULT_TIMEOUT : candidate.shutdownTimeout();
+        return shutdownBoundary.await(timeout);
     }
 
     boolean finalRetirementComplete() {
         return finalRetirement.isDone();
-    }
-
-    private static long saturatedNanos(Duration duration) {
-        try {
-            return Math.max(1L, duration.toNanos());
-        } catch (ArithmeticException overflow) {
-            return Long.MAX_VALUE;
-        }
     }
 }
