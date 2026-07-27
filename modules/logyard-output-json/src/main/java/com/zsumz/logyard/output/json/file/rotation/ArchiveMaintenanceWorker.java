@@ -24,10 +24,6 @@ final class ArchiveMaintenanceWorker {
         return thread.isAlive();
     }
 
-    void interruptIfPolling(ArchiveQueuePoll queuePoll) {
-        queuePoll.interruptIfPolling(thread);
-    }
-
     void await(Duration timeout, Path activePath) {
         if (timeout.isZero()) {
             return;
