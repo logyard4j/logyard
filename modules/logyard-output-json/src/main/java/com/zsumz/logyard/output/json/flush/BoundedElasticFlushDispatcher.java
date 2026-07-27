@@ -69,7 +69,7 @@ final class BoundedElasticFlushDispatcher implements FlushDispatcher {
         private final Runnable action;
         private final CountDownLatch completed = new CountDownLatch(1);
         private Thread runner;
-        private boolean canceled;
+        private TaskPhase phase = TaskPhase.QUEUED;
 
         private DispatchTask(Runnable action) {
             this.action = Objects.requireNonNull(action, "action");
@@ -79,10 +79,11 @@ final class BoundedElasticFlushDispatcher implements FlushDispatcher {
         public void run() {
             Thread current = Thread.currentThread();
             synchronized (this) {
-                if (canceled) {
+                if (phase == TaskPhase.CANCELED) {
                     completed.countDown();
                     return;
                 }
+                phase = TaskPhase.RUNNING;
                 runner = current;
             }
             try {
@@ -95,6 +96,9 @@ final class BoundedElasticFlushDispatcher implements FlushDispatcher {
                 } finally {
                     synchronized (this) {
                         runner = null;
+                        if (phase != TaskPhase.CANCELED) {
+                            phase = TaskPhase.COMPLETED;
+                        }
                     }
                     completed.countDown();
                 }
@@ -105,7 +109,9 @@ final class BoundedElasticFlushDispatcher implements FlushDispatcher {
         public void cancel() {
             Thread running;
             synchronized (this) {
-                canceled = true;
+                if (phase == TaskPhase.QUEUED || phase == TaskPhase.RUNNING) {
+                    phase = TaskPhase.CANCELED;
+                }
                 running = runner;
             }
             if (running != null) {
@@ -132,6 +138,13 @@ final class BoundedElasticFlushDispatcher implements FlushDispatcher {
         @Override
         public boolean completed() {
             return completed.getCount() == 0L;
+        }
+
+        private enum TaskPhase {
+            QUEUED,
+            RUNNING,
+            CANCELED,
+            COMPLETED
         }
     }
 }

@@ -7,20 +7,19 @@ import java.util.List;
 final class TimedFlushState {
     private final TimedFlushTasks tasks = new TimedFlushTasks();
     private final FlushDispatchRetry dispatchRetry = new FlushDispatchRetry();
-    private boolean transportCompleted;
-    private boolean rescheduleNeeded;
-    private boolean closed;
+    private ControllerPhase phase = ControllerPhase.OPEN;
+    private DirtyCycle dirtyCycle = DirtyCycle.CLEAN;
 
     synchronized boolean closed() {
-        return closed;
+        return phase == ControllerPhase.CLOSED;
     }
 
     synchronized TimedFlushTask reserveForRecord() {
-        if (closed) {
+        if (phase == ControllerPhase.CLOSED) {
             return null;
         }
         if (tasks.occupied()) {
-            rescheduleNeeded |= transportCompleted;
+            dirtyCycle = dirtyCycle.afterRecord();
             return null;
         }
         TimedFlushTask task = new TimedFlushTask();
@@ -30,17 +29,15 @@ final class TimedFlushState {
 
     synchronized TimedFlushTask cancelPending() {
         TimedFlushTask canceled = tasks.release();
-        transportCompleted = false;
-        rescheduleNeeded = false;
+        dirtyCycle = DirtyCycle.CLEAN;
         dispatchRetry.reset();
         return canceled;
     }
 
     synchronized List<TimedFlushTask> close() {
-        closed = true;
+        phase = ControllerPhase.CLOSED;
         List<TimedFlushTask> canceled = tasks.drain();
-        transportCompleted = false;
-        rescheduleNeeded = false;
+        dirtyCycle = DirtyCycle.CLEAN;
         dispatchRetry.reset();
         return canceled;
     }
@@ -49,10 +46,9 @@ final class TimedFlushState {
         if (!tasks.owns(rejected)) {
             return null;
         }
-        tasks.releaseAndRetire(rejected, !closed);
-        transportCompleted = false;
-        rescheduleNeeded = false;
-        if (closed) {
+        tasks.releaseAndRetire(rejected, phase == ControllerPhase.OPEN);
+        dirtyCycle = DirtyCycle.CLEAN;
+        if (phase == ControllerPhase.CLOSED) {
             return null;
         }
         TimedFlushTask retry = new TimedFlushTask();
@@ -61,7 +57,7 @@ final class TimedFlushState {
     }
 
     synchronized boolean canRun(TimedFlushTask task) {
-        return tasks.owns(task) && !closed;
+        return tasks.owns(task) && phase == ControllerPhase.OPEN;
     }
 
     synchronized boolean owns(TimedFlushTask task) {
@@ -69,30 +65,32 @@ final class TimedFlushState {
     }
 
     synchronized boolean flushIsCurrent(Duration interval) {
-        return !closed && (interval.isZero() || tasks.owned() != null && tasks.owned().runsOnCurrentThread());
+        return phase == ControllerPhase.OPEN && (interval.isZero() || tasks.owned() != null && tasks.owned().runsOnCurrentThread());
     }
 
     synchronized void flushCompleted() {
         if (tasks.owned() != null && tasks.owned().runsOnCurrentThread()) {
-            transportCompleted = true;
+            dirtyCycle = dirtyCycle.afterFlush();
         }
     }
 
     synchronized boolean complete(TimedFlushTask task) {
-        boolean scheduleNext = false;
-        if (tasks.owns(task)) {
-            tasks.release();
-            scheduleNext = !closed && transportCompleted && rescheduleNeeded;
-            if (transportCompleted) {
-                dispatchRetry.reset();
+        if (!tasks.owns(task)) {
+            if (phase == ControllerPhase.OPEN) {
+                tasks.retire(task);
             }
-            transportCompleted = false;
-            rescheduleNeeded = false;
+            return false;
         }
-        if (!closed) {
+        DirtyCycle completedCycle = dirtyCycle;
+        tasks.release();
+        if (completedCycle != DirtyCycle.CLEAN) {
+            dispatchRetry.reset();
+        }
+        dirtyCycle = DirtyCycle.CLEAN;
+        if (phase == ControllerPhase.OPEN) {
             tasks.retire(task);
         }
-        return scheduleNext;
+        return phase == ControllerPhase.OPEN && completedCycle == DirtyCycle.RESCHEDULE_REQUIRED;
     }
 
     synchronized void abandon(TimedFlushTask task) {
@@ -100,5 +98,24 @@ final class TimedFlushState {
     }
 
     record Retry(TimedFlushTask task, Duration delay) {
+    }
+
+    private enum ControllerPhase {
+        OPEN,
+        CLOSED
+    }
+
+    private enum DirtyCycle {
+        CLEAN,
+        FLUSH_COMPLETED,
+        RESCHEDULE_REQUIRED;
+
+        DirtyCycle afterRecord() {
+            return this == FLUSH_COMPLETED ? RESCHEDULE_REQUIRED : this;
+        }
+
+        DirtyCycle afterFlush() {
+            return this == RESCHEDULE_REQUIRED ? RESCHEDULE_REQUIRED : FLUSH_COMPLETED;
+        }
     }
 }

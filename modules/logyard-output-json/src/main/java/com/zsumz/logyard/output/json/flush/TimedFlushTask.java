@@ -7,43 +7,49 @@ final class TimedFlushTask {
     private FlushScheduler.ScheduledFlush scheduled;
     private FlushDispatcher.DispatchedFlush dispatched;
     private Thread runner;
-    private boolean canceled;
-    private boolean dispatching;
+    private Phase phase = Phase.SCHEDULED;
 
     void attachScheduled(FlushScheduler.ScheduledFlush value) {
-        boolean cancel;
+        FlushScheduler.ScheduledFlush cancellation = null;
         synchronized (this) {
             scheduled = Objects.requireNonNull(value, "scheduled flush");
-            cancel = canceled;
+            if (phase == Phase.CANCELED) {
+                cancellation = value;
+            }
         }
-        if (cancel) {
-            value.cancel();
+        if (cancellation != null) {
+            cancellation.cancel();
         }
     }
 
     synchronized boolean beginDispatch() {
-        if (canceled) {
+        if (phase != Phase.SCHEDULED) {
             return false;
         }
-        dispatching = true;
+        phase = Phase.DISPATCHING;
         return true;
     }
 
     void attachDispatched(FlushDispatcher.DispatchedFlush value) {
-        boolean cancel;
+        FlushDispatcher.DispatchedFlush cancellation = null;
         synchronized (this) {
             dispatched = Objects.requireNonNull(value, "dispatched flush");
-            dispatching = false;
-            cancel = canceled;
+            if (phase == Phase.CANCELED) {
+                cancellation = value;
+            } else {
+                phase = Phase.DISPATCHED;
+            }
             notifyAll();
         }
-        if (cancel) {
-            value.cancel();
+        if (cancellation != null) {
+            cancellation.cancel();
         }
     }
 
     synchronized void dispatchFailed() {
-        dispatching = false;
+        if (phase == Phase.DISPATCHING) {
+            phase = Phase.DISPATCH_FAILED;
+        }
         notifyAll();
     }
 
@@ -59,7 +65,7 @@ final class TimedFlushTask {
         FlushScheduler.ScheduledFlush scheduledToCancel;
         FlushDispatcher.DispatchedFlush dispatchedToCancel;
         synchronized (this) {
-            canceled = true;
+            phase = Phase.CANCELED;
             scheduledToCancel = scheduled;
             dispatchedToCancel = dispatched;
         }
@@ -75,7 +81,7 @@ final class TimedFlushTask {
         FlushDispatcher.DispatchedFlush dispatchedToAwait;
         boolean interrupted = false;
         synchronized (this) {
-            while (dispatching) {
+            while (phase == Phase.DISPATCHING) {
                 try {
                     wait();
                 } catch (InterruptedException interruption) {
@@ -95,11 +101,19 @@ final class TimedFlushTask {
     boolean completed() {
         FlushDispatcher.DispatchedFlush current;
         synchronized (this) {
-            if (dispatching) {
+            if (phase == Phase.DISPATCHING) {
                 return false;
             }
             current = dispatched;
         }
         return current == null || current.completed();
+    }
+
+    private enum Phase {
+        SCHEDULED,
+        DISPATCHING,
+        DISPATCHED,
+        DISPATCH_FAILED,
+        CANCELED
     }
 }
