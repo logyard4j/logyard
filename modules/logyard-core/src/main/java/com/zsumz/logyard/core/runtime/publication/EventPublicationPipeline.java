@@ -1,4 +1,4 @@
-package com.zsumz.logyard.core.runtime;
+package com.zsumz.logyard.core.runtime.publication;
 
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.failure.FailureIsolation;

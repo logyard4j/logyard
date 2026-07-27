@@ -1,4 +1,4 @@
-package com.zsumz.logyard.core.runtime;
+package com.zsumz.logyard.core.runtime.publication;
 
 import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.core.routing.CompiledRoute;
@@ -14,14 +14,14 @@ import java.util.function.Function;
 final class RuntimeLoggerCatalog {
     private final Object stateLock;
     private final Function<String, CompiledRoute> routeCompiler;
-    private final DefaultLogyardLogger.EventPublisher publisher;
+    private final RuntimePublication.EventPublisher publisher;
     private final ConcurrentHashMap<String, DefaultLogyardLogger> loggers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, LoggerControl> controls = new ConcurrentHashMap<>();
 
     RuntimeLoggerCatalog(
             Object stateLock,
             Function<String, CompiledRoute> routeCompiler,
-            DefaultLogyardLogger.EventPublisher publisher) {
+            RuntimePublication.EventPublisher publisher) {
         this.stateLock = Objects.requireNonNull(stateLock, "stateLock");
         this.routeCompiler = Objects.requireNonNull(routeCompiler, "routeCompiler");
         this.publisher = Objects.requireNonNull(publisher, "publisher");

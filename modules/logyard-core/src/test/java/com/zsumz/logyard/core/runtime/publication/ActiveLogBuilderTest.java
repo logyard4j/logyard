@@ -1,8 +1,9 @@
-package com.zsumz.logyard.core.runtime;
+package com.zsumz.logyard.core.runtime.publication;
 
 import com.zsumz.logyard.api.LogBuilder;
 import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import org.junit.jupiter.api.Test;
 
 import java.util.AbstractMap;

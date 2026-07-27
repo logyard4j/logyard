@@ -1,10 +1,11 @@
-package com.zsumz.logyard.core.runtime;
+package com.zsumz.logyard.core.runtime.publication;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.LogBuilder;
 import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
+import com.zsumz.logyard.core.runtime.publication.RuntimePublication.EventPublisher;
 
 import java.util.Objects;
 
@@ -97,8 +98,4 @@ final class DefaultLogyardLogger implements LogyardLogger {
         publisher.publish(control, draft);
     }
 
-    @FunctionalInterface
-    interface EventPublisher {
-        void publish(LoggerControl control, EventDraft draft);
-    }
 }

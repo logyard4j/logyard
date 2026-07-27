@@ -11,9 +11,9 @@ import com.zsumz.logyard.core.level.RuntimeLevelOverride;
 import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
+import com.zsumz.logyard.core.runtime.publication.RuntimePublication;
 import com.zsumz.logyard.core.runtime.retirement.RuntimeRetirements;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -25,23 +25,17 @@ import java.util.function.Predicate;
 /** Thread-safe runtime with compiled routes and lease-protected atomic plan replacement. */
 public final class DefaultLogyardRuntime implements LogyardRuntime {
     private volatile RuntimeState state;
-    private final RuntimeLoggerCatalog loggers = new RuntimeLoggerCatalog(
-            this,
-            loggerName -> compileRoute(loggerName, state),
-            this::publish);
+    private final RuntimePublication publication;
     private final RuntimeRetirements retirements = new RuntimeRetirements();
     private final CompletableFuture<Void> retirementCompletion = new CompletableFuture<>();
     private final AtomicBoolean closed = new AtomicBoolean();
-    private final RuntimeRouteLeases routeLeases;
-    private final EventPublicationPipeline publicationPipeline;
 
     public DefaultLogyardRuntime(RuntimePlan plan) {
         state = new RuntimeState(
                 Objects.requireNonNull(plan, "plan"),
                 RuntimeLevelOverrides.empty(),
                 new PlanEpoch());
-        routeLeases = new RuntimeRouteLeases(closed::get, this::refreshRoute);
-        publicationPipeline = new EventPublicationPipeline(new EmergencyPublicationFailureHandler());
+        publication = new RuntimePublication(this, loggerName -> compileRoute(loggerName, state), closed::get);
     }
 
     @Override
@@ -59,7 +53,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             throw new IllegalArgumentException(
                     "logger name exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters");
         }
-        return loggers.logger(name);
+        return publication.logger(name);
     }
 
     @Override
@@ -91,7 +85,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             }
         }
         try {
-            return RuntimeHealthReporter.running(loggers.size(), retirements.pendingCount(), snapshot.plan(), snapshot.epoch());
+            return RuntimeHealthReporter.running(publication.loggerCount(), retirements.pendingCount(), snapshot.plan(), snapshot.epoch());
         } finally {
             snapshot.epoch().release();
         }
@@ -102,11 +96,12 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         requireOpen();
         RuntimeState previous = state;
         RuntimeState next = new RuntimeState(nextPlan, previous.levelOverrides(), new PlanEpoch());
-        Map<String, CompiledRoute> compiled = new LinkedHashMap<>();
-        loggers.forEachControl((name, control) -> compiled.put(name, compileRoute(name, next)));
+        Map<String, CompiledRoute> compiled = publication.compileRoutes(
+                name -> compileRoute(name, next),
+                ignored -> true);
         retirements.replacePlan(previous.plan(), previous.epoch(), next.plan(), () -> {
             state = next;
-            loggers.updateRoutes(compiled);
+            publication.installRoutes(compiled);
         });
     }
 
@@ -149,7 +144,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     public Set<String> knownLoggerNames() {
         RuntimeState snapshot = state;
-        return RuntimeManagementView.knownLoggerNames(loggers.controlNames(), snapshot.plan(), snapshot.levelOverrides());
+        return RuntimeManagementView.knownLoggerNames(publication.loggerNames(), snapshot.plan(), snapshot.levelOverrides());
     }
 
     public RuntimeLevelOverride effectiveLevelOverride(String loggerName) {
@@ -170,21 +165,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     public synchronized RuntimeManagementSnapshot managementSnapshot() {
         RuntimeState snapshot = state;
-        return RuntimeManagementView.snapshot(loggers.controlNames(), snapshot.plan(), snapshot.levelOverrides());
-    }
-
-    void publish(LoggerControl control, EventDraft draft) {
-        CompiledRouteLease lease = routeLeases.acquire(control, draft.loggerName());
-        if (lease == null) {
-            return;
-        }
-        try (lease) {
-            publicationPipeline.publish(lease.route(), draft);
-        }
-    }
-
-    private synchronized void refreshRoute(LoggerControl control, String loggerName) {
-        control.update(compileRoute(loggerName, state));
+        return RuntimeManagementView.snapshot(publication.loggerNames(), snapshot.plan(), snapshot.levelOverrides());
     }
 
     private void publishLevelOverrides(
@@ -204,20 +185,14 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     private Map<String, CompiledRoute> compileExistingControls(
             RuntimeState next,
             Predicate<String> affected) {
-        Map<String, CompiledRoute> compiled = new LinkedHashMap<>();
-        loggers.forEachControl((name, control) -> {
-            if (affected.test(name)) {
-                compiled.put(name, compileRoute(name, next));
-            }
-        });
-        return compiled;
+        return publication.compileRoutes(name -> compileRoute(name, next), affected);
     }
 
     private void publishState(
             RuntimeState next,
             Map<String, CompiledRoute> compiled) {
         state = next;
-        loggers.updateRoutes(compiled);
+        publication.installRoutes(compiled);
     }
 
     @Override
@@ -269,11 +244,11 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     }
 
     private static CompiledRoute compileRoute(String loggerName, RuntimeState state) {
-        return RuntimeRouteCompiler.compile(loggerName, state.plan(), state.levelOverrides(), state.epoch());
+        return RuntimePublication.compileRoute(loggerName, state.plan(), state.levelOverrides(), state.epoch());
     }
 
     private RuntimeHealth stoppedHealth() {
-        return RuntimeHealthReporter.stopped(loggers.size());
+        return RuntimeHealthReporter.stopped(publication.loggerCount());
     }
 
     public static DefaultLogyardRuntime consoleOnly(EventSink sink) {
