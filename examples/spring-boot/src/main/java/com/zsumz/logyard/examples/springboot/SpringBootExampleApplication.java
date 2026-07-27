@@ -1,8 +1,5 @@
 package com.zsumz.logyard.examples.springboot;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ServiceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,10 +26,9 @@ public class SpringBootExampleApplication {
     }
 
     @EventListener(ApplicationReadyEvent.class)
-    void ready() throws Exception {
+    void ready() {
         String port = environment.getRequiredProperty("local.server.port");
-        Path portFile = Path.of(System.getenv("LOGYARD_EXAMPLE_PORT_FILE"));
-        Files.writeString(portFile, port, StandardCharsets.UTF_8);
+        VerificationPort.publish(port);
         LOGGER.atInfo().addKeyValue("phase", "startup").log("Spring Boot application started");
     }
 
