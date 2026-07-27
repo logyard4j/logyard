@@ -2,7 +2,8 @@ package com.zsumz.logyard.spring.boot.internal.configuration;
 
 import com.zsumz.logyard.runtime.bootstrap.ConfigurationDiscovery;
 import com.zsumz.logyard.runtime.bootstrap.LogyardConfigurationSource;
-import java.net.URI;
+import com.zsumz.logyard.runtime.bootstrap.location.ConfigurationLocationResolver;
+
 import java.nio.file.Path;
 import java.util.Objects;
 import org.springframework.core.env.Environment;
@@ -49,36 +50,11 @@ public final class SpringConfigurationResolver {
     }
 
     private static LogyardConfigurationSource source(ClassLoader classLoader, String location) {
-        Path baseDirectory = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize();
-        if (location.startsWith("classpath:")) {
-            return LogyardConfigurationSource.classpath(
-                    classLoader,
-                    location.substring("classpath:".length()),
-                    baseDirectory);
-        }
-        if (location.startsWith("file:")) {
-            return LogyardConfigurationSource.file(Path.of(URI.create(location)));
-        }
-        if (hasScheme(location)) {
-            throw new IllegalStateException(
-                    "Logyard configuration supports classpath: and filesystem locations, but was: " + location);
-        }
-        Path path = Path.of(location);
-        return LogyardConfigurationSource.file(path.isAbsolute() ? path : baseDirectory.resolve(path));
-    }
-
-    private static boolean hasScheme(String location) {
-        int separator = location.indexOf(':');
-        if (separator <= 1) {
-            return false;
-        }
-        for (int index = 0; index < separator; index++) {
-            char character = location.charAt(index);
-            if (!Character.isLetterOrDigit(character) && character != '+' && character != '-' && character != '.') {
-                return false;
-            }
-        }
-        return true;
+        return ConfigurationLocationResolver.resolve(
+                "Logyard",
+                classLoader,
+                location,
+                Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize());
     }
 
     private static String value(String candidate) {
