@@ -1,17 +1,10 @@
 package com.zsumz.logyard.api.event;
 
-import java.util.IdentityHashMap;
 import java.util.function.Supplier;
 
 /** One event's shared capture state, including partitioned budgets and graph identity. */
 final class CaptureContext {
-    private static final ThreadLocal<CaptureContext> CURRENT = new ThreadLocal<>();
-
-    private IdentityHashMap<Object, Object> capturedScalars;
-    private IdentityHashMap<Object, Boolean> seenValues;
-    private IdentityHashMap<Object, Boolean> visitingValues;
-    private IdentityHashMap<Throwable, Boolean> seenExceptions;
-    private IdentityHashMap<Throwable, Boolean> visitingExceptions;
+    private CaptureReferences references;
     private int remainingNodes;
     private int remainingEntries;
     private int remainingPayloadCharacters;
@@ -76,22 +69,11 @@ final class CaptureContext {
     }
 
     static CaptureContext currentOrCreate() {
-        CaptureContext current = CURRENT.get();
-        return current == null ? create() : current;
+        return CaptureContextScope.currentOrCreate();
     }
 
     static <T> T within(CaptureContext context, Supplier<T> action) {
-        CaptureContext previous = CURRENT.get();
-        CURRENT.set(context);
-        try {
-            return action.get();
-        } finally {
-            if (previous == null) {
-                CURRENT.remove();
-            } else {
-                CURRENT.set(previous);
-            }
-        }
+        return CaptureContextScope.within(context, action);
     }
 
     String capturePayloadText(String source, int fieldLimit) {
@@ -173,54 +155,27 @@ final class CaptureContext {
     }
 
     Object capturedScalar(Object source) {
-        return capturedScalars == null ? null : capturedScalars.get(source);
+        return references == null ? null : references.capturedScalar(source);
     }
 
     void completeScalar(Object source, Object captured) {
-        if (capturedScalars == null) {
-            capturedScalars = new IdentityHashMap<>();
-        }
-        capturedScalars.put(source, captured);
+        references().completeScalar(source, captured);
     }
 
     ReferenceState enterValue(Object source) {
-        if (visitingValues != null && visitingValues.containsKey(source)) {
-            return ReferenceState.CYCLE;
-        }
-        if (seenValues != null && seenValues.containsKey(source)) {
-            return ReferenceState.SHARED;
-        }
-        if (seenValues == null) {
-            seenValues = new IdentityHashMap<>();
-            visitingValues = new IdentityHashMap<>();
-        }
-        seenValues.put(source, Boolean.TRUE);
-        visitingValues.put(source, Boolean.TRUE);
-        return ReferenceState.FRESH;
+        return references().enterValue(source);
     }
 
     void leaveValue(Object source) {
-        visitingValues.remove(source);
+        references.leaveValue(source);
     }
 
     ReferenceState enterException(Throwable source) {
-        if (visitingExceptions != null && visitingExceptions.containsKey(source)) {
-            return ReferenceState.CYCLE;
-        }
-        if (seenExceptions != null && seenExceptions.containsKey(source)) {
-            return ReferenceState.SHARED;
-        }
-        if (seenExceptions == null) {
-            seenExceptions = new IdentityHashMap<>();
-            visitingExceptions = new IdentityHashMap<>();
-        }
-        seenExceptions.put(source, Boolean.TRUE);
-        visitingExceptions.put(source, Boolean.TRUE);
-        return ReferenceState.FRESH;
+        return references().enterException(source);
     }
 
     void leaveException(Throwable source) {
-        visitingExceptions.remove(source);
+        references.leaveException(source);
     }
 
     void markTruncated() {
@@ -264,6 +219,13 @@ final class CaptureContext {
 
     private static int length(String value) {
         return value == null ? 0 : value.length();
+    }
+
+    private CaptureReferences references() {
+        if (references == null) {
+            references = new CaptureReferences();
+        }
+        return references;
     }
 
     enum ReferenceState {
