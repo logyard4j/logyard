@@ -4,7 +4,6 @@ import com.zsumz.logyard.api.annotation.InternalApi;
 
 import java.time.Duration;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Allocation-free admission and drain barrier for framework logging handlers.
@@ -14,10 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @InternalApi
 public final class PublicationGate {
-    private static final int RETIRED = 1 << 31;
-    private static final int ACTIVE_MASK = ~RETIRED;
-
-    private final AtomicInteger state = new AtomicInteger();
+    private final PublicationAdmissionState admission = new PublicationAdmissionState();
     private final Object drained = new Object();
 
     /**
@@ -26,24 +22,12 @@ public final class PublicationGate {
      * @return {@code true} when admitted, or {@code false} after retirement begins
      */
     public boolean tryEnter() {
-        while (true) {
-            int current = state.get();
-            if ((current & RETIRED) != 0) {
-                return false;
-            }
-            if ((current & ACTIVE_MASK) == ACTIVE_MASK) {
-                throw new IllegalStateException("too many concurrent adapter publications");
-            }
-            if (state.compareAndSet(current, current + 1)) {
-                return true;
-            }
-        }
+        return admission.tryEnter();
     }
 
     /** Releases one previously admitted publication. */
     public void exit() {
-        int remaining = state.decrementAndGet();
-        if ((remaining & RETIRED) != 0 && (remaining & ACTIVE_MASK) == 0) {
+        if (admission.exitAndRetiredGateIsDrained()) {
             synchronized (drained) {
                 drained.notifyAll();
             }
@@ -63,8 +47,7 @@ public final class PublicationGate {
         if (timeout.isNegative()) {
             throw new IllegalArgumentException("timeout must not be negative");
         }
-        int retired = state.getAndUpdate(current -> current | RETIRED);
-        if ((retired & ACTIVE_MASK) == 0) {
+        if (admission.retireWithoutActivePublications()) {
             return true;
         }
 
@@ -72,7 +55,7 @@ public final class PublicationGate {
         long started = System.nanoTime();
         boolean interrupted = false;
         synchronized (drained) {
-            while ((state.get() & ACTIVE_MASK) != 0) {
+            while (admission.hasActivePublications()) {
                 long remaining = timeoutNanos - (System.nanoTime() - started);
                 if (remaining <= 0) {
                     if (interrupted) {
@@ -101,7 +84,7 @@ public final class PublicationGate {
      * @return {@code true} after the gate stops accepting publications
      */
     public boolean retired() {
-        return (state.get() & RETIRED) != 0;
+        return admission.retired();
     }
 
     private static long saturatedNanos(Duration timeout) {
