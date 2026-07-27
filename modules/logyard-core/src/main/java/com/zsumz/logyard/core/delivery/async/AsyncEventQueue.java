@@ -13,45 +13,57 @@ import java.util.function.BooleanSupplier;
  * Bounded event queue whose quiescence barrier includes events already claimed by the worker.
  *
  * <p>An accepted event remains outstanding from the start of an offer until the worker explicitly
- * completes its claim. This closes the flush race where an event has left the queue but has not yet
- * reached the delegate.</p>
+ * completes its claim. A typed wake-up entry releases a blocked worker during draining without
+ * interrupting delegate code.</p>
  */
 final class AsyncEventQueue {
-    private final ArrayBlockingQueue<LogEvent> events;
+    private final ArrayBlockingQueue<QueueEntry> entries;
+    private final AtomicInteger queuedEvents = new AtomicInteger();
     private final AtomicInteger outstanding = new AtomicInteger();
 
     AsyncEventQueue(int capacity) {
-        events = new ArrayBlockingQueue<>(capacity);
+        entries = new ArrayBlockingQueue<>(capacity);
     }
 
     OfferResult offerImmediately(LogEvent event, BooleanSupplier accepting) {
-        outstanding.incrementAndGet();
-        if (!events.offer(event)) {
-            outstanding.decrementAndGet();
+        QueuedEvent entry = new QueuedEvent(event);
+        reserveEventSlot();
+        if (!entries.offer(entry)) {
+            releaseEventSlot();
             return OfferResult.FULL;
         }
-        return retainAcceptedOffer(event, accepting);
+        return retainAcceptedOffer(entry, accepting);
     }
 
     OfferResult offerWithin(LogEvent event, Duration wait, BooleanSupplier accepting) throws InterruptedException {
-        outstanding.incrementAndGet();
-        boolean offered = false;
+        QueuedEvent entry = new QueuedEvent(event);
+        reserveEventSlot();
         try {
-            offered = events.offer(event, saturatedNanos(wait), TimeUnit.NANOSECONDS);
-            return offered ? retainAcceptedOffer(event, accepting) : OfferResult.FULL;
-        } finally {
-            if (!offered) {
-                outstanding.decrementAndGet();
+            if (!entries.offer(entry, saturatedNanos(wait), TimeUnit.NANOSECONDS)) {
+                releaseEventSlot();
+                return OfferResult.FULL;
             }
+            return retainAcceptedOffer(entry, accepting);
+        } catch (InterruptedException interruption) {
+            releaseEventSlot();
+            throw interruption;
         }
     }
 
+    QueueEntry claimNextWithin(long timeout, TimeUnit unit) throws InterruptedException {
+        return recordClaim(entries.poll(timeout, unit));
+    }
+
     LogEvent claimNow() {
-        return events.poll();
+        return eventFrom(recordClaim(entries.poll()));
     }
 
     LogEvent claimWithin(long timeout, TimeUnit unit) throws InterruptedException {
-        return events.poll(timeout, unit);
+        return eventFrom(claimNextWithin(timeout, unit));
+    }
+
+    void wakeWorker() {
+        entries.offer(WakeUp.INSTANCE);
     }
 
     void completeClaims(int count) {
@@ -72,11 +84,11 @@ final class AsyncEventQueue {
     }
 
     int capacity() {
-        return events.size() + events.remainingCapacity();
+        return entries.size() + entries.remainingCapacity();
     }
 
     int queued() {
-        return events.size();
+        return queuedEvents.get();
     }
 
     int outstanding() {
@@ -84,15 +96,36 @@ final class AsyncEventQueue {
     }
 
     boolean isEmpty() {
-        return events.isEmpty();
+        return queuedEvents.get() == 0;
     }
 
-    private OfferResult retainAcceptedOffer(LogEvent event, BooleanSupplier accepting) {
-        if (!accepting.getAsBoolean() && events.remove(event)) {
-            outstanding.decrementAndGet();
+    private void reserveEventSlot() {
+        outstanding.incrementAndGet();
+        queuedEvents.incrementAndGet();
+    }
+
+    private void releaseEventSlot() {
+        outstanding.decrementAndGet();
+        queuedEvents.decrementAndGet();
+    }
+
+    private OfferResult retainAcceptedOffer(QueuedEvent entry, BooleanSupplier accepting) {
+        if (!accepting.getAsBoolean() && entries.remove(entry)) {
+            releaseEventSlot();
             return OfferResult.CLOSED;
         }
         return OfferResult.ENQUEUED;
+    }
+
+    private QueueEntry recordClaim(QueueEntry entry) {
+        if (entry instanceof QueuedEvent) {
+            queuedEvents.decrementAndGet();
+        }
+        return entry;
+    }
+
+    private static LogEvent eventFrom(QueueEntry entry) {
+        return entry instanceof QueuedEvent event ? event.event() : null;
     }
 
     private static long saturatedNanos(Duration duration) {
@@ -101,6 +134,16 @@ final class AsyncEventQueue {
         } catch (ArithmeticException overflow) {
             return Long.MAX_VALUE;
         }
+    }
+
+    interface QueueEntry {
+    }
+
+    record QueuedEvent(LogEvent event) implements QueueEntry {
+    }
+
+    enum WakeUp implements QueueEntry {
+        INSTANCE
     }
 
     enum OfferResult {

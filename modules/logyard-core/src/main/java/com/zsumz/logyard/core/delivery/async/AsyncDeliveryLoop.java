@@ -15,41 +15,42 @@ final class AsyncDeliveryLoop {
     private final AsyncDropReporter dropReporter;
     private final AsyncSinkDiagnostics diagnostics;
     private final AsyncDelegateDelivery delivery;
+    private final AsyncWorkerLifecycle lifecycle;
     private final AsyncBatchPolicy batching;
     private final AsyncBatchDelivery batchDelivery;
     private final AtomicInteger activeDeliveries = new AtomicInteger();
-    private volatile boolean running = true;
-    private volatile boolean polling;
 
     AsyncDeliveryLoop(
             String name,
             AsyncEventQueue eventQueue,
             AsyncSinkMetrics metrics,
             AsyncSinkDiagnostics diagnostics,
-            AsyncDelegateDelivery delivery) {
+            AsyncDelegateDelivery delivery,
+            AsyncWorkerLifecycle lifecycle) {
         this.eventQueue = Objects.requireNonNull(eventQueue, "eventQueue");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
         this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
         this.delivery = Objects.requireNonNull(delivery, "delivery");
+        this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         dropReporter = new AsyncDropReporter(metrics);
         batching = AsyncBatchPolicy.from(name, delivery);
         batchDelivery = new AsyncBatchDelivery(eventQueue, batching, delivery);
     }
 
     void run() {
-        while (running || !eventQueue.isEmpty()) {
+        while (lifecycle.acceptingEvents() || !eventQueue.isEmpty()) {
             try {
-                LogEvent event = claimNext();
-                if (event != null) {
+                AsyncEventQueue.QueueEntry entry = eventQueue.claimNextWithin(100, TimeUnit.MILLISECONDS);
+                if (entry instanceof AsyncEventQueue.QueuedEvent event) {
                     if (batching.enabled()) {
-                        deliverBatch(event);
+                        deliverBatch(event.event());
                     } else {
-                        deliverApplicationEvent(event, true);
+                        deliverApplicationEvent(event.event(), true);
                     }
                 }
                 emitDropSummary(false);
             } catch (InterruptedException ignored) {
-                // Worker shutdown interrupts only the queue poll to begin draining immediately.
+                // Preserve interruption semantics from an external worker interruption.
             } catch (Throwable failure) {
                 ComponentInvocationBoundary.report(
                         "async output worker",
@@ -57,18 +58,6 @@ final class AsyncDeliveryLoop {
                         diagnostics::failure);
             }
         }
-    }
-
-    void stop() {
-        running = false;
-    }
-
-    boolean running() {
-        return running;
-    }
-
-    boolean polling() {
-        return polling;
     }
 
     int activeDeliveries() {
@@ -105,15 +94,6 @@ final class AsyncDeliveryLoop {
         delivery.close(name);
     }
 
-    private LogEvent claimNext() throws InterruptedException {
-        polling = true;
-        try {
-            return eventQueue.claimWithin(100, TimeUnit.MILLISECONDS);
-        } finally {
-            polling = false;
-        }
-    }
-
     private void deliverBatch(LogEvent first) {
         activeDeliveries.incrementAndGet();
         boolean interrupted = false;
@@ -121,19 +101,14 @@ final class AsyncDeliveryLoop {
             interrupted = batchDelivery.deliver(first, this::claimBatchFollower);
         } finally {
             activeDeliveries.decrementAndGet();
-            if (interrupted && running) {
+            if (interrupted && lifecycle.acceptingEvents()) {
                 Thread.currentThread().interrupt();
             }
         }
     }
 
     private LogEvent claimBatchFollower(long timeoutNanos) throws InterruptedException {
-        polling = true;
-        try {
-            return eventQueue.claimWithin(timeoutNanos, TimeUnit.NANOSECONDS);
-        } finally {
-            polling = false;
-        }
+        return eventQueue.claimWithin(timeoutNanos, TimeUnit.NANOSECONDS);
     }
 
     private void deliverApplicationEvent(LogEvent event, boolean queuedDelivery) {

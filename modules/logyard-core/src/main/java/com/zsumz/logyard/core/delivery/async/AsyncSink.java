@@ -21,7 +21,6 @@ public final class AsyncSink implements EventSink, HealthContributor {
     private final AsyncSinkMetrics metrics = new AsyncSinkMetrics();
     private final AsyncSinkDiagnostics diagnostics;
     private final AsyncSinkWorker worker;
-    private volatile boolean accepting = true;
 
     public AsyncSink(
             String name,
@@ -63,7 +62,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     @Override
     public void accept(LogEvent event) {
         Objects.requireNonNull(event, "event");
-        if (!accepting) {
+        if (!worker.acceptingEvents()) {
             metrics.recordEmergencyFallback();
             diagnostics.emergency(event, "output is closing");
             return;
@@ -88,7 +87,6 @@ public final class AsyncSink implements EventSink, HealthContributor {
 
     @Override
     public synchronized void close() {
-        accepting = false;
         worker.close(shutdownTimeout);
     }
 
@@ -125,7 +123,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
         return AsyncSinkHealth.snapshot(
                 componentName,
                 worker.delegate(),
-                worker.healthState(accepting, callerThreadDeliveryAllowed, capacity(), queued(), eventQueue.outstanding(), metrics.snapshot()));
+                worker.healthState(callerThreadDeliveryAllowed, capacity(), queued(), eventQueue.outstanding(), metrics.snapshot()));
     }
 
     private void synchronizeOrReport(LogEvent event, Duration wait) {
@@ -150,7 +148,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     }
 
     private boolean offerImmediately(LogEvent event) {
-        return handleOffer(event, eventQueue.offerImmediately(event, () -> accepting));
+        return handleOffer(event, eventQueue.offerImmediately(event, worker::acceptingEvents));
     }
 
     private void block(LogEvent event, Duration wait) {
@@ -160,7 +158,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
             return;
         }
         try {
-            if (!handleOffer(event, eventQueue.offerWithin(event, wait, () -> accepting))) {
+            if (!handleOffer(event, eventQueue.offerWithin(event, wait, worker::acceptingEvents))) {
                 metrics.recordEmergencyFallback();
                 diagnostics.emergency(event, "async queue full after block timeout");
             }
@@ -173,7 +171,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
 
     private boolean offerWithWait(LogEvent event, Duration wait) {
         try {
-            return handleOffer(event, eventQueue.offerWithin(event, wait, () -> accepting));
+            return handleOffer(event, eventQueue.offerWithin(event, wait, worker::acceptingEvents));
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             return false;
