@@ -10,12 +10,12 @@ import java.util.Objects;
 
 final class DefaultLogyardLogger implements LogyardLogger {
     private final String name;
-    private final DefaultLogyardRuntime runtime;
+    private final EventPublisher publisher;
     private final LoggerControl control;
 
-    DefaultLogyardLogger(String name, DefaultLogyardRuntime runtime, LoggerControl control) {
+    DefaultLogyardLogger(String name, EventPublisher publisher, LoggerControl control) {
         this.name = name;
-        this.runtime = runtime;
+        this.publisher = publisher;
         this.control = control;
     }
 
@@ -74,7 +74,7 @@ final class DefaultLogyardLogger implements LogyardLogger {
                 fields,
                 throwable,
                 IngressMetadata.current());
-        runtime.publish(control, draft);
+        publisher.publish(control, draft);
     }
 
     private void publish(
@@ -94,7 +94,11 @@ final class DefaultLogyardLogger implements LogyardLogger {
                 attributes,
                 throwable,
                 Objects.requireNonNull(metadata, "metadata"));
-        runtime.publish(control, draft);
+        publisher.publish(control, draft);
     }
 
+    @FunctionalInterface
+    interface EventPublisher {
+        void publish(LoggerControl control, EventDraft draft);
+    }
 }

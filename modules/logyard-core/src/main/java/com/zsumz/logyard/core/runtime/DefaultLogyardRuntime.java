@@ -16,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -24,14 +23,16 @@ import java.util.function.Predicate;
 
 /** Thread-safe runtime with compiled routes and lease-protected atomic plan replacement. */
 public final class DefaultLogyardRuntime implements LogyardRuntime {
-    private final ConcurrentHashMap<String, DefaultLogyardLogger> loggers = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, LoggerControl> controls = new ConcurrentHashMap<>();
+    private volatile RuntimeState state;
+    private final RuntimeLoggerCatalog loggers = new RuntimeLoggerCatalog(
+            this,
+            loggerName -> compileRoute(loggerName, state),
+            this::publish);
     private final RuntimeRetirements retirements = new RuntimeRetirements();
     private final CompletableFuture<Void> retirementCompletion = new CompletableFuture<>();
     private final AtomicBoolean closed = new AtomicBoolean();
     private final RuntimeRouteLeases routeLeases;
     private final EventPublicationPipeline publicationPipeline;
-    private volatile RuntimeState state;
 
     public DefaultLogyardRuntime(RuntimePlan plan) {
         state = new RuntimeState(
@@ -57,13 +58,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             throw new IllegalArgumentException(
                     "logger name exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters");
         }
-        return loggers.computeIfAbsent(name, key -> {
-            synchronized (this) {
-                LoggerControl control = new LoggerControl(compileRoute(key, state));
-                controls.put(key, control);
-                return new DefaultLogyardLogger(key, this, control);
-            }
-        });
+        return loggers.logger(name);
     }
 
     @Override
@@ -107,10 +102,10 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         RuntimeState previous = state;
         RuntimeState next = new RuntimeState(nextPlan, previous.levelOverrides(), new PlanEpoch());
         Map<String, CompiledRoute> compiled = new LinkedHashMap<>();
-        controls.forEach((name, control) -> compiled.put(name, compileRoute(name, next)));
+        loggers.forEachControl((name, control) -> compiled.put(name, compileRoute(name, next)));
         retirements.replacePlan(previous.plan(), previous.epoch(), next.plan(), () -> {
             state = next;
-            compiled.forEach((name, route) -> controls.get(name).update(route));
+            loggers.updateRoutes(compiled);
         });
     }
 
@@ -153,7 +148,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     public Set<String> knownLoggerNames() {
         RuntimeState snapshot = state;
-        return RuntimeManagementView.knownLoggerNames(controls.keySet(), snapshot.plan(), snapshot.levelOverrides());
+        return RuntimeManagementView.knownLoggerNames(loggers.controlNames(), snapshot.plan(), snapshot.levelOverrides());
     }
 
     public RuntimeLevelOverride effectiveLevelOverride(String loggerName) {
@@ -174,7 +169,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     public synchronized RuntimeManagementSnapshot managementSnapshot() {
         RuntimeState snapshot = state;
-        return RuntimeManagementView.snapshot(controls.keySet(), snapshot.plan(), snapshot.levelOverrides());
+        return RuntimeManagementView.snapshot(loggers.controlNames(), snapshot.plan(), snapshot.levelOverrides());
     }
 
     void publish(LoggerControl control, EventDraft draft) {
@@ -209,7 +204,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             RuntimeState next,
             Predicate<String> affected) {
         Map<String, CompiledRoute> compiled = new LinkedHashMap<>();
-        controls.forEach((name, control) -> {
+        loggers.forEachControl((name, control) -> {
             if (affected.test(name)) {
                 compiled.put(name, compileRoute(name, next));
             }
@@ -221,7 +216,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             RuntimeState next,
             Map<String, CompiledRoute> compiled) {
         state = next;
-        compiled.forEach((name, route) -> controls.get(name).update(route));
+        loggers.updateRoutes(compiled);
     }
 
     @Override
