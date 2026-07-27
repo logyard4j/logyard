@@ -4,4 +4,3 @@ modules/logyard-api/src/main/java/com/zsumz/logyard/api/LogyardLogger.java	290
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/AttributeSet.java	300
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/CaptureContext.java	274
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/LogEvent.java	300
-modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/config/ProviderConfiguration.java	264

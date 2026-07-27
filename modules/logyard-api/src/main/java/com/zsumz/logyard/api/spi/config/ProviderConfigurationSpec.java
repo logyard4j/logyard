@@ -2,7 +2,6 @@ package com.zsumz.logyard.api.spi.config;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -70,8 +69,7 @@ public record ProviderConfigurationSpec(Set<String> allowedKeys, Set<String> req
     private static Set<String> normalized(Set<String> keys, String label) {
         LinkedHashSet<String> result = new LinkedHashSet<>();
         for (String key : keys) {
-            ProviderConfiguration validation = new ProviderConfiguration(Map.of(key, "validation"));
-            String normalized = validation.values().keySet().iterator().next();
+            String normalized = ProviderConfigurationValues.normalizeKey(Objects.requireNonNull(key));
             if (!result.add(normalized)) {
                 throw new IllegalArgumentException(
                         "duplicate normalized " + label + " provider configuration key: " + normalized);
