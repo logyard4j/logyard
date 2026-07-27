@@ -5,7 +5,6 @@ modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/AttributeAccumulat
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/AttributeSet.java	300
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/BoundedPrintfPattern.java	226
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/CaptureContext.java	274
-modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/CaptureLimits.java	227
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/ExceptionSnapshot.java	284
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/LogEvent.java	300
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/MessageFormatWorkBudget.java	277
