@@ -1,13 +1,8 @@
 package com.zsumz.logyard.runtime.bootstrap;
 
-import com.zsumz.logyard.config.loading.BoundedConfigurationFile;
-import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -79,7 +74,7 @@ public final class LogyardConfigurationSource {
                 base,
                 normalized,
                 new FileSourceIdentity(normalized),
-                () -> readFile(normalized));
+                () -> ConfigurationSourceReader.readFile(normalized));
     }
 
     /**
@@ -102,7 +97,7 @@ public final class LogyardConfigurationSource {
                 base,
                 null,
                 new ClasspathSourceIdentity(loader, normalized, base),
-                () -> readClasspath(loader, normalized));
+                () -> ConfigurationSourceReader.readClasspath(loader, normalized));
     }
 
     /**
@@ -117,7 +112,7 @@ public final class LogyardConfigurationSource {
             String description,
             String toml,
             Path baseDirectory) {
-        byte[] content = boundedUtf8(toml);
+        byte[] content = ConfigurationSourceReader.encodeText(toml);
         String normalizedDescription = description(description);
         Path base = normalizeDirectory(baseDirectory);
         return new LogyardConfigurationSource(
@@ -173,23 +168,6 @@ public final class LogyardConfigurationSource {
         return identity;
     }
 
-    private static byte[] readFile(Path path) throws IOException {
-        return BoundedConfigurationFile.read(path);
-    }
-
-    private static byte[] readClasspath(ClassLoader loader, String resource) throws IOException {
-        try (InputStream stream = loader.getResourceAsStream(resource)) {
-            if (stream == null) {
-                throw new IOException("Logyard classpath configuration does not exist: classpath:" + resource);
-            }
-            byte[] bytes = stream.readNBytes(LogyardConfigLoader.MAX_CONFIG_BYTES + 1);
-            if (bytes.length > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-                throw new IOException("Logyard classpath configuration exceeds " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes: classpath:" + resource);
-            }
-            return bytes;
-        }
-    }
-
     private static String description(String value) {
         String normalized = Objects.requireNonNull(value, "description").trim();
         if (normalized.isEmpty()) {
@@ -215,18 +193,6 @@ public final class LogyardConfigurationSource {
             throw new IllegalArgumentException("classpath resource must be a non-blank forward-slash path");
         }
         return normalized;
-    }
-
-    private static byte[] boundedUtf8(String value) {
-        String text = Objects.requireNonNull(value, "toml");
-        if (text.length() > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-            throw new IllegalArgumentException("Logyard text configuration exceeds " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes");
-        }
-        byte[] content = text.getBytes(StandardCharsets.UTF_8);
-        if (content.length > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-            throw new IllegalArgumentException("Logyard text configuration exceeds " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes");
-        }
-        return content;
     }
 
     private static Path normalizeDirectory(Path directory) {
