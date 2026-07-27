@@ -6,8 +6,6 @@ import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,6 +19,7 @@ final class AsyncSinkWorker {
     private final AsyncSinkDiagnostics diagnostics;
     private final AsyncDelegateDelivery delivery;
     private final AsyncBatchPolicy batching;
+    private final AsyncBatchDelivery batchDelivery;
     private final Thread thread;
     private final AtomicInteger activeDeliveries = new AtomicInteger();
     private final AtomicBoolean delegateCloseStarted = new AtomicBoolean();
@@ -41,6 +40,7 @@ final class AsyncSinkWorker {
         dropReporter = new AsyncDropReporter(metrics);
         delivery = new AsyncDelegateDelivery(delegate, metrics, diagnostics);
         batching = AsyncBatchPolicy.from(name, delivery);
+        batchDelivery = new AsyncBatchDelivery(eventQueue, batching, delivery);
         thread = new Thread(this::drainLoop, "logyard-output-" + EmergencyText.threadComponent(name, 64));
         thread.setDaemon(true);
     }
@@ -148,43 +148,22 @@ final class AsyncSinkWorker {
     private void deliverBatch(LogEvent first) {
         activeDeliveries.incrementAndGet();
         boolean interrupted = false;
-        List<LogEvent> events = new ArrayList<>(batching.maximumSize());
-        events.add(first);
         try {
-            long deadline = batching.maximumDelayNanos() == Long.MAX_VALUE
-                    ? Long.MAX_VALUE
-                    : saturatedAdd(System.nanoTime(), batching.maximumDelayNanos());
-            while (events.size() < batching.maximumSize()) {
-                LogEvent next;
-                if (batching.maximumDelayNanos() == 0L) {
-                    next = eventQueue.claimNow();
-                } else {
-                    long remaining = deadline - System.nanoTime();
-                    if (remaining <= 0L) {
-                        break;
-                    }
-                    polling = true;
-                    try {
-                        next = eventQueue.claimWithin(remaining, TimeUnit.NANOSECONDS);
-                    } catch (InterruptedException interruption) {
-                        interrupted = true;
-                        break;
-                    } finally {
-                        polling = false;
-                    }
-                }
-                if (next == null) {
-                    break;
-                }
-                events.add(next);
-            }
-            delivery.deliverBatch(events);
+            interrupted = batchDelivery.deliver(first, this::claimBatchFollower);
         } finally {
-            eventQueue.completeClaims(events.size());
             activeDeliveries.decrementAndGet();
             if (interrupted && running) {
                 Thread.currentThread().interrupt();
             }
+        }
+    }
+
+    private LogEvent claimBatchFollower(long timeoutNanos) throws InterruptedException {
+        polling = true;
+        try {
+            return eventQueue.claimWithin(timeoutNanos, TimeUnit.NANOSECONDS);
+        } finally {
+            polling = false;
         }
     }
 
@@ -239,11 +218,6 @@ final class AsyncSinkWorker {
         }
         emitDropSummary(true);
         delivery.close(name);
-    }
-
-    private static long saturatedAdd(long left, long right) {
-        long result = left + right;
-        return result < left ? Long.MAX_VALUE : result;
     }
 
     private static long saturatedNanos(Duration duration) {

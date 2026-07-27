@@ -12,7 +12,6 @@ modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/MessageFormatWorkB
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/MessageFormatter.java	284
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/ValueCapture.java	253
 modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/config/ProviderConfiguration.java	264
-modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/async/AsyncSinkWorker.java	256
 modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/DefaultLogyardRuntime.java	298
 modules/logyard-output-console/src/main/java/com/zsumz/logyard/output/console/style/AnsiStyle.java	237
 modules/logyard-output-json/src/main/java/com/zsumz/logyard/output/json/encoding/JsonEncoder.java	252
