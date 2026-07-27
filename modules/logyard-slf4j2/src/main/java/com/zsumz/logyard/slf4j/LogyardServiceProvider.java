@@ -21,9 +21,7 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider, AutoC
     private final SwitchableLoggerFactory loggerFactory = new SwitchableLoggerFactory();
     private final IMarkerFactory markerFactory = new BasicMarkerFactory();
     private final LogyardMdcAdapter mdcAdapter = new LogyardMdcAdapter();
-    private State state = State.NEW;
-    private Throwable initializationFailure;
-    private LazyAdapterRuntime runtime;
+    private ProviderState state = AwaitingInitialization.INSTANCE;
 
     @Override
     public ILoggerFactory getLoggerFactory() {
@@ -47,32 +45,28 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider, AutoC
 
     @Override
     public synchronized void initialize() {
-        if (state == State.READY) {
+        if (state instanceof Ready || state == Closed.INSTANCE) {
             return;
         }
-        if (state == State.INITIALIZING) {
+        if (state == Initializing.INSTANCE) {
             throw new IllegalStateException("recursive Logyard SLF4J provider initialization");
         }
-        if (state == State.FAILED) {
-            throw new IllegalStateException(
-                    "Logyard SLF4J provider initialization already failed",
-                    initializationFailure);
+        if (state instanceof Failed failed) {
+            throw new IllegalStateException("Logyard SLF4J provider initialization already failed", failed.failure());
         }
-        state = State.INITIALIZING;
+        state = Initializing.INSTANCE;
         LazyAdapterRuntime resolved = null;
         try {
             resolved = new LazyAdapterRuntime("slf4j2");
             ContextSnapshotPolicy contextPolicy = new ContextSnapshotPolicy(resolved.contextPolicySource());
             Slf4jEventMapper mapper = new Slf4jEventMapper(mdcAdapter, contextPolicy);
             loggerFactory.install(new LogyardLoggerFactory(resolved, mapper));
-            runtime = resolved;
-            state = State.READY;
+            state = new Ready(resolved);
         } catch (Throwable failure) {
             ProviderDiagnostics.rethrowIfFatal(failure);
             closeAfterInitializationFailure(resolved, failure);
-            initializationFailure = failure;
             loggerFactory.fail(failure);
-            state = State.FAILED;
+            state = new Failed(failure);
             ProviderDiagnostics.initializationFailure(failure);
             throw new IllegalStateException("failed to initialize the Logyard SLF4J provider", failure);
         }
@@ -94,7 +88,7 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider, AutoC
 
     /** Exposed for diagnostics and provider tests; SLF4J itself has no shutdown callback. */
     public synchronized boolean ownsRuntime() {
-        return runtime != null && runtime.ownsRuntime();
+        return state instanceof Ready ready && ready.runtime().ownsRuntime();
     }
 
     /**
@@ -105,16 +99,30 @@ public final class LogyardServiceProvider implements SLF4JServiceProvider, AutoC
      */
     @Override
     public synchronized void close() {
-        if (runtime != null) {
-            runtime.close();
-            runtime = null;
+        if (state instanceof Ready ready) {
+            ready.runtime().close();
+            state = Closed.INSTANCE;
         }
     }
 
-    private enum State {
-        NEW,
-        INITIALIZING,
-        READY,
-        FAILED
+    private sealed interface ProviderState permits AwaitingInitialization, Closed, Failed, Initializing, Ready {
+    }
+
+    private enum AwaitingInitialization implements ProviderState {
+        INSTANCE
+    }
+
+    private enum Initializing implements ProviderState {
+        INSTANCE
+    }
+
+    private enum Closed implements ProviderState {
+        INSTANCE
+    }
+
+    private record Ready(LazyAdapterRuntime runtime) implements ProviderState {
+    }
+
+    private record Failed(Throwable failure) implements ProviderState {
     }
 }
