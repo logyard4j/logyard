@@ -2,70 +2,34 @@ package com.zsumz.logyard.api.event;
 
 import java.util.function.Supplier;
 
-/** One event's shared capture state, including partitioned budgets and graph identity. */
+/** Coordinates one event's graph identity, bounded budgets, and capture-truncation state. */
 final class CaptureContext {
+    private final CaptureStructuralBudget structure;
+    private final CaptureTextBudget text;
     private CaptureReferences references;
-    private int remainingNodes;
-    private int remainingEntries;
-    private int remainingPayloadCharacters;
-    private int remainingExceptionTypeCharacters;
-    private int remainingExceptionMessageCharacters;
-    private int remainingExceptionFrameCharacters;
-    private int remainingIdentityCharacters;
-    private int remainingTemplateCharacters;
-    private int remainingExceptionNodes;
-    private int remainingFrames;
     private boolean truncated;
 
-    private CaptureContext(
-            int nodes,
-            int entries,
-            int payloadCharacters,
-            int exceptionTypeCharacters,
-            int exceptionMessageCharacters,
-            int exceptionFrameCharacters,
-            int identityCharacters,
-            int templateCharacters,
-            int exceptionNodes,
-            int frames) {
-        remainingNodes = nodes;
-        remainingEntries = entries;
-        remainingPayloadCharacters = payloadCharacters;
-        remainingExceptionTypeCharacters = exceptionTypeCharacters;
-        remainingExceptionMessageCharacters = exceptionMessageCharacters;
-        remainingExceptionFrameCharacters = exceptionFrameCharacters;
-        remainingIdentityCharacters = identityCharacters;
-        remainingTemplateCharacters = templateCharacters;
-        remainingExceptionNodes = exceptionNodes;
-        remainingFrames = frames;
+    private CaptureContext(CaptureStructuralBudget structure, CaptureTextBudget text) {
+        this.structure = structure;
+        this.text = text;
     }
 
     static CaptureContext create() {
         return new CaptureContext(
-                CaptureLimits.MAX_EVENT_NODES,
-                CaptureLimits.MAX_EVENT_ENTRIES,
-                CaptureLimits.MAX_EVENT_PAYLOAD_TEXT_CHARS,
-                CaptureLimits.MAX_EVENT_EXCEPTION_TYPE_CHARS,
-                CaptureLimits.MAX_EVENT_EXCEPTION_MESSAGE_CHARS,
-                CaptureLimits.MAX_EVENT_EXCEPTION_FRAME_CHARS,
-                CaptureLimits.MAX_EVENT_IDENTITY_CHARS,
-                CaptureLimits.MAX_EVENT_TEMPLATE_CHARS,
-                CaptureLimits.MAX_EVENT_EXCEPTION_NODES,
-                CaptureLimits.MAX_EVENT_STACK_FRAMES);
+                new CaptureStructuralBudget(CaptureLimits.MAX_EVENT_NODES, CaptureLimits.MAX_EVENT_ENTRIES, CaptureLimits.MAX_EVENT_EXCEPTION_NODES, CaptureLimits.MAX_EVENT_STACK_FRAMES),
+                new CaptureTextBudget(
+                        CaptureLimits.MAX_EVENT_PAYLOAD_TEXT_CHARS,
+                        CaptureLimits.MAX_EVENT_EXCEPTION_TYPE_CHARS,
+                        CaptureLimits.MAX_EVENT_EXCEPTION_MESSAGE_CHARS,
+                        CaptureLimits.MAX_EVENT_EXCEPTION_FRAME_CHARS,
+                        CaptureLimits.MAX_EVENT_IDENTITY_CHARS,
+                        CaptureLimits.MAX_EVENT_TEMPLATE_CHARS));
     }
 
     static CaptureContext forAttributes(CaptureAllowance allowance) {
         return new CaptureContext(
-                allowance.nodes(),
-                allowance.entries(),
-                allowance.characters(),
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0);
+                new CaptureStructuralBudget(allowance.nodes(), allowance.entries(), 0, 0),
+                new CaptureTextBudget(allowance.characters(), 0, 0, 0, 0, 0));
     }
 
     static CaptureContext currentOrCreate() {
@@ -77,81 +41,43 @@ final class CaptureContext {
     }
 
     String capturePayloadText(String source, int fieldLimit) {
-        CapturedText captured = captureText(source, fieldLimit, remainingPayloadCharacters);
-        remainingPayloadCharacters -= length(captured.value());
-        observe(captured);
-        return captured.value();
+        return capturedValue(text.capturePayload(source, fieldLimit));
     }
 
     String captureIdentityText(String source, int fieldLimit) {
-        CapturedText captured = captureText(source, fieldLimit, remainingIdentityCharacters);
-        remainingIdentityCharacters -= length(captured.value());
-        observe(captured);
-        return captured.value();
+        return capturedValue(text.captureIdentity(source, fieldLimit));
     }
 
     String captureTemplateText(String source, int fieldLimit) {
-        CapturedText captured = captureText(source, fieldLimit, remainingTemplateCharacters);
-        remainingTemplateCharacters -= length(captured.value());
-        observe(captured);
-        return captured.value();
+        return capturedValue(text.captureTemplate(source, fieldLimit));
     }
 
     CapturedText captureExceptionTypeText(String source, int fieldLimit) {
-        CapturedText captured = captureText(source, fieldLimit, remainingExceptionTypeCharacters);
-        remainingExceptionTypeCharacters -= length(captured.value());
-        observe(captured);
-        return captured;
+        return observe(text.captureExceptionType(source, fieldLimit));
     }
 
     CapturedText captureExceptionMessageText(String source, int fieldLimit) {
-        CapturedText captured = captureText(source, fieldLimit, remainingExceptionMessageCharacters);
-        remainingExceptionMessageCharacters -= length(captured.value());
-        observe(captured);
-        return captured;
+        return observe(text.captureExceptionMessage(source, fieldLimit));
     }
 
     CapturedText captureExceptionFrameText(String source, int fieldLimit) {
-        CapturedText captured = captureText(source, fieldLimit, remainingExceptionFrameCharacters);
-        remainingExceptionFrameCharacters -= length(captured.value());
-        observe(captured);
-        return captured;
+        return observe(text.captureExceptionFrame(source, fieldLimit));
     }
 
     boolean claimNode() {
-        if (remainingNodes == 0) {
-            truncated = true;
-            return false;
-        }
-        remainingNodes--;
-        return true;
+        return claim(structure.claimNode());
     }
 
     boolean claimEntry() {
-        if (remainingEntries == 0) {
-            truncated = true;
-            return false;
-        }
-        remainingEntries--;
-        return true;
+        return claim(structure.claimEntry());
     }
 
     boolean claimExceptionNode() {
-        if (remainingExceptionNodes == 0 || !claimNode()) {
-            truncated = true;
-            return false;
-        }
-        remainingExceptionNodes--;
-        return true;
+        return claim(structure.claimExceptionNode());
     }
 
     boolean claimFrame() {
-        if (remainingFrames == 0 || !claimEntry()) {
-            truncated = true;
-            return false;
-        }
-        remainingFrames--;
-        return true;
+        return claim(structure.claimFrame());
     }
 
     Object capturedScalar(Object source) {
@@ -187,38 +113,37 @@ final class CaptureContext {
     }
 
     int remainingEntries() {
-        return remainingEntries;
+        return structure.remainingEntries();
     }
 
     int remainingPayloadCharacters() {
-        return remainingPayloadCharacters;
+        return text.remainingPayloadCharacters();
     }
 
     boolean canCaptureExceptionFrame() {
-        return remainingExceptionFrameCharacters > 0;
+        return text.canCaptureExceptionFrame();
     }
 
     CaptureAllowance payloadAllowance() {
-        return new CaptureAllowance(remainingNodes, remainingEntries, remainingPayloadCharacters);
+        return new CaptureAllowance(structure.remainingNodes(), structure.remainingEntries(), text.remainingPayloadCharacters());
     }
 
-    private static CapturedText captureText(String source, int fieldLimit, int remaining) {
-        if (source == null) {
-            return new CapturedText(null, false);
+    private boolean claim(boolean accepted) {
+        if (!accepted) {
+            truncated = true;
         }
-        int allowance = Math.min(fieldLimit, remaining);
-        String captured = CaptureLimits.truncate(source, allowance);
-        return new CapturedText(captured, captured.length() < source.length());
+        return accepted;
     }
 
-    private void observe(CapturedText captured) {
+    private String capturedValue(CapturedText captured) {
+        return observe(captured).value();
+    }
+
+    private CapturedText observe(CapturedText captured) {
         if (captured.truncated()) {
             truncated = true;
         }
-    }
-
-    private static int length(String value) {
-        return value == null ? 0 : value.length();
+        return captured;
     }
 
     private CaptureReferences references() {

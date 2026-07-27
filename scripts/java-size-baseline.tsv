@@ -1,7 +1,2 @@
-# Production files above the enforced 220-line limit at this refactor checkpoint.
-# Each listed file may shrink, but it may never exceed this recorded line count.
-modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/AttributeEntryStorage.java	236
-modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/BoundedPrintfPattern.java	226
-modules/logyard-api/src/main/java/com/zsumz/logyard/api/event/CaptureContext.java	236
-modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/async/AsyncSinkWorker.java	230
-modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/DefaultLogyardRuntime.java	237
+# No production source currently exceeds the enforced 220-line limit.
+# Keep this file for any future, deliberately reviewed, shrink-only exception.

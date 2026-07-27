@@ -13,6 +13,7 @@ import com.zsumz.logyard.core.routing.CompiledRoute;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.runtime.management.RuntimeHealthReporter;
 import com.zsumz.logyard.core.runtime.management.RuntimeGeneration;
+import com.zsumz.logyard.core.runtime.management.RuntimeGenerationLease;
 import com.zsumz.logyard.core.runtime.management.RuntimeLevelOverrideChange;
 import com.zsumz.logyard.core.runtime.management.RuntimeLevelOverrideManager;
 import com.zsumz.logyard.core.runtime.management.RuntimeManagementView;
@@ -36,10 +37,7 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     private final AtomicBoolean closed = new AtomicBoolean();
 
     public DefaultLogyardRuntime(RuntimePlan plan) {
-        state = new RuntimeGeneration(
-                Objects.requireNonNull(plan, "plan"),
-                RuntimeLevelOverrides.empty(),
-                new PlanEpoch());
+        state = new RuntimeGeneration(Objects.requireNonNull(plan, "plan"), RuntimeLevelOverrides.empty(), new PlanEpoch());
         publication = new RuntimePublication(this, loggerName -> compileRoute(loggerName, state), closed::get);
         levelOverrideManager = new RuntimeLevelOverrideManager(publication);
     }
@@ -76,24 +74,13 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     @Override
     public RuntimeHealth health() {
-        if (closed.get()) {
+        RuntimeGenerationLease lease = acquireGeneration();
+        if (lease == null) {
             return stoppedHealth();
         }
-
-        RuntimeGeneration snapshot;
-        while (true) {
-            snapshot = state;
-            if (snapshot.epoch().tryAcquire()) {
-                break;
-            }
-            if (closed.get()) {
-                return stoppedHealth();
-            }
-        }
-        try {
+        try (lease) {
+            RuntimeGeneration snapshot = lease.generation();
             return RuntimeHealthReporter.running(publication.loggerCount(), retirements.pendingCount(), snapshot.plan(), snapshot.epoch());
-        } finally {
-            snapshot.epoch().release();
         }
     }
 
@@ -170,20 +157,12 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     @Override
     public void flush() {
-        RuntimeGeneration snapshot;
-        while (true) {
-            if (closed.get()) {
-                return;
-            }
-            snapshot = state;
-            if (snapshot.epoch().tryAcquire()) {
-                break;
-            }
+        RuntimeGenerationLease lease = acquireGeneration();
+        if (lease == null) {
+            return;
         }
-        try {
-            retirements.flush(snapshot.plan());
-        } finally {
-            snapshot.epoch().release();
+        try (lease) {
+            retirements.flush(lease.generation().plan());
         }
     }
 
@@ -220,6 +199,10 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         return RuntimePublication.compileRoute(loggerName, state.plan(), state.levelOverrides(), state.epoch());
     }
 
+    private RuntimeGenerationLease acquireGeneration() {
+        return RuntimeGenerationLease.acquire(() -> state, closed::get);
+    }
+
     private RuntimeHealth stoppedHealth() {
         return RuntimeHealthReporter.stopped(publication.loggerCount());
     }
@@ -233,5 +216,4 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
             throw new IllegalStateException("runtime is closed");
         }
     }
-
 }

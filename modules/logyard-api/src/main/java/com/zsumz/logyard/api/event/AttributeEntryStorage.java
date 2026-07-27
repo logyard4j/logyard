@@ -1,21 +1,17 @@
 package com.zsumz.logyard.api.event;
 
-import java.util.Arrays;
 import java.util.function.Supplier;
 
-/** Collision-aware mutable storage for the entries being assembled into one attribute set. */
+/** Applies exact-key replacement and bounded normalized-key collision policy to mutable attribute entries. */
 final class AttributeEntryStorage {
-    private String[] keys;
-    private String[] originals;
-    private String[] normalizedKeyIdentities;
-    private Object[] values;
+    private static final String TRUNCATION_KEY = "logyard.attributes.truncated";
+
+    private final AttributeEntrySlots slots;
     private int size;
     private boolean captureTruncated;
 
     AttributeEntryStorage(int expectedSize) {
-        int capacity = Math.max(1, Math.min(expectedSize, CaptureLimits.MAX_ATTRIBUTES));
-        keys = new String[capacity];
-        values = new Object[capacity];
+        slots = new AttributeEntrySlots(expectedSize);
     }
 
     int size() {
@@ -37,29 +33,19 @@ final class AttributeEntryStorage {
     boolean put(String original, String canonicalKey, boolean keyTruncated, Object value) {
         int existingOriginal = indexOfOriginal(original, canonicalKey, keyTruncated);
         if (existingOriginal >= 0) {
-            values[existingOriginal] = value;
+            slots.value(existingOriginal, value);
             return true;
         }
         String storageKey = resolveNewStorageKey(canonicalKey, keyTruncated);
         int existing = indexOf(storageKey);
         if (existing >= 0) {
-            values[existing] = value;
+            slots.value(existing, value);
             return true;
         }
         if (isFull()) {
             return false;
         }
-        ensureCapacity(size + 1);
-        keys[size] = storageKey;
-        if (keyTruncated) {
-            ensureKeyIdentityStorage();
-            normalizedKeyIdentities[size] = canonicalKey;
-        }
-        if (originals != null) {
-            originals[size] = original;
-        }
-        values[size] = value;
-        size++;
+        append(storageKey, original, keyTruncated ? canonicalKey : null, value);
         captureTruncated |= keyTruncated;
         return true;
     }
@@ -68,23 +54,13 @@ final class AttributeEntryStorage {
         String storageKey = resolveCapturedStorageKey(key, normalizedIdentity);
         int existing = indexOf(storageKey);
         if (existing >= 0) {
-            values[existing] = value;
+            slots.value(existing, value);
             return true;
         }
         if (isFull()) {
             return false;
         }
-        ensureCapacity(size + 1);
-        keys[size] = storageKey;
-        if (normalizedIdentity != null) {
-            ensureKeyIdentityStorage();
-            normalizedKeyIdentities[size] = normalizedIdentity;
-        }
-        if (originals != null) {
-            originals[size] = storageKey;
-        }
-        values[size] = value;
-        size++;
+        append(storageKey, storageKey, normalizedIdentity, value);
         captureTruncated |= normalizedIdentity != null || !storageKey.equals(key);
         return true;
     }
@@ -94,46 +70,39 @@ final class AttributeEntryStorage {
         if (existingOriginal < 0) {
             return false;
         }
-        values[existingOriginal] = supplier.get();
+        slots.value(existingOriginal, supplier.get());
         return true;
     }
 
     void putTruncationMarker() {
-        String key = "logyard.attributes.truncated";
-        int existing = indexOf(key);
+        int existing = indexOf(TRUNCATION_KEY);
         if (existing >= 0) {
-            values[existing] = true;
-            return;
-        }
-        if (size < CaptureLimits.MAX_ATTRIBUTES) {
-            ensureCapacity(size + 1);
-            keys[size] = key;
-            if (originals != null) {
-                originals[size] = key;
-            }
-            if (normalizedKeyIdentities != null) {
-                normalizedKeyIdentities[size] = null;
-            }
-            values[size] = true;
-            size++;
+            slots.value(existing, true);
+        } else if (size < CaptureLimits.MAX_ATTRIBUTES) {
+            append(TRUNCATION_KEY, TRUNCATION_KEY, null, true);
         }
     }
 
     String[] keys() {
-        return keys;
+        return slots.keys();
     }
 
     String[] normalizedKeyIdentities() {
-        return normalizedKeyIdentities;
+        return slots.normalizedKeyIdentities();
     }
 
     Object[] values() {
-        return values;
+        return slots.values();
+    }
+
+    private void append(String key, String original, String normalizedIdentity, Object value) {
+        slots.append(size, key, original, normalizedIdentity, value);
+        size++;
     }
 
     private int indexOf(String key) {
         for (int index = 0; index < size; index++) {
-            if (keys[index].equals(key)) {
+            if (slots.key(index).equals(key)) {
                 return index;
             }
         }
@@ -145,11 +114,11 @@ final class AttributeEntryStorage {
         if (canonical < 0) {
             return canonical;
         }
-        if (originals == null) {
+        if (!slots.tracksOriginals()) {
             return keyTruncated ? -1 : canonical;
         }
         for (int index = 0; index < size; index++) {
-            if (original.equals(originals[index])) {
+            if (original.equals(slots.original(index))) {
                 return index;
             }
         }
@@ -161,8 +130,8 @@ final class AttributeEntryStorage {
         if (canonical < 0) {
             return canonicalKey;
         }
-        ensureKeyIdentityStorage();
-        if (!keyTruncated && normalizedKeyIdentities[canonical] != null) {
+        slots.ensureIdentityStorage(size);
+        if (!keyTruncated && slots.normalizedIdentity(canonical) != null) {
             relocateNormalizedEntry(canonical);
             return canonicalKey;
         }
@@ -175,10 +144,10 @@ final class AttributeEntryStorage {
         if (occupied < 0) {
             return storageKey;
         }
-        if (normalizedIdentity == null && normalizedKeyIdentity(occupied) == null) {
+        if (normalizedIdentity == null && slots.normalizedIdentity(occupied) == null) {
             return storageKey;
         }
-        ensureKeyIdentityStorage();
+        slots.ensureIdentityStorage(size);
         if (normalizedIdentity == null) {
             relocateNormalizedEntry(occupied);
             return storageKey;
@@ -188,12 +157,11 @@ final class AttributeEntryStorage {
     }
 
     private void relocateNormalizedEntry(int index) {
-        String normalizedIdentity = normalizedKeyIdentity(index);
-        if (normalizedIdentity == null) {
-            return;
+        String normalizedIdentity = slots.normalizedIdentity(index);
+        if (normalizedIdentity != null) {
+            slots.key(index, uniqueCollisionKey(normalizedIdentity));
+            markCaptureTruncated();
         }
-        keys[index] = uniqueCollisionKey(normalizedIdentity);
-        markCaptureTruncated();
     }
 
     private String uniqueCollisionKey(String canonicalKey) {
@@ -202,35 +170,6 @@ final class AttributeEntryStorage {
             if (indexOf(candidate) < 0) {
                 return candidate;
             }
-        }
-    }
-
-    private String normalizedKeyIdentity(int index) {
-        return normalizedKeyIdentities == null ? null : normalizedKeyIdentities[index];
-    }
-
-    private void ensureCapacity(int needed) {
-        if (needed <= keys.length) {
-            return;
-        }
-        int next = Math.min(CaptureLimits.MAX_ATTRIBUTES, Math.max(needed, keys.length << 1));
-        keys = Arrays.copyOf(keys, next);
-        if (originals != null) {
-            originals = Arrays.copyOf(originals, next);
-        }
-        if (normalizedKeyIdentities != null) {
-            normalizedKeyIdentities = Arrays.copyOf(normalizedKeyIdentities, next);
-        }
-        values = Arrays.copyOf(values, next);
-    }
-
-    private void ensureKeyIdentityStorage() {
-        if (originals == null) {
-            originals = new String[keys.length];
-            System.arraycopy(keys, 0, originals, 0, size);
-        }
-        if (normalizedKeyIdentities == null) {
-            normalizedKeyIdentities = new String[keys.length];
         }
     }
 }

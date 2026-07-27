@@ -1,15 +1,12 @@
 package com.zsumz.logyard.api.event;
 
 import java.time.ZoneId;
-import java.util.DuplicateFormatFlagsException;
-import java.util.IllegalFormatPrecisionException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Parses printf conversions into bounded syntax and conversion-specific captured arguments. */
+/** Analyzes printf conversions into bounded syntax and conversion-specific captured arguments. */
 final class BoundedPrintfPattern {
     private static final int MISSING_ARGUMENT_INDEX = 9_999;
 
@@ -35,75 +32,48 @@ final class BoundedPrintfPattern {
                 continue;
             }
 
-            ArgumentIndex explicit = argumentIndex(pattern, cursor);
-            int explicitStart = cursor;
-            if (explicit.present()) {
-                cursor = explicit.end();
-            }
-            StringBuilder flags = new StringBuilder();
-            boolean reusePrevious = false;
-            while (cursor < pattern.length() && isFlag(pattern.charAt(cursor))) {
-                char flag = pattern.charAt(cursor++);
-                if (flag == '<') {
-                    if (reusePrevious) {
-                        throw new DuplicateFormatFlagsException("<");
-                    }
-                    reusePrevious = true;
-                } else {
-                    flags.append(flag);
+            PrintfConversionParser.Conversion conversion = PrintfConversionParser.parse(pattern, cursor, maximumFieldWidth);
+            cursor = conversion.end();
+            syntaxBounded |= conversion.width().changed() || conversion.precision().changed();
+            if (conversion.passThrough()) {
+                if (conversion.explicit().present()) {
+                    bounded.append(pattern, conversion.explicitStart(), conversion.explicit().end());
                 }
-            }
-            BoundedNumber width = boundedNumber(pattern, cursor, maximumFieldWidth);
-            cursor = width.end();
-            syntaxBounded |= width.changed();
-            BoundedNumber precision = BoundedNumber.absent(cursor);
-            boolean precisionPresent = cursor < pattern.length() && pattern.charAt(cursor) == '.';
-            if (precisionPresent) {
-                precision = boundedNumber(pattern, cursor + 1, maximumFieldWidth);
-                cursor = precision.end();
-                syntaxBounded |= precision.changed();
-            }
-            char datePrefix = cursor < pattern.length() && (pattern.charAt(cursor) == 't' || pattern.charAt(cursor) == 'T')
-                    ? pattern.charAt(cursor++)
-                    : '\0';
-            char conversion = cursor < pattern.length() ? pattern.charAt(cursor++) : '\0';
-            if (datePrefix != '\0' && precisionPresent && !precision.text().isEmpty()) {
-                throw new IllegalFormatPrecisionException(Integer.parseInt(precision.text()));
-            }
-
-            if (conversion == '%' || conversion == 'n' || conversion == '\0') {
-                if (explicit.present()) {
-                    bounded.append(pattern, explicitStart, explicit.end());
-                }
-                if (reusePrevious) {
-                    flags.append('<');
-                }
-                appendTail(bounded, flags, width, precisionPresent, precision, datePrefix, conversion);
+                appendTail(
+                        bounded,
+                        conversion.flags() + (conversion.reusePrevious() ? '<' : ""),
+                        conversion.width(),
+                        conversion.precisionPresent(),
+                        conversion.precision(),
+                        conversion.datePrefix(),
+                        conversion.conversion());
                 continue;
             }
 
-            int selected;
-            if (reusePrevious) {
-                selected = previousArgument;
-            } else if (explicit.present()) {
-                selected = explicit.zeroBased();
-            } else {
-                selected = ordinaryArgument++;
-            }
+            int selected = conversion.reusePrevious()
+                    ? previousArgument
+                    : conversion.explicit().present() ? conversion.explicit().zeroBased() : ordinaryArgument++;
             if (selected >= 0) {
                 previousArgument = selected;
             }
 
             int syntheticIndex = MISSING_ARGUMENT_INDEX;
             if (selected >= 0 && selected < capturedParameterCount) {
-                ArgumentRequest request = request(selected, datePrefix, conversion);
+                ArgumentRequest request = request(selected, conversion.datePrefix(), conversion.conversion());
                 syntheticIndex = requests.computeIfAbsent(request, ignored -> requests.size()) + 1;
             } else if (selected >= 0 && selected < parameterCount) {
                 referencedParameterOmitted = true;
             }
             bounded.append(syntheticIndex).append('$');
-            char renderedConversion = datePrefix == 'T' ? 'S' : datePrefix == 't' ? 's' : conversion;
-            appendTail(bounded, flags, width, precisionPresent, precision, '\0', renderedConversion);
+            char renderedConversion = conversion.datePrefix() == 'T' ? 'S' : conversion.datePrefix() == 't' ? 's' : conversion.conversion();
+            appendTail(
+                    bounded,
+                    conversion.flags(),
+                    conversion.width(),
+                    conversion.precisionPresent(),
+                    conversion.precision(),
+                    '\0',
+                    renderedConversion);
         }
         return new Analysis(
                 bounded.toString(),
@@ -129,9 +99,9 @@ final class BoundedPrintfPattern {
     private static void appendTail(
             StringBuilder target,
             CharSequence flags,
-            BoundedNumber width,
+            PrintfConversionParser.BoundedNumber width,
             boolean precisionPresent,
-            BoundedNumber precision,
+            PrintfConversionParser.BoundedNumber precision,
             char datePrefix,
             char conversion) {
         target.append(flags).append(width.text());
@@ -167,60 +137,5 @@ final class BoundedPrintfPattern {
     }
 
     record ArgumentRequest(int argumentIndex, CaptureKind kind, char temporalConversion) {
-    }
-
-    private static ArgumentIndex argumentIndex(String pattern, int cursor) {
-        int digitsEnd = digitEnd(pattern, cursor);
-        if (digitsEnd >= pattern.length() || digitsEnd == cursor || pattern.charAt(digitsEnd) != '$') {
-            return ArgumentIndex.NONE;
-        }
-        int value = 0;
-        for (int index = cursor; index < digitsEnd; index++) {
-            int digit = pattern.charAt(index) - '0';
-            if (value > (Integer.MAX_VALUE - digit) / 10) {
-                return new ArgumentIndex(-1, digitsEnd + 1);
-            }
-            value = value * 10 + digit;
-        }
-        return new ArgumentIndex(value - 1, digitsEnd + 1);
-    }
-
-    private static BoundedNumber boundedNumber(String pattern, int cursor, int maximum) {
-        int end = digitEnd(pattern, cursor);
-        if (end == cursor) {
-            return BoundedNumber.absent(cursor);
-        }
-        long value = 0L;
-        for (int index = cursor; index < end && value <= maximum; index++) {
-            value = value * 10L + pattern.charAt(index) - '0';
-        }
-        long bounded = Math.min(value, maximum);
-        return new BoundedNumber(Long.toString(bounded), end, value > maximum);
-    }
-
-    private static int digitEnd(String pattern, int cursor) {
-        int end = cursor;
-        while (end < pattern.length() && Character.isDigit(pattern.charAt(end))) {
-            end++;
-        }
-        return end;
-    }
-
-    private static boolean isFlag(char value) {
-        return "-#+ 0,(<".indexOf(value) >= 0;
-    }
-
-    private record ArgumentIndex(int zeroBased, int end) {
-        private static final ArgumentIndex NONE = new ArgumentIndex(-1, -1);
-
-        boolean present() {
-            return end >= 0;
-        }
-    }
-
-    private record BoundedNumber(String text, int end, boolean changed) {
-        private static BoundedNumber absent(int cursor) {
-            return new BoundedNumber("", cursor, false);
-        }
     }
 }

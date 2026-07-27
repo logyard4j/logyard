@@ -2,7 +2,6 @@ package com.zsumz.logyard.core.delivery.async;
 
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.output.EventSink;
-import com.zsumz.logyard.core.diagnostics.EmergencyText;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.time.Duration;
@@ -20,7 +19,7 @@ final class AsyncSinkWorker {
     private final AsyncDelegateDelivery delivery;
     private final AsyncBatchPolicy batching;
     private final AsyncBatchDelivery batchDelivery;
-    private final Thread thread;
+    private final AsyncWorkerThread worker;
     private final AtomicInteger activeDeliveries = new AtomicInteger();
     private final AtomicBoolean delegateCloseStarted = new AtomicBoolean();
     private volatile boolean running = true;
@@ -41,12 +40,11 @@ final class AsyncSinkWorker {
         delivery = new AsyncDelegateDelivery(delegate, metrics, diagnostics);
         batching = AsyncBatchPolicy.from(name, delivery);
         batchDelivery = new AsyncBatchDelivery(eventQueue, batching, delivery);
-        thread = new Thread(this::drainLoop, "logyard-output-" + EmergencyText.threadComponent(name, 64));
-        thread.setDaemon(true);
+        worker = new AsyncWorkerThread(name, this::drainLoop);
     }
 
     void start() {
-        thread.start();
+        worker.start();
     }
 
     EventSink delegate() {
@@ -72,9 +70,9 @@ final class AsyncSinkWorker {
         running = false;
         closeDelegateOnExit = true;
         if (polling) {
-            thread.interrupt();
+            worker.interrupt();
         }
-        if (!awaitThread(timeout)) {
+        if (!worker.await(timeout)) {
             drainQueueToEmergency("shutdown deadline elapsed");
             diagnostics.status("worker did not stop within " + timeout + "; daemon cleanup will close the delegate when delivery exits");
             return;
@@ -92,7 +90,7 @@ final class AsyncSinkWorker {
         return new AsyncSinkHealth.State(
                 running,
                 accepting,
-                thread.isAlive(),
+                worker.alive(),
                 delegateCloseStarted.get(),
                 callerThreadDeliveryAllowed,
                 batching.enabled(),
@@ -186,23 +184,6 @@ final class AsyncSinkWorker {
         }
     }
 
-    private boolean awaitThread(Duration timeout) {
-        if (!thread.isAlive()) {
-            return true;
-        }
-        long timeoutNanos = saturatedNanos(timeout);
-        if (timeoutNanos == 0) {
-            return false;
-        }
-        try {
-            thread.join(timeoutNanos / 1_000_000L, (int) (timeoutNanos % 1_000_000L));
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            return false;
-        }
-        return !thread.isAlive();
-    }
-
     private void drainQueueToEmergency(String reason) {
         LogEvent remaining;
         while ((remaining = eventQueue.claimNow()) != null) {
@@ -220,11 +201,4 @@ final class AsyncSinkWorker {
         delivery.close(name);
     }
 
-    private static long saturatedNanos(Duration duration) {
-        try {
-            return duration.toNanos();
-        } catch (ArithmeticException overflow) {
-            return Long.MAX_VALUE;
-        }
-    }
 }
