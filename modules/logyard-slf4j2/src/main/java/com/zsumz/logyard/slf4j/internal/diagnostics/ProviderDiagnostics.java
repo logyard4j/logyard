@@ -1,17 +1,15 @@
 package com.zsumz.logyard.slf4j.internal.diagnostics;
 
 import com.zsumz.logyard.api.failure.FailureIsolation;
+import com.zsumz.logyard.api.diagnostics.DiagnosticRateLimiter;
 
 import java.io.PrintStream;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.Duration;
 
 /** Emergency diagnostics that never route back through SLF4J or Logyard. */
 public final class ProviderDiagnostics {
     private static final int MAX_MESSAGE_CHARACTERS = 512;
-    private static final long REPORT_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(10);
-    private static final AtomicLong NEXT_REPORT_NANOS = new AtomicLong();
-    private static final AtomicLong SUPPRESSED = new AtomicLong();
+    private static final DiagnosticRateLimiter REPORTS = new DiagnosticRateLimiter(Duration.ofSeconds(10L));
 
     private ProviderDiagnostics() {
     }
@@ -44,11 +42,10 @@ public final class ProviderDiagnostics {
     }
 
     private static void write(PrintStream stream, String stage, Throwable failure, boolean force) {
-        if (!force && !acquireReportPermit()) {
-            SUPPRESSED.incrementAndGet();
+        if (!force && !REPORTS.tryAcquire()) {
             return;
         }
-        long suppressed = SUPPRESSED.getAndSet(0L);
+        long suppressed = REPORTS.drainSuppressed();
         StringBuilder message = new StringBuilder(192)
                 .append("Logyard SLF4J provider: ")
                 .append(sanitize(stage))
@@ -64,21 +61,6 @@ public final class ProviderDiagnostics {
         }
         stream.println(bound(message.toString()));
     }
-
-    private static boolean acquireReportPermit() {
-        long now = System.nanoTime();
-        while (true) {
-            long next = NEXT_REPORT_NANOS.get();
-            if (now < next) {
-                return false;
-            }
-            long replacement = saturatedAdd(now, REPORT_INTERVAL_NANOS);
-            if (NEXT_REPORT_NANOS.compareAndSet(next, replacement)) {
-                return true;
-            }
-        }
-    }
-
     private static String safeMessage(Throwable failure) {
         try {
             return failure.getMessage();
@@ -112,10 +94,5 @@ public final class ProviderDiagnostics {
         return value.length() <= MAX_MESSAGE_CHARACTERS
                 ? value
                 : value.substring(0, MAX_MESSAGE_CHARACTERS - 3) + "...";
-    }
-
-    private static long saturatedAdd(long left, long right) {
-        long result = left + right;
-        return result < left ? Long.MAX_VALUE : result;
     }
 }

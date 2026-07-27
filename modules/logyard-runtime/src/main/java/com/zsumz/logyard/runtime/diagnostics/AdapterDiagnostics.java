@@ -1,16 +1,14 @@
 package com.zsumz.logyard.runtime.diagnostics;
 
 import com.zsumz.logyard.api.failure.FailureIsolation;
+import com.zsumz.logyard.api.diagnostics.DiagnosticRateLimiter;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.Duration;
 
 /** Bounded, rate-limited diagnostics that cannot re-enter a logging façade. */
 public final class AdapterDiagnostics {
-    private static final long REPORT_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(10);
-    private static final AtomicLong NEXT_REPORT_NANOS = new AtomicLong();
-    private static final AtomicLong SUPPRESSED = new AtomicLong();
+    private static final DiagnosticRateLimiter REPORTS = new DiagnosticRateLimiter(Duration.ofSeconds(10L));
 
     private AdapterDiagnostics() {
     }
@@ -31,11 +29,10 @@ public final class AdapterDiagnostics {
     }
 
     private static void report(String stage, Throwable failure, boolean force) {
-        if (!force && !permit()) {
-            SUPPRESSED.incrementAndGet();
+        if (!force && !REPORTS.tryAcquire()) {
             return;
         }
-        long suppressed = SUPPRESSED.getAndSet(0L);
+        long suppressed = REPORTS.drainSuppressed();
         StringBuilder text = new StringBuilder(256)
                 .append("Logyard: ")
                 .append(EmergencyText.sanitize(stage, 512))
@@ -45,24 +42,5 @@ public final class AdapterDiagnostics {
             text.append(" (").append(suppressed).append(" similar diagnostic(s) suppressed)");
         }
         System.err.println(EmergencyText.sanitize(text.toString(), 4_096));
-    }
-
-    private static boolean permit() {
-        long now = System.nanoTime();
-        while (true) {
-            long next = NEXT_REPORT_NANOS.get();
-            if (now < next) {
-                return false;
-            }
-            long replacement = saturatedAdd(now, REPORT_INTERVAL_NANOS);
-            if (NEXT_REPORT_NANOS.compareAndSet(next, replacement)) {
-                return true;
-            }
-        }
-    }
-
-    private static long saturatedAdd(long left, long right) {
-        long result = left + right;
-        return result < left ? Long.MAX_VALUE : result;
     }
 }
