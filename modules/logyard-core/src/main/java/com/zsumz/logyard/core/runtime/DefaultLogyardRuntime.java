@@ -8,22 +8,19 @@ import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.level.RuntimeLevelOverride;
-import com.zsumz.logyard.core.level.RuntimeLevelOverrides;
 import com.zsumz.logyard.core.routing.CompiledRoute;
-import com.zsumz.logyard.core.routing.PlanEpoch;
-import com.zsumz.logyard.core.runtime.management.RuntimeHealthReporter;
 import com.zsumz.logyard.core.runtime.management.RuntimeGeneration;
-import com.zsumz.logyard.core.runtime.management.RuntimeGenerationLease;
+import com.zsumz.logyard.core.runtime.management.RuntimeLifecycle;
 import com.zsumz.logyard.core.runtime.management.RuntimeLevelOverrideChange;
 import com.zsumz.logyard.core.runtime.management.RuntimeLevelOverrideManager;
 import com.zsumz.logyard.core.runtime.management.RuntimeManagementView;
+import com.zsumz.logyard.core.runtime.management.RuntimePlanReplacement;
 import com.zsumz.logyard.core.runtime.publication.RuntimePublication;
 import com.zsumz.logyard.core.runtime.retirement.RuntimeRetirements;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -32,14 +29,18 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     private volatile RuntimeGeneration state;
     private final RuntimePublication publication;
     private final RuntimeLevelOverrideManager levelOverrideManager;
-    private final RuntimeRetirements retirements = new RuntimeRetirements();
-    private final CompletableFuture<Void> retirementCompletion = new CompletableFuture<>();
+    private final RuntimeRetirements retirements;
+    private final RuntimeLifecycle lifecycle;
+    private final RuntimePlanReplacement planReplacement;
     private final AtomicBoolean closed = new AtomicBoolean();
 
     public DefaultLogyardRuntime(RuntimePlan plan) {
-        state = new RuntimeGeneration(Objects.requireNonNull(plan, "plan"), RuntimeLevelOverrides.empty(), new PlanEpoch());
+        state = RuntimePlanReplacement.initial(plan);
         publication = new RuntimePublication(this, loggerName -> compileRoute(loggerName, state), closed::get);
         levelOverrideManager = new RuntimeLevelOverrideManager(publication);
+        retirements = new RuntimeRetirements();
+        lifecycle = new RuntimeLifecycle(publication, retirements, closed);
+        planReplacement = new RuntimePlanReplacement(publication, retirements);
     }
 
     @Override
@@ -74,28 +75,15 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     @Override
     public RuntimeHealth health() {
-        RuntimeGenerationLease lease = acquireGeneration();
-        if (lease == null) {
-            return stoppedHealth();
-        }
-        try (lease) {
-            RuntimeGeneration snapshot = lease.generation();
-            return RuntimeHealthReporter.running(publication.loggerCount(), retirements.pendingCount(), snapshot.plan(), snapshot.epoch());
-        }
+        return lifecycle.health(this::currentGeneration);
     }
 
     public synchronized void reload(RuntimePlan nextPlan) {
         Objects.requireNonNull(nextPlan, "nextPlan");
         requireOpen();
         RuntimeGeneration previous = state;
-        RuntimeGeneration next = new RuntimeGeneration(nextPlan, previous.levelOverrides(), new PlanEpoch());
-        Map<String, CompiledRoute> compiled = publication.compileRoutes(
-                name -> compileRoute(name, next),
-                ignored -> true);
-        retirements.replacePlan(previous.plan(), previous.epoch(), next.plan(), () -> {
-            state = next;
-            publication.installRoutes(compiled);
-        });
+        RuntimeGeneration next = planReplacement.prepare(nextPlan, previous);
+        planReplacement.replace(previous, next, this::installState);
     }
 
     public synchronized void setLevelOverride(
@@ -155,56 +143,39 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
         publication.installRoutes(change.compiledRoutes());
     }
 
+    private void installState(RuntimeGeneration generation, Map<String, CompiledRoute> compiledRoutes) {
+        state = generation;
+        publication.installRoutes(compiledRoutes);
+    }
+
     @Override
     public void flush() {
-        RuntimeGenerationLease lease = acquireGeneration();
-        if (lease == null) {
-            return;
-        }
-        try (lease) {
-            retirements.flush(lease.generation().plan());
-        }
+        lifecycle.flush(this::currentGeneration);
     }
 
     @Override
     public void close() {
         RuntimeGeneration current;
         synchronized (this) {
-            if (!closed.compareAndSet(false, true)) {
+            if (!lifecycle.beginClose()) {
                 return;
             }
             current = state;
         }
-        try {
-            retirements.finishPlan(current.plan(), current.epoch()).whenComplete((ignored, failure) -> {
-                if (failure == null) {
-                    retirementCompletion.complete(null);
-                } else {
-                    retirementCompletion.completeExceptionally(failure);
-                }
-            });
-        } catch (RuntimeException | Error failure) {
-            retirementCompletion.completeExceptionally(failure);
-            throw failure;
-        }
-        retirements.await(current.plan().shutdownTimeout());
+        lifecycle.finishClose(current);
     }
 
     /** Completes only after final output retirement, even when {@link #close()} returns at its deadline. */
     public CompletionStage<Void> retirementCompletion() {
-        return retirementCompletion;
+        return lifecycle.retirementCompletion();
     }
 
     private static CompiledRoute compileRoute(String loggerName, RuntimeGeneration state) {
         return RuntimePublication.compileRoute(loggerName, state.plan(), state.levelOverrides(), state.epoch());
     }
 
-    private RuntimeGenerationLease acquireGeneration() {
-        return RuntimeGenerationLease.acquire(() -> state, closed::get);
-    }
-
-    private RuntimeHealth stoppedHealth() {
-        return RuntimeHealthReporter.stopped(publication.loggerCount());
+    private RuntimeGeneration currentGeneration() {
+        return state;
     }
 
     public static DefaultLogyardRuntime consoleOnly(EventSink sink) {
@@ -212,8 +183,6 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
     }
 
     private void requireOpen() {
-        if (closed.get()) {
-            throw new IllegalStateException("runtime is closed");
-        }
+        lifecycle.requireOpen();
     }
 }
