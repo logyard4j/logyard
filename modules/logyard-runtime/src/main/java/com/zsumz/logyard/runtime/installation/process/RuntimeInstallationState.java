@@ -12,9 +12,7 @@ final class RuntimeInstallationState {
      * class loader is open. Test engines may close isolated URL class loaders before JVM hooks run.
      */
     private static final RuntimeShutdownPlan ALLOWED_SHUTDOWN = RuntimeShutdownPlan.allow();
-
     private final RuntimeLeaseCounts leaseCounts = new RuntimeLeaseCounts();
-
     private InstallationPhase phase = InstallationPhase.EMPTY;
     private RuntimeInstallation installation;
     private RuntimeStartTransaction pendingStart;
@@ -39,8 +37,7 @@ final class RuntimeInstallationState {
 
     synchronized AcquisitionPlan reserve(RuntimeOwner owner, Supplier<LogyardRuntime> globalRuntime) {
         LogyardRuntime observedGlobal = globalRuntime.get();
-        if (phase == InstallationPhase.STARTING || phase == InstallationPhase.RECONFIGURING
-                || phase == InstallationPhase.CLOSING || phase == InstallationPhase.TERMINATED) {
+        if (acquisitionBlocked()) {
             throw InstallationTransitionFailures.forPhase(phase);
         }
         if (phase == InstallationPhase.ACTIVE) {
@@ -59,11 +56,7 @@ final class RuntimeInstallationState {
 
     private AcquisitionPlan reserveActive(RuntimeOwner owner, LogyardRuntime observedGlobal) {
         if (observedGlobal != installation.runtime()) {
-            phase = InstallationPhase.CLOSING;
-            publishedInstallation = null;
-            leaseCounts.clear();
-            configurationAuthority = null;
-            return AcquisitionPlan.closeStale(beginRetirement(installation));
+            return AcquisitionPlan.closeStale(retire(installation));
         }
         if (owner.canReplace(configurationAuthority)) {
             phase = InstallationPhase.RECONFIGURING;
@@ -82,10 +75,7 @@ final class RuntimeInstallationState {
         if (leaseCounts.total() != 0) {
             return RuntimeRetirementPlan.none();
         }
-        phase = InstallationPhase.CLOSING;
-        publishedInstallation = null;
-        configurationAuthority = null;
-        return beginRetirement(candidate);
+        return retire(candidate);
     }
 
     synchronized void registerStartCandidate(RuntimeStartTransaction transaction, RuntimeInstallation candidate) {
@@ -102,8 +92,12 @@ final class RuntimeInstallationState {
 
     synchronized void commitStart(RuntimeStartTransaction transaction, RuntimeInstallation candidate, RuntimeOwner owner) {
         requireActiveStart(transaction);
-        installation = candidate;
         pendingStart = null;
+        activate(candidate, owner);
+    }
+
+    private void activate(RuntimeInstallation candidate, RuntimeOwner owner) {
+        installation = candidate;
         configurationAuthority = owner;
         leaseCounts.increment(owner);
         phase = InstallationPhase.ACTIVE;
@@ -115,17 +109,11 @@ final class RuntimeInstallationState {
             return RuntimeRetirementPlan.none();
         }
         if (candidate == null) {
-            pendingStart = null;
-            installation = null;
-            phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
+            returnToIdleAfterCancelledStart();
             return RuntimeRetirementPlan.none();
         }
         installation = candidate;
-        publishedInstallation = null;
-        leaseCounts.clear();
-        configurationAuthority = null;
-        phase = InstallationPhase.CLOSING;
-        return beginRetirement(candidate);
+        return retire(candidate);
     }
 
     synchronized void completeStartRetirement(RuntimeStartTransaction transaction) {
@@ -155,10 +143,7 @@ final class RuntimeInstallationState {
             phase = InstallationPhase.ACTIVE;
             return RuntimeRetirementPlan.none();
         }
-        phase = InstallationPhase.CLOSING;
-        publishedInstallation = null;
-        configurationAuthority = null;
-        return beginRetirement(plan.installation());
+        return retire(plan.installation());
     }
 
     synchronized RuntimeShutdownPlan shutdown(RuntimeInstallation expected, boolean terminateProcess) {
@@ -188,11 +173,7 @@ final class RuntimeInstallationState {
             phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
             return terminateProcess ? ALLOWED_SHUTDOWN : RuntimeShutdownPlan.rejected();
         }
-        phase = InstallationPhase.CLOSING;
-        publishedInstallation = null;
-        leaseCounts.clear();
-        configurationAuthority = null;
-        return RuntimeShutdownPlan.retire(beginRetirement(installation));
+        return RuntimeShutdownPlan.retire(retire(installation));
     }
 
     synchronized void completeRetirement(RuntimeRetirementTransaction retirement) {
@@ -204,6 +185,31 @@ final class RuntimeInstallationState {
             installation = null;
             phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
         }
+    }
+
+    private boolean acquisitionBlocked() {
+        return phase == InstallationPhase.STARTING
+                || phase == InstallationPhase.RECONFIGURING
+                || phase == InstallationPhase.CLOSING
+                || phase == InstallationPhase.TERMINATED;
+    }
+
+    private RuntimeRetirementPlan retire(RuntimeInstallation candidate) {
+        phase = InstallationPhase.CLOSING;
+        clearManagedOwnership();
+        return beginRetirement(candidate);
+    }
+
+    private void clearManagedOwnership() {
+        publishedInstallation = null;
+        leaseCounts.clear();
+        configurationAuthority = null;
+    }
+
+    private void returnToIdleAfterCancelledStart() {
+        pendingStart = null;
+        installation = null;
+        phase = terminating ? InstallationPhase.TERMINATED : InstallationPhase.EMPTY;
     }
 
     private RuntimeRetirementPlan beginRetirement(RuntimeInstallation candidate) {
