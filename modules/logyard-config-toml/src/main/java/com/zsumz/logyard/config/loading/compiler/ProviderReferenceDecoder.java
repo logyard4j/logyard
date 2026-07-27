@@ -1,4 +1,4 @@
-package com.zsumz.logyard.config.loading;
+package com.zsumz.logyard.config.loading.compiler;
 
 import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
 import com.zsumz.logyard.config.extension.ProviderReferenceConfig;

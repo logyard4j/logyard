@@ -1,4 +1,4 @@
-package com.zsumz.logyard.config.loading;
+package com.zsumz.logyard.config.loading.source;
 
 import com.zsumz.logyard.api.annotation.InternalApi;
 
@@ -27,9 +27,9 @@ public final class BoundedConfigurationFile {
             throw new IOException("Logyard configuration is not a regular file: " + path);
         }
         try (InputStream stream = Files.newInputStream(path)) {
-            byte[] bytes = stream.readNBytes(LogyardConfigLoader.MAX_CONFIG_BYTES + 1);
-            if (bytes.length > LogyardConfigLoader.MAX_CONFIG_BYTES) {
-                throw new IOException("Logyard configuration exceeds " + LogyardConfigLoader.MAX_CONFIG_BYTES + " bytes: " + path);
+            byte[] bytes = stream.readNBytes(ConfigurationInputLimits.MAX_CONFIG_BYTES + 1);
+            if (bytes.length > ConfigurationInputLimits.MAX_CONFIG_BYTES) {
+                throw new IOException("Logyard configuration exceeds " + ConfigurationInputLimits.MAX_CONFIG_BYTES + " bytes: " + path);
             }
             return bytes;
         }

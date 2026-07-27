@@ -1,4 +1,4 @@
-package com.zsumz.logyard.config.loading;
+package com.zsumz.logyard.config.loading.compiler;
 
 import java.util.Set;
 

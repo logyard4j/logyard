@@ -1,4 +1,4 @@
-package com.zsumz.logyard.config.loading;
+package com.zsumz.logyard.config.loading.compiler;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.delivery.OverflowAction;
@@ -90,7 +90,7 @@ final class CoreSectionDecoder {
         EnumMap<Level, OverflowRuleConfig> rules = defaultOverflow();
         for (Map.Entry<String, Object> entry : rawOverflow.entrySet()) {
             Level level =
-                    LogyardConfigLoader.parseLevel(entry.getKey(), reader.source(), reader.childPath("overflow." + entry.getKey()));
+                    ConfigurationCompiler.parseLevel(entry.getKey(), reader.source(), reader.childPath("overflow." + entry.getKey()));
             rules.put(level, overflowRule(entry.getValue(), reader, "overflow." + entry.getKey()));
         }
         reader.finish();

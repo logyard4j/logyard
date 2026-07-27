@@ -1,7 +1,7 @@
 package com.zsumz.logyard.runtime.reload;
 
 import com.zsumz.logyard.config.LogyardConfig;
-import com.zsumz.logyard.config.loading.BoundedConfigurationFile;
+import com.zsumz.logyard.config.loading.source.BoundedConfigurationFile;
 import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 
 import java.io.IOException;

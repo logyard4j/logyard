@@ -1,4 +1,4 @@
-package com.zsumz.logyard.config.loading;
+package com.zsumz.logyard.config.loading.compiler;
 
 import com.zsumz.logyard.config.ConfigurationException;
 import java.util.Map;
@@ -9,7 +9,7 @@ final class EnvironmentExpander {
     }
 
     static String expand(String value, Map<String, String> environment, String source, String path) {
-        StringBuilder result = new StringBuilder(Math.min(value.length(), LogyardConfigLoader.MAX_EXPANDED_STRING_CHARS));
+        StringBuilder result = new StringBuilder(Math.min(value.length(), ConfigurationCompiler.MAX_EXPANDED_STRING_CHARS));
         int cursor = 0;
         while (cursor < value.length()) {
             if (value.startsWith("$${", cursor)) {
@@ -50,8 +50,8 @@ final class EnvironmentExpander {
     }
 
     private static void appendBounded(StringBuilder result, String value, String source, String path) {
-        if (result.length() + value.length() > LogyardConfigLoader.MAX_EXPANDED_STRING_CHARS) {
-            throw failure(source, path, "expanded string exceeds " + LogyardConfigLoader.MAX_EXPANDED_STRING_CHARS + " characters");
+        if (result.length() + value.length() > ConfigurationCompiler.MAX_EXPANDED_STRING_CHARS) {
+            throw failure(source, path, "expanded string exceeds " + ConfigurationCompiler.MAX_EXPANDED_STRING_CHARS + " characters");
         }
         result.append(value);
     }

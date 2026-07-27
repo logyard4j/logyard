@@ -1,4 +1,4 @@
-package com.zsumz.logyard.config.loading;
+package com.zsumz.logyard.config.loading.compiler;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.config.ConfigurationException;
@@ -55,7 +55,7 @@ final class LoggerSectionDecoder {
             Map<String, String> environment) {
         if (value instanceof String text) {
             return new LoggerRuleConfig(
-                    LogyardConfigLoader.parseLevel(text, source, path),
+                    ConfigurationCompiler.parseLevel(text, source, path),
                     root ? List.copyOf(outputs.keySet()) : null,
                     root ? List.of() : null,
                     root ? List.of() : null);

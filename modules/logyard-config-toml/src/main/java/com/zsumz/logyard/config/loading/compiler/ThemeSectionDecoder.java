@@ -1,4 +1,4 @@
-package com.zsumz.logyard.config.loading;
+package com.zsumz.logyard.config.loading.compiler;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.config.theme.TextStyleConfig;
@@ -49,7 +49,7 @@ final class ThemeSectionDecoder {
         EnumMap<Level, TextStyleConfig> levels = new EnumMap<>(Level.class);
         for (Map.Entry<String, Object> entry : theme.dynamicObject("level").entrySet()) {
             String path = "themes." + themeName + ".level." + entry.getKey();
-            Level level = LogyardConfigLoader.parseLevel(entry.getKey(), source, path);
+            Level level = ConfigurationCompiler.parseLevel(entry.getKey(), source, path);
             levels.put(level, textStyle(ConfigReader.fromValue(entry.getValue(), source, path, environment)));
         }
         return levels;

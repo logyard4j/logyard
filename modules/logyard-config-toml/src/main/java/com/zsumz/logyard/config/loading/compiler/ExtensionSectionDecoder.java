@@ -1,4 +1,4 @@
-package com.zsumz.logyard.config.loading;
+package com.zsumz.logyard.config.loading.compiler;
 
 import com.zsumz.logyard.config.ConfigurationException;
 import com.zsumz.logyard.config.encoding.EncoderConfig;
