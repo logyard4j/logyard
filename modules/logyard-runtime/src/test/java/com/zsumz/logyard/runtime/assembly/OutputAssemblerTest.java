@@ -9,6 +9,7 @@ import com.zsumz.logyard.api.spi.output.OutputProvider;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.loading.LogyardConfigLoader;
 import com.zsumz.logyard.core.failure.ComponentInvocationException;
+import com.zsumz.logyard.runtime.assembly.output.OutputAssembler;
 import com.zsumz.logyard.runtime.extension.ExtensionRegistry;
 
 import java.nio.charset.StandardCharsets;

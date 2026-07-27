@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.assembly;
+package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.config.LogyardConfig;
@@ -13,11 +13,11 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Transactionally assembles configured outputs while reusing only proven-equivalent resources. */
-final class OutputAssembler {
+public final class OutputAssembler {
     private OutputAssembler() {
     }
 
-    static AssembledOutputs assemble(LogyardConfig config, RuntimeAssembly current, ExtensionRegistry extensions) {
+    public static AssembledOutputs assemble(LogyardConfig config, OutputReuseSource current, ExtensionRegistry extensions) {
         Objects.requireNonNull(config, "config");
         Objects.requireNonNull(extensions, "extensions");
         ExclusiveOutputPathValidator.validate(config.outputs().values());
@@ -53,7 +53,7 @@ final class OutputAssembler {
 
     private static OutputPreparation create(
             LogyardConfig config,
-            RuntimeAssembly current,
+            OutputReuseSource current,
             OutputConfig output,
             Path exclusivePath,
             ExtensionRegistry extensions) {
@@ -61,7 +61,7 @@ final class OutputAssembler {
         return OutputFactory.prepare(config, output, extensions);
     }
 
-    private static void verifyExclusivePathAvailable(RuntimeAssembly current, OutputConfig output, Path exclusivePath) {
+    private static void verifyExclusivePathAvailable(OutputReuseSource current, OutputConfig output, Path exclusivePath) {
         if (exclusivePath == null || current == null) {
             return;
         }

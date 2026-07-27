@@ -469,6 +469,18 @@ if installation_root_types != expected_installation_root_types:
         + ", ".join(sorted(installation_root_types))
     )
 
+assembly_root = ROOT / "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly"
+assembly_root_types = {
+    source.name
+    for source in assembly_root.glob("*.java")
+    if source.name != "package-info.java"
+}
+if assembly_root_types != {"LogyardRuntimeFactory.java", "RuntimeAssembly.java"}:
+    errors.append(
+        "runtime assembly root must contain only the construction and candidate facades; found "
+        + ", ".join(sorted(assembly_root_types))
+    )
+
 production_types: dict[str, str] = {}
 for source, _ in main_files:
     if source.name == "package-info.java":
@@ -856,9 +868,9 @@ FAILURE_BOUNDARY_CONTRACTS = {
         "ComponentInvocationBoundary.invoke(",
     "modules/logyard-core/src/main/java/com/zsumz/logyard/core/runtime/retirement/RuntimeOutputs.java":
         "ComponentInvocationBoundary.invoke(",
-    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/EventSinkCleanup.java":
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/output/EventSinkCleanup.java":
         "ComponentInvocationBoundary.invoke(",
-    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/OutputFactory.java":
+    "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/output/OutputFactory.java":
         "ComponentInvocationBoundary.call(",
     "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/assembly/output/EncoderResolver.java":
         "ComponentInvocationBoundary.call(",

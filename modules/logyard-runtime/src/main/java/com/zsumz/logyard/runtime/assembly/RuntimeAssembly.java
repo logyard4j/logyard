@@ -1,9 +1,14 @@
 package com.zsumz.logyard.runtime.assembly;
 
 import com.zsumz.logyard.api.spi.output.EventSink;
+import com.zsumz.logyard.api.annotation.InternalApi;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
+import com.zsumz.logyard.runtime.assembly.output.ExclusiveOutputPathValidator;
+import com.zsumz.logyard.runtime.assembly.output.OutputBinding;
+import com.zsumz.logyard.runtime.assembly.output.OutputCandidateSet;
+import com.zsumz.logyard.runtime.assembly.output.OutputReuseSource;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
 
 import java.nio.file.Path;
@@ -15,7 +20,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /** Fully validated candidate plan whose resources are either new or proven reusable. */
-public final class RuntimeAssembly {
+public final class RuntimeAssembly implements OutputReuseSource {
     private final LogyardConfig config;
     private final RuntimePlan plan;
     private final ContextPolicySnapshot contextPolicy;
@@ -42,11 +47,15 @@ public final class RuntimeAssembly {
         return contextPolicy;
     }
 
-    OutputBinding binding(String outputName) {
+    @Override
+    @InternalApi
+    public OutputBinding binding(String outputName) {
         return bindings.get(outputName);
     }
 
-    OutputBinding bindingForExclusivePath(Path path) {
+    @Override
+    @InternalApi
+    public OutputBinding bindingForExclusivePath(Path path) {
         Path normalized = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
         for (OutputBinding binding : bindings.values()) {
             if (binding.exclusivePath() != null

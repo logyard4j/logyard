@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.assembly;
+package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.config.delivery.DeliveryConfig;
 import com.zsumz.logyard.config.encoding.EncoderConfig;
@@ -13,7 +13,7 @@ import java.time.Duration;
 import java.util.Objects;
 
 /** Immutable construction signature used to prove an output is safe to reuse. */
-record OutputSignature(
+public record OutputSignature(
         OutputConfig output,
         DeliveryConfig delivery,
         ServiceConfig serviceIdentity,
@@ -23,7 +23,7 @@ record OutputSignature(
         EncoderConfig encoder,
         JsonProfileConfig jsonProfile,
         Duration shutdownTimeout) {
-    OutputSignature {
+    public OutputSignature {
         Objects.requireNonNull(output, "output");
         Objects.requireNonNull(delivery, "delivery");
         Objects.requireNonNull(shutdownTimeout, "shutdownTimeout");

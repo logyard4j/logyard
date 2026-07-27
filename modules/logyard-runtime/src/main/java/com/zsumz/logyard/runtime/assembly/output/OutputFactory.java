@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.assembly;
+package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.spi.output.EventSink;
@@ -32,7 +32,7 @@ import java.time.ZoneId;
 import java.util.Objects;
 
 /** Factory for concrete output resources and their configured delivery decorators. */
-final class OutputFactory {
+public final class OutputFactory {
     private OutputFactory() {
     }
 
@@ -53,7 +53,7 @@ final class OutputFactory {
                 DeliveryAssembler.wrap(output, raw, config.deliveryFor(output), config.runtime().shutdownTimeout()));
     }
 
-    static void validateDefinitions(LogyardConfig config, ExtensionRegistry extensions) {
+    public static void validateDefinitions(LogyardConfig config, ExtensionRegistry extensions) {
         Objects.requireNonNull(config, "config");
         Objects.requireNonNull(extensions, "extensions");
         for (OutputConfig output : config.outputs().values()) {

@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.assembly;
+package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.config.output.ConsoleOutputConfig;
 import com.zsumz.logyard.config.output.CustomOutputConfig;

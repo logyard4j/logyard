@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.assembly;
+package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.api.spi.output.EventSink;
 
@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Owns newly prepared outputs until they are activated or abandoned. */
-final class OutputCandidateSet {
+public final class OutputCandidateSet {
     private final List<OutputPreparation> preparations;
     private boolean activated;
 
@@ -14,7 +14,7 @@ final class OutputCandidateSet {
         this.preparations = List.copyOf(preparations);
     }
 
-    void activate() {
+    public void activate() {
         if (activated) {
             return;
         }

@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.assembly;
+package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.config.output.OutputConfig;
 
@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Rejects candidate outputs that require the same normalized path or existing file identity. */
-final class ExclusiveOutputPathValidator {
+public final class ExclusiveOutputPathValidator {
     private ExclusiveOutputPathValidator() {
     }
 
@@ -32,7 +32,7 @@ final class ExclusiveOutputPathValidator {
         }
     }
 
-    static boolean refersToSameFile(Path left, Path right) {
+    public static boolean refersToSameFile(Path left, Path right) {
         Path normalizedLeft = left.toAbsolutePath().normalize();
         Path normalizedRight = right.toAbsolutePath().normalize();
         if (normalizedLeft.equals(normalizedRight)) {

@@ -1,4 +1,4 @@
-package com.zsumz.logyard.runtime.assembly;
+package com.zsumz.logyard.runtime.assembly.output;
 
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.output.EventSink;
