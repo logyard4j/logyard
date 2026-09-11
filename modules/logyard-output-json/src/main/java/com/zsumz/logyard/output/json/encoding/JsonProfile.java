@@ -11,6 +11,7 @@ import java.util.Set;
 
 /** Validated mapping from Logyard's canonical event fields to one JSON object profile. */
 public final class JsonProfile {
+    static final String TRUNCATED = "logyard.output.truncated";
     public static final Set<String> FIELDS = Set.of(
             "timestamp",
             "observed_timestamp_unix_nano",
@@ -109,7 +110,7 @@ public final class JsonProfile {
         }
         JsonAttributeTransform transform = Objects.requireNonNullElse(
                 attributes, JsonAttributeTransform.nested());
-        LinkedHashSet<String> destinations = new LinkedHashSet<>();
+        LinkedHashSet<String> destinations = new LinkedHashSet<>(Set.of(TRUNCATED));
         for (String field : FIELDS) {
             if (dropped.contains(field)
                     || ("attributes".equals(field)

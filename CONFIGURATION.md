@@ -188,6 +188,8 @@ exclude = ["authorization", "cookie"]
 
 Canonical fields are `timestamp`, `observed_timestamp_unix_nano`, `severity_number`, `severity_text`, `logger`, `event_name`, `body`, `message_template`, `attributes`, `resource`, `thread`, and `exception`. Keep `timestamp` and at least one of `body` or `event_name`.
 
+Excluded fields stay excluded in normal, truncated, and error output. Oversized JSON falls back to the profile's timestamp and permitted severity, logger, event name, and body. `logyard.output.truncated` is reserved and cannot be renamed or overwritten.
+
 ## Delivery and overflow
 
 ```toml

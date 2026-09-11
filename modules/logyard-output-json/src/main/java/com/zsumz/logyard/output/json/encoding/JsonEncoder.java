@@ -12,6 +12,7 @@ import java.util.Set;
 public final class JsonEncoder implements EventEncoder {
     private final ResourceAttributes resource;
     private final JsonProfile profile;
+    private final JsonFallback fallback;
     private final JsonWriter json = new JsonWriter(1024);
     private final JsonExceptionWriter exceptions = new JsonExceptionWriter(json);
 
@@ -22,6 +23,7 @@ public final class JsonEncoder implements EventEncoder {
     public JsonEncoder(ResourceAttributes resource, JsonProfile profile) {
         this.resource = Objects.requireNonNull(resource, "resource");
         this.profile = Objects.requireNonNull(profile, "profile");
+        fallback = new JsonFallback(profile);
     }
 
     @Override
@@ -32,7 +34,7 @@ public final class JsonEncoder implements EventEncoder {
         try {
             return encodeEvent(event);
         } catch (JsonLimitExceeded limit) {
-            return encodeTruncatedFallback(event);
+            return fallback.encode(json, event);
         }
     }
 
@@ -69,7 +71,7 @@ public final class JsonEncoder implements EventEncoder {
             exceptions.write(event.exception());
         }
         if (json.traversalTruncated() || event.renderedMessageTruncated()) {
-            first = beginField(first, "logyard.output.truncated");
+            first = beginField(first, JsonProfile.TRUNCATED);
             json.value(true);
         }
         json.endObject();
@@ -163,19 +165,4 @@ public final class JsonEncoder implements EventEncoder {
         return false;
     }
 
-    private String encodeTruncatedFallback(LogEvent event) {
-        json.reset();
-        json.beginObject();
-        json.field("timestamp", Instant.ofEpochMilli(event.timestampMillis()).toString());
-        json.comma();
-        json.field("severity_text", event.level().name());
-        json.comma();
-        json.field("logger", event.loggerName());
-        json.comma();
-        json.field("body", event.renderedMessage());
-        json.comma();
-        json.field("logyard.output.truncated", true);
-        json.endObject();
-        return json.result();
-    }
 }
