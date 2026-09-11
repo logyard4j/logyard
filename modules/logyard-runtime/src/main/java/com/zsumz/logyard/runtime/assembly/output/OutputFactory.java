@@ -94,7 +94,7 @@ public final class OutputFactory {
             ExtensionRegistry extensions) {
         PrintStream stream = "stdout".equals(output.stream()) ? System.out : System.err;
         return new JsonLinesSink(
-                new OutputStreamWriter(stream, StandardCharsets.UTF_8),
+                new OutputStreamWriter(new CheckedPrintStream(stream), StandardCharsets.UTF_8),
                 EncoderResolver.resolve(config, output.encoder(), resource, extensions),
                 output.flushInterval(),
                 false);
