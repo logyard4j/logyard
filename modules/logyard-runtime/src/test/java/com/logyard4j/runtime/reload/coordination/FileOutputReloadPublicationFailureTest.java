@@ -1,5 +1,6 @@
 package com.logyard4j.runtime.reload.coordination;
 
+import static com.logyard4j.runtime.testing.TomlTestStrings.escapeBasicString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
@@ -99,6 +100,6 @@ final class FileOutputReloadPublicationFailureTest {
                 path = "%s"
                 append = false
                 flush = "0s"
-                """.formatted(output);
+                """.formatted(escapeBasicString(output));
     }
 }

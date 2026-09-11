@@ -3,6 +3,7 @@ package com.logyard4j.runtime.installation.process;
 import com.logyard4j.runtime.installation.ConfigurationInstallationRequest;
 import com.logyard4j.runtime.installation.GlobalRuntimeAccess;
 
+import static com.logyard4j.runtime.testing.TomlTestStrings.escapeBasicString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -61,7 +62,7 @@ final class FileOutputInstallationFailureTest {
                 path = "%s"
                 append = false
                 flush = "0s"
-                """.formatted(output);
+                """.formatted(escapeBasicString(output));
     }
 
     private static final class RejectingGlobal implements GlobalRuntimeAccess {

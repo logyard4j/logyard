@@ -5,6 +5,7 @@ import com.logyard4j.runtime.reload.WatcherReloadOutcome;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -93,8 +94,17 @@ final class ConfigurationWatcherPortabilityTest {
     private static void replace(Path source, Path target) throws Exception {
         try {
             Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (AtomicMoveNotSupportedException unsupported) {
+        } catch (AtomicMoveNotSupportedException | AccessDeniedException unsupported) {
+            replaceNonAtomically(source, target);
+        }
+    }
+
+    private static void replaceNonAtomically(Path source, Path target) throws Exception {
+        try {
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AccessDeniedException unsupportedReplacement) {
+            Files.delete(target);
+            Files.move(source, target);
         }
     }
 

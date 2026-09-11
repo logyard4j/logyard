@@ -1,5 +1,6 @@
 package com.logyard4j.runtime.assembly;
 
+import static com.logyard4j.runtime.testing.TomlTestStrings.escapeBasicString;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -170,7 +171,7 @@ final class OutputAssemblerTest {
                 path = "%s"
                 append = %s
                 flush = "10ms"
-                """.formatted(path, append);
+                """.formatted(escapeBasicString(path), append);
         return LogyardConfigLoader.parse(text, "file-output.toml", Path.of("."), Map.of());
     }
 
@@ -189,7 +190,7 @@ final class OutputAssemblerTest {
                 path = "%s"
                 append = %s
                 flush = "10ms"
-                """.formatted(path, append);
+                """.formatted(escapeBasicString(path), append);
         return LogyardConfigLoader.parse(text, "async-file-output.toml", Path.of("."), Map.of());
     }
 
@@ -211,7 +212,7 @@ final class OutputAssemblerTest {
                 [outputs.later]
                 type = "custom"
                 provider = "failing"
-                """.formatted(path);
+                """.formatted(escapeBasicString(path));
         return LogyardConfigLoader.parse(text, "candidate-output.toml", Path.of("."), Map.of());
     }
 
@@ -230,7 +231,7 @@ final class OutputAssemblerTest {
                 [outputs.events]
                 type = "file"
                 path = "%s"
-                """.formatted(first, second);
+                """.formatted(escapeBasicString(first), escapeBasicString(second));
         return LogyardConfigLoader.parse(text, "duplicate-output.toml", Path.of("."), Map.of());
     }
 

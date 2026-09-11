@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.logyard4j.runtime.testing.TomlTestStrings.escapeBasicString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -104,7 +105,7 @@ final class RuntimeJsonConcurrencyTest {
                         path = "%s"
                         append = false
                         flush = "1m"
-                        """.formatted(output),
+                        """.formatted(escapeBasicString(output)),
                 "runtime-json-concurrency.toml",
                 Path.of("."),
                 Map.of());

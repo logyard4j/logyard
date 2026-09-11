@@ -1,5 +1,6 @@
 package com.logyard4j.runtime.reload.coordination;
 
+import static com.logyard4j.runtime.testing.TomlTestStrings.escapeBasicString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -105,7 +106,7 @@ final class DuplicateOutputReloadTest {
                 [outputs.events]
                 type = "file"
                 path = "%s"
-                """.formatted(output, equivalent);
+                """.formatted(escapeBasicString(output), escapeBasicString(equivalent));
     }
 
     private static String repairedConfig(Path output) {
@@ -120,6 +121,6 @@ final class DuplicateOutputReloadTest {
                 [outputs.events]
                 type = "file"
                 path = "%s"
-                """.formatted(output);
+                """.formatted(escapeBasicString(output));
     }
 }

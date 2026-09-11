@@ -1,5 +1,6 @@
 package com.logyard4j.runtime.reload.coordination;
 
+import static com.logyard4j.runtime.testing.TomlTestStrings.escapeBasicString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.logyard4j.api.Level;
@@ -94,6 +95,6 @@ final class ReloadCoordinatorTransientResourceTest {
                 append = true
                 buffer = "4KiB"
                 flush = "0s"
-                """.formatted(output);
+                """.formatted(escapeBasicString(output));
     }
 }

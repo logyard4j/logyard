@@ -1,5 +1,6 @@
 package com.logyard4j.runtime.assembly.output;
 
+import static com.logyard4j.runtime.testing.TomlTestStrings.escapeBasicString;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -103,7 +104,7 @@ final class FileOutputReloadIdentityTest {
                 path = "%s"
                 flush = "10ms"
                 %s
-                """.formatted(path, durability);
+                """.formatted(escapeBasicString(path), durability);
         return LogyardConfigLoader.parse(text, "file-durability.toml", Path.of("."), Map.of());
     }
 }

@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntFunction;
 
+import static com.logyard4j.runtime.testing.TomlTestStrings.escapeBasicString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -200,7 +201,7 @@ final class ConfigurationPreparationStabilityTest {
                 path = "%s"
                 append = false
                 flush = "0s"
-                """.formatted(output);
+                """.formatted(escapeBasicString(output));
     }
 
     private static final class ScriptedSnapshots {
