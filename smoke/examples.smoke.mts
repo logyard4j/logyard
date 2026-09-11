@@ -2,10 +2,11 @@ import { smoke } from "smoque";
 import { writeFile } from "node:fs/promises";
 
 const scenarios = [
-  "slf4j", "vertx", "micronaut",
+  "slf4j", "opentelemetry", "vertx", "micronaut",
   "spring-boot-3-mvc", "spring-boot-4-mvc",
   "spring-boot-3-webflux", "spring-boot-4-webflux",
   "spring-boot-4-no-actuator", "spring-boot-4-external-config", "spring-boot-4-safe-defaults",
+  "spring-boot-4-provider-conflict",
   "quarkus", "quarkus-disabled",
 ];
 

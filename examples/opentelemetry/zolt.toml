@@ -1,0 +1,16 @@
+[project]
+name = "logyard-opentelemetry-example"
+version = "1.0.0-SNAPSHOT"
+group = "com.zsumz.logyard.examples"
+java = "21"
+main = "com.zsumz.logyard.examples.opentelemetry.OpenTelemetryExampleApplication"
+
+[platforms]
+"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+
+[dependencies]
+"com.zsumz.logyard:logyard-slf4j2" = {}
+"com.zsumz.logyard:logyard-opentelemetry" = {}
+
+[resources]
+main = ["src/main/resources"]

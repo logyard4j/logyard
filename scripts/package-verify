@@ -139,12 +139,20 @@ require_entry "$ROOT/modules/logyard-slf4j2/target/logyard-slf4j2-$VERSION.jar" 
   "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"
 require_entry "$ROOT/modules/logyard-system-logger/target/logyard-system-logger-$VERSION.jar" \
   'META-INF/services/java.lang.System$LoggerFinder'
+require_entry "$ROOT/modules/logyard-opentelemetry/target/logyard-opentelemetry-$VERSION.jar" \
+  'META-INF/services/com.zsumz.logyard.api.spi.context.ContextProvider'
 
 slf4j_api="$(find_dependency 'slf4j-api-2.0.18.jar')"
 [[ -n "$slf4j_api" ]] || fail "slf4j-api-2.0.18.jar is not available in the Zolt cache"
+context_jars=()
+for dependency in opentelemetry-api opentelemetry-context opentelemetry-common; do
+  archive="$(find_dependency "$dependency-1.65.0.jar")"
+  [[ -n "$archive" ]] || fail "$dependency-1.65.0.jar is not available in the Zolt cache"
+  context_jars+=("$archive")
+done
 
 packaged_classpath=""
-for archive in "${main_jars[@]}" "$slf4j_api"; do
+for archive in "${main_jars[@]}" "$slf4j_api" "${context_jars[@]}"; do
   if [[ -z "$packaged_classpath" ]]; then
     packaged_classpath="$archive"
   else

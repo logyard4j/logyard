@@ -1,0 +1,59 @@
+[project]
+name = "logyard-opentelemetry"
+version = "0.1.0-rc.1"
+group = "com.zsumz.logyard"
+java = "21"
+
+[repositories]
+central = "https://repo.maven.apache.org/maven2"
+
+[dependencies]
+"com.zsumz.logyard:logyard-api" = { workspace = "modules/logyard-api" }
+"io.opentelemetry:opentelemetry-api" = "1.65.0"
+
+[test.dependencies]
+"com.zsumz.logyard:logyard-runtime" = { workspace = "modules/logyard-runtime" }
+"org.junit.platform:junit-platform-console-standalone" = "1.11.4"
+
+[build]
+source = "src/main/java"
+test = "src/test/java"
+output = "target/classes"
+testOutput = "target/test-classes"
+
+[resources]
+main = ["src/main/resources"]
+
+[build.metadata]
+reproducible = true
+
+[package]
+mode = "thin"
+sources = true
+javadoc = true
+
+[package.metadata]
+name = "Logyard OpenTelemetry Context"
+description = "Optional OpenTelemetry trace identity and allowlisted baggage capture for Logyard."
+url = "https://github.com/zsumz/logyard"
+license = "Apache-2.0"
+licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+developers = ["zsumz <shawn@zsumz.com>"]
+scm = "https://github.com/zsumz/logyard"
+scmConnection = "scm:git:https://github.com/zsumz/logyard.git"
+scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"
+issues = "https://github.com/zsumz/logyard/issues"
+
+[package.manifest]
+"Automatic-Module-Name" = "com.zsumz.logyard.opentelemetry"
+
+[publish]
+artifacts = ["main"]
+
+[publish.signing]
+enabled = true
+keyId = "EC8E4D26598A0373"
+
+[publish.central]
+tokenEnv = "ZOLT_CENTRAL_TOKEN"
+publishingType = "user-managed"

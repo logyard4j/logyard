@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 from .contracts import (
@@ -10,7 +12,7 @@ from .contracts import (
     require_spring_boot_events,
     require_vertx_events,
 )
-from .events import EventLog
+from .events import EventExpectation, EventLog
 from .zolt import ZoltExample, ZoltExampleRunner
 from .server import HttpExample, HttpExampleRunner, HttpRequestExpectation
 from .scenarios import spring_boot_example
@@ -23,9 +25,10 @@ def main() -> None:
     parser.add_argument("release_repository", type=Path)
     parser.add_argument("version")
     parser.add_argument("--scenario", required=True, choices=(
-        "slf4j", "vertx", "micronaut", "spring-boot-3-mvc", "spring-boot-4-mvc",
+        "slf4j", "opentelemetry", "vertx", "micronaut", "spring-boot-3-mvc", "spring-boot-4-mvc",
         "spring-boot-3-webflux", "spring-boot-4-webflux", "spring-boot-4-no-actuator",
         "spring-boot-4-external-config", "spring-boot-4-safe-defaults", "quarkus", "quarkus-disabled",
+        "spring-boot-4-provider-conflict",
     ))
     arguments = parser.parse_args()
 
@@ -38,6 +41,38 @@ def main() -> None:
 
 def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunner, scenario: str) -> None:
     versions = framework_versions(root)
+    if scenario == "spring-boot-4-provider-conflict":
+        base = spring_boot_example(root, "4-provider-conflict", versions["spring_boot_current"],
+                                   "spring-boot-starter-webmvc").zolt
+        fixture = replace(base, replacements=base.replacements + (
+            ('[dependencies]', '[dependencies]\n"org.slf4j:slf4j-simple" = "2.0.18"'),
+        ))
+        built = runner.build(fixture)
+        process = subprocess.run(runner.executable_jar_command(built, "logyard-spring-boot-example-1.0.0-SNAPSHOT.jar"),
+                                 cwd=built.example.project_directory, capture_output=True, text=True, timeout=30)
+        diagnostics = process.stdout + process.stderr
+        (root / "target/examples-verify/spring-boot-4-provider-conflict.process.log").write_text(diagnostics)
+        if process.returncode == 0 or "requires Logyard to be the sole SLF4J provider" not in diagnostics:
+            raise AssertionError(f"competing provider did not fail startup with remediation:\n{diagnostics}")
+        if "spring-boot-starter-logging" not in diagnostics:
+            raise AssertionError("competing provider failure omitted starter exclusion guidance")
+        return
+    if scenario == "opentelemetry":
+        logger = "com.zsumz.logyard.examples.opentelemetry.OpenTelemetryExampleApplication"
+        example = ZoltExample(scenario, root / "examples/opentelemetry", logger)
+        events = EventLog.read(runner.build_and_run(example))
+        events.require_real_timestamps()
+        for body in ("trace direct", "trace wrapped"):
+            events.require(EventExpectation(body, logger, "INFO", (
+                ("trace_id", "0123456789abcdef0123456789abcdef"), ("span_id", "0123456789abcdef"),
+                ("trace_flags", "01"), ("baggage.tenant.id", "tenant-7"),
+            ), absent_attributes=("baggage.secret",)))
+        for body in ("trace unwrapped", "trace outside", "trace shutdown flush"):
+            events.require(EventExpectation(body, logger, "INFO", absent_attributes=(
+                "trace_id", "span_id", "trace_flags", "baggage.tenant.id", "baggage.secret",
+            )))
+        events.require_last("trace shutdown flush")
+        return
     if scenario in ("slf4j", "vertx", "micronaut"):
         name = {"slf4j": "Slf4j", "vertx": "Vertx", "micronaut": "Micronaut"}[scenario]
         example = ZoltExample(scenario, root / "examples" / scenario,

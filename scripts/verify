@@ -237,8 +237,6 @@ run_bounded "$JAVA" -cp \
   "$SYSTEM_PROVIDER:$PRODUCT_CP:$TARGET/system-logger:$TARGET/integration" \
   com.zsumz.logyard.tests.SystemLoggerCanaryMain "$CANARY_CONFIG" "$CANARY_OUTPUT"
 
-main_count="$(find "$ROOT/modules" "$ROOT/tests" -path '*/src/main/java/*' -type f -name '*.java' | wc -l)"
-test_count="$(find "$ROOT/modules" -path '*/src/test/java/*' -type f -name '*.java' | wc -l)"
-printf '\nVerification passed (%s): %s main Java files, %s JUnit source files.\n' \
-  "$verification_mode" "$main_count" "$test_count"
+printf '\nJDK verification passed (%s): core, available facades, integration and boundedness checks.\n' "$verification_mode"
+printf 'Optional integration modules require the resolved Zolt test gate in scripts/ci.\n'
 printf 'Artifacts: %s\n' "$TARGET"

@@ -130,11 +130,13 @@ def _check_source_safety(root: Path, source: Path, text: str, member: str, state
         if pattern.search(text):
             state.add_error(f"{relative}: {description} are forbidden")
     for marker in (
-        "com.zsumz.logyard.output.otlp", "io.opentelemetry.", "org.apache.kafka.",
+        "com.zsumz.logyard.output.otlp", "org.apache.kafka.",
         "com.zsumz.logyard.kafka.", "com.zsumz.logyard.slf4j17.", "org.slf4j.impl.",
     ):
         if marker in text:
             state.add_error(f"{relative}: removed integration marker {marker!r} remains")
+    if "io.opentelemetry." in text and member != "logyard-opentelemetry":
+        state.add_error(f"{relative}: OpenTelemetry API access is confined to logyard-opentelemetry")
     if "java.nio.file.WatchService" in text and member != "logyard-runtime":
         state.add_error(f"{relative}: WatchService is confined to logyard-runtime")
     if ("java.nio.channels.FileLock" in text or ".tryLock(" in text) and member != "logyard-output-json":

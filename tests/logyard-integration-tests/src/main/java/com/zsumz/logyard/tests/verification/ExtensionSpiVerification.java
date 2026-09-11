@@ -27,7 +27,7 @@ final class ExtensionSpiVerification implements VerificationCase {
         String callerThread = Thread.currentThread().getName();
         try (LogyardRuntime runtime = LogyardRuntimeFactory.create(config)) {
             EffectiveRoute route = runtime.explain("tests.Custom");
-            equal(List.of("allow", "add"), route.processors());
+            equal(VerificationAssertions.withDiscoveredContext(List.of("allow", "add")), route.processors());
             runtime.logger("tests.Custom").atInfo().log("hello");
             runtime.flush();
             ComponentHealth output = runtime.health().components().stream()

@@ -1,0 +1,21 @@
+schema = 1
+
+[runtime]
+watch = false
+
+[context]
+trace = true
+baggage = ["tenant.id"]
+
+[delivery]
+mode = "async"
+capacity = 64
+
+[loggers]
+root = { level = "info", outputs = ["json"] }
+
+[outputs.json]
+type = "file"
+path = "${LOGYARD_EXAMPLE_OUTPUT}"
+append = false
+flush = "1s"

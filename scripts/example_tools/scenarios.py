@@ -50,5 +50,9 @@ def spring_boot_example(
             else ("-Dlogyard.config=classpath:logyard.toml",),
         ),
         executable_jar_name="logyard-spring-boot-example-1.0.0-SNAPSHOT.jar",
-        additional_requests=actuator_requests if actuator else (),
+        additional_requests=(actuator_requests if actuator else ()) + (
+            HttpRequestExpectation("/trace", 200, "trace", headers=(
+                ("traceparent", "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"),
+            )),
+        ),
     )

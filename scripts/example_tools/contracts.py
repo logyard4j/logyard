@@ -72,6 +72,14 @@ def require_spring_boot_events(
     if actuator:
         events.require(EventExpectation("Spring Boot dynamic debug", controller_logger, "DEBUG", (("request.id", "request-debug"),)))
     events.require(EventExpectation("Spring Boot shutdown flush", shutdown_logger, "INFO", (("phase", "shutdown"),)))
+    trace_logger = "com.zsumz.logyard.examples.springboot.TraceExampleController"
+    for body in ("Spring Boot trace request", "Spring Boot trace executor"):
+        events.require(EventExpectation(body, trace_logger, "INFO", (
+            ("trace_id", "0123456789abcdef0123456789abcdef"), ("span_id", "0123456789abcdef"),
+            ("trace_flags", "01"),
+        )))
+    events.require(EventExpectation("Spring Boot trace scope closed", trace_logger, "INFO",
+                                    absent_attributes=("trace_id", "span_id", "trace_flags")))
 
 
 def require_micronaut_events(

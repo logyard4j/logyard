@@ -19,6 +19,7 @@ class HttpRequestExpectation:
     method: str = "GET"
     request_body: str | None = None
     body_contains: bool = False
+    headers: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -135,6 +136,7 @@ class HttpExampleRunner:
     def _request(port: int, expectation: HttpRequestExpectation) -> None:
         data = expectation.request_body.encode("utf-8") if expectation.request_body is not None else None
         headers = {"X-Request-Id": f"request-{expectation.path.strip('/').replace('/', '-')}"}
+        headers.update(expectation.headers)
         if data is not None:
             headers["Content-Type"] = "application/json"
         request = urllib.request.Request(

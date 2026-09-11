@@ -1,9 +1,7 @@
 package com.zsumz.logyard.examples.springboot;
 
-import java.util.ServiceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.spi.SLF4JServiceProvider;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,7 +19,6 @@ public class SpringBootExampleApplication {
     }
 
     public static void main(String[] arguments) {
-        requireSoleSlf4jProvider();
         SpringApplication.run(SpringBootExampleApplication.class, arguments);
     }
 
@@ -32,10 +29,4 @@ public class SpringBootExampleApplication {
         LOGGER.atInfo().addKeyValue("phase", "startup").log("Spring Boot application started");
     }
 
-    private static void requireSoleSlf4jProvider() {
-        long providers = ServiceLoader.load(SLF4JServiceProvider.class).stream().count();
-        if (providers != 1) {
-            throw new IllegalStateException("expected exactly one SLF4J provider, found " + providers);
-        }
-    }
 }

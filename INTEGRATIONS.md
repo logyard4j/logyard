@@ -364,11 +364,63 @@ dependencies {
 
 </details>
 
+## OpenTelemetry
+
+Add the optional context module alongside your Logyard integration. It uses the OpenTelemetry API; it does not install an SDK or exporter.
+
+<details>
+<summary>Maven (pom.xml)</summary>
+
+```xml
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-opentelemetry</artifactId>
+    <version>0.1.0-rc.1</version>
+  </dependency>
+</dependencies>
+```
+
+</details>
+
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
+
+```kotlin
+dependencies {
+    implementation("com.zsumz.logyard:logyard-opentelemetry:0.1.0-rc.1")
+}
+```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[dependencies]
+"com.zsumz.logyard:logyard-opentelemetry" = "0.1.0-rc.1"
+```
+
+</details>
+
+```toml
+[context]
+trace = true
+baggage = ["tenant.id"]
+```
+
+Logyard captures valid active trace IDs, span IDs, flags, and only the named baggage keys on the publishing thread. Unsampled spans still correlate. Baggage keys are literal: `"*"` does not request every key.
+
+Logyard and compact JSON keep `trace_id`, `span_id`, `trace_flags`, and `baggage.tenant.id` in their attribute object. ECS projects trace identity to `trace.id`, `span.id`, and `logyard.trace_flags`; baggage becomes a label.
+
+Your application or instrumentation must propagate context across executors and framework callbacks. Logyard does not create spans or propagate context automatically. See the [executor example](examples/opentelemetry) and the Spring Boot example's [`/trace` endpoint](examples/spring-boot/src/main/java/com/zsumz/logyard/examples/springboot/TraceExampleController.java).
+
 ## Native images
 
 Spring and Quarkus include classpath resources named `logyard.toml` and `logyard-*.toml`, including nested paths such as `logging/logyard-prod.toml`.
 
-Native-image support includes Micronaut, Spring Boot 4, and Quarkus with GraalVM 25.
+Framework metadata is present, but native-image execution is outside the pinned Zolt verification scope. The qualified consumer examples are JVM applications.
 
 ## Manage dependency versions
 
@@ -434,6 +486,7 @@ Each example includes a `zolt.toml` build and a Logyard configuration:
 | Application | Shows |
 | --- | --- |
 | [SLF4J](examples/slf4j) | Fluent structured logging |
+| [OpenTelemetry](examples/opentelemetry) | Active trace identity, allowlisted baggage, explicit executor propagation |
 | [Vert.x](examples/vertx) | Logging from a Vert.x application |
 | [Micronaut](examples/micronaut) | Startup, structured events, and shutdown flush |
 | [Spring Boot](examples/spring-boot) | MVC, WebFlux, Actuator, dynamic levels, JUL, and shutdown flush |
@@ -445,9 +498,9 @@ Run every example against freshly packaged Logyard artifacts:
 ./scripts/examples-verify
 ```
 
-This builds `target/release-bundle`, then runs the Zolt examples through Smoque. Checks cover HTTP responses, structured fields, redaction, framework logging, and shutdown flushes.
+This builds `target/release-bundle`, then runs the Zolt examples through Smoque. Checks cover HTTP responses, structured fields, redaction, framework logging, trace correlation, and shutdown flushes.
 
-Spring Boot covers both supported versions, MVC and WebFlux, Actuator present and absent, and external and default configuration. Quarkus covers tests and packaged JVM applications with Logyard enabled and disabled.
+Spring Boot covers both supported versions, MVC and WebFlux, Actuator present and absent, external and default configuration, propagated trace context, and rejection of competing SLF4J providers. Quarkus covers tests and packaged JVM applications with Logyard enabled and disabled.
 
 Verification covers JVM applications. Framework native images, Spring AOT, Quarkus dev mode, test profiles, and Logyard readiness integration are outside the pinned Zolt's supported coverage.
 

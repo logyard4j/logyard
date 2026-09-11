@@ -30,6 +30,7 @@ ALLOWED_IMPORT_PREFIXES = {
         PREFIX + "output.console.", PREFIX + "output.json.", PREFIX + "runtime.",
     ),
     "logyard-slf4j2": ("java.", "org.slf4j.", PREFIX + "api.", PREFIX + "runtime.", PREFIX + "slf4j."),
+    "logyard-opentelemetry": ("java.", "io.opentelemetry.", PREFIX + "api.", PREFIX + "opentelemetry."),
     "logyard-spring-boot": (
         "java.", "org.springframework.", PREFIX + "api.", PREFIX + "jul.", PREFIX + "runtime.", PREFIX + "spring.boot.",
     ),
@@ -59,6 +60,7 @@ EXPECTED_DEPENDENCIES = {
         "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core", "com.zsumz.logyard:logyard-config-toml", "com.zsumz.logyard:logyard-output-console", "com.zsumz.logyard:logyard-output-json",
     },
     "modules/logyard-slf4j2": {"com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-runtime", "org.slf4j:slf4j-api"},
+    "modules/logyard-opentelemetry": {"com.zsumz.logyard:logyard-api", "io.opentelemetry:opentelemetry-api"},
     "modules/logyard-spring-boot": {
         "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-jul", "com.zsumz.logyard:logyard-runtime", "org.springframework.boot:spring-boot", "org.springframework.boot:spring-boot-autoconfigure",
     },
@@ -88,6 +90,7 @@ ARTIFACT_CONTRACTS = {
     "modules/logyard-output-json": ("com.zsumz.logyard.output.json", set()),
     "modules/logyard-runtime": ("com.zsumz.logyard.runtime", {"com.zsumz.logyard.runtime.bootstrap", "com.zsumz.logyard.runtime.management"}),
     "modules/logyard-slf4j2": ("com.zsumz.logyard.slf4j2", set()),
+    "modules/logyard-opentelemetry": ("com.zsumz.logyard.opentelemetry", set()),
     "modules/logyard-spring-boot": (
         "com.zsumz.logyard.spring.boot",
         {"com.zsumz.logyard.spring.boot.autoconfigure", "com.zsumz.logyard.spring.boot.logging", "com.zsumz.logyard.spring.boot.nativeimage"},
@@ -98,6 +101,7 @@ ARTIFACT_CONTRACTS = {
 }
 
 SERVICE_CONTRACTS = {
+    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.context.ContextProvider": ["com.zsumz.logyard.opentelemetry.OpenTelemetryContextProvider"],
     "modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider": ["com.zsumz.logyard.slf4j.LogyardServiceProvider"],
     "modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder": ["com.zsumz.logyard.systemlogger.LogyardLoggerFinder"],
     "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.formatting.TextFormatterProvider": ["com.zsumz.logyard.tests.extensions.TestFormatterProvider"],

@@ -14,6 +14,7 @@ class EventExpectation:
     severity: str
     attributes: tuple[tuple[str, Any], ...] = ()
     exception_message: str | None = None
+    absent_attributes: tuple[str, ...] = ()
 
 
 class EventLog:
@@ -39,6 +40,9 @@ class EventLog:
         attributes = event.get("attributes", {})
         for name, expected in expectation.attributes:
             self._equal(expected, attributes.get(name), expectation.body, f"attribute {name}")
+        for name in expectation.absent_attributes:
+            if name in attributes:
+                raise AssertionError(f"event {expectation.body!r} unexpectedly contains attribute {name!r}")
         if expectation.exception_message is not None:
             exception = event.get("exception") or {}
             self._equal(expectation.exception_message, exception.get("message"), expectation.body, "exception message")

@@ -35,6 +35,6 @@ final class ProcessorInheritanceVerification implements VerificationCase {
                 color = { mode = "never" }
                 """);
         EffectiveRoute route = LogyardRuntimeFactory.explain(config, "tests.Child");
-        equal(List.of("sample", "add"), route.processors());
+        equal(VerificationAssertions.withDiscoveredContext(List.of("sample", "add")), route.processors());
     }
 }

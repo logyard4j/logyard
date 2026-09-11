@@ -90,6 +90,12 @@ class ZoltExampleRunner:
 
     def verify_artifacts(self, project: Path) -> None:
         packages = tomllib.loads((project / "zolt.lock").read_text())["package"]
+        context_versions = {package["version"] for package in packages
+                            if package["id"] in ("io.opentelemetry:opentelemetry-api",
+                                                 "io.opentelemetry:opentelemetry-context",
+                                                 "io.opentelemetry:opentelemetry-common")}
+        if len(context_versions) > 1:
+            raise AssertionError(f"example resolved incompatible OpenTelemetry API versions: {context_versions}")
         logyard = [package for package in packages if package["id"].startswith("com.zsumz.logyard:")]
         if not logyard:
             raise AssertionError("example resolved no Logyard artifacts")

@@ -17,6 +17,8 @@ main = "com.zsumz.logyard.examples.springboot.SpringBootExampleApplication"
   { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" }
 ] }
 "com.zsumz.logyard:logyard-spring-boot-starter" = {}
+"com.zsumz.logyard:logyard-opentelemetry" = {}
+"io.opentelemetry:opentelemetry-api" = {}
 
 [package]
 mode = "spring-boot"

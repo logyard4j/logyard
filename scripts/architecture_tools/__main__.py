@@ -28,7 +28,7 @@ def main() -> None:
     print(
         "Architecture checks passed: "
         f"{len(state.main_files)} main Java files, {state.test_file_count} test files, "
-        f"{state.test_method_count} JUnit tests, 13 projects, bounded runtime and extension contracts."
+        f"{state.test_method_count} JUnit tests, bounded runtime and extension contracts."
     )
 
 
