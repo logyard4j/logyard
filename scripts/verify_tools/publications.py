@@ -10,9 +10,19 @@ import tomllib
 from pathlib import Path
 
 
+def windows_git_bash() -> str:
+    git = shutil.which("git")
+    if git is not None:
+        for parent in Path(git).resolve().parents:
+            candidate = parent / "usr" / "bin" / "bash.exe"
+            if candidate.is_file():
+                return str(candidate)
+    raise RuntimeError("Git Bash could not be located from the Git executable")
+
+
 def zolt_command(zolt: str, *arguments: str) -> tuple[str, ...]:
     if sys.platform == "win32" and Path(zolt).suffix.lower() not in {".bat", ".cmd", ".com", ".exe"}:
-        return ("bash", zolt, *arguments)
+        return (windows_git_bash(), zolt, *arguments)
     return (zolt, *arguments)
 
 

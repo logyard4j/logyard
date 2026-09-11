@@ -5,20 +5,42 @@ import tomllib
 import unittest
 from unittest.mock import patch
 
-from verify_tools.publications import prepare, require_unsigned_readiness, unsigned_manifest, zolt_command
+from verify_tools.publications import (
+    prepare,
+    require_unsigned_readiness,
+    unsigned_manifest,
+    windows_git_bash,
+    zolt_command,
+)
 
 
 class PublicationPlanTest(unittest.TestCase):
     def test_windows_shell_launcher_runs_through_bash(self) -> None:
-        with patch("verify_tools.publications.sys.platform", "win32"):
+        git_bash = "C:/Program Files/Git/usr/bin/bash.exe"
+        with (
+            patch("verify_tools.publications.sys.platform", "win32"),
+            patch("verify_tools.publications.windows_git_bash", return_value=git_bash),
+        ):
             self.assertEqual(
-                ("bash", "/c/Users/runneradmin/.zolt/bin/zolt", "publish"),
+                (git_bash, "/c/Users/runneradmin/.zolt/bin/zolt", "publish"),
                 zolt_command("/c/Users/runneradmin/.zolt/bin/zolt", "publish"),
             )
             self.assertEqual(
                 ("C:/tools/zolt.exe", "publish"),
                 zolt_command("C:/tools/zolt.exe", "publish"),
             )
+
+    def test_windows_git_bash_is_resolved_from_git_installation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            installation = Path(temporary) / "Git"
+            git = installation / "cmd" / "git.exe"
+            bash = installation / "usr" / "bin" / "bash.exe"
+            git.parent.mkdir(parents=True)
+            bash.parent.mkdir(parents=True)
+            git.touch()
+            bash.touch()
+            with patch("verify_tools.publications.shutil.which", return_value=str(git)):
+                self.assertEqual(str(bash.resolve()), windows_git_bash())
 
     def test_prepare_creates_target_in_a_cold_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
