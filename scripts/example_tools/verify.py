@@ -73,7 +73,7 @@ def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunn
         return
     if scenario == "opentelemetry":
         logger = "com.zsumz.logyard.examples.opentelemetry.OpenTelemetryExampleApplication"
-        example = ZoltExample(scenario, root / "examples/opentelemetry", logger)
+        example = ZoltExample(scenario, root / "examples/opentelemetry", logger, test=True)
         events = EventLog.read(runner.build_and_run(example))
         events.require_real_timestamps()
         for body in ("trace direct", "trace wrapped"):

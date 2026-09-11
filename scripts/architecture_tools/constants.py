@@ -104,7 +104,7 @@ ARTIFACT_CONTRACTS = {
     "modules/logyard-output-json": ("com.zsumz.logyard.output.json", set()),
     "modules/logyard-runtime": ("com.zsumz.logyard.runtime", {"com.zsumz.logyard.runtime.bootstrap", "com.zsumz.logyard.runtime.management"}),
     "modules/logyard-slf4j2": ("com.zsumz.logyard.slf4j2", set()),
-    "modules/logyard-opentelemetry": ("com.zsumz.logyard.opentelemetry", set()),
+    "modules/logyard-opentelemetry": ("com.zsumz.logyard.opentelemetry", {"com.zsumz.logyard.opentelemetry"}),
     "modules/logyard-spring-boot": (
         "com.zsumz.logyard.spring.boot",
         {"com.zsumz.logyard.spring.boot.autoconfigure", "com.zsumz.logyard.spring.boot.logging", "com.zsumz.logyard.spring.boot.nativeimage"},
@@ -115,6 +115,7 @@ ARTIFACT_CONTRACTS = {
 }
 
 SERVICE_CONTRACTS = {
+    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.output.OutputProvider": ["com.zsumz.logyard.opentelemetry.OtelOutputProvider"],
     "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.context.ContextProvider": ["com.zsumz.logyard.opentelemetry.OpenTelemetryContextProvider"],
     "modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider": ["com.zsumz.logyard.slf4j.LogyardServiceProvider"],
     "modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder": ["com.zsumz.logyard.systemlogger.LogyardLoggerFinder"],

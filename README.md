@@ -114,6 +114,7 @@ Messages, structured fields, context, and exceptions travel together. Disabled l
 | Console | Readable text, templates, color themes, and compact or full exceptions |
 | JSON stream | Newline-delimited JSON on stdout or stderr |
 | JSON file | Buffered writes, timed flushes, size or interval rotation, retention, and optional gzip |
+| OpenTelemetry | Forward structured records to your application’s Logs SDK |
 | Custom | Your own transport through the [extension SPI](EXTENDING.md) |
 
 JSON supports `logyard`, `ecs`, and `compact` profiles, plus field renaming and attribute transforms. Route one logger to several outputs in the same configuration.
@@ -129,9 +130,9 @@ JSON supports `logyard`, `ecs`, and `compact` profiles, plus field renaming and 
 | Native Java | [logyard-runtime](INTEGRATIONS.md#native-java) |
 | JUL | [logyard-jul](INTEGRATIONS.md#jul) |
 | `System.Logger` | [logyard-system-logger](INTEGRATIONS.md#systemlogger) |
-| OpenTelemetry context | [logyard-opentelemetry](INTEGRATIONS.md#opentelemetry) |
+| OpenTelemetry | [logyard-opentelemetry](INTEGRATIONS.md#opentelemetry) |
 
-JVM examples cover plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16 and 4.1.0, and Quarkus 3.37.3. Optional OpenTelemetry integration adds active trace correlation and allowlisted baggage.
+JVM examples cover plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16 and 4.1.0, and Quarkus 3.37.3. Optional OpenTelemetry integration adds trace correlation, allowlisted baggage, and forwarding to your Logs SDK.
 
 Java 21 is the minimum runtime. Use the same version for all Logyard artifacts. SLF4J 1.x is unsupported.
 

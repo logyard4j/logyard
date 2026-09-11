@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Captures active OpenTelemetry identity and explicitly requested baggage on the publishing thread. */
+@com.zsumz.logyard.api.annotation.InternalApi
 public final class OpenTelemetryContextProvider implements ContextProvider {
     /** Creates the stateless ServiceLoader provider. */
     public OpenTelemetryContextProvider() {

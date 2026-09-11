@@ -1,6 +1,6 @@
 version = 5
-projectResolutionFingerprint = "sha256:b58d16f2baf36630ebefb59c6bc5dbd3cf104e683a1e9ba621ba3d12392b5e22"
-projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:ea1c822b8349c95a2bb3dbe9dda793ceae279e933a01c3daa678e71cfeba711e", "dependencies.compile=sha256:e29a87bb86a25934ac1d9da7a6a4a8c654b378d5052fec1906a7b6f7b746213a", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:9c42369a3714b6ad96020c05ef68b7603e30ba031da4a0462f557c5d7522aa3f", "dependencies.test=sha256:c3b1c33f077fdf6dbd1e19ae8b5b9792b7d764cc1fe0771cf05d2f5209556e21", "dependencyMetadata=sha256:e5f55f68bafce466c84652b0f0724d9c813a384a5af187165a13fc5d8030421a", "framework.quarkus=sha256:48e8e093ab172fce36712e57dcae3a106f954ab20aa835860ad0ee4a7013e0ad", "framework.springBoot.native=sha256:207684aba27b63fc0dc5bba4c50d6f7ac96393193639e7cb74cd99fff5585414", "java=sha256:99482b0f9609b131cde512b1b17956463ebdf92625cce9163ef3c2a05a3675b6", "package=sha256:d0ffc0ca9bfbdbf0af4faec3fa1659ae621efeeb79c584666e1eff0894516232", "repositories=sha256:2b07d4ae6d9b11ded13294596c7060b4c14c3946e4ecb4b4b763fb1a61ffe74d", "schema=sha256:d9dc580d184cef756c37b409e1cde24a912875e3f4878a74ea21c45f0cbce9d2"]
+projectResolutionFingerprint = "sha256:620213298cc85978de9cb65b1d929c593418c6b7043b3e7cda9fc292cf1c39e2"
+projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:ea1c822b8349c95a2bb3dbe9dda793ceae279e933a01c3daa678e71cfeba711e", "dependencies.compile=sha256:e29a87bb86a25934ac1d9da7a6a4a8c654b378d5052fec1906a7b6f7b746213a", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:9c42369a3714b6ad96020c05ef68b7603e30ba031da4a0462f557c5d7522aa3f", "dependencies.test=sha256:c2cd5ca6411e5499ec02883b6978eacf8bf85b6607936df8d7d6002658f64a63", "dependencyMetadata=sha256:e5f55f68bafce466c84652b0f0724d9c813a384a5af187165a13fc5d8030421a", "framework.quarkus=sha256:48e8e093ab172fce36712e57dcae3a106f954ab20aa835860ad0ee4a7013e0ad", "framework.springBoot.native=sha256:207684aba27b63fc0dc5bba4c50d6f7ac96393193639e7cb74cd99fff5585414", "java=sha256:99482b0f9609b131cde512b1b17956463ebdf92625cce9163ef3c2a05a3675b6", "package=sha256:d0ffc0ca9bfbdbf0af4faec3fa1659ae621efeeb79c584666e1eff0894516232", "repositories=sha256:2b07d4ae6d9b11ded13294596c7060b4c14c3946e4ecb4b4b763fb1a61ffe74d", "schema=sha256:d9dc580d184cef756c37b409e1cde24a912875e3f4878a74ea21c45f0cbce9d2"]
 
 [[package]]
 id = "com.zsumz.logyard:logyard-api"
@@ -211,10 +211,36 @@ members = ["modules/logyard-opentelemetry"]
 dependencies = ["io.opentelemetry:opentelemetry-context:1.65.0:jar:compile"]
 
 [[package]]
+id = "io.opentelemetry:opentelemetry-api"
+version = "1.65.0"
+source = "maven-central"
+scope = "test"
+direct = false
+jar = "io/opentelemetry/opentelemetry-api/1.65.0/opentelemetry-api-1.65.0.jar"
+pom = "io/opentelemetry/opentelemetry-api/1.65.0/opentelemetry-api-1.65.0.pom"
+jarSha256 = "ffaad9334ac41c02b6820b19da589d13dca72d7c6663cc9621c3ca64901f7995"
+pomSha256 = "a1d07af9c643c41942a3551efef9dabea35f31b86cd0f07a577222e3fc2a7fe4"
+members = ["modules/logyard-opentelemetry"]
+dependencies = ["io.opentelemetry:opentelemetry-context:1.65.0:jar:test"]
+
+[[package]]
 id = "io.opentelemetry:opentelemetry-common"
 version = "1.65.0"
 source = "maven-central"
 scope = "compile"
+direct = false
+jar = "io/opentelemetry/opentelemetry-common/1.65.0/opentelemetry-common-1.65.0.jar"
+pom = "io/opentelemetry/opentelemetry-common/1.65.0/opentelemetry-common-1.65.0.pom"
+jarSha256 = "be2a8c3e458a3b3b8de0670c9f6649624b4b6f10f3bde64d3d340a029e86454e"
+pomSha256 = "7bf522a008b5b965c9468489ccf1bfa9efc5fdeb4abaa1657f764ba4e1f68e08"
+members = ["modules/logyard-opentelemetry"]
+dependencies = []
+
+[[package]]
+id = "io.opentelemetry:opentelemetry-common"
+version = "1.65.0"
+source = "maven-central"
+scope = "test"
 direct = false
 jar = "io/opentelemetry/opentelemetry-common/1.65.0/opentelemetry-common-1.65.0.jar"
 pom = "io/opentelemetry/opentelemetry-common/1.65.0/opentelemetry-common-1.65.0.pom"
@@ -235,6 +261,97 @@ jarSha256 = "7d763d701412dc10d5c70de8217a25d08bce1b7fe8fe3e3c6818568e14c1aabf"
 pomSha256 = "42a8c3cfa1f2530cd94ec52b96ac17c6a47996709dafb708e2ab93190d7af3ae"
 members = ["modules/logyard-opentelemetry"]
 dependencies = ["io.opentelemetry:opentelemetry-common:1.65.0:jar:compile"]
+
+[[package]]
+id = "io.opentelemetry:opentelemetry-context"
+version = "1.65.0"
+source = "maven-central"
+scope = "test"
+direct = false
+jar = "io/opentelemetry/opentelemetry-context/1.65.0/opentelemetry-context-1.65.0.jar"
+pom = "io/opentelemetry/opentelemetry-context/1.65.0/opentelemetry-context-1.65.0.pom"
+jarSha256 = "7d763d701412dc10d5c70de8217a25d08bce1b7fe8fe3e3c6818568e14c1aabf"
+pomSha256 = "42a8c3cfa1f2530cd94ec52b96ac17c6a47996709dafb708e2ab93190d7af3ae"
+members = ["modules/logyard-opentelemetry"]
+dependencies = ["io.opentelemetry:opentelemetry-common:1.65.0:jar:test"]
+
+[[package]]
+id = "io.opentelemetry:opentelemetry-sdk-common"
+version = "1.65.0"
+source = "maven-central"
+scope = "test"
+direct = false
+jar = "io/opentelemetry/opentelemetry-sdk-common/1.65.0/opentelemetry-sdk-common-1.65.0.jar"
+pom = "io/opentelemetry/opentelemetry-sdk-common/1.65.0/opentelemetry-sdk-common-1.65.0.pom"
+jarSha256 = "b7756881df140002c4cf523931ac6cb77a98f2d4386a7a59f4d3c64dac9f051a"
+pomSha256 = "2ca9dda8e04d0de9150d9b7c72c490e4a5e3782d7b4582bd9e2fbf2cc06422c1"
+members = ["modules/logyard-opentelemetry"]
+dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test"]
+
+[[package]]
+id = "io.opentelemetry:opentelemetry-sdk-logs"
+version = "1.65.0"
+source = "maven-central"
+scope = "test"
+direct = false
+jar = "io/opentelemetry/opentelemetry-sdk-logs/1.65.0/opentelemetry-sdk-logs-1.65.0.jar"
+pom = "io/opentelemetry/opentelemetry-sdk-logs/1.65.0/opentelemetry-sdk-logs-1.65.0.pom"
+jarSha256 = "7a22fb31101842705a57256ffbd7ee60f5ade75a51944a3b43169c2eb7158358"
+pomSha256 = "b5a086634cce6e5d28565956feb71bbc9e7891c2a2ef721eb97881a33b05800c"
+members = ["modules/logyard-opentelemetry"]
+dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opentelemetry:opentelemetry-sdk-common:1.65.0:jar:test"]
+
+[[package]]
+id = "io.opentelemetry:opentelemetry-sdk-metrics"
+version = "1.65.0"
+source = "maven-central"
+scope = "test"
+direct = false
+jar = "io/opentelemetry/opentelemetry-sdk-metrics/1.65.0/opentelemetry-sdk-metrics-1.65.0.jar"
+pom = "io/opentelemetry/opentelemetry-sdk-metrics/1.65.0/opentelemetry-sdk-metrics-1.65.0.pom"
+jarSha256 = "6ee721f1bb0a2cffc9bb1c002df58d6d4d0d9916e5f9968c3088fbb3aa7d82a8"
+pomSha256 = "8c00b4640540abc26ac147bea2e0c7ceab1392bc1ac0798f97f724b27c00da7e"
+members = ["modules/logyard-opentelemetry"]
+dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opentelemetry:opentelemetry-sdk-common:1.65.0:jar:test"]
+
+[[package]]
+id = "io.opentelemetry:opentelemetry-sdk-testing"
+version = "1.65.0"
+source = "maven-central"
+scope = "test"
+direct = true
+jar = "io/opentelemetry/opentelemetry-sdk-testing/1.65.0/opentelemetry-sdk-testing-1.65.0.jar"
+pom = "io/opentelemetry/opentelemetry-sdk-testing/1.65.0/opentelemetry-sdk-testing-1.65.0.pom"
+jarSha256 = "d661ea152ec9eef40996d3e27c5b9da3f7021afee2f826edaad2d0131f571bbb"
+pomSha256 = "e5b192c04db5ab879db43476f82dbf51f3ab604a98618ee884bdb80bdb90a7db"
+members = ["modules/logyard-opentelemetry"]
+dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opentelemetry:opentelemetry-sdk:1.65.0:jar:test"]
+
+[[package]]
+id = "io.opentelemetry:opentelemetry-sdk-trace"
+version = "1.65.0"
+source = "maven-central"
+scope = "test"
+direct = false
+jar = "io/opentelemetry/opentelemetry-sdk-trace/1.65.0/opentelemetry-sdk-trace-1.65.0.jar"
+pom = "io/opentelemetry/opentelemetry-sdk-trace/1.65.0/opentelemetry-sdk-trace-1.65.0.pom"
+jarSha256 = "fe479a975bbe1a5989c37866ea065204230ab835025c7da992cf906536504055"
+pomSha256 = "198fe7759c55fd1cc403961944d2f5fe4162a6456c94b4bee75d258d7a7e63d1"
+members = ["modules/logyard-opentelemetry"]
+dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opentelemetry:opentelemetry-sdk-common:1.65.0:jar:test"]
+
+[[package]]
+id = "io.opentelemetry:opentelemetry-sdk"
+version = "1.65.0"
+source = "maven-central"
+scope = "test"
+direct = true
+jar = "io/opentelemetry/opentelemetry-sdk/1.65.0/opentelemetry-sdk-1.65.0.jar"
+pom = "io/opentelemetry/opentelemetry-sdk/1.65.0/opentelemetry-sdk-1.65.0.pom"
+jarSha256 = "870f39762211792e902a981ca98d811839987b0586f84d7bb26660a751810553"
+pomSha256 = "d1af111ec120688e5a93f4ae931793bf3607cc311200edbdd7f852b5ea084d99"
+members = ["modules/logyard-opentelemetry"]
+dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opentelemetry:opentelemetry-sdk-common:1.65.0:jar:test", "io.opentelemetry:opentelemetry-sdk-logs:1.65.0:jar:test", "io.opentelemetry:opentelemetry-sdk-metrics:1.65.0:jar:test", "io.opentelemetry:opentelemetry-sdk-trace:1.65.0:jar:test"]
 
 [[package]]
 id = "jakarta.annotation:jakarta.annotation-api"

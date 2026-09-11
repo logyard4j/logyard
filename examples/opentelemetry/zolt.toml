@@ -14,3 +14,8 @@ main = "com.zsumz.logyard.examples.opentelemetry.OpenTelemetryExampleApplication
 
 [resources]
 main = ["src/main/resources"]
+
+[test.dependencies]
+"io.opentelemetry:opentelemetry-sdk" = "1.65.0"
+"io.opentelemetry:opentelemetry-sdk-testing" = "1.65.0"
+"org.junit.platform:junit-platform-console-standalone" = "1.11.4"

@@ -391,7 +391,7 @@ dependencies {
 
 ## OpenTelemetry
 
-Add the optional context module alongside your Logyard integration. It uses the OpenTelemetry API; it does not install an SDK or exporter.
+Add the optional OpenTelemetry module alongside your Logyard integration. It uses the OpenTelemetry API; it does not install an SDK or exporter.
 
 <details>
 <summary>Maven (pom.xml)</summary>
@@ -440,6 +440,42 @@ Logyard captures valid active trace IDs, span IDs, flags, and only the named bag
 Logyard and compact JSON keep `trace_id`, `span_id`, `trace_flags`, and `baggage.tenant.id` in their attribute object. ECS projects trace identity to `trace.id`, `span.id`, and `logyard.trace_flags`; baggage becomes a label.
 
 Your application or instrumentation must propagate context across executors and framework callbacks. Logyard does not create spans or propagate context automatically. See the [executor example](examples/opentelemetry) and the Spring Boot example's [`/trace` endpoint](examples/spring-boot/src/main/java/com/zsumz/logyard/examples/springboot/TraceExampleController.java).
+
+### Forward to an OpenTelemetry SDK
+
+Install your **configured, application-owned SDK** before starting Logyard:
+
+```java
+import com.zsumz.logyard.opentelemetry.LogyardOpenTelemetry;
+
+LogyardOpenTelemetry.install(applicationSdk);
+```
+
+Then route to the Logs API:
+
+```toml
+[outputs.telemetry]
+type = "custom"
+provider = "otel"
+
+[loggers]
+root = { level = "info", outputs = ["telemetry"] }
+```
+
+| Record data | OpenTelemetry output |
+| --- | --- |
+| Level, timestamps, message, event name | Native log-record fields |
+| Captured trace and span | Native trace context; worker context is ignored |
+| Attributes | Typed scalars, nested lists/maps, and null; arbitrary-precision numbers use exact text |
+| Logger | Instrumentation scope and `logger.name`; after 1,024 names per output, new names share a fallback scope |
+| Exception | `exception.type`, `exception.message`, bounded `exception.stacktrace` |
+| Service identity | SDK resource; configure it on your SDK |
+
+Output creation fails without explicit installation. Reinstalling the same SDK is safe; replacing it with a different instance is rejected. Configure exporters on that SDK; the output accepts no provider options.
+
+Logyard delivers on a bounded output worker. Its health and drain cover forwarding to the Logs API. **Exporter failures, export completion, and SDK flush/shutdown remain application-owned.** Close Logyard before shutting down the SDK. Avoid exporter diagnostics that feed back into the same logging route.
+
+The [OpenTelemetry example](examples/opentelemetry) includes a Zolt test using the real Logs SDK and an in-memory exporter.
 
 ## Native images
 
@@ -571,7 +607,7 @@ Each example includes a `zolt.toml` build; application examples include output c
 | [Test kit](examples/test-kit) | Isolated log assertions, scoped context, lazy values, and capture overflow |
 | [SLF4J](examples/slf4j) | Fluent structured logging |
 | [Managed lifecycle](examples/lifecycle) | Cached SLF4J, JUL, and System.Logger instances across restart, level changes, formatting, and close-time drain |
-| [OpenTelemetry](examples/opentelemetry) | Active trace identity, allowlisted baggage, explicit executor propagation |
+| [OpenTelemetry](examples/opentelemetry) | Trace identity, allowlisted baggage, executor propagation, and Logs SDK export |
 | [Vert.x](examples/vertx) | Logging from a Vert.x application |
 | [Micronaut](examples/micronaut) | Startup, structured events, and shutdown flush |
 | [Spring Boot](examples/spring-boot) | MVC, WebFlux, Actuator, dynamic levels, JUL, and shutdown flush |

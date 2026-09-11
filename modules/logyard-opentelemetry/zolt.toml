@@ -12,6 +12,8 @@ central = "https://repo.maven.apache.org/maven2"
 "io.opentelemetry:opentelemetry-api" = "1.65.0"
 
 [test.dependencies]
+"io.opentelemetry:opentelemetry-sdk" = "1.65.0"
+"io.opentelemetry:opentelemetry-sdk-testing" = "1.65.0"
 "com.zsumz.logyard:logyard-runtime" = { workspace = "modules/logyard-runtime" }
 "org.junit.platform:junit-platform-console-standalone" = "1.11.4"
 
@@ -33,8 +35,8 @@ sources = true
 javadoc = true
 
 [package.metadata]
-name = "Logyard OpenTelemetry Context"
-description = "Optional OpenTelemetry trace identity and allowlisted baggage capture for Logyard."
+name = "Logyard OpenTelemetry"
+description = "OpenTelemetry trace capture and forwarding to the application-owned Logs API."
 url = "https://github.com/zsumz/logyard"
 license = "Apache-2.0"
 licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
