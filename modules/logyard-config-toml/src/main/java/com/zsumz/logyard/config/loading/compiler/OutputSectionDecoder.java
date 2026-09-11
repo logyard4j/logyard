@@ -1,7 +1,6 @@
 package com.zsumz.logyard.config.loading.compiler;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.config.ConfigurationException;
 import com.zsumz.logyard.config.delivery.DeliveryOverrideConfig;
 import com.zsumz.logyard.config.extension.ProviderReferenceConfig;
 import com.zsumz.logyard.config.output.ColorConfig;
@@ -30,22 +29,21 @@ final class OutputSectionDecoder {
     static Map<String, OutputConfig> outputs(
             Map<String, Object> raw,
             Path baseDirectory,
-            String source,
-            Map<String, String> environment) {
+            ConfigSource source) {
         if (raw.isEmpty()) {
-            throw new ConfigurationException(source + ": outputs: at least one named output is required");
+            throw source.failure("outputs", "at least one named output is required");
         }
         if (raw.size() > MAXIMUM_OUTPUTS) {
-            throw new ConfigurationException(source + ": outputs: at most " + MAXIMUM_OUTPUTS + " outputs are supported");
+            throw source.failure("outputs", "at most " + MAXIMUM_OUTPUTS + " outputs are supported");
         }
 
         Map<String, OutputConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
             if (!name.matches("[A-Za-z][A-Za-z0-9_.-]{0,63}")) {
-                throw new ConfigurationException(source + ": outputs." + name + ": invalid output name");
+                throw source.failure("outputs." + name, "invalid output name");
             }
-            ConfigReader output = ConfigReader.fromValue(entry.getValue(), source, "outputs." + name, environment);
+            ConfigReader output = ConfigReader.fromValue(entry.getValue(), source, "outputs." + name);
             String type = output.requiredString("type").toLowerCase(Locale.ROOT);
             OutputConfig parsed = switch (type) {
                 case "console" -> console(name, output);
@@ -112,7 +110,7 @@ final class OutputSectionDecoder {
         try {
             return new CustomOutputConfig(name, minimum, providerReference, formatter, encoder, delivery);
         } catch (IllegalArgumentException exception) {
-            throw output.failure("provider", exception.getMessage());
+            throw output.failureFrom("provider", exception);
         }
     }
 
@@ -123,7 +121,7 @@ final class OutputSectionDecoder {
         try {
             return new DeliveryOverrideConfig(mode, capacity);
         } catch (IllegalArgumentException exception) {
-            throw reader.failure("delivery", exception.getMessage());
+            throw reader.failureFrom("delivery", exception);
         }
     }
 

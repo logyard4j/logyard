@@ -11,23 +11,48 @@ import java.util.Set;
 final class TomlTableBuilder {
     private final TomlCursor cursor;
     private final Map<String, Object> root = new LinkedHashMap<>();
+    private final Map<String, Integer> positions = new LinkedHashMap<>();
     private final Set<String> explicitTables = new HashSet<>();
     private Map<String, Object> current = root;
+    private String currentPath = "";
 
     TomlTableBuilder(TomlCursor cursor) {
         this.cursor = cursor;
     }
 
     TomlDocument document() {
-        return new TomlDocument(root);
+        return new TomlDocument(root, TomlPositions.of(positions));
     }
 
     Map<String, Object> current() {
         return current;
     }
 
-    void select(List<String> path, boolean array) {
+    void select(List<String> path, boolean array, int line) {
         current = array ? createArrayTable(path) : createTable(path);
+        currentPath = String.join(".", path);
+        positions.put(currentPath, line);
+    }
+
+    void recordAssignment(List<String> path, Object value, int line) {
+        String joined = String.join(".", path);
+        record(currentPath.isEmpty() ? joined : currentPath + "." + joined, value, line);
+    }
+
+    private void record(String path, Object value, int line) {
+        positions.put(path, line);
+        if (value instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                record(path + "." + entry.getKey(), entry.getValue(), line);
+            }
+        } else if (value instanceof List<?> list) {
+            for (int index = 0; index < list.size(); index++) {
+                Object element = list.get(index);
+                if (element instanceof Map<?, ?> || element instanceof List<?>) {
+                    record(path + "[" + index + "]", element, line);
+                }
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")

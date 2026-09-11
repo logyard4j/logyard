@@ -38,7 +38,7 @@ final class ConfigValueDecoder {
         if (!(value instanceof String string)) {
             throw table.failure(key, "expected a string");
         }
-        return EnvironmentExpander.expand(string, table.environment(), table.source(), table.childPath(key));
+        return EnvironmentExpander.expand(string, table.context(), table.childPath(key));
     }
 
     boolean bool(String key, boolean fallback) {
@@ -104,12 +104,12 @@ final class ConfigValueDecoder {
 
     Level level(String key, Level fallback) {
         String value = nullableString(key);
-        return value == null ? fallback : ConfigurationCompiler.parseLevel(value, table.source(), table.childPath(key));
+        return value == null ? fallback : ConfigurationCompiler.parseLevel(value, table.context(), table.childPath(key));
     }
 
     Level nullableLevel(String key) {
         String value = nullableString(key);
-        return value == null ? null : ConfigurationCompiler.parseLevel(value, table.source(), table.childPath(key));
+        return value == null ? null : ConfigurationCompiler.parseLevel(value, table.context(), table.childPath(key));
     }
 
     Duration duration(String key, Duration fallback) {
@@ -169,7 +169,7 @@ final class ConfigValueDecoder {
                 throw table.failure(key + "[" + index + "]", "expected a string");
             }
             String path = table.childPath(key + "[" + index + "]");
-            String expanded = EnvironmentExpander.expand(text, table.environment(), table.source(), path);
+            String expanded = EnvironmentExpander.expand(text, table.context(), path);
             if (!seen.add(expanded)) {
                 throw table.failure(key, "contains duplicate value '" + expanded + "'");
             }

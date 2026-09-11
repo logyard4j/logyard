@@ -26,7 +26,8 @@ ALLOWED_IMPORT_PREFIXES = {
     "logyard-output-console": ("java.", PREFIX + "api.", PREFIX + "output.console."),
     "logyard-output-json": ("java.", PREFIX + "api.", PREFIX + "output.json."),
     "logyard-runtime": (
-        "java.", "".join((PREFIX, "api.")), PREFIX + "config.", PREFIX + "core.",
+        "java.", "javax.xml.parsers.", "org.w3c.dom.", "org.xml.sax.",
+        "".join((PREFIX, "api.")), PREFIX + "config.", PREFIX + "core.",
         PREFIX + "output.console.", PREFIX + "output.json.", PREFIX + "runtime.",
     ),
     "logyard-slf4j2": ("java.", "org.slf4j.", PREFIX + "api.", PREFIX + "runtime.", PREFIX + "slf4j."),

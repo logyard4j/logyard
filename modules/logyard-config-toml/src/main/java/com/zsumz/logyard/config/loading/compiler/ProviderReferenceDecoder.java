@@ -19,7 +19,7 @@ final class ProviderReferenceDecoder {
         try {
             return new ProviderReferenceConfig(provider, implementation, configuration);
         } catch (IllegalArgumentException exception) {
-            throw reader.failure("provider", exception.getMessage());
+            throw reader.failureFrom("provider", exception);
         }
     }
 
@@ -31,7 +31,7 @@ final class ProviderReferenceDecoder {
         try {
             return flattened.isEmpty() ? ProviderConfiguration.EMPTY : new ProviderConfiguration(flattened);
         } catch (IllegalArgumentException exception) {
-            throw reader.failure("config", exception.getMessage());
+            throw reader.failureFrom("config", exception);
         }
     }
 
@@ -69,7 +69,7 @@ final class ProviderReferenceDecoder {
 
     private static Object normalize(Object value, ConfigReader reader, String path) {
         if (value instanceof String text) {
-            return EnvironmentExpander.expand(text, reader.environment(), reader.source(), reader.childPath(path));
+            return EnvironmentExpander.expand(text, reader.context(), reader.childPath(path));
         }
         if (value instanceof Long || value instanceof Double || value instanceof Boolean) {
             return value;

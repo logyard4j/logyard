@@ -18,13 +18,13 @@ final class ThemeSectionDecoder {
     private ThemeSectionDecoder() {
     }
 
-    static Map<String, ThemeConfig> themes(Map<String, Object> raw, String source, Map<String, String> environment) {
+    static Map<String, ThemeConfig> themes(Map<String, Object> raw, ConfigSource source) {
         Map<String, ThemeConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            ConfigReader theme = ConfigReader.fromValue(entry.getValue(), source, "themes." + name, environment);
+            ConfigReader theme = ConfigReader.fromValue(entry.getValue(), source, "themes." + name);
             Map<String, TextStyleConfig> roles = roles(theme);
-            EnumMap<Level, TextStyleConfig> levels = levels(theme, name, source, environment);
+            EnumMap<Level, TextStyleConfig> levels = levels(theme, name, source);
             theme.finish();
             result.put(name, new ThemeConfig(name, roles, levels));
         }
@@ -44,13 +44,12 @@ final class ThemeSectionDecoder {
     private static EnumMap<Level, TextStyleConfig> levels(
             ConfigReader theme,
             String themeName,
-            String source,
-            Map<String, String> environment) {
+            ConfigSource source) {
         EnumMap<Level, TextStyleConfig> levels = new EnumMap<>(Level.class);
         for (Map.Entry<String, Object> entry : theme.dynamicObject("level").entrySet()) {
             String path = "themes." + themeName + ".level." + entry.getKey();
             Level level = ConfigurationCompiler.parseLevel(entry.getKey(), source, path);
-            levels.put(level, textStyle(ConfigReader.fromValue(entry.getValue(), source, path, environment)));
+            levels.put(level, textStyle(ConfigReader.fromValue(entry.getValue(), source, path)));
         }
         return levels;
     }

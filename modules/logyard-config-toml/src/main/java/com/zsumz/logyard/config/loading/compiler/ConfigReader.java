@@ -10,39 +10,41 @@ import java.util.Map;
 /** Destructive, path-aware reader for one strict configuration table. */
 final class ConfigReader {
     private final Map<String, Object> remainingValues;
-    private final String source;
+    private final ConfigSource context;
     private final String path;
-    private final Map<String, String> environment;
     private final ConfigValueDecoder values;
 
-    ConfigReader(Map<String, Object> values, String source, String path, Map<String, String> environment) {
+    ConfigReader(Map<String, Object> values, ConfigSource context, String path) {
         remainingValues = new LinkedHashMap<>(values);
-        this.source = source;
+        this.context = context;
         this.path = path;
-        this.environment = environment;
         this.values = new ConfigValueDecoder(this);
     }
 
-    static ConfigReader fromValue(Object value, String source, String path, Map<String, String> environment) {
+    static ConfigReader fromValue(Object value, ConfigSource context, String path) {
         if (!(value instanceof Map<?, ?> map)) {
-            throw new ConfigurationException(source + ": " + path + ": expected a table");
+            throw context.failure(path, "expected a table");
         }
         Map<String, Object> converted = new LinkedHashMap<>();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             if (!(entry.getKey() instanceof String key)) {
-                throw new ConfigurationException(source + ": " + path + ": table key is not a string");
+                throw context.failure(path, "table key is not a string");
             }
             converted.put(key, entry.getValue());
         }
-        return new ConfigReader(converted, source, path, environment);
+        return new ConfigReader(converted, context, path);
+    }
+
+    ConfigSource context() {
+        return context;
     }
 
     String source() {
-        return source;
+        return context.name();
     }
 
     Map<String, String> environment() {
-        return environment;
+        return context.environment();
     }
 
     boolean has(String key) {
@@ -56,8 +58,8 @@ final class ConfigReader {
     ConfigReader object(String key) {
         Object value = remainingValues.remove(key);
         return value == null
-                ? new ConfigReader(Map.of(), source, childPath(key), environment)
-                : fromValue(value, source, childPath(key), environment);
+                ? new ConfigReader(Map.of(), context, childPath(key))
+                : fromValue(value, context, childPath(key));
     }
 
     Map<String, Object> dynamicObject(String key) {
@@ -65,7 +67,7 @@ final class ConfigReader {
         if (value == null) {
             return new LinkedHashMap<>();
         }
-        return new LinkedHashMap<>(fromValue(value, source, childPath(key), environment).remainingValues);
+        return new LinkedHashMap<>(fromValue(value, context, childPath(key)).remainingValues);
     }
 
     String requiredString(String key) {
@@ -137,7 +139,7 @@ final class ConfigReader {
             return;
         }
         String unknown = remainingValues.keySet().iterator().next();
-        String suggestion = ConfigKeySuggestions.nearest(unknown);
+        String suggestion = ConfigKeySuggestions.nearest(unknown, path);
         String message = "unknown key '" + unknown + "'";
         if (suggestion != null) {
             message += "; did you mean '" + suggestion + "'?";
@@ -146,7 +148,16 @@ final class ConfigReader {
     }
 
     ConfigurationException failure(String key, String message) {
-        return new ConfigurationException(source + ": " + childPath(key) + ": " + message);
+        return context.failure(childPath(key), message);
+    }
+
+    ConfigurationException failureFrom(String key, IllegalArgumentException failure) {
+        return context.failureFrom(childPath(key), failure);
+    }
+
+    /** Locates a failure at this reader's own table rather than under one of its keys. */
+    ConfigurationException sectionFailureFrom(IllegalArgumentException failure) {
+        return context.failureFrom(path, failure);
     }
 
     String childPath(String child) {

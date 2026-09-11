@@ -1,31 +1,30 @@
 package com.zsumz.logyard.config.loading.compiler;
 
 import com.zsumz.logyard.config.ConfigurationException;
-import java.util.Map;
 
 /** Expands bounded shell-style environment references in configuration strings. */
 final class EnvironmentExpander {
     private EnvironmentExpander() {
     }
 
-    static String expand(String value, Map<String, String> environment, String source, String path) {
+    static String expand(String value, ConfigSource context, String path) {
         StringBuilder result = new StringBuilder(Math.min(value.length(), ConfigurationCompiler.MAX_EXPANDED_STRING_CHARS));
         int cursor = 0;
         while (cursor < value.length()) {
             if (value.startsWith("$${", cursor)) {
-                appendBounded(result, "${", source, path);
+                appendBounded(result, "${", context, path);
                 cursor += 3;
                 continue;
             }
             int opening = value.indexOf("${", cursor);
             if (opening < 0) {
-                appendBounded(result, value.substring(cursor), source, path);
+                appendBounded(result, value.substring(cursor), context, path);
                 break;
             }
-            appendBounded(result, value.substring(cursor, opening), source, path);
+            appendBounded(result, value.substring(cursor, opening), context, path);
             int closing = value.indexOf('}', opening + 2);
             if (closing < 0) {
-                throw failure(source, path, "unterminated environment expression");
+                throw context.failure(path, "unterminated environment expression");
             }
 
             String expression = value.substring(opening + 2, closing);
@@ -33,30 +32,31 @@ final class EnvironmentExpander {
             String name = defaultAt < 0 ? expression : expression.substring(0, defaultAt);
             String fallback = defaultAt < 0 ? null : expression.substring(defaultAt + 2);
             if (!name.matches("[A-Za-z_][A-Za-z0-9_]*")) {
-                throw failure(source, path, "invalid environment name '" + name + "'");
+                throw context.failure(path, "invalid environment name '" + name + "'");
             }
 
-            String replacement = environment.get(name);
+            String replacement = context.environment().get(name);
             if (replacement == null) {
                 if (fallback == null) {
-                    throw failure(source, path, "environment variable " + name + " is not set and has no default");
+                    throw context.failure(path, "environment variable " + name + " is not set and has no default");
                 }
                 replacement = fallback;
             }
-            appendBounded(result, replacement, source, path);
+            appendBounded(result, replacement, context, path);
             cursor = closing + 1;
         }
         return result.toString();
     }
 
-    private static void appendBounded(StringBuilder result, String value, String source, String path) {
+    private static void appendBounded(StringBuilder result, String value, ConfigSource context, String path) {
         if (result.length() + value.length() > ConfigurationCompiler.MAX_EXPANDED_STRING_CHARS) {
-            throw failure(source, path, "expanded string exceeds " + ConfigurationCompiler.MAX_EXPANDED_STRING_CHARS + " characters");
+            throw overflow(context, path);
         }
         result.append(value);
     }
 
-    private static ConfigurationException failure(String source, String path, String message) {
-        return new ConfigurationException(source + ": " + path + ": " + message);
+    private static ConfigurationException overflow(ConfigSource context, String path) {
+        return context.failure(
+                path, "expanded string exceeds " + ConfigurationCompiler.MAX_EXPANDED_STRING_CHARS + " characters");
     }
 }

@@ -49,6 +49,50 @@ Relative output paths resolve against the configuration file's directory. Classp
 
 Use `schema = 1`. Unknown keys, invalid values, and missing component references are rejected.
 
+## Profiles and overrides
+
+Keep environment differences in the same file:
+
+```toml
+[profiles.production.loggers]
+root = { level = "warn", outputs = ["console"] }
+```
+
+Select it with `-Dlogyard.profile=production` or `LOGYARD_PROFILE=production`. Tables merge; other values, including arrays, replace. The base and every declared profile are validated on each load. Profiles cannot change `schema` or declare nested profiles.
+
+| Applied in order | Example |
+| --- | --- |
+| Base file | `[loggers]` |
+| Selected profile | `[profiles.production.loggers]` |
+| Environment overrides | `LOGYARD_OVERRIDES='delivery.capacity=512;runtime.watch=false'` |
+| System-property overrides | `-Dlogyard.override.delivery.capacity=1024` |
+
+Later values win. Overrides use TOML key paths and values; simple strings such as `debug` need no quotes. Quote dotted logger names: `loggers."com.example".level=debug`. Limits are 16 profiles and 64 overrides, with at most 512 characters per override key and 4,096 per value. Overrides are captured again when a reload candidate is evaluated.
+
+Errors identify the file line, profile, or override that supplied the value, with scoped suggestions for misspelled keys.
+
+## Validate, inspect, and migrate
+
+From a Zolt project that depends on Logyard, validate a file without starting the logging runtime:
+
+```sh
+zolt build
+java -cp "$(zolt classpath runtime)" \
+  com.zsumz.logyard.runtime.tools.LogyardConfigTool validate logyard.toml
+```
+
+Use the same command with these arguments:
+
+| Arguments | Result |
+| --- | --- |
+| `validate logyard.toml --profile production` | Validate the base and every profile; select production |
+| `explain logyard.toml --key delivery.capacity` | Selected input value and its origin |
+| `explain logyard.toml --logger com.example.Checkout` | Resolved level, outputs, enrichers, and filters |
+| `schema` | Accepted configuration keys as JSON |
+| `migrate-logback logback.xml --output logyard.toml` | Converted TOML and notes for unsupported constructs |
+
+`explain` shows environment expressions as written. Migration never overwrites an existing file; review its notes before using the result. Exit codes are 0 for success, 1 for invalid configuration, and 2 for usage or I/O errors.
+
 ## Service identity
 
 ```toml

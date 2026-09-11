@@ -1,7 +1,6 @@
 package com.zsumz.logyard.config.loading.compiler;
 
 import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.config.ConfigurationException;
 import com.zsumz.logyard.config.logging.LoggerRuleConfig;
 import com.zsumz.logyard.config.output.OutputConfig;
 import java.util.Collections;
@@ -17,12 +16,11 @@ final class LoggerSectionDecoder {
     static Bundle decode(
             Map<String, Object> raw,
             Map<String, OutputConfig> outputs,
-            String source,
-            Map<String, String> environment) {
+            ConfigSource source) {
         Object rootValue = raw.remove("root");
         LoggerRuleConfig root = rootValue == null
                 ? new LoggerRuleConfig(Level.INFO, List.copyOf(outputs.keySet()), List.of(), List.of())
-                : rule(rootValue, true, outputs, source, "loggers.root", environment);
+                : rule(rootValue, true, outputs, source, "loggers.root");
         if (root.level() == null) {
             root = new LoggerRuleConfig(Level.INFO, root.outputs(), root.enrich(), root.filters());
         }
@@ -39,9 +37,9 @@ final class LoggerSectionDecoder {
         Map<String, LoggerRuleConfig> children = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             if (entry.getKey().isBlank()) {
-                throw new ConfigurationException(source + ": loggers: logger name must not be blank");
+                throw source.failure("loggers", "logger name must not be blank");
             }
-            children.put(entry.getKey(), rule(entry.getValue(), false, outputs, source, "loggers." + entry.getKey(), environment));
+            children.put(entry.getKey(), rule(entry.getValue(), false, outputs, source, "loggers." + entry.getKey()));
         }
         return new Bundle(root, Collections.unmodifiableMap(children));
     }
@@ -50,9 +48,8 @@ final class LoggerSectionDecoder {
             Object value,
             boolean root,
             Map<String, OutputConfig> outputs,
-            String source,
-            String path,
-            Map<String, String> environment) {
+            ConfigSource source,
+            String path) {
         if (value instanceof String text) {
             return new LoggerRuleConfig(
                     ConfigurationCompiler.parseLevel(text, source, path),
@@ -61,7 +58,7 @@ final class LoggerSectionDecoder {
                     root ? List.of() : null);
         }
 
-        ConfigReader reader = ConfigReader.fromValue(value, source, path, environment);
+        ConfigReader reader = ConfigReader.fromValue(value, source, path);
         Level level = root ? reader.level("level", Level.INFO) : reader.nullableLevel("level");
         List<String> selectedOutputs =
                 root ? reader.stringList("outputs", List.copyOf(outputs.keySet())) : reader.nullableStringList("outputs");

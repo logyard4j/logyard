@@ -1,34 +1,30 @@
 package com.zsumz.logyard.config.loading.compiler;
 
+import com.zsumz.logyard.config.schema.ConfigSchema;
+
 import java.util.Set;
 
 /** Finds conservative typo suggestions within Logyard's strict configuration vocabulary. */
 final class ConfigKeySuggestions {
-    private static final Set<String> KNOWN_KEYS = Set.of(
-            "schema", "service", "resource", "runtime", "context", "loggers",
-            "delivery", "outputs", "themes", "formatters", "encoders",
-            "json_profiles", "enrichers", "filters", "name", "namespace", "version",
-            "environment", "instance_id", "attributes", "shutdown_timeout",
-            "internal_status", "watch", "reload_debounce", "trace", "mdc",
-            "baggage", "redact", "mode", "capacity", "overflow", "action",
-            "timeout", "type", "stream", "min_level", "formatter", "encoder",
-            "provider", "implementation", "config", "template", "profile", "preset",
-            "rename", "drop", "prefix", "include", "exclude", "probability", "key",
-            "seed", "permits_per_second", "burst", "max_keys", "color", "exception",
-            "capability", "theme", "style", "common_frames", "path", "buffer",
-            "flush", "append", "rotate", "size", "keep", "compression",
-            "endpoint", "headers", "batch", "max_events", "max_bytes", "retry",
-            "max_attempts", "max_elapsed", "initial_backoff", "max_backoff",
-            "circuit_breaker", "failure_threshold", "open_duration", "level",
-            "enrich", "fg", "bg", "bold", "dim", "italic", "underline");
-
     private ConfigKeySuggestions() {
     }
 
-    static String nearest(String value) {
+    /**
+     * Returns the nearest known key for the unknown key at one table path, or null.
+     *
+     * <p>When the table's schema keys are known, only those keys are candidates so a
+     * suggestion never points at a key another section owns; free-form tables fall back
+     * to the complete vocabulary.</p>
+     */
+    static String nearest(String value, String tablePath) {
+        Set<String> scoped = ConfigSchema.keysFor(tablePath);
+        return nearestOf(value, scoped.isEmpty() ? ConfigSchema.allKeys() : scoped);
+    }
+
+    private static String nearestOf(String value, Set<String> candidates) {
         String best = null;
         int bestDistance = Integer.MAX_VALUE;
-        for (String candidate : KNOWN_KEYS) {
+        for (String candidate : candidates) {
             int distance = levenshtein(value, candidate);
             if (distance < bestDistance) {
                 bestDistance = distance;

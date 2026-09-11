@@ -3,6 +3,7 @@ package com.zsumz.logyard.runtime.reload;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.config.loading.source.BoundedConfigurationFile;
 import com.zsumz.logyard.config.loading.LogyardConfigLoader;
+import com.zsumz.logyard.config.loading.overlay.ConfigOverlays;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -65,8 +66,20 @@ public final class ConfigurationSnapshot {
                 sha256(content));
     }
 
+    /**
+     * Parses this snapshot with the process overlays applied: the profile and the
+     * key-level overrides from the given environment and the current system
+     * properties. Overlays are re-read for each candidate, so every reload decision
+     * applies the same launch-time configuration.
+     */
     public LogyardConfig parse(Map<String, String> environment) {
-        return LogyardConfigLoader.parse(text, description, baseDirectory, environment);
+        return LogyardConfigLoader.parseDetailed(
+                        text,
+                        description,
+                        baseDirectory,
+                        environment,
+                        ConfigOverlays.fromProcess(environment, System.getProperties()))
+                .config();
     }
 
     public Path source() {

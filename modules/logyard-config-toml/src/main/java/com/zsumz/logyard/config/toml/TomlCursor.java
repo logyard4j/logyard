@@ -17,6 +17,10 @@ final class TomlCursor {
         return index >= input.length();
     }
 
+    int line() {
+        return line;
+    }
+
     char peek() {
         return input.charAt(index);
     }

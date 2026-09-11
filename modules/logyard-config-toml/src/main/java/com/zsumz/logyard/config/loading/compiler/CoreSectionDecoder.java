@@ -31,7 +31,7 @@ final class CoreSectionDecoder {
         try {
             return new ServiceConfig(name, namespace, version, environment, instanceId);
         } catch (IllegalArgumentException exception) {
-            throw reader.failure("name", exception.getMessage());
+            throw reader.failureFrom("name", exception);
         }
     }
 
@@ -46,14 +46,13 @@ final class CoreSectionDecoder {
             }
             attributes.put(
                     key,
-                    EnvironmentExpander.expand(
-                            text, reader.environment(), reader.source(), reader.childPath("attributes." + key)));
+                    EnvironmentExpander.expand(text, reader.context(), reader.childPath("attributes." + key)));
         });
         reader.finish();
         try {
             return new ResourceConfig(attributes, include, exclude);
         } catch (IllegalArgumentException exception) {
-            throw reader.failure("attributes", exception.getMessage());
+            throw reader.failureFrom("attributes", exception);
         }
     }
 
@@ -81,7 +80,7 @@ final class CoreSectionDecoder {
         try {
             return new ContextConfig(trace, mdc, baggage, redact);
         } catch (IllegalArgumentException exception) {
-            throw reader.failure("context", exception.getMessage());
+            throw reader.sectionFailureFrom(exception);
         }
     }
 
@@ -92,14 +91,14 @@ final class CoreSectionDecoder {
         EnumMap<Level, OverflowRuleConfig> rules = defaultOverflow();
         for (Map.Entry<String, Object> entry : rawOverflow.entrySet()) {
             Level level =
-                    ConfigurationCompiler.parseLevel(entry.getKey(), reader.source(), reader.childPath("overflow." + entry.getKey()));
+                    ConfigurationCompiler.parseLevel(entry.getKey(), reader.context(), reader.childPath("overflow." + entry.getKey()));
             rules.put(level, overflowRule(entry.getValue(), reader, "overflow." + entry.getKey()));
         }
         reader.finish();
         try {
             return new DeliveryConfig(mode, capacity, rules);
         } catch (IllegalArgumentException exception) {
-            throw reader.failure("delivery", exception.getMessage());
+            throw reader.sectionFailureFrom(exception);
         }
     }
 
@@ -107,7 +106,7 @@ final class CoreSectionDecoder {
         if (value instanceof String actionText) {
             return new OverflowRuleConfig(overflowAction(actionText, parent, path), Duration.ZERO);
         }
-        ConfigReader rule = ConfigReader.fromValue(value, parent.source(), parent.childPath(path), parent.environment());
+        ConfigReader rule = ConfigReader.fromValue(value, parent.context(), parent.childPath(path));
         OverflowAction action = overflowAction(rule.string("action", "drop"), rule, "action");
         Duration timeout = rule.duration("timeout", Duration.ZERO);
         rule.finish();

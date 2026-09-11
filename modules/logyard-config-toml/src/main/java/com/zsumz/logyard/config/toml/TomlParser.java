@@ -40,6 +40,7 @@ public final class TomlParser {
     }
 
     private void parseHeader() {
+        int line = cursor.line();
         cursor.expect('[');
         boolean array = cursor.consume('[');
         cursor.skipHorizontal();
@@ -49,10 +50,11 @@ public final class TomlParser {
         if (array) {
             cursor.expect(']');
         }
-        tables.select(path, array);
+        tables.select(path, array, line);
     }
 
     private void parseAssignment(Map<String, Object> table) {
+        int line = cursor.line();
         List<String> path = values.parseKeyPath('=');
         cursor.skipHorizontal();
         cursor.expect('=');
@@ -60,6 +62,8 @@ public final class TomlParser {
         if (cursor.eof() || cursor.peek() == '\n' || cursor.peek() == '#') {
             cursor.fail("expected a value after '='");
         }
-        tables.putPath(table, path, values.parseValue());
+        Object value = values.parseValue();
+        tables.putPath(table, path, value);
+        tables.recordAssignment(path, value, line);
     }
 }

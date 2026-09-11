@@ -1,6 +1,5 @@
 package com.zsumz.logyard.config.loading.compiler;
 
-import com.zsumz.logyard.config.ConfigurationException;
 import com.zsumz.logyard.config.encoding.EncoderConfig;
 import com.zsumz.logyard.config.encoding.JsonAttributeTransformConfig;
 import com.zsumz.logyard.config.encoding.JsonEncoderConfig;
@@ -27,12 +26,12 @@ final class ExtensionSectionDecoder {
     private ExtensionSectionDecoder() {
     }
 
-    static Map<String, FormatterConfig> formatters(Map<String, Object> raw, String source, Map<String, String> environment) {
+    static Map<String, FormatterConfig> formatters(Map<String, Object> raw, ConfigSource source) {
         requireComponentCount(raw, source, "formatters");
         Map<String, FormatterConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "formatters." + name, environment);
+            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "formatters." + name);
             String type = reader.requiredString("type").toLowerCase(Locale.ROOT);
             FormatterConfig formatter;
             try {
@@ -42,7 +41,7 @@ final class ExtensionSectionDecoder {
                     default -> throw reader.failure("type", "must be template or custom");
                 };
             } catch (IllegalArgumentException exception) {
-                throw reader.failure(type.equals("template") ? "template" : "provider", exception.getMessage());
+                throw reader.failureFrom(type.equals("template") ? "template" : "provider", exception);
             }
             reader.finish();
             result.put(name, formatter);
@@ -50,12 +49,12 @@ final class ExtensionSectionDecoder {
         return Collections.unmodifiableMap(result);
     }
 
-    static Map<String, JsonProfileConfig> jsonProfiles(Map<String, Object> raw, String source, Map<String, String> environment) {
+    static Map<String, JsonProfileConfig> jsonProfiles(Map<String, Object> raw, ConfigSource source) {
         requireComponentCount(raw, source, "json_profiles");
         Map<String, JsonProfileConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "json_profiles." + name, environment);
+            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "json_profiles." + name);
             String preset = reader.string("preset", "logyard");
             Map<String, String> rename = stringMap(reader.dynamicObject("rename"), reader, "rename", 32);
             List<String> drop = reader.stringList("drop", List.of());
@@ -72,18 +71,18 @@ final class ExtensionSectionDecoder {
                         new JsonAttributeTransformConfig(mode, prefix, include, exclude, attributeRename);
                 result.put(name, new JsonProfileConfig(name, preset, rename, drop, transform));
             } catch (IllegalArgumentException exception) {
-                throw new ConfigurationException(source + ": json_profiles." + name + ": " + exception.getMessage(), exception);
+                throw source.failureFrom("json_profiles." + name, exception);
             }
         }
         return Collections.unmodifiableMap(result);
     }
 
-    static Map<String, EncoderConfig> encoders(Map<String, Object> raw, String source, Map<String, String> environment) {
+    static Map<String, EncoderConfig> encoders(Map<String, Object> raw, ConfigSource source) {
         requireComponentCount(raw, source, "encoders");
         Map<String, EncoderConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "encoders." + name, environment);
+            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "encoders." + name);
             String type = reader.requiredString("type").toLowerCase(Locale.ROOT);
             EncoderConfig encoder;
             try {
@@ -93,7 +92,7 @@ final class ExtensionSectionDecoder {
                     default -> throw reader.failure("type", "must be json or custom");
                 };
             } catch (IllegalArgumentException exception) {
-                throw reader.failure(type.equals("json") ? "profile" : "provider", exception.getMessage());
+                throw reader.failureFrom(type.equals("json") ? "profile" : "provider", exception);
             }
             reader.finish();
             result.put(name, encoder);
@@ -101,28 +100,28 @@ final class ExtensionSectionDecoder {
         return Collections.unmodifiableMap(result);
     }
 
-    static Map<String, EnricherConfig> enrichers(Map<String, Object> raw, String source, Map<String, String> environment) {
+    static Map<String, EnricherConfig> enrichers(Map<String, Object> raw, ConfigSource source) {
         requireComponentCount(raw, source, "enrichers");
         Map<String, EnricherConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "enrichers." + name, environment);
+            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "enrichers." + name);
             try {
                 result.put(name, new EnricherConfig(name, ProviderReferenceDecoder.decode(reader)));
             } catch (IllegalArgumentException exception) {
-                throw reader.failure("provider", exception.getMessage());
+                throw reader.failureFrom("provider", exception);
             }
             reader.finish();
         }
         return Collections.unmodifiableMap(result);
     }
 
-    static Map<String, FilterConfig> filters(Map<String, Object> raw, String source, Map<String, String> environment) {
+    static Map<String, FilterConfig> filters(Map<String, Object> raw, ConfigSource source) {
         requireComponentCount(raw, source, "filters");
         Map<String, FilterConfig> result = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             String name = entry.getKey();
-            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "filters." + name, environment);
+            ConfigReader reader = ConfigReader.fromValue(entry.getValue(), source, "filters." + name);
             String type = reader.requiredString("type").toLowerCase(Locale.ROOT);
             FilterConfig filter;
             try {
@@ -142,7 +141,7 @@ final class ExtensionSectionDecoder {
                     default -> throw reader.failure("type", "must be sampling, rate_limit, or custom");
                 };
             } catch (IllegalArgumentException exception) {
-                throw reader.failure("type", exception.getMessage());
+                throw reader.failureFrom("type", exception);
             }
             reader.finish();
             result.put(name, filter);
@@ -161,15 +160,14 @@ final class ExtensionSectionDecoder {
             }
             result.put(
                     entry.getKey(),
-                    EnvironmentExpander.expand(
-                            text, reader.environment(), reader.source(), reader.childPath(key + "." + entry.getKey())));
+                    EnvironmentExpander.expand(text, reader.context(), reader.childPath(key + "." + entry.getKey())));
         }
         return Collections.unmodifiableMap(result);
     }
 
-    private static void requireComponentCount(Map<String, Object> raw, String source, String section) {
+    private static void requireComponentCount(Map<String, Object> raw, ConfigSource source, String section) {
         if (raw.size() > MAX_COMPONENTS) {
-            throw new ConfigurationException(source + ": " + section + ": at most " + MAX_COMPONENTS + " entries are supported");
+            throw source.failure(section, "at most " + MAX_COMPONENTS + " entries are supported");
         }
     }
 }
