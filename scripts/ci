@@ -4,31 +4,23 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/scripts/lib/logyard-release.sh"
 
-ZOLT="$(logyard_require_zolt)"
+export ZOLT="$(logyard_require_zolt)"
 test_members="$(logyard_test_members | paste -sd, -)"
 cd "$ROOT"
 
 ./scripts/repository-check
-./scripts/verify
 ./scripts/javadoc
 
-if [[ -x "$ZOLT" ]]; then
-  if [[ -f zolt.lock ]]; then
-    "$ZOLT" resolve --directory "$ROOT" --workspace --locked
-  else
-    "$ZOLT" resolve --directory "$ROOT" --workspace
-  fi
-  "$ZOLT" build --directory "$ROOT" --workspace --all
-  while IFS= read -r member; do
-    rm -rf "$ROOT/$member/target/ci-test-reports"
-  done < <(logyard_test_members)
-  "$ZOLT" test --directory "$ROOT" --workspace --members "$test_members" --reports-dir target/ci-test-reports
-  while IFS= read -r member; do
-    PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.junit_reports \
-      "$ROOT/$member/target/ci-test-reports"
-  done < <(logyard_test_members)
-  "$ZOLT" run --directory "$ROOT" --workspace --member tests/logyard-integration-tests
-  "$ROOT/scripts/failure-injection-verify"
-else
-  echo "NOTE: Zolt is not installed at $ZOLT; the JDK-only verification completed successfully."
-fi
+"$ZOLT" resolve --directory "$ROOT" --workspace --locked
+"$ZOLT" build --directory "$ROOT" --workspace --all
+while IFS= read -r member; do
+  rm -rf "$ROOT/$member/target/ci-test-reports"
+done < <(logyard_test_members)
+"$ZOLT" test --directory "$ROOT" --workspace --members "$test_members" --reports-dir target/ci-test-reports
+while IFS= read -r member; do
+  PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.junit_reports \
+    "$ROOT/$member/target/ci-test-reports"
+done < <(logyard_test_members)
+"$ZOLT" run --directory "$ROOT" --workspace --member tests/logyard-integration-tests
+"$ZOLT" run --directory "$ROOT" --workspace --member tests/logyard-adapter-canaries
+"$ROOT/scripts/failure-injection-verify"

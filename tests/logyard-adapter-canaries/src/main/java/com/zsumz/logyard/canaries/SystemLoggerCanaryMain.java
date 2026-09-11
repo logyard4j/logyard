@@ -1,4 +1,4 @@
-package com.zsumz.logyard.tests;
+package com.zsumz.logyard.canaries;
 
 import com.zsumz.logyard.api.Logyard;
 

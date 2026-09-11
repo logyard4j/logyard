@@ -1,0 +1,28 @@
+[project]
+name = "logyard-adapter-canaries"
+version = "0.1.0-rc.1"
+group = "com.zsumz.logyard"
+java = "21"
+main = "com.zsumz.logyard.canaries.RuntimeCanaries"
+
+[repositories]
+central = "https://repo.maven.apache.org/maven2"
+
+[dependencies]
+"com.zsumz.logyard:logyard-api" = { workspace = "modules/logyard-api" }
+"com.zsumz.logyard:logyard-core" = { workspace = "modules/logyard-core" }
+"com.zsumz.logyard:logyard-config-toml" = { workspace = "modules/logyard-config-toml" }
+"com.zsumz.logyard:logyard-output-console" = { workspace = "modules/logyard-output-console" }
+"com.zsumz.logyard:logyard-output-json" = { workspace = "modules/logyard-output-json" }
+"com.zsumz.logyard:logyard-runtime" = { workspace = "modules/logyard-runtime" }
+
+"com.zsumz.logyard:logyard-jul" = { workspace = "modules/logyard-jul" }
+"com.zsumz.logyard:logyard-system-logger" = { workspace = "modules/logyard-system-logger" }
+"com.zsumz.logyard:logyard-slf4j2" = { workspace = "modules/logyard-slf4j2" }
+
+[build]
+source = "src/main/java"
+output = "target/classes"
+
+[build.metadata]
+reproducible = true

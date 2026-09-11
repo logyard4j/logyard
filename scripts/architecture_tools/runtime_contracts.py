@@ -16,7 +16,7 @@ def check_runtime_contracts(root: Path, state: CheckState) -> None:
     _check_flush_capacity(root, state)
     _check_adapter_reentry(root, state)
     _check_lifecycle_state_boundaries(root, state)
-    _check_fallback_tests(root, state)
+    _check_test_dependencies(root, state)
 
 
 def _runtime_sources(root: Path) -> list[tuple[Path, str]]:
@@ -174,14 +174,10 @@ def _check_lifecycle_state_boundaries(root: Path, state: CheckState) -> None:
                 state.add_error(f"{relative}: must retain its explicit {collaborator} boundary")
 
 
-def _check_fallback_tests(root: Path, state: CheckState) -> None:
-    fallback_root = root / "scripts/verify-support/junit-stub-src"
-    for candidate in sorted((root / "modules").glob("*/src/test/java/**/*.java")):
-        if "@TempDir" in candidate.read_text(encoding="utf-8"):
-            state.add_error(f"{candidate.relative_to(root)}: fallback-suite tests must create temporary directories explicitly")
+def _check_test_dependencies(root: Path, state: CheckState) -> None:
     for candidate in sorted(root.rglob("*.java")):
         if "target" in candidate.parts:
             continue
         text = candidate.read_text(encoding="utf-8")
-        if re.search(r"(?m)^package\s+org\.junit(?:\.|;)", text) and not candidate.is_relative_to(fallback_root):
+        if re.search(r"(?m)^package\s+org\.junit(?:\.|;)", text):
             state.add_error(f"{candidate.relative_to(root)}: checked-in JUnit substitutes are forbidden")

@@ -1,1 +1,1 @@
-"""Focused checks for the dependency-free verification fallback."""
+"""Checks for fresh, resolved JUnit verification evidence."""

@@ -1,6 +1,6 @@
 version = 5
-projectResolutionFingerprint = "sha256:67f1463d07af82976820f63c073c793c1d2a53e348dac4402789010f7bdaf9f3"
-projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:c786fe4c66a8a25af8dd5d0081c1b5791a51adb20cf8183369d91e0bf9df6b08", "dependencies.compile=sha256:e29a87bb86a25934ac1d9da7a6a4a8c654b378d5052fec1906a7b6f7b746213a", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:9c42369a3714b6ad96020c05ef68b7603e30ba031da4a0462f557c5d7522aa3f", "dependencies.test=sha256:f833c9dbdc9cdd4bbc403ac0e997724417fb9ed9c8dd0ab02b5d034e63c71f15", "dependencyMetadata=sha256:e5f55f68bafce466c84652b0f0724d9c813a384a5af187165a13fc5d8030421a", "framework.quarkus=sha256:fdeff0f192ed3a2a02651816c8bfdf24e82bf6d6fe25ab15e52f43e5091aad12", "framework.springBoot.native=sha256:365c654e12ebc294a17fd7887b797209e8a84325ccfa3ccb4bf3a48d79c9fc2c", "java=sha256:09305b6b615b7f9fbdef61c896361253683bea8deb45dab14e19faae62d34768", "package=sha256:0889459b7308feb6b88a8c22d5708b96c16bcbb2fd8847b2b2edc335d1e71d2f", "repositories=sha256:ffcc452f724874af8fe1a16c57fcdc8cd4c8c0850b7248d5026d2ba318bd55b8", "schema=sha256:4fde0d9076645d2f3f8f881c5ef679f5ec35c91efc4f839cd860c75dd16956c1"]
+projectResolutionFingerprint = "sha256:37074720026e1ff65a3e33f4f8ba65a778633d7d23f70c0af4d869a23fe1639a"
+projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:5029a55b2aff73024a2d0fd78554605ab03d22e82872dce332623f9dd29ae478", "dependencies.compile=sha256:e29a87bb86a25934ac1d9da7a6a4a8c654b378d5052fec1906a7b6f7b746213a", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:9c42369a3714b6ad96020c05ef68b7603e30ba031da4a0462f557c5d7522aa3f", "dependencies.test=sha256:f833c9dbdc9cdd4bbc403ac0e997724417fb9ed9c8dd0ab02b5d034e63c71f15", "dependencyMetadata=sha256:e5f55f68bafce466c84652b0f0724d9c813a384a5af187165a13fc5d8030421a", "framework.quarkus=sha256:9bd4fca7bc5c624bad318eba318091aa1d78802355b9156bc1c57f698f541739", "framework.springBoot.native=sha256:2927a2fa1f00ec6b14da31045320c05ab7961f57e07afbb676d2d07eab03c708", "java=sha256:79aa735c78f1647dc4b58dd10bf8c92a9cbb01d42afb16818655aef84fdd45a7", "package=sha256:bd5036f436a0672b7c8eef952d1d8416fa31678bd2e8018c23d933ebdbd98848", "repositories=sha256:a99c7895f11d0a83bc223d38c592273ee9a3df2209d18f14a8a387c17e90045f", "schema=sha256:3afddef4b848a551dd0b0a32f560e18c8e92b786c6dc20a1ff0b713ae345aedc"]
 
 [[package]]
 id = "com.zsumz.logyard:logyard-api"
@@ -10,7 +10,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-api"
 workspaceOutput = "target/classes"
-members = ["benchmarks/logyard-benchmarks", "modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-opentelemetry", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-spring-boot-starter", "modules/logyard-system-logger", "tests/logyard-integration-tests"]
+members = ["benchmarks/logyard-benchmarks", "modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-opentelemetry", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-spring-boot-starter", "modules/logyard-system-logger", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
 dependencies = []
 
 [[package]]
@@ -21,7 +21,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-config-toml"
 workspaceOutput = "target/classes"
-members = ["modules/logyard-runtime", "tests/logyard-integration-tests"]
+members = ["modules/logyard-runtime", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
 dependencies = []
 
 [[package]]
@@ -32,7 +32,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-core"
 workspaceOutput = "target/classes"
-members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "tests/logyard-integration-tests"]
+members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
 dependencies = []
 
 [[package]]
@@ -54,7 +54,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-jul"
 workspaceOutput = "target/classes"
-members = ["modules/logyard-spring-boot"]
+members = ["modules/logyard-spring-boot", "tests/logyard-adapter-canaries"]
 dependencies = []
 
 [[package]]
@@ -65,7 +65,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-output-console"
 workspaceOutput = "target/classes"
-members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "tests/logyard-integration-tests"]
+members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
 dependencies = []
 
 [[package]]
@@ -76,7 +76,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-output-json"
 workspaceOutput = "target/classes"
-members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "tests/logyard-integration-tests"]
+members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
 dependencies = []
 
 [[package]]
@@ -87,7 +87,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-runtime"
 workspaceOutput = "target/classes"
-members = ["benchmarks/logyard-benchmarks", "modules/logyard-jul", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-system-logger", "tests/logyard-integration-tests"]
+members = ["benchmarks/logyard-benchmarks", "modules/logyard-jul", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-system-logger", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
 dependencies = []
 
 [[package]]
@@ -109,7 +109,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-slf4j2"
 workspaceOutput = "target/classes"
-members = ["benchmarks/logyard-benchmarks", "modules/logyard-spring-boot-starter"]
+members = ["benchmarks/logyard-benchmarks", "modules/logyard-spring-boot-starter", "tests/logyard-adapter-canaries"]
 dependencies = ["org.slf4j:slf4j-api:2.0.18:jar:compile"]
 
 [[package]]
@@ -133,6 +133,17 @@ workspace = "modules/logyard-spring-boot"
 workspaceOutput = "target/classes"
 members = ["modules/logyard-spring-boot-starter"]
 dependencies = ["org.springframework.boot:spring-boot-autoconfigure:3.5.16:jar:compile", "org.springframework.boot:spring-boot:3.5.16:jar:compile"]
+
+[[package]]
+id = "com.zsumz.logyard:logyard-system-logger"
+version = "0.1.0-rc.1"
+source = "workspace"
+scope = "compile"
+direct = true
+workspace = "modules/logyard-system-logger"
+workspaceOutput = "target/classes"
+members = ["tests/logyard-adapter-canaries"]
+dependencies = []
 
 [[package]]
 id = "io.micrometer:micrometer-commons"

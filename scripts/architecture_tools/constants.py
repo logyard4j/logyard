@@ -38,6 +38,10 @@ ALLOWED_IMPORT_PREFIXES = {
     "logyard-spring-boot-starter": ("java.", PREFIX + "api.", PREFIX + "spring.boot.starter."),
     "logyard-jul": ("java.", PREFIX + "api.", PREFIX + "runtime.", PREFIX + "jul."),
     "logyard-system-logger": ("java.", PREFIX + "api.", PREFIX + "runtime.", PREFIX + "systemlogger."),
+    "logyard-adapter-canaries": (
+        "java.", PREFIX + "api.", PREFIX + "core.", PREFIX + "output.console.", PREFIX + "output.json.",
+        PREFIX + "runtime.", PREFIX + "jul.", PREFIX + "systemlogger.", PREFIX + "canaries.",
+    ),
     "logyard-integration-tests": (
         "java.", PREFIX + "api.", PREFIX + "config.", PREFIX + "core.", PREFIX + "output.console.", PREFIX + "output.json.", PREFIX + "runtime.", PREFIX + "tests.",
     ),
@@ -72,6 +76,12 @@ EXPECTED_DEPENDENCIES = {
     "modules/logyard-system-logger": {"com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-runtime"},
     "tests/logyard-integration-tests": {
         "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core", "com.zsumz.logyard:logyard-config-toml", "com.zsumz.logyard:logyard-output-console", "com.zsumz.logyard:logyard-output-json", "com.zsumz.logyard:logyard-runtime",
+    },
+    "tests/logyard-adapter-canaries": {
+        "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core", "com.zsumz.logyard:logyard-config-toml",
+        "com.zsumz.logyard:logyard-output-console", "com.zsumz.logyard:logyard-output-json",
+        "com.zsumz.logyard:logyard-runtime", "com.zsumz.logyard:logyard-jul", "com.zsumz.logyard:logyard-system-logger",
+        "com.zsumz.logyard:logyard-slf4j2",
     },
     "benchmarks/logyard-benchmarks": {
         "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core", "com.zsumz.logyard:logyard-output-console", "com.zsumz.logyard:logyard-output-json", "com.zsumz.logyard:logyard-runtime", "com.zsumz.logyard:logyard-slf4j2", "org.openjdk.jmh:jmh-core", "org.slf4j:slf4j-api",

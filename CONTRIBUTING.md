@@ -13,7 +13,7 @@ zolt resolve --workspace
 ./scripts/ci
 ```
 
-`scripts/ci` runs repository and architecture checks, JDK-only verification, strict Javadocs, the locked Zolt build and full test family, executable integration checks, and failure injection.
+`scripts/ci` runs repository and architecture checks, strict Javadocs, the locked Zolt build, resolved JUnit tests, executable integrations, constrained-heap canaries, provider discovery, and failure injection. Zolt is required; missing dependencies fail the gate.
 
 ## Choose a check
 
@@ -22,7 +22,7 @@ Run commands from the repository root:
 | Command | Checks |
 | --- | --- |
 | `./scripts/repository-check` | Layout, tooling tests, framework versions, architecture, and whitespace |
-| `./scripts/verify` | Core compilation, executable integration checks, boundedness, and tests |
+| `./scripts/verify` | Alias for the complete `scripts/ci` gate |
 | `./scripts/javadoc` | Public documentation with strict diagnostics |
 | `./scripts/failure-injection-verify` | Durable-resource, delivery, and reload failure cases |
 | `./scripts/ecs-verify` | Zolt-generated JSON, typed Elasticsearch ingestion, and standard ECS queries through Smoque |
@@ -30,7 +30,7 @@ Run commands from the repository root:
 | `./scripts/comparison-verify` | Isolated Zolt provider builds and equal-output delivery comparisons through Smoque |
 | `./scripts/api-compatibility --baseline` | Reviewed compatibility policy against immutable release artifacts |
 
-`scripts/verify` uses local JUnit and SLF4J artifacts when available. To run its dependency-free fallback, use `LOGYARD_VERIFY_FORCE_FALLBACK=1 ./scripts/verify`. Use `scripts/ci` for the complete local gate.
+Verification has no dependency-free fallback or skipped-adapter success path. Framework consumer coverage is limited to the [Zolt examples](INTEGRATIONS.md#examples); native-image, AOT, and development-mode matrices are outside this gate.
 
 The allocation gate allows at most 1 B/op for warmed disabled native/SLF4J calls and the adapter guard, including classic calls and fluent suppliers. It also checks that disabled suppliers stay unevaluated. Initial thread-local setup and provider startup are separate costs.
 

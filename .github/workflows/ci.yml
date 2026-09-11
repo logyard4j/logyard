@@ -26,14 +26,9 @@ jobs:
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Resolve the locked workspace
-        run: zolt resolve --workspace
+        run: zolt resolve --workspace --locked
       - name: Repository, Javadoc, build, and test checks
         run: ./scripts/ci
-      - name: Force the dependency-free verification path
-        env:
-          LOGYARD_VERIFY_FORCE_FALLBACK: '1'
-          LOGYARD_VERIFY_TARGET: ${{ runner.temp }}/logyard-offline-verify
-        run: ./scripts/verify
       - name: Enforce the reviewed API compatibility baseline policy
         run: ./scripts/api-compatibility --baseline
       - name: Smoke japicmp wiring and public-surface filters
