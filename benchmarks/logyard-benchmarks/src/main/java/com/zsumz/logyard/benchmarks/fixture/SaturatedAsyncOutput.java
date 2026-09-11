@@ -41,7 +41,8 @@ public final class SaturatedAsyncOutput implements AutoCloseable {
             }
             if (delivered == event) observed.increment();
         }, CAPACITY, new OverflowPolicy(Map.of(Level.INFO,
-                new OverflowPolicy.Rule(action, action == OverflowAction.BLOCK ? Duration.ofNanos(1) : Duration.ZERO))),
+                new OverflowPolicy.Rule(action, action == OverflowAction.BLOCK || action == OverflowAction.WAIT_DROP
+                        ? Duration.ofNanos(1) : Duration.ZERO))),
                 Duration.ofSeconds(5));
         try {
             sink.accept(event);
@@ -77,7 +78,7 @@ public final class SaturatedAsyncOutput implements AutoCloseable {
         }
         DeliveryEvidence.require(sink.queuedEvents() == CAPACITY + 1, "a measured call bypassed the full-queue branch");
         long outcomes = switch (action) {
-            case DROP -> sink.dropped(Level.INFO);
+            case DROP, WAIT_DROP -> sink.dropped(Level.INFO);
             case SYNC -> sink.synchronousFallbacks();
             case BLOCK, STDERR -> sink.emergencyFallbacks();
         };

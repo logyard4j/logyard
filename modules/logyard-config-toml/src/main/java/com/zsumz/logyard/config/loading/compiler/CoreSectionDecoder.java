@@ -36,6 +36,8 @@ final class CoreSectionDecoder {
     }
 
     static ResourceConfig resource(ConfigReader reader) {
+        List<String> include = reader.stringList("include", List.of());
+        List<String> exclude = reader.stringList("exclude", List.of());
         Map<String, Object> raw = reader.dynamicObject("attributes");
         Map<String, String> attributes = new LinkedHashMap<>();
         raw.forEach((key, value) -> {
@@ -49,7 +51,7 @@ final class CoreSectionDecoder {
         });
         reader.finish();
         try {
-            return new ResourceConfig(attributes);
+            return new ResourceConfig(attributes, include, exclude);
         } catch (IllegalArgumentException exception) {
             throw reader.failure("attributes", exception.getMessage());
         }
@@ -116,7 +118,7 @@ final class CoreSectionDecoder {
         try {
             return OverflowAction.valueOf(text.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
-            throw reader.failure(key, "must be drop, block, sync, or stderr");
+            throw reader.failure(key, "must be drop, wait_drop, block, sync, or stderr");
         }
     }
 

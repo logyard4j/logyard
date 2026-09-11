@@ -14,7 +14,7 @@ def required_scenarios(suite: str) -> list[tuple[str, dict[str, str], str]]:
     producers = ("oneProducer",) if suite == "smoke" else ("oneProducer", "fourProducers", "sixteenProducers", "sixtyFourProducers")
     return (
         [(PREFIX + "delivery.AsyncDeliveryBenchmark." + method, {}, "thrpt") for method in producers]
-        + [(PREFIX + "delivery.OverflowPolicyBenchmark.overflow", {"action": action}, "thrpt") for action in ("DROP", "BLOCK", "STDERR")]
+        + [(PREFIX + "delivery.OverflowPolicyBenchmark.overflow", {"action": action}, "thrpt") for action in ("DROP", "WAIT_DROP", "BLOCK", "STDERR")]
         + [(PREFIX + "delivery.SynchronousOverflowBenchmark.synchronousFallback", {}, "ss")]
         + [(PREFIX + "output.JsonSinkBenchmark." + method, {}, "thrpt") for method in JSON_METHODS]
         + [(PREFIX + "ingress.Slf4jProviderFirstCallBenchmark.firstCall", {}, "ss"),
@@ -77,7 +77,7 @@ def reconcile(record: dict[str, Any]) -> None:
         raise ValueError("accepted records did not all reach the delegate")
     if record["kind"] == "overflow":
         action = record.get("params", {}).get("action", "SYNC")
-        outcome = {"DROP": "dropped", "BLOCK": "emergency_fallbacks", "STDERR": "emergency_fallbacks", "SYNC": "synchronous_fallbacks"}[action]
+        outcome = {"DROP": "dropped", "WAIT_DROP": "dropped", "BLOCK": "emergency_fallbacks", "STDERR": "emergency_fallbacks", "SYNC": "synchronous_fallbacks"}[action]
         if count("enqueued") != count("primed") or count(outcome) != calls:
             raise ValueError("the intended overflow branch was not maintained")
     elif record["kind"] != "admission":

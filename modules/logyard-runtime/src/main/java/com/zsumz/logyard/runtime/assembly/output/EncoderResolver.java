@@ -84,7 +84,7 @@ public final class EncoderResolver {
                 config.service().environment(),
                 config.service().version(),
                 config.service().instanceId(),
-                config.resource().attributes());
+                config.resource().attributes(), config.resource()::includes);
     }
 
     /**

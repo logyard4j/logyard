@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 @Measurement(iterations = 5, time = 1)
 @Fork(1)
 public class OverflowPolicyBenchmark {
-    @Param({"DROP", "BLOCK", "STDERR"})
+    @Param({"DROP", "WAIT_DROP", "BLOCK", "STDERR"})
     public OverflowAction action;
     private PrintStream originalError;
     private PrintStream discardedError;

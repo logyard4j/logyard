@@ -7,8 +7,11 @@ public enum OverflowAction {
     /** Discard the event and increment the output's drop counters. */
     DROP,
 
-    /** Wait for bounded capacity according to the configured duration. */
+    /** Wait for bounded capacity, then write the emergency representation to standard error. */
     BLOCK,
+
+    /** Wait for bounded capacity, then discard; never deliver the event on the publishing thread. */
+    WAIT_DROP,
 
     /** Deliver directly on the publishing thread. */
     SYNC,

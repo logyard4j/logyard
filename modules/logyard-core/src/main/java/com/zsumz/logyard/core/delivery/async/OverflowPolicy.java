@@ -26,6 +26,11 @@ public final class OverflowPolicy {
         return rules.get(level);
     }
 
+    boolean dropsUndelivered(Level level) {
+        OverflowAction action = ruleFor(level).action();
+        return action == OverflowAction.DROP || action == OverflowAction.WAIT_DROP;
+    }
+
     public record Rule(OverflowAction action, Duration waitDuration) {
         public Rule {
             Objects.requireNonNull(action, "action");

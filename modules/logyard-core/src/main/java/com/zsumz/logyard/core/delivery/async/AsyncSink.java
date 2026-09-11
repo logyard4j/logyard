@@ -4,7 +4,6 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.delivery.OverflowAction;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 
@@ -78,6 +77,11 @@ public final class AsyncSink implements EventSink, HealthContributor {
             case SYNC -> synchronizeOrReport(event, rule.waitDuration());
             case STDERR -> enqueueOrReport(event, rule.waitDuration());
             case BLOCK -> block(event, rule.waitDuration());
+            case WAIT_DROP -> {
+                if (rule.waitDuration().isZero() || !offerWithWait(event, rule.waitDuration())) {
+                    metrics.recordDrop(event.level());
+                }
+            }
         }
     }
 
@@ -194,7 +198,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     }
 
     private void rejectClosed(LogEvent event, String reason) {
-        if (overflowPolicy.ruleFor(event.level()).action() == OverflowAction.DROP) {
+        if (overflowPolicy.dropsUndelivered(event.level())) {
             metrics.recordDrop(event.level());
         } else {
             metrics.recordEmergencyFallback();

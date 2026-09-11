@@ -21,7 +21,7 @@ The smoke gate also exercises the official Quarkus extension reactor. Its packag
 | --- | --- |
 | Native and SLF4J ingress | Disabled calls or capture and admission to the configured fixture |
 | `AsyncDeliveryBenchmark` | Attempts to admit one reused captured event, with 1/4/16/64 producers and DROP overflow |
-| `OverflowPolicyBenchmark` | DROP, bounded-wait timeout, or emergency formatting while a latched worker keeps the queue full |
+| `OverflowPolicyBenchmark` | DROP, WAIT_DROP, BLOCK, and STDERR while a latched worker keeps the queue full; waits use a 1 ns timeout |
 | `SynchronousOverflowBenchmark` | One synchronous fallback after a controlled 1 ms delegate stall |
 | `JsonSinkBenchmark.directFileMechanics` | Buffered file writes of pre-encoded `{}` records |
 | `JsonSinkBenchmark.directFile` | Captured event → JSON encoding → buffered UTF-8 file |

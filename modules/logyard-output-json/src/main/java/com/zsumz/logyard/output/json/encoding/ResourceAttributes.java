@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 /** Stable resource attributes attached to every JSON event. */
 public final class ResourceAttributes {
@@ -32,6 +33,14 @@ public final class ResourceAttributes {
             String version,
             String instanceId,
             Map<String, String> custom) {
+        return service(name, namespace, environment, version, instanceId, custom, key -> true);
+    }
+
+    /** Filters canonical service and custom keys before consuming the resource capture budget. */
+    public static ResourceAttributes service(
+            String name, String namespace, String environment, String version, String instanceId,
+            Map<String, String> custom, Predicate<String> include) {
+        Objects.requireNonNull(include, "include");
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("service.name", requireText(name, "name"));
         putIfText(values, "service.namespace", namespace);
@@ -39,6 +48,7 @@ public final class ResourceAttributes {
         putIfText(values, "service.version", version);
         putIfText(values, "service.instance.id", instanceId);
         Objects.requireNonNull(custom, "custom").forEach(values::putIfAbsent);
+        values.keySet().removeIf(key -> !include.test(key));
         return new ResourceAttributes(values);
     }
 

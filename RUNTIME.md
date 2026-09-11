@@ -156,6 +156,8 @@ Attribute keys are retained whole or omitted. Distinct keys that normalize to th
 
 The numeric constants in `CaptureLimits` are stable API: releases may add limits but do not change existing inlined values.
 
+These limits bound retained event data, not arbitrary application `toString()` calls or collection behavior. They also do not bound dynamic logger-name cardinality or total process memory. Reuse stable logger names and size queues, output buffers, resource metadata, and registry overhead together. The capture budgets are fixed in this release.
+
 ## JDK message formatting
 
 JUL, `System.Logger`, and Quarkus `MESSAGE_FORMAT` records use bounded `MessageFormat` rendering.

@@ -1,7 +1,6 @@
 package com.zsumz.logyard.core.delivery.async;
 
 import com.zsumz.logyard.api.event.LogEvent;
-import com.zsumz.logyard.api.delivery.OverflowAction;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.time.Duration;
@@ -85,7 +84,7 @@ final class AsyncDeliveryLoop {
         LogEvent remaining;
         while ((remaining = eventQueue.claimNow()) != null) {
             eventQueue.completeClaims(1);
-            if (overflowPolicy.ruleFor(remaining.level()).action() == OverflowAction.DROP) {
+            if (overflowPolicy.dropsUndelivered(remaining.level())) {
                 metrics.recordDrop(remaining.level());
             } else {
                 metrics.recordEmergencyFallback();

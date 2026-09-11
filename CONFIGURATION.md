@@ -63,6 +63,16 @@ region = "eu-west"
 
 Service fields are strings: `name`, `namespace`, `version`, `environment`, and `instance_id`. The defaults are `unknown-service` for the name, an empty namespace, and `unknown` for the remaining fields. Resource attributes are string key/value pairs.
 
+Filter resource fields before JSON capture and profile projection:
+
+```toml
+[resource]
+include = ["service.name", "service.version", "deployment.environment.name", "region"]
+exclude = ["service.version"]
+```
+
+Both lists default to empty. An empty `include` keeps every key; `exclude` always wins. Keys are exact, use canonical names, and each list allows at most 64 entries. Excluded keys stay absent from normal, truncated, and exception records, including ECS service fields.
+
 ## Levels and routes
 
 ```toml
@@ -230,17 +240,20 @@ Override only the overflow levels you need. This example allows ERROR events to 
 
 ```toml
 [delivery.overflow]
-error = { action = "block", timeout = "20ms" }
+error = { action = "wait_drop", timeout = "20ms" }
 ```
 
 | Action | When the queue stays full |
 | --- | --- |
 | `drop` | Discard immediately |
 | `block` | Wait up to `timeout`, then write the emergency representation to stderr |
+| `wait_drop` | Wait up to `timeout`, then drop and count the event; interruption or closing also drops |
 | `sync` | Wait up to `timeout`, then deliver on the caller thread |
 | `stderr` | Wait up to `timeout`, then write the emergency representation to stderr |
 
-The timeout defaults to zero and bounds queue waiting only. A subsequent output or stderr write may still block. Logging is best effort; use a durable event path for records that must survive overload or process failure.
+The timeout defaults to zero and bounds queue waiting only. For latency-first operation, leave every level at `drop`. The recipe above gives errors a brief admission window with `wait_drop`; it performs no caller-thread output I/O when admission fails. Scheduling, capture, and processors still contribute to caller latency.
+
+`block`, `sync`, and `stderr` may perform a subsequent output or stderr write that blocks. Logging is best effort; neither recipe guarantees durable delivery.
 
 A full default queue can retain about 32 MiB of event text before object overhead. Size queues for your heap and expected bursts.
 
@@ -266,6 +279,8 @@ The optional [OpenTelemetry integration](INTEGRATIONS.md#opentelemetry) supplies
 Use a finite MDC allowlist. With Quarkus/JBoss Log Manager, `mdc = ["*"]` copies the entire source MDC for each accepted event.
 
 Redaction matches a map-key leaf or its full path, such as `request.users[0].token`. The `logyard.*` attribute namespace is reserved for system diagnostics.
+
+Key-based redaction covers event attributes, including captured MDC and baggage. It does not inspect message arguments, rendered messages, exception messages, or resource fields. Use resource exclusions above for metadata; sanitize sensitive message content in the application.
 
 ## Filters and enrichment
 

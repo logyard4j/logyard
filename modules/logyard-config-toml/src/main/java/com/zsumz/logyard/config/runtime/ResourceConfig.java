@@ -2,12 +2,13 @@ package com.zsumz.logyard.config.runtime;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 /** Bounded resource attributes shared by structured outputs. */
-public record ResourceConfig(Map<String, String> attributes) {
+public record ResourceConfig(Map<String, String> attributes, List<String> include, List<String> exclude) {
     public static final int MAX_ATTRIBUTES = 64;
     public static final int MAX_KEY_LENGTH = 128;
     public static final int MAX_VALUE_LENGTH = 4_096;
@@ -17,6 +18,10 @@ public record ResourceConfig(Map<String, String> attributes) {
             "service.version",
             "service.instance.id",
             "deployment.environment.name");
+
+    public ResourceConfig(Map<String, String> attributes) {
+        this(attributes, List.of(), List.of());
+    }
 
     public ResourceConfig {
         Objects.requireNonNull(attributes, "attributes");
@@ -44,5 +49,25 @@ public record ResourceConfig(Map<String, String> attributes) {
             copy.put(normalizedKey, normalizedValue);
         });
         attributes = Collections.unmodifiableMap(copy);
+        include = selection(include, "include");
+        exclude = selection(exclude, "exclude");
+    }
+
+    /** Selects canonical resource keys before capture and schema projection; exclusions always win. */
+    public boolean includes(String key) {
+        return (include.isEmpty() || include.contains(key)) && !exclude.contains(key);
+    }
+
+    private static List<String> selection(List<String> keys, String label) {
+        List<String> copy = List.copyOf(keys);
+        if (copy.size() > MAX_ATTRIBUTES || Set.copyOf(copy).size() != copy.size()) {
+            throw new IllegalArgumentException("resource " + label + " requires at most 64 unique keys");
+        }
+        for (String key : copy) {
+            if (key.length() > MAX_KEY_LENGTH || !key.matches("[A-Za-z][A-Za-z0-9_.-]*")) {
+                throw new IllegalArgumentException("invalid resource " + label + " key: " + key);
+            }
+        }
+        return copy;
     }
 }
