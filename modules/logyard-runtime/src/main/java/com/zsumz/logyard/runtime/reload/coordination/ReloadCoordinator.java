@@ -7,6 +7,7 @@ import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshotReader;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
@@ -61,7 +62,28 @@ public final class ReloadCoordinator {
                 snapshot,
                 assembly,
                 diagnostics,
-                environment);
+                ConfigurationInputs.capture(environment));
+    }
+
+    public ReloadCoordinator(
+            String sourceDescription,
+            Path legacyFileSource,
+            ConfigurationSnapshotReader snapshotReader,
+            DefaultLogyardRuntime runtime,
+            ConfigurationSnapshot snapshot,
+            RuntimeAssembly assembly,
+            ReloadDiagnostics diagnostics,
+            ConfigurationInputs inputs) {
+        this(
+                sourceDescription,
+                legacyFileSource,
+                snapshotReader,
+                runtime,
+                runtime::reload,
+                snapshot,
+                assembly,
+                diagnostics,
+                inputs);
     }
 
     ReloadCoordinator(
@@ -73,13 +95,13 @@ public final class ReloadCoordinator {
             ConfigurationSnapshot snapshot,
             RuntimeAssembly assembly,
             ReloadDiagnostics diagnostics,
-            Map<String, String> environment) {
+            ConfigurationInputs inputs) {
         this.sourceDescription = Objects.requireNonNull(sourceDescription, "sourceDescription");
         this.legacyFileSource = legacyFileSource == null ? null : legacyFileSource.toAbsolutePath().normalize();
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.planPublisher = Objects.requireNonNull(planPublisher, "planPublisher");
         this.diagnostics = new ReloadDiagnosticBoundary(diagnostics);
-        candidates = new ReloadCandidatePreparer(snapshotReader, environment);
+        candidates = new ReloadCandidatePreparer(snapshotReader, inputs);
         state = new ReloadState(snapshot, assembly);
     }
 

@@ -158,6 +158,23 @@ final class LogyardOpenTelemetryTest {
     }
 
     @Test
+    void closedOutputsDoNotReleaseTheProcessRegistration() {
+        LogyardOpenTelemetry.install(sdk);
+        try (EventSink first = create()) {
+            first.accept(event());
+        }
+        try (OpenTelemetrySdk replacement = OpenTelemetrySdk.builder().build()) {
+            assertThrows(IllegalStateException.class, () -> LogyardOpenTelemetry.install(replacement));
+        }
+        LogyardOpenTelemetry.install(sdk);
+        try (EventSink restarted = create()) {
+            restarted.accept(event());
+        }
+        assertEquals(2, exporter.getFinishedLogRecordItems().size());
+        assertSame(sdk, LogyardOpenTelemetry.installedOrNull());
+    }
+
+    @Test
     void reinstallingTheSameInstanceIsANoOp() {
         LogyardOpenTelemetry.install(sdk);
         LogyardOpenTelemetry.install(sdk);

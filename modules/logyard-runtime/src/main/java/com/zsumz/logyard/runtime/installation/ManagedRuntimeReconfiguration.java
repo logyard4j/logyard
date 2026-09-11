@@ -4,10 +4,10 @@ import com.zsumz.logyard.api.reload.ReloadResult;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -17,17 +17,17 @@ import static com.zsumz.logyard.runtime.installation.RuntimeInstallationTransiti
 final class ManagedRuntimeReconfiguration {
     private final RuntimeInstallationTransitions transitions;
     private final DefaultLogyardRuntime runtime;
-    private final Map<String, String> environment;
+    private final ConfigurationInputs inputs;
     private final Supplier<WatcherReloadOutcome> watcherReload;
 
     ManagedRuntimeReconfiguration(
             RuntimeInstallationTransitions transitions,
             DefaultLogyardRuntime runtime,
-            Map<String, String> environment,
+            ConfigurationInputs inputs,
             Supplier<WatcherReloadOutcome> watcherReload) {
         this.transitions = Objects.requireNonNull(transitions, "transitions");
         this.runtime = Objects.requireNonNull(runtime, "runtime");
-        this.environment = Objects.requireNonNull(environment, "environment");
+        this.inputs = Objects.requireNonNull(inputs, "inputs");
         this.watcherReload = Objects.requireNonNull(watcherReload, "watcherReload");
     }
 
@@ -47,7 +47,7 @@ final class ManagedRuntimeReconfiguration {
             if (current.canReuseImmutableSource(request, snapshot)) {
                 return transitions.finish(RECONFIGURING) ? ReloadResult.UNCHANGED : ReloadResult.REJECTED;
             }
-            prepared = PreparedRuntimeConfiguration.prepare(request, snapshot, currentAssembly, environment, watcherReload);
+            prepared = PreparedRuntimeConfiguration.prepare(request, snapshot, currentAssembly, inputs, watcherReload);
             candidate = prepared.assembly();
             prepared.activateOutputs();
             replacement = prepared.activate(runtime);

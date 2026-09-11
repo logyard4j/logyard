@@ -5,13 +5,13 @@ import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 import com.zsumz.logyard.runtime.reload.coordination.ReloadCoordinator;
 import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatcher;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.function.Supplier;
 
 /** Registration-first configuration candidate that owns its watcher and assembled resources until commit. */
@@ -22,7 +22,7 @@ final class PreparedRuntimeConfiguration {
     private final ReloadDiagnostics diagnostics;
     private final ConfigurationWatcher watcher;
     private final ConfigurationWatcherPolicy watcherPolicy;
-    private final Map<String, String> environment;
+    private final ConfigurationInputs inputs;
 
     private PreparedRuntimeConfiguration(
             ConfigurationInstallationRequest request,
@@ -31,24 +31,24 @@ final class PreparedRuntimeConfiguration {
             ReloadDiagnostics diagnostics,
             ConfigurationWatcher watcher,
             ConfigurationWatcherPolicy watcherPolicy,
-            Map<String, String> environment) {
+            ConfigurationInputs inputs) {
         this.request = request;
         this.snapshot = snapshot;
         this.assembly = assembly;
         this.diagnostics = diagnostics;
         this.watcher = watcher;
         this.watcherPolicy = watcherPolicy;
-        this.environment = Map.copyOf(environment);
+        this.inputs = inputs;
     }
 
     static PreparedRuntimeConfiguration prepare(
             ConfigurationInstallationRequest request,
             ConfigurationSnapshot initialSnapshot,
             RuntimeAssembly currentAssembly,
-            Map<String, String> environment,
+            ConfigurationInputs inputs,
             Supplier<WatcherReloadOutcome> reload) {
         StabilizedConfiguration stable =
-                ConfigurationSnapshotStabilizer.stabilize(request, initialSnapshot, environment, reload);
+                ConfigurationSnapshotStabilizer.stabilize(request, initialSnapshot, inputs, reload);
         try {
             RuntimeAssembly assembly = LogyardRuntimeFactory.assemble(stable.config(), currentAssembly);
             return new PreparedRuntimeConfiguration(
@@ -58,7 +58,7 @@ final class PreparedRuntimeConfiguration {
                     stable.diagnostics(),
                     stable.watcher(),
                     stable.watcherPolicy(),
-                    environment);
+                    inputs);
         } catch (RuntimeException | Error failure) {
             stable.closeWatcher(failure);
             throw failure;
@@ -97,7 +97,7 @@ final class PreparedRuntimeConfiguration {
                 snapshot,
                 assembly,
                 diagnostics,
-                environment);
+                inputs);
         return new ActiveRuntimeConfiguration(request, coordinator, diagnostics, watcher);
     }
 

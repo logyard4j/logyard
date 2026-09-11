@@ -3,12 +3,12 @@ package com.zsumz.logyard.runtime.installation;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.runtime.diagnostics.StderrReloadDiagnostics;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatchRegistration;
 import com.zsumz.logyard.runtime.reload.watcher.ConfigurationWatcher;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
-import java.util.Map;
 import java.util.function.Supplier;
 
 /** Stabilizes mutable configuration bytes and watcher policy before any runtime output is assembled. */
@@ -21,7 +21,7 @@ final class ConfigurationSnapshotStabilizer {
     static StabilizedConfiguration stabilize(
             ConfigurationInstallationRequest request,
             ConfigurationSnapshot initialSnapshot,
-            Map<String, String> environment,
+            ConfigurationInputs inputs,
             Supplier<WatcherReloadOutcome> reload) {
         ConfigurationSnapshot candidate = initialSnapshot;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -29,7 +29,7 @@ final class ConfigurationSnapshotStabilizer {
             ConfigurationWatcher watcher = null;
             try {
                 ConfigurationWatchHandshake.Selection selection =
-                        ConfigurationWatchHandshake.select(request, candidate, environment);
+                        ConfigurationWatchHandshake.select(request, candidate, inputs);
                 registration = selection.registration();
                 LogyardConfig config = selection.config();
                 ReloadDiagnostics diagnostics = diagnostics(config);

@@ -12,9 +12,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * instance was installed; it never reads or initializes the OpenTelemetry global. The application
  * configures its SDK resource, processors and exporters, and owns their flush and shutdown.</p>
  *
- * <p>The same instance may be installed repeatedly. Replacing it is rejected because existing
- * outputs retain their bridge across configuration reloads. Trace capture uses the caller's
- * ambient context independently of this installation.</p>
+ * <p>Registration lasts for the process lifetime: the SDK is strongly retained and has no public
+ * reset or replacement operation, even after every Logyard output closes. Runtime or application
+ * context restarts must reuse the same live SDK. Independently owned SDKs per application context
+ * are not supported. Trace capture uses the caller's ambient context independently.</p>
  */
 public final class LogyardOpenTelemetry {
     private static final AtomicReference<OpenTelemetry> INSTALLED = new AtomicReference<>();
@@ -26,7 +27,8 @@ public final class LogyardOpenTelemetry {
      * Installs the OpenTelemetry instance whose logs bridge later-created {@code otel} outputs use.
      *
      * <p>The application keeps ownership of the instance: Logyard never builds, configures, closes,
-     * or shuts it down.</p>
+     * or shuts it down. Keep the SDK alive across runtime restarts, then stop logging callers,
+     * drain Logyard, and flush and close the SDK at process shutdown.</p>
      *
      * @param openTelemetry application-owned OpenTelemetry instance
      * @throws IllegalStateException if a different instance is already installed

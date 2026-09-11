@@ -471,7 +471,7 @@ root = { level = "info", outputs = ["telemetry"] }
 | Exception | `exception.type`, `exception.message`, bounded `exception.stacktrace` |
 | Service identity | SDK resource; configure it on your SDK |
 
-Output creation fails without explicit installation. Reinstalling the same SDK is safe; replacing it with a different instance is rejected. Configure exporters on that SDK; the output accepts no provider options, encoder, or formatter. Apply JSON field policies to JSON outputs.
+Output creation fails without explicit installation. Registration lasts for the process lifetime, even after every output closes. Runtime and application-context restarts must reuse the same live SDK; replacement and independently owned SDKs per context are unsupported. Configure exporters on that SDK; the output accepts no provider options, encoder, or formatter. Apply JSON field policies to JSON outputs.
 
 Logyard delivers on a bounded output worker. Its health and drain cover forwarding to the Logs API. **Exporter failures, export completion, and SDK flush/shutdown remain application-owned.** Close Logyard before shutting down the SDK. Avoid exporter diagnostics that feed back into the same logging route.
 
@@ -608,7 +608,7 @@ Each example includes a `zolt.toml` build; application examples include output c
 | [Test kit](examples/test-kit) | Isolated log assertions, scoped context, lazy values, and capture overflow |
 | [SLF4J](examples/slf4j) | Fluent structured logging |
 | [Managed lifecycle](examples/lifecycle) | Cached SLF4J, JUL, and System.Logger instances across restart, level changes, formatting, and close-time drain |
-| [OpenTelemetry](examples/opentelemetry) | Trace identity, allowlisted baggage, executor propagation, and Logs SDK export |
+| [OpenTelemetry](examples/opentelemetry) | Trace identity, allowlisted baggage, executor propagation, Logs SDK export, and restart with the same SDK |
 | [Vert.x](examples/vertx) | Logging from a Vert.x application |
 | [Micronaut](examples/micronaut) | Startup, structured events, and shutdown flush |
 | [Spring Boot](examples/spring-boot) | MVC, WebFlux, Actuator, dynamic levels, JUL, and shutdown flush |

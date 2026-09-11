@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 final class OpenTelemetryLogsTest {
     @Test
@@ -69,6 +70,24 @@ final class OpenTelemetryLogsTest {
             assertEquals(Value.of(Map.of("items", Value.of(Value.of("one"), Value.of("two")))),
                     order.getAttributes().get(AttributeKey.valueKey("payload")));
             assertFalse(records.getLast().getSpanContext().isValid());
+
+            // The application owns one live SDK across managed runtime restarts.
+            try (var replacement = OpenTelemetrySdk.builder().build()) {
+                assertThrows(IllegalStateException.class, () -> LogyardOpenTelemetry.install(replacement));
+            }
+            LogyardOpenTelemetry.install(sdk);
+            try (var restarted = LogyardBootstrap.start(source)) {
+                var log = restarted.runtime().logger("checkout");
+                log.info("runtime restarted");
+                log.info("restart close-time drain");
+            }
+            assertTrue(provider.forceFlush().join(5, TimeUnit.SECONDS).isSuccess());
+            records = exporter.getFinishedLogRecordItems();
+            assertEquals(4, records.size());
+            assertEquals("runtime restarted", records.get(2).getBodyValue().asString());
+            assertEquals("restart close-time drain", records.getLast().getBodyValue().asString());
+            provider.get("application").logRecordBuilder().setBody("SDK remains application-owned").emit();
+            assertEquals(5, exporter.getFinishedLogRecordItems().size());
         }
     }
 }

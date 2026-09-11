@@ -16,8 +16,8 @@ import java.util.Properties;
  * {@code LOGYARD_OVERRIDES} environment variable (entries separated by newlines or
  * unquoted semicolons), then from {@code logyard.override.*} system properties in
  * alphabetical order; a later entry for the same key wins, so a system property beats
- * the environment. Overlays are read when a configuration is loaded or reloaded and
- * apply identically to every candidate.</p>
+ * the environment. Managed runtimes capture overlays once per installation and reuse
+ * them for file reloads and source handoffs. A new installation captures new values.</p>
  */
 public record ConfigOverlays(String profile, List<OverrideEntry> overrides) {
     /** System property naming the active profile. */

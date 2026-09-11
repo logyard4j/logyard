@@ -66,20 +66,14 @@ public final class ConfigurationSnapshot {
                 sha256(content));
     }
 
-    /**
-     * Parses this snapshot with the process overlays applied: the profile and the
-     * key-level overrides from the given environment and the current system
-     * properties. Overlays are re-read for each candidate, so every reload decision
-     * applies the same launch-time configuration.
-     */
+    /** Parses a standalone snapshot with overlays captured at this call. */
     public LogyardConfig parse(Map<String, String> environment) {
-        return LogyardConfigLoader.parseDetailed(
-                        text,
-                        description,
-                        baseDirectory,
-                        environment,
-                        ConfigOverlays.fromProcess(environment, System.getProperties()))
-                .config();
+        return parse(environment, ConfigOverlays.fromProcess(environment, System.getProperties()));
+    }
+
+    /** Parses with explicit immutable overlays; managed installations reuse their launch inputs. */
+    public LogyardConfig parse(Map<String, String> environment, ConfigOverlays overlays) {
+        return LogyardConfigLoader.parseDetailed(text, description, baseDirectory, environment, overlays).config();
     }
 
     public Path source() {

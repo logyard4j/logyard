@@ -4,6 +4,7 @@ import com.zsumz.logyard.api.LogyardLogger;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.runtime.diagnostics.StderrReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 import com.zsumz.logyard.runtime.installation.process.RuntimeInstallationLease;
 import com.zsumz.logyard.runtime.installation.process.RuntimeInstallationManager;
@@ -94,7 +95,7 @@ final class ConfigurationWatchHandshakeTest {
                 request,
                 initialSnapshot,
                 null,
-                Map.of(),
+                ConfigurationInputs.capture(Map.of()),
                 () -> WatcherReloadOutcome.INVALID_CANDIDATE);
         try {
             ConfigurationWatcherPolicy policy = prepared.watcherPolicy();

@@ -11,6 +11,7 @@ import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
 import java.nio.charset.StandardCharsets;
@@ -49,7 +50,7 @@ final class FileOutputReloadPublicationFailureTest {
                 activeSnapshot,
                 activeAssembly,
                 ReloadDiagnostics.silent(),
-                Map.of());
+                ConfigurationInputs.capture(Map.of()));
 
         try {
             Files.writeString(source, fileConfig(output), StandardCharsets.UTF_8);

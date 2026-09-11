@@ -58,8 +58,8 @@ def check_package_layout(root: Path, state: CheckState) -> None:
     _check_exact_root(
         root,
         "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/reload",
-        {"ConfigurationSnapshot.java", "ConfigurationSnapshotReader.java", "WatcherReloadOutcome.java"},
-        "runtime reload root must contain only shared snapshots and cross-boundary outcomes",
+        {"ConfigurationInputs.java", "ConfigurationSnapshot.java", "ConfigurationSnapshotReader.java", "WatcherReloadOutcome.java"},
+        "runtime reload root must contain only shared input snapshots and cross-boundary outcomes",
         state,
     )
     _check_exact_root(

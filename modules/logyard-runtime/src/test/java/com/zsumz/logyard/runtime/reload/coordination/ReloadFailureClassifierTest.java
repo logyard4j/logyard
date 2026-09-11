@@ -8,6 +8,7 @@ import com.zsumz.logyard.core.failure.ComponentInvocationException;
 import com.zsumz.logyard.output.json.file.lease.FileLease;
 import com.zsumz.logyard.output.json.file.lease.FileLeaseUnavailableException;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -109,7 +110,7 @@ final class ReloadFailureClassifierTest {
                 () -> {
                     throw new NullPointerException("source invariant");
                 },
-                java.util.Map.of());
+                ConfigurationInputs.capture(java.util.Map.of()));
 
         ReloadCandidatePreparer.SnapshotRead read = preparer.read();
 

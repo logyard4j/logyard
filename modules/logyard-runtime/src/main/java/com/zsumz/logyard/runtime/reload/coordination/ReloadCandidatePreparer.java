@@ -3,22 +3,22 @@ package com.zsumz.logyard.runtime.reload.coordination;
 import com.zsumz.logyard.config.LogyardConfig;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.assembly.RuntimeAssembly;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshotReader;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Map;
 import java.util.Objects;
 
 /** Performs source, parsing, policy, and assembly work without owning reload state. */
 final class ReloadCandidatePreparer {
     private final ConfigurationSnapshotReader snapshotReader;
-    private final Map<String, String> environment;
+    private final ConfigurationInputs inputs;
 
-    ReloadCandidatePreparer(ConfigurationSnapshotReader snapshotReader, Map<String, String> environment) {
+    ReloadCandidatePreparer(ConfigurationSnapshotReader snapshotReader, ConfigurationInputs inputs) {
         this.snapshotReader = Objects.requireNonNull(snapshotReader, "snapshotReader");
-        this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
+        this.inputs = Objects.requireNonNull(inputs, "inputs");
     }
 
     SnapshotRead read() {
@@ -34,7 +34,7 @@ final class ReloadCandidatePreparer {
     CandidatePreparation prepare(ConfigurationSnapshot snapshot, RuntimeAssembly active) {
         LogyardConfig config;
         try {
-            config = snapshot.parse(environment);
+            config = inputs.parse(snapshot);
         } catch (RuntimeException failure) {
             return CandidatePreparation.failure(ReloadFailureClassifier.parsing(failure));
         }

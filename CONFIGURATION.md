@@ -67,7 +67,7 @@ Select it with `-Dlogyard.profile=production` or `LOGYARD_PROFILE=production`. T
 | Environment overrides | `LOGYARD_OVERRIDES='delivery.capacity=512;runtime.watch=false'` |
 | System-property overrides | `-Dlogyard.override.delivery.capacity=1024` |
 
-Later values win. Overrides use TOML key paths and values; simple strings such as `debug` need no quotes. Quote dotted logger names: `loggers."com.example".level=debug`. Limits are 16 profiles and 64 overrides, with at most 512 characters per override key and 4,096 per value. Overrides are captured again when a reload candidate is evaluated.
+Later values win. Overrides use TOML key paths and values; simple strings such as `debug` need no quotes. Quote dotted logger names: `loggers."com.example".level=debug`. Limits are 16 profiles and 64 overrides, with at most 512 characters per override key and 4,096 per value. The active profile and overrides are captured once per runtime installation. File reloads and source handoffs reuse that snapshot; changing system properties takes effect after the runtime fully closes and a new installation starts.
 
 Errors identify the file line, profile, or override that supplied the value, with scoped suggestions for misspelled keys.
 

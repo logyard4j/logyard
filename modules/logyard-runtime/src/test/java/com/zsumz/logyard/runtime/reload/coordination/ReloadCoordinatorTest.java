@@ -16,6 +16,7 @@ import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
 import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
 import com.zsumz.logyard.runtime.diagnostics.ReloadDiagnostics;
 import com.zsumz.logyard.runtime.reload.ConfigurationSnapshot;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
 
 import java.io.IOException;
@@ -88,7 +89,7 @@ final class ReloadCoordinatorTest {
                     snapshot,
                     harness.coordinator().currentAssembly(),
                     ReloadDiagnostics.silent(),
-                    Map.of());
+                    ConfigurationInputs.capture(Map.of()));
 
             assertEquals(WatcherReloadOutcome.TRANSIENT_RETRY, failingReader.reloadForWatcher());
             assertEquals(Level.INFO, failingReader.currentConfig().rootLogger().level());
@@ -115,7 +116,7 @@ final class ReloadCoordinatorTest {
                     snapshot,
                     harness.coordinator().currentAssembly(),
                     ReloadDiagnostics.silent(),
-                    Map.of());
+                    ConfigurationInputs.capture(Map.of()));
             fixture.write("debug", "4KiB");
 
             assertEquals(WatcherReloadOutcome.BUSY_RETRY, coordinator.reloadForWatcher());

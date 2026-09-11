@@ -7,6 +7,7 @@ import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.runtime.DefaultLogyardRuntime;
 import com.zsumz.logyard.runtime.assembly.LogyardRuntimeFactory;
 import com.zsumz.logyard.runtime.reload.WatcherReloadOutcome;
+import com.zsumz.logyard.runtime.reload.ConfigurationInputs;
 
 import java.time.Duration;
 import java.util.Map;
@@ -18,30 +19,29 @@ import static com.zsumz.logyard.runtime.installation.RuntimeInstallationTransiti
 public final class ManagedRuntimeInstallation implements RuntimeInstallation {
     private final RuntimeInstallationTransitions transitions = new RuntimeInstallationTransitions();
     private final DefaultLogyardRuntime runtime;
-    private final Map<String, String> environment;
     private final ManagedRuntimeReconfiguration reconfiguration;
 
-    private ManagedRuntimeInstallation(DefaultLogyardRuntime runtime, Map<String, String> environment) {
+    private ManagedRuntimeInstallation(DefaultLogyardRuntime runtime, ConfigurationInputs inputs) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
-        this.environment = Map.copyOf(environment);
-        reconfiguration = new ManagedRuntimeReconfiguration(transitions, runtime, this.environment, this::reloadFromWatcher);
+        reconfiguration = new ManagedRuntimeReconfiguration(transitions, runtime, inputs, this::reloadFromWatcher);
     }
 
     public static ManagedRuntimeInstallation open(
             ConfigurationInstallationRequest request,
             Map<String, String> environment) {
+        ConfigurationInputs inputs = ConfigurationInputs.capture(environment);
         DeferredWatcherReload reload = new DeferredWatcherReload();
         PreparedRuntimeConfiguration prepared = PreparedRuntimeConfiguration.prepare(
                 request,
                 PreparedRuntimeConfiguration.read(request),
                 null,
-                environment,
+                inputs,
                 reload);
         DefaultLogyardRuntime runtime = null;
         try {
             prepared.activateOutputs();
             runtime = new DefaultLogyardRuntime(prepared.assembly().plan());
-            ManagedRuntimeInstallation installation = new ManagedRuntimeInstallation(runtime, environment);
+            ManagedRuntimeInstallation installation = new ManagedRuntimeInstallation(runtime, inputs);
             reload.bind(installation::reloadFromWatcher);
             LogyardRuntimeFactory.attach(runtime, prepared.assembly());
             ActiveRuntimeConfiguration active = prepared.activate(runtime);

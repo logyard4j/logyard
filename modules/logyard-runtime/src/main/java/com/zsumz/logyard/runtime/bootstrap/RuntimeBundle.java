@@ -76,6 +76,7 @@ public final class RuntimeBundle implements AutoCloseable {
 
     /**
      * Re-reads the active process-wide source and applies changed content atomically.
+     * The installation's captured profile and overrides remain fixed until a fresh installation.
      *
      * @return reload outcome
      */

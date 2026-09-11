@@ -20,7 +20,7 @@ import java.util.List;
  * {@code schema} prints the machine-readable key vocabulary; {@code migrate-logback
  * <logback.xml>} and {@code migrate-log4j2 <log4j2.xml>} convert an existing
  * configuration. Exit codes: 0 success, 1 invalid configuration, 2 usage or I/O
- * failure.</p>
+ * failure, 3 strict migration refused.</p>
  */
 public final class LogyardConfigTool {
     private LogyardConfigTool() {
