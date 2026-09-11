@@ -3,6 +3,7 @@ package com.zsumz.logyard.core.runtime.publication;
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.context.LogContext;
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.event.CapturedAttributeAccess;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
 
@@ -127,7 +128,7 @@ final class EventDraft {
     }
 
     private AttributeSet withScopedContext(AttributeSet eventAttributes) {
-        if (scopedContext.isEmpty()) {
+        if (scopedContext.isEmpty() && !CapturedAttributeAccess.truncated(scopedContext)) {
             return eventAttributes;
         }
         return eventAttributes == null ? scopedContext : scopedContext.mergedWith(eventAttributes);

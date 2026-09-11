@@ -67,6 +67,20 @@ final class MigrationBoundariesTest {
         assertTrue(composite.notes().stream().anyMatch(note -> note.contains("composite filters")));
     }
 
+    @Test
+    void bothMigrationsKeepOffRootRoutesEmptyAfterLoading() throws Exception {
+        var logback = LogbackMigration.migrate(("<configuration><appender name=\"out\""
+                + " class=\"ch.qos.logback.core.ConsoleAppender\"/><root level=\"OFF\">"
+                + "<appender-ref ref=\"out\"/></root></configuration>").getBytes(StandardCharsets.UTF_8));
+        var log4j = Log4j2Migration.migrate(("<Configuration><Appenders><Console name=\"out\"/>"
+                + "</Appenders><Loggers><Root level=\"OFF\"><AppenderRef ref=\"out\"/>"
+                + "</Root></Loggers></Configuration>").getBytes(StandardCharsets.UTF_8));
+        for (String toml : List.of(logback.toml(), log4j.toml())) {
+            var config = LogyardConfigLoader.parse(toml, "migrated.toml", Path.of("."), Map.of());
+            assertEquals(List.of(), config.rootLogger().outputs());
+        }
+    }
+
     private static Log4j2Migration.Result filter(String filter) throws Exception {
         return Log4j2Migration.migrate(("<Configuration><Appenders><Console name=\"out\">" + filter
                 + "</Console></Appenders><Loggers><Root level=\"INFO\"><AppenderRef ref=\"out\"/>"

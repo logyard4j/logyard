@@ -24,7 +24,7 @@ final class LoggerSectionDecoder {
         if (root.level() == null) {
             root = new LoggerRuleConfig(Level.INFO, root.outputs(), root.enrich(), root.filters());
         }
-        if (root.outputs() == null || root.outputs().isEmpty()) {
+        if (root.outputs() == null) {
             root = new LoggerRuleConfig(root.level(), List.copyOf(outputs.keySet()), root.enrich(), root.filters());
         }
         if (root.enrich() == null) {

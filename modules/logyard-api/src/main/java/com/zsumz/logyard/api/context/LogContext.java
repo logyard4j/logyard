@@ -32,7 +32,7 @@ public final class LogContext {
     public static ContextScope push(AttributeSet values) {
         Objects.requireNonNull(values, "values");
         AttributeSet previous = current();
-        return bind(previous.isEmpty() ? values : previous.mergedWith(values));
+        return bind(previous.mergedWith(values));
     }
 
     /** Opens a scope with one additional attribute.

@@ -136,7 +136,7 @@ Define both named outputs before using this route. Quote dotted logger names so 
 | `enrich` | Named enrichment processors |
 | `filters` | Named filters |
 
-Child loggers inherit omitted fields from their nearest configured parent. Explicit lists replace inherited lists. With no root rule, the root defaults to INFO and all declared outputs.
+Child loggers inherit omitted fields from their nearest configured parent. Explicit lists replace inherited lists; `outputs = []` silences a route, including the root. With no root rule, the root defaults to INFO and all declared outputs.
 
 ## Console output
 
