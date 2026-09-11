@@ -59,6 +59,7 @@ jobs:
           LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-verify
           ./scripts/ecs-verify
           LOGYARD_BENCHMARK_SKIP_RELEASE=1 ./scripts/benchmark-smoke
+          LOGYARD_COMPARISON_SKIP_RELEASE=1 ./scripts/comparison-verify
       - name: Upload example smoke results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -72,6 +73,14 @@ jobs:
             target/ecs-verify/
             target/benchmark-smoke/*.json
             target/benchmark-smoke/*.jsonl
+            target/benchmark-compare/smoque.*
+            target/benchmark-compare/smoke.log
+            target/benchmark-compare/*/results.json
+            target/benchmark-compare/*/artifacts.json
+            target/benchmark-compare/*/environment.json
+            target/benchmark-compare/*/iteration-*/*.log
+            target/benchmark-compare/*/iteration-*/*.jsonl
+            target/benchmark-compare/*/projects/*/zolt.lock
           if-no-files-found: ignore
       - name: Create the Central Portal archive
         env:

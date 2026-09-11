@@ -1,0 +1,18 @@
+[project]
+name = "comparison-logyard"
+version = "0.1.0"
+group = "com.zsumz.logyard.benchmarks"
+java = "21"
+main = "com.zsumz.logyard.compare.ComparisonMain"
+
+[dependencies]
+"com.zsumz.logyard:logyard-slf4j2" = "0.1.0-rc.1"
+"com.zsumz.logyard:logyard-runtime" = "0.1.0-rc.1"
+"org.slf4j:slf4j-api" = "2.0.18"
+
+[build]
+source = "src/main/java"
+output = "target/classes"
+
+[resources]
+main = ["src/main/resources"]

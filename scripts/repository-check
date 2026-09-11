@@ -111,7 +111,7 @@ generated_python_artifact="$(
 while IFS= read -r python_source; do
   source_lines="$(wc -l < "$python_source")"
   [[ "$source_lines" -le 300 ]] || fail "$python_source exceeds the 300-line Python tooling limit"
-done < <(find scripts/architecture_tools scripts/benchmark_tools scripts/example_tools scripts/verify_tools -type f -name '*.py' -print | sort)
+done < <(find scripts/architecture_tools scripts/benchmark_tools scripts/comparison_tools scripts/example_tools scripts/verify_tools -type f -name '*.py' -print | sort)
 
 if find . -path './.git' -prune -o -path './.zolt' -prune -o \
     -path './target' -prune -o \
@@ -130,7 +130,7 @@ if grep -R -nE 'uses: [^[:space:]]+@(main|master|v[0-9]+([.][0-9]+)*)($|[[:space
   fail 'GitHub Actions must use immutable commit SHAs'
 fi
 
-for package in scripts/benchmark_tools scripts/example_tools scripts/verify_tools; do
+for package in scripts/benchmark_tools scripts/comparison_tools scripts/example_tools scripts/verify_tools; do
   PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m unittest discover -s "$package" -t scripts -p 'test_*.py'
 done
 

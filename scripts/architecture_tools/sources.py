@@ -39,7 +39,10 @@ def _java_roots(root: Path, source_set: str) -> list[Path]:
         for path in (root / "extensions").glob(f"**/src/{source_set}/java")
         if path.is_dir()
     }
-    return sorted(workspace_roots | extension_roots)
+    comparison_roots = {
+        path for path in (root / "benchmarks/comparison").glob(f"*/src/{source_set}/java") if path.is_dir()
+    }
+    return sorted(workspace_roots | extension_roots | comparison_roots)
 
 
 def _read_size_baseline(root: Path) -> dict[str, int]:

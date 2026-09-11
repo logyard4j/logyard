@@ -23,6 +23,7 @@ Run from the repository root before tagging:
 ./scripts/examples-verify
 ./scripts/ecs-verify
 ./scripts/benchmark-smoke
+./scripts/comparison-verify
 ./scripts/release-bundle --sign
 ./scripts/zolt-publication-check --signed
 ./scripts/central-publish

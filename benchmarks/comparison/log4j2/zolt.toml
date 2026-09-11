@@ -1,0 +1,16 @@
+[project]
+name = "comparison-log4j2"
+version = "0.1.0"
+group = "com.zsumz.logyard.benchmarks"
+java = "21"
+main = "com.zsumz.logyard.compare.ComparisonMain"
+
+[dependencies]
+"org.apache.logging.log4j:log4j-slf4j2-impl" = "2.26.1"
+"org.apache.logging.log4j:log4j-core" = "2.26.1"
+"org.slf4j:slf4j-api" = "2.0.18"
+"com.lmax:disruptor" = "4.0.0"
+
+[build]
+source = "src/main/java"
+output = "target/classes"

@@ -11,7 +11,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
@@ -58,6 +58,26 @@ jobs:
           path: |
             target/benchmark-smoke/*.json
             target/benchmark-smoke/*.jsonl
+          if-no-files-found: ignore
+      - name: Verify the provider comparison harness
+        env:
+          LOGYARD_COMPARISON_SKIP_RELEASE: '1'
+        run: ./scripts/comparison-verify
+      - name: Upload provider comparison evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: provider-comparison-results
+          path: |
+            target/benchmark-compare/smoque.*
+            target/benchmark-compare/smoke.log
+            target/benchmark-compare/latest.txt
+            target/benchmark-compare/*/results.json
+            target/benchmark-compare/*/artifacts.json
+            target/benchmark-compare/*/environment.json
+            target/benchmark-compare/*/iteration-*/*.log
+            target/benchmark-compare/*/iteration-*/*.jsonl
+            target/benchmark-compare/*/projects/*/zolt.lock
           if-no-files-found: ignore
       - name: Upload example smoke results
         if: always()

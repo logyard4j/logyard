@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-release.sh"
+export ZOLT="$(logyard_require_zolt)"
+command -v npx >/dev/null 2>&1 || { printf 'Comparison smoke tests require Node.js and npm (npx)\n' >&2; exit 2; }
+cd "$ROOT"
+if [[ "${LOGYARD_COMPARISON_SKIP_RELEASE:-0}" != "1" ]]; then
+  "$ROOT/scripts/release-bundle"
+fi
+"$ROOT/scripts/release-verify"
+mkdir -p target/benchmark-compare
+rm -f target/benchmark-compare/smoque.json target/benchmark-compare/smoque.xml
+exec npx --yes smoque@0.1.2 run smoke/comparison.smoke.mts \
+  --json target/benchmark-compare/smoque.json --junit target/benchmark-compare/smoque.xml --ci

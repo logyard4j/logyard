@@ -1,0 +1,14 @@
+[project]
+name = "comparison-logback"
+version = "0.1.0"
+group = "com.zsumz.logyard.benchmarks"
+java = "21"
+main = "com.zsumz.logyard.compare.ComparisonMain"
+
+[dependencies]
+"ch.qos.logback:logback-classic" = "1.6.3"
+"org.slf4j:slf4j-api" = "2.0.18"
+
+[build]
+source = "src/main/java"
+output = "target/classes"
