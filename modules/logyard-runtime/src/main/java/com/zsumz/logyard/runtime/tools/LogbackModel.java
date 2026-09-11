@@ -3,10 +3,12 @@ package com.zsumz.logyard.runtime.tools;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** Mutable model of one XML logging configuration being converted to Logyard TOML. */
 final class LogbackModel {
@@ -18,8 +20,10 @@ final class LogbackModel {
     final Map<String, Object> outputs = new LinkedHashMap<>();
     final Map<String, Map<String, Object>> profiles = new LinkedHashMap<>();
     final Map<String, String> properties = new LinkedHashMap<>();
-    /** Appender name to Logyard output name, including async aliases to their targets. */
+    /** Original async appender names mapped to original target names. */
     final Map<String, String> appenderAliases = new LinkedHashMap<>();
+    private final Map<String, String> outputNames = new LinkedHashMap<>();
+    private final Set<String> allocatedNames = new HashSet<>();
     final List<String> notes = new ArrayList<>();
     private int remainingExpansion = MigrationProperties.MAX_CHARACTERS;
 
@@ -39,28 +43,28 @@ final class LogbackModel {
         return result;
     }
 
-    /**
-     * Resolves an appender reference through async aliases to a converted output name.
-     *
-     * @return the output name, or {@code null} when the reference converted to nothing
-     */
+    /** Allocates a stable, collision-free output identity without changing reference case. */
+    String outputName(String original) {
+        return outputNames.computeIfAbsent(original, name -> {
+            String base = name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_.-]", "-");
+            if (base.isEmpty() || base.charAt(0) < 'a' || base.charAt(0) > 'z') base = "output-" + base;
+            base = base.substring(0, Math.min(base.length(), 48));
+            String candidate = base;
+            for (int suffix = 2; !allocatedNames.add(candidate); suffix++) candidate = base + "-" + suffix;
+            return candidate;
+        });
+    }
+
+    /** Resolves original names only; generated names never participate in alias lookup. */
     String resolveOutput(String name) {
+        Set<String> visited = new HashSet<>();
         String current = name;
-        for (int hops = 0; hops < 8 && current != null; hops++) {
-            if (outputs.containsKey(current.toLowerCase(Locale.ROOT))
-                    && !appenderAliases.containsKey(current)) {
-                break;
-            }
-            String next = appenderAliases.get(current);
-            if (next == null || next.equals(current)) {
-                current = next;
-                break;
-            }
-            current = next;
+        while (current != null && visited.add(current)) {
+            String output = outputNames.get(current);
+            if (output != null && outputs.containsKey(output)) return output;
+            current = appenderAliases.get(current);
         }
-        return current != null && outputs.containsKey(current.toLowerCase(Locale.ROOT))
-                ? current.toLowerCase(Locale.ROOT)
-                : null;
+        return null;
     }
 
     Map<String, Object> toDocument() {

@@ -54,7 +54,7 @@ final class Log4j2Appenders {
         String path = Log4j2Lookups.resolve(Log4j2Xml.attribute(appender, "fileName"), model, context);
         if (path == null) {
             model.note(context + " has no fileName; a placeholder path was generated");
-            path = "logs/" + name.toLowerCase(Locale.ROOT) + ".jsonl";
+            path = "logs/" + model.outputName(name) + ".jsonl";
         }
         output.put("path", path);
         String append = Log4j2Xml.attribute(appender, "append");
@@ -96,7 +96,7 @@ final class Log4j2Appenders {
             return;
         }
         Log4j2PatternTranslator.Translation translation = Log4j2PatternTranslator.translate(pattern);
-        String formatter = name.toLowerCase(Locale.ROOT) + "-format";
+        String formatter = model.outputName(name) + "-format";
         model.formatters.put(formatter, new LinkedHashMap<>(
                 Map.of("type", "template", "template", translation.template())));
         output.put("formatter", formatter);
@@ -135,7 +135,6 @@ final class Log4j2Appenders {
     }
 
     private static void register(String name, Map<String, Object> output, LogbackModel model) {
-        model.outputs.put(name.toLowerCase(Locale.ROOT), output);
-        model.appenderAliases.put(name, name.toLowerCase(Locale.ROOT));
+        model.outputs.put(model.outputName(name), output);
     }
 }

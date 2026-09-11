@@ -29,11 +29,14 @@ final class LogbackAppenders {
         Map<String, Object> output = new LinkedHashMap<>();
         output.put("type", "console");
         String target = model.substitute(LogbackXml.childText(appender, "target"));
-        output.put("stream", target != null && target.contains("out") ? "stdout" : "stderr");
+        output.put("stream", "System.err".equalsIgnoreCase(target) ? "stderr" : "stdout");
+        if (target != null && !target.equalsIgnoreCase("System.out") && !target.equalsIgnoreCase("System.err")) {
+            model.note("appender '" + name + "': unsupported console target '" + target + "'; review stdout fallback");
+        }
         String pattern = encoderPattern(appender, model);
         if (pattern != null) {
             LogbackPatternTranslator.Translation translation = LogbackPatternTranslator.translate(pattern);
-            String formatterName = name.toLowerCase(Locale.ROOT) + "-format";
+            String formatterName = model.outputName(name) + "-format";
             model.formatters.put(formatterName, new LinkedHashMap<>(
                     Map.of("type", "template", "template", translation.template())));
             output.put("formatter", formatterName);
@@ -44,8 +47,7 @@ final class LogbackAppenders {
             }
         }
         threshold(appender, output, model, name);
-        model.outputs.put(name.toLowerCase(Locale.ROOT), output);
-        model.appenderAliases.put(name, name.toLowerCase(Locale.ROOT));
+        model.outputs.put(model.outputName(name), output);
     }
 
     private static void file(String name, Element appender, LogbackModel model) {
@@ -54,7 +56,7 @@ final class LogbackAppenders {
         String file = model.substitute(LogbackXml.childText(appender, "file"));
         if (file == null) {
             model.note("appender '" + name + "' has no <file>; a placeholder path was generated");
-            file = "logs/" + name.toLowerCase(Locale.ROOT) + ".jsonl";
+            file = "logs/" + model.outputName(name) + ".jsonl";
         }
         output.put("path", file);
         String append = LogbackXml.childText(appender, "append");
@@ -67,8 +69,7 @@ final class LogbackAppenders {
         }
         rotation(name, appender, output, model);
         threshold(appender, output, model, name);
-        model.outputs.put(name.toLowerCase(Locale.ROOT), output);
-        model.appenderAliases.put(name, name.toLowerCase(Locale.ROOT));
+        model.outputs.put(model.outputName(name), output);
     }
 
     private static void rotation(String name, Element appender, Map<String, Object> output, LogbackModel model) {
