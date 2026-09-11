@@ -70,7 +70,7 @@ public final class LogbackMigrationTest {
         equal(List.of("console", "file"), config.rootLogger().outputs());
         equal(Level.DEBUG, config.loggers().get("com.example.checkout").level());
         equal(Level.ERROR, config.loggers().get("org.hibernate").level());
-        equal(List.of("file"), config.loggers().get("org.hibernate").outputs());
+        equal(List.of(), config.loggers().get("org.hibernate").outputs());
 
         String template = result.toml().lines()
                 .filter(line -> line.startsWith("template"))

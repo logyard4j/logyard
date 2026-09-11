@@ -18,8 +18,9 @@ import java.util.List;
  * would, including every declared profile and the process overlays; {@code explain
  * <file>} prints the effective configuration with the origin of every value;
  * {@code schema} prints the machine-readable key vocabulary; {@code migrate-logback
- * <logback.xml>} converts a Logback configuration. Exit codes: 0 success, 1 invalid
- * configuration, 2 usage or I/O failure.</p>
+ * <logback.xml>} and {@code migrate-log4j2 <log4j2.xml>} convert an existing
+ * configuration. Exit codes: 0 success, 1 invalid configuration, 2 usage or I/O
+ * failure.</p>
  */
 public final class LogyardConfigTool {
     private LogyardConfigTool() {
@@ -60,6 +61,8 @@ public final class LogyardConfigTool {
             case "schema" -> ConfigSchemaCommand.run(ToolArguments.parse(args, 1, List.of()), out);
             case "migrate-logback" -> LogbackMigrateCommand.run(
                     ToolArguments.parse(args, 1, List.of("output")), out, err);
+            case "migrate-log4j2" -> Log4j2MigrateCommand.run(
+                    ToolArguments.parse(args, 1, List.of("output")), out, err);
             case "help", "--help", "-h" -> {
                 usage(out);
                 yield 0;
@@ -90,7 +93,8 @@ public final class LogyardConfigTool {
                       Print the machine-readable configuration key vocabulary as JSON.
 
                   migrate-logback <logback.xml> [--output <file>]
-                      Convert a Logback configuration to logyard.toml, reporting every
+                  migrate-log4j2 <log4j2.xml> [--output <file>]
+                      Convert an existing configuration to logyard.toml, reporting every
                       construct that has no equivalent.
 
                 Exit codes: 0 success, 1 invalid configuration, 2 usage or I/O failure.""");

@@ -17,7 +17,7 @@ class ConfigToolBoundariesTest {
         var input = Files.createTempFile("logyard-config-tool-limit", ".txt");
         try {
             Files.write(input, new byte[LogyardConfigLoader.MAX_CONFIG_BYTES + 1]);
-            for (String command : new String[] {"explain", "migrate-logback"}) {
+            for (String command : new String[] {"explain", "migrate-logback", "migrate-log4j2"}) {
                 var output = new ByteArrayOutputStream();
                 try (var stream = new PrintStream(output, true, StandardCharsets.UTF_8)) {
                     assertEquals(2, LogyardConfigTool.run(new String[] {command, input.toString()}, stream, stream));

@@ -132,7 +132,12 @@ final class LogbackAppenders {
     }
 
     private static void threshold(Element appender, Map<String, Object> output, LogbackModel model, String name) {
-        for (Element filter : LogbackXml.children(appender, "filter")) {
+        List<Element> filters = LogbackXml.children(appender, "filter");
+        if (filters.size() > 1) {
+            model.note("appender '" + name + "': composite filters were not converted; review their ordered decisions");
+            return;
+        }
+        for (Element filter : filters) {
             String type = filter.getAttribute("class");
             if (type.endsWith("ThresholdFilter")) {
                 String level = model.substitute(LogbackXml.childText(filter, "level"));

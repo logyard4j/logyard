@@ -24,6 +24,20 @@ public final class LogyardConfigToolTest {
             root = { level = "warn", outputs = ["console"] }
             """;
 
+    private static final String LOG4J2 = """
+            <Configuration>
+              <Appenders>
+                <Console name="Console" target="SYSTEM_ERR">
+                  <PatternLayout pattern="%d %p %c - %m%n"/>
+                </Console>
+                <Syslog name="Remote" host="localhost" port="514"/>
+              </Appenders>
+              <Loggers>
+                <Root level="info"><AppenderRef ref="Console"/></Root>
+              </Loggers>
+            </Configuration>
+            """;
+
     @Test
     void validateReportsProfilesOverridesAndCounts() throws Exception {
         Path config = write(CONFIG);
@@ -107,7 +121,46 @@ public final class LogyardConfigToolTest {
     }
 
     @Test
+    void migrateLog4j2WritesTomlReportsNotesAndRefusesToOverwrite() throws Exception {
+        Path input = write(LOG4J2);
+        Path output = Path.of(input + ".toml");
+        try {
+            Run run = run("migrate-log4j2", input.toString(), "--output", output.toString());
+            equal(0, run.status());
+            check(run.out().contains("wrote " + output), run.out());
+            check(run.err().contains("NOTE: appender 'Remote' (<Syslog>)"), run.err());
+            String migrated = Files.readString(output);
+            check(migrated.contains("[outputs.console]") && migrated.contains("stream = \"stderr\""), migrated);
+
+            Run overwrite = run("migrate-log4j2", input.toString(), "--output", output.toString());
+            equal(2, overwrite.status());
+            check(overwrite.err().contains("refusing to overwrite existing file"), overwrite.err());
+        } finally {
+            Files.deleteIfExists(output);
+            Files.deleteIfExists(input);
+        }
+    }
+
+    @Test
+    void migrateLog4j2ExitsOneWhenTheGeneratedConfigurationIsNotValid() throws Exception {
+        Path input = write(LOG4J2.replace(
+                "<Syslog name=\"Remote\" host=\"localhost\" port=\"514\"/>",
+                "<File name=\"Audit\" fileName=\"${sys:log.dir}/audit.log\"/>"));
+        try {
+            Run run = run("migrate-log4j2", input.toString());
+            equal(1, run.status());
+            check(run.err().contains("WARNING: the generated configuration failed validation"), run.err());
+            check(run.out().contains("${sys:log.dir}"), run.out());
+        } finally {
+            Files.deleteIfExists(input);
+        }
+    }
+
+    @Test
     void usageErrorsExitWithCodeTwo() {
+        equal(2, run("migrate-log4j2").status());
+        equal(2, run("migrate-log4j2", "/nonexistent/logyard-tool-test.xml").status());
+        check(run("help").out().contains("migrate-log4j2 <log4j2.xml> [--output <file>]"), run("help").out());
         equal(2, run("frobnicate").status());
         equal(2, run("validate").status());
         equal(2, run("validate", "one.toml", "--bogus", "x").status());

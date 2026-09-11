@@ -19,11 +19,15 @@ final class LogbackXml {
 
     /** Parses without doctypes, external entities, or XInclude. */
     static Element parse(byte[] bytes) throws IOException {
+        if (bytes.length > MigrationProperties.MAX_CHARACTERS) {
+            throw new IllegalArgumentException("migration input exceeds 1MiB");
+        }
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
             factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setAttribute("http://www.oracle.com/xml/jaxp/properties/maxElementDepth", 128);
             factory.setXIncludeAware(false);
             factory.setExpandEntityReferences(false);
             return factory.newDocumentBuilder()

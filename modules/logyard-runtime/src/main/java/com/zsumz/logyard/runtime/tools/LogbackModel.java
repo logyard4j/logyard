@@ -1,11 +1,14 @@
 package com.zsumz.logyard.runtime.tools;
 
+import com.zsumz.logyard.core.diagnostics.EmergencyText;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
-/** Mutable model of one Logback configuration being converted to Logyard TOML. */
+/** Mutable model of one XML logging configuration being converted to Logyard TOML. */
 final class LogbackModel {
     final Map<String, Object> service = new LinkedHashMap<>();
     final Map<String, Object> runtime = new LinkedHashMap<>();
@@ -18,31 +21,46 @@ final class LogbackModel {
     /** Appender name to Logyard output name, including async aliases to their targets. */
     final Map<String, String> appenderAliases = new LinkedHashMap<>();
     final List<String> notes = new ArrayList<>();
+    private int remainingExpansion = MigrationProperties.MAX_CHARACTERS;
 
     void note(String note) {
-        if (!notes.contains(note)) {
-            notes.add(note);
+        String bounded = EmergencyText.sanitize(note, 1_024);
+        if (notes.size() < 128 && !notes.contains(bounded)) {
+            notes.add(bounded);
+        } else if (notes.size() == 128) {
+            notes.add("additional migration notes omitted; review the original configuration");
         }
     }
 
-    /** Substitutes locally declared Logback properties; environment references remain. */
+    /** Substitutes bounded local properties while retaining environment expressions. */
     String substitute(String value) {
-        if (value == null || !value.contains("${")) {
-            return value;
-        }
-        String result = value;
-        for (Map.Entry<String, String> property : properties.entrySet()) {
-            result = result.replace("${" + property.getKey() + "}", property.getValue());
-            int reference;
-            while ((reference = result.indexOf("${" + property.getKey() + ":-")) >= 0) {
-                int closing = result.indexOf('}', reference);
-                if (closing < 0) {
-                    break;
-                }
-                result = result.substring(0, reference) + property.getValue() + result.substring(closing + 1);
-            }
-        }
+        String result = MigrationProperties.expand(value, properties, remainingExpansion);
+        if (result != null) remainingExpansion -= result.length();
         return result;
+    }
+
+    /**
+     * Resolves an appender reference through async aliases to a converted output name.
+     *
+     * @return the output name, or {@code null} when the reference converted to nothing
+     */
+    String resolveOutput(String name) {
+        String current = name;
+        for (int hops = 0; hops < 8 && current != null; hops++) {
+            if (outputs.containsKey(current.toLowerCase(Locale.ROOT))
+                    && !appenderAliases.containsKey(current)) {
+                break;
+            }
+            String next = appenderAliases.get(current);
+            if (next == null || next.equals(current)) {
+                current = next;
+                break;
+            }
+            current = next;
+        }
+        return current != null && outputs.containsKey(current.toLowerCase(Locale.ROOT))
+                ? current.toLowerCase(Locale.ROOT)
+                : null;
     }
 
     Map<String, Object> toDocument() {

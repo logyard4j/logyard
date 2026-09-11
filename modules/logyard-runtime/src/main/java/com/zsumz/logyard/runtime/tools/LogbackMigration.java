@@ -105,12 +105,9 @@ final class LogbackMigration {
     private Map<String, Object> rule(Element logger, String context, boolean isRoot) {
         Map<String, Object> rule = new LinkedHashMap<>();
         String level = LogbackXml.attribute(logger, "level");
-        if (level != null) {
-            rule.put("level", LogbackLevels.map(level, model, context));
-        }
         List<String> outputs = new ArrayList<>();
         for (Element reference : LogbackXml.children(logger, "appender-ref")) {
-            String resolved = resolveAppender(reference.getAttribute("ref"));
+            String resolved = model.resolveOutput(reference.getAttribute("ref"));
             if (resolved == null) {
                 model.note(context + ": appender-ref '" + reference.getAttribute("ref")
                         + "' does not resolve to a converted output and was dropped");
@@ -125,26 +122,8 @@ final class LogbackMigration {
                         + " adding to them (Logback additivity)");
             }
         }
+        LogbackLevels.loggerRule(level, rule, model, context);
         return rule;
-    }
-
-    private String resolveAppender(String name) {
-        String current = name;
-        for (int hops = 0; hops < 8 && current != null; hops++) {
-            if (model.outputs.containsKey(current.toLowerCase(java.util.Locale.ROOT))
-                    && !model.appenderAliases.containsKey(current)) {
-                break;
-            }
-            String next = model.appenderAliases.get(current);
-            if (next == null || next.equals(current)) {
-                current = next;
-                break;
-            }
-            current = next;
-        }
-        return current != null && model.outputs.containsKey(current.toLowerCase(java.util.Locale.ROOT))
-                ? current.toLowerCase(java.util.Locale.ROOT)
-                : null;
     }
 
     private void profiles(Element root) {

@@ -89,9 +89,10 @@ Use the same command with these arguments:
 | `explain logyard.toml --key delivery.capacity` | Selected input value and its origin |
 | `explain logyard.toml --logger com.example.Checkout` | Resolved level, outputs, enrichers, and filters |
 | `schema` | Accepted configuration keys as JSON |
-| `migrate-logback logback.xml --output logyard.toml` | Converted TOML and notes for unsupported constructs |
+| `migrate-logback logback.xml --output logyard.toml` | Convert supported Logback XML settings |
+| `migrate-log4j2 log4j2.xml --output logyard.toml` | Convert supported Log4j 2 XML settings |
 
-`explain` shows environment expressions as written. Migration never overwrites an existing file; review its notes before using the result. Exit codes are 0 for success, 1 for invalid configuration, and 2 for usage or I/O errors.
+`explain` shows environment expressions as written. Migration never overwrites an existing file. Review its notes: custom plugins, calendar rollover, and lookup semantics may need manual changes. Exit codes are 0 for success, 1 for invalid configuration, and 2 for usage or I/O errors.
 
 ## Service identity
 
