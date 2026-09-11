@@ -25,7 +25,7 @@ def main() -> None:
     parser.add_argument("release_repository", type=Path)
     parser.add_argument("version")
     parser.add_argument("--scenario", required=True, choices=(
-        "slf4j", "lifecycle", "opentelemetry", "test-kit", "vertx", "micronaut", "spring-boot-3-mvc", "spring-boot-4-mvc",
+        "slf4j", "lifecycle", "opentelemetry", "test-kit", "migration", "vertx", "micronaut", "spring-boot-3-mvc", "spring-boot-4-mvc",
         "spring-boot-3-webflux", "spring-boot-4-webflux", "spring-boot-4-no-actuator",
         "spring-boot-4-external-config", "spring-boot-4-safe-defaults", "quarkus", "quarkus-disabled",
         "spring-boot-4-provider-conflict",
@@ -41,8 +41,8 @@ def main() -> None:
 
 def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunner, scenario: str) -> None:
     versions = framework_versions(root)
-    if scenario == "test-kit":
-        runner.build(ZoltExample(scenario, root / "examples/test-kit", "", test=True, runtime_arguments=()))
+    if scenario in ("test-kit", "migration"):
+        runner.build(ZoltExample(scenario, root / "examples" / scenario, "", test=True, runtime_arguments=()))
         return
     if scenario == "lifecycle":
         example = ZoltExample(scenario, root / "examples/lifecycle",

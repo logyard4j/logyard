@@ -604,6 +604,7 @@ Each example includes a `zolt.toml` build; application examples include output c
 
 | Application | Shows |
 | --- | --- |
+| [Migration](examples/migration) | Real Logback/Log4j 2 console output, exclusions, MDC refusal, destinations, filtering, and record counts |
 | [Test kit](examples/test-kit) | Isolated log assertions, scoped context, lazy values, and capture overflow |
 | [SLF4J](examples/slf4j) | Fluent structured logging |
 | [Managed lifecycle](examples/lifecycle) | Cached SLF4J, JUL, and System.Logger instances across restart, level changes, formatting, and close-time drain |
