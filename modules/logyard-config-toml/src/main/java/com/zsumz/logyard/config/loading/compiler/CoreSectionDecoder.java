@@ -126,8 +126,8 @@ final class CoreSectionDecoder {
         rules.put(Level.TRACE, new OverflowRuleConfig(OverflowAction.DROP, Duration.ZERO));
         rules.put(Level.DEBUG, new OverflowRuleConfig(OverflowAction.DROP, Duration.ZERO));
         rules.put(Level.INFO, new OverflowRuleConfig(OverflowAction.DROP, Duration.ZERO));
-        rules.put(Level.WARN, new OverflowRuleConfig(OverflowAction.DROP, Duration.ZERO));
-        rules.put(Level.ERROR, new OverflowRuleConfig(OverflowAction.DROP, Duration.ZERO));
+        rules.put(Level.WARN, new OverflowRuleConfig(OverflowAction.WAIT_DROP, Duration.ofMillis(2)));
+        rules.put(Level.ERROR, new OverflowRuleConfig(OverflowAction.WAIT_DROP, Duration.ofMillis(20)));
         return rules;
     }
 }

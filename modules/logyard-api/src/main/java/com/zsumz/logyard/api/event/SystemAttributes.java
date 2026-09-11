@@ -23,6 +23,9 @@ public final class SystemAttributes {
     /** Set by built-in outputs when their own rendering limits shortened a record. */
     public static final String OUTPUT_TRUNCATED = "logyard.output.truncated";
 
+    /** Set when redaction shortened an attribute tree while preserving its bounds. */
+    public static final String REDACTION_TRUNCATED = "logyard.redaction.truncated";
+
     private SystemAttributes() {
     }
 }

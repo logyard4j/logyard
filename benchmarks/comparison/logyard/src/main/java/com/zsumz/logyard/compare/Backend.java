@@ -20,7 +20,15 @@ public final class Backend implements AutoCloseable {
     public static Backend open(RunOptions options, MeasuredDestination destination) {
         ComparisonOutput.destination = destination;
         String keys = options.fieldNames().stream().map(JsonText::quote).collect(Collectors.joining(","));
-        String capacity = options.policy().equals("matched-drop") ? "capacity = 4096\n" : "";
+        String capacity = options.policy().equals("matched-drop") ? """
+                capacity = 4096
+                [delivery.overflow]
+                trace = "drop"
+                debug = "drop"
+                info = "drop"
+                warn = "drop"
+                error = "drop"
+                """ : "";
         String configuration = """
                 schema = 1
                 [runtime]

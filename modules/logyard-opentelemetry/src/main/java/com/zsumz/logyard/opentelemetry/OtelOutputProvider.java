@@ -29,6 +29,9 @@ public final class OtelOutputProvider implements OutputProvider {
         if (!configuration.values().isEmpty()) {
             throw new IllegalArgumentException("otel output accepts no provider configuration keys");
         }
+        if (context.encoder() != null || context.formatter() != null) {
+            throw new IllegalArgumentException("otel output accepts neither an encoder nor a formatter");
+        }
         return new OtelLogRecordSink(logsBridge());
     }
 

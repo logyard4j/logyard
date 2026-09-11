@@ -3,6 +3,7 @@ package com.zsumz.logyard.core.processing;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.CapturedAttributeAccess;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.event.SystemAttributes;
 import com.zsumz.logyard.api.spi.processing.EventProcessor;
 
 import java.util.ArrayList;
@@ -66,7 +67,7 @@ public final class RedactionProcessor implements EventProcessor {
             if (redacted == null) {
                 redacted = AttributeSet.systemBuilder(attributes.size() + 1).putAll(attributes);
             }
-            redacted.put("logyard.redaction.truncated", true);
+            redacted.put(SystemAttributes.REDACTION_TRUNCATED, true);
         }
         return redacted == null ? event : event.withAttributes(redacted.build());
     }

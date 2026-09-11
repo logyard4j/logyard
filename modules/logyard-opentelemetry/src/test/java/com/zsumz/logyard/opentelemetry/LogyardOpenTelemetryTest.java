@@ -123,6 +123,17 @@ final class LogyardOpenTelemetryTest {
     }
 
     @Test
+    void rejectsRenderingPoliciesThatTheLogsBridgeCannotApply() {
+        LogyardOpenTelemetry.install(sdk);
+        assertThrows(IllegalArgumentException.class, () -> provider.create(
+                new OutputProviderContext("otel", AttributeSet.EMPTY, Duration.ofSeconds(5), null, event -> "{}"),
+                ProviderConfiguration.EMPTY));
+        assertThrows(IllegalArgumentException.class, () -> provider.create(
+                new OutputProviderContext("otel", AttributeSet.EMPTY, Duration.ofSeconds(5), event -> "hidden", null),
+                ProviderConfiguration.EMPTY));
+    }
+
+    @Test
     void closingTheSinkLeavesTheSdkUsableAndRejectsFurtherRecords() {
         LogyardOpenTelemetry.install(sdk);
         EventSink sink = create();

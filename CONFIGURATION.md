@@ -277,19 +277,22 @@ mode = "async"
 capacity = 256
 ```
 
-Each asynchronous output gets its own queue and worker. A full queue drops new events at every severity by default, including ERROR. Drops are counted in health and summarized by the worker.
+Each asynchronous output gets its own queue and worker. On a full queue, WARN and ERROR briefly wait for a slot before dropping. Lower severities drop immediately. Drops are counted in health and summarized by the worker; the defaults perform no caller-thread output I/O.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `mode` | `async` | `async` queues events; `sync` writes on the caller thread |
 | `capacity` | `256` | Slots per output; range `16`–`16,777,216` |
-| `overflow.LEVEL` | `drop` | Policy for each of `trace`, `debug`, `info`, `warn`, `error` |
+| `overflow.trace`, `.debug`, `.info` | `drop` | Discard immediately when full |
+| `overflow.warn` | `wait_drop`, `2ms` | Brief admission window, then discard |
+| `overflow.error` | `wait_drop`, `20ms` | Longer admission window, then discard |
 
-Override only the overflow levels you need. This example allows ERROR events to wait briefly for a queue slot:
+Override only the levels you need. For latency-first operation, disable the two admission waits:
 
 ```toml
 [delivery.overflow]
-error = { action = "wait_drop", timeout = "20ms" }
+warn = "drop"
+error = "drop"
 ```
 
 | Action | When the queue stays full |
@@ -300,7 +303,7 @@ error = { action = "wait_drop", timeout = "20ms" }
 | `sync` | Wait up to `timeout`, then deliver on the caller thread |
 | `stderr` | Wait up to `timeout`, then write the emergency representation to stderr |
 
-The timeout defaults to zero and bounds queue waiting only. For latency-first operation, leave every level at `drop`. The recipe above gives errors a brief admission window with `wait_drop`; it performs no caller-thread output I/O when admission fails. Scheduling, capture, and processors still contribute to caller latency.
+A rule you write without `timeout` uses zero. Timeouts bound queue waiting **per output**, not the whole logging call. Multiple output queues, scheduling, capture, and processors add to caller latency.
 
 `block`, `sync`, and `stderr` may perform a subsequent output or stderr write that blocks. Logging is best effort; neither recipe guarantees durable delivery.
 

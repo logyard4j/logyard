@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ProductionDefaultsTest {
     @Test
-    void stalledConsoleDoesNotBlockPublishingHealthOrShutdown() throws Exception {
+    void stalledConsoleBoundsPublishingAndShutdownWithoutCallerOutput() throws Exception {
         CountDownLatch entered = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         AtomicReference<Thread> outputWorker = new AtomicReference<>();

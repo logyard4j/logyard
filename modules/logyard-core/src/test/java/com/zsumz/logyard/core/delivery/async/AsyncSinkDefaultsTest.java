@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class AsyncSinkDefaultsTest {
     @Test
-    void saturationDropsEverySeverityWithoutWritingToStalledStderr() throws Exception {
+    void saturationBoundsAdmissionForEverySeverityWithoutCallerOutput() throws Exception {
         exerciseDefaultAdmission(false);
     }
 
@@ -53,7 +53,12 @@ final class AsyncSinkDefaultsTest {
         Thread publisher = new Thread(() -> {
             try {
                 for (Level level : Level.values()) {
+                    long started = System.nanoTime();
                     sink.accept(event(level));
+                    if (!closeFirst) {
+                        long minimumWait = new OverflowPolicy(Map.of()).ruleFor(level).waitDuration().toNanos();
+                        assertTrue(System.nanoTime() - started >= minimumWait, "default wait was bypassed for " + level);
+                    }
                 }
             } catch (Throwable thrown) {
                 failure.set(thrown);

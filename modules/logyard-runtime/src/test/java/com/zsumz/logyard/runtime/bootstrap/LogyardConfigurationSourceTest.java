@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 
 final class LogyardConfigurationSourceTest {
     @Test
-    void safeDefaultsAreBoundedNonblockingAndDoNotWatchOrWriteFiles() throws Exception {
+    void safeDefaultsUseBoundedAdmissionAndDoNotWatchOrWriteFiles() throws Exception {
         LogyardConfigurationSource source = LogyardConfigurationSource.defaults(Files.createTempDirectory("logyard-default-base-"));
         LogyardConfig config = source.snapshot().parse(Map.of());
 
@@ -36,9 +36,18 @@ final class LogyardConfigurationSourceTest {
         assertEquals(Level.INFO, config.rootLogger().level());
         assertTrue(config.delivery().asynchronous());
         assertEquals(256, config.delivery().capacity());
-        for (Level level : Level.values()) {
+        for (Level level : new Level[] {Level.TRACE, Level.DEBUG, Level.INFO}) {
             assertEquals(OverflowAction.DROP, config.delivery().overflow().get(level).action());
             assertTrue(config.delivery().overflow().get(level).after().isZero());
+        }
+        assertEquals(OverflowAction.WAIT_DROP, config.delivery().overflow().get(Level.WARN).action());
+        assertEquals(java.time.Duration.ofMillis(2), config.delivery().overflow().get(Level.WARN).after());
+        assertEquals(OverflowAction.WAIT_DROP, config.delivery().overflow().get(Level.ERROR).action());
+        assertEquals(java.time.Duration.ofMillis(20), config.delivery().overflow().get(Level.ERROR).after());
+        var coreDefaults = new com.zsumz.logyard.core.delivery.async.OverflowPolicy(Map.of());
+        for (Level level : Level.values()) {
+            assertEquals(coreDefaults.ruleFor(level).action(), config.delivery().overflow().get(level).action());
+            assertEquals(coreDefaults.ruleFor(level).waitDuration(), config.delivery().overflow().get(level).after());
         }
         assertEquals(1, config.outputs().size());
         ConsoleOutputConfig console = (ConsoleOutputConfig) config.outputs().get("console");

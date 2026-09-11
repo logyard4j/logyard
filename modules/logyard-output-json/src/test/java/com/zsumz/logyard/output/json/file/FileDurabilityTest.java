@@ -59,13 +59,13 @@ final class FileDurabilityTest {
     }
 
     @Test
-    void withoutTheOptInNoFlushPathForcesTheDataFile() throws Exception {
+    void ordinaryBufferedWriterPersistsRecordsWithoutDurabilityOptIn() throws Exception {
         Path directory = Files.createTempDirectory("logyard-fsync-absent-");
         Path output = directory.resolve("events.jsonl");
-        AtomicInteger forces = new AtomicInteger();
+        AtomicInteger opens = new AtomicInteger();
         RotatingFileWriter writer = new RotatingFileWriter(
                 output, 1_024, false, null, (path, bufferBytes, append) -> {
-                    forces.incrementAndGet();
+                    opens.incrementAndGet();
                     return BufferedFileWriter.open(path, bufferBytes, append, false);
                 });
         try {
@@ -76,7 +76,7 @@ final class FileDurabilityTest {
             writer.close();
         }
 
-        assertEquals(1, forces.get());
+        assertEquals(1, opens.get());
         assertEquals(json("first"), Files.readString(output, StandardCharsets.UTF_8));
     }
 

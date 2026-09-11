@@ -15,8 +15,8 @@ public final class OverflowPolicy {
         rules.put(Level.TRACE, new Rule(OverflowAction.DROP, Duration.ZERO));
         rules.put(Level.DEBUG, new Rule(OverflowAction.DROP, Duration.ZERO));
         rules.put(Level.INFO, new Rule(OverflowAction.DROP, Duration.ZERO));
-        rules.put(Level.WARN, new Rule(OverflowAction.DROP, Duration.ZERO));
-        rules.put(Level.ERROR, new Rule(OverflowAction.DROP, Duration.ZERO));
+        rules.put(Level.WARN, new Rule(OverflowAction.WAIT_DROP, Duration.ofMillis(2)));
+        rules.put(Level.ERROR, new Rule(OverflowAction.WAIT_DROP, Duration.ofMillis(20)));
         if (configured != null) {
             rules.putAll(configured);
         }

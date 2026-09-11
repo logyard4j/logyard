@@ -81,7 +81,7 @@ stream = "stderr"
 
 That is enough for an INFO console logger. Add [JSON output](CONFIGURATION.md#json-output), [redaction](CONFIGURATION.md#context-and-redaction), or [file watching](CONFIGURATION.md#reload-and-shutdown) as needed.
 
-Without a configuration file, Logyard uses an INFO stderr console and a 256-event asynchronous queue. **When a queue is full, new events are dropped at every severity, including ERROR.** Drops are counted in health; [delivery policies](CONFIGURATION.md#delivery-and-overflow) let you choose another behavior.
+Without a configuration file, Logyard uses an INFO stderr console and a 256-event asynchronous queue. When a queue is full, WARN waits up to 2 ms and ERROR up to 20 ms for a slot; other levels drop immediately. Events still unable to enter are dropped and counted. See [delivery policies](CONFIGURATION.md#delivery-and-overflow) for sizing and latency choices.
 
 ### 3. Log
 

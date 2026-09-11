@@ -12,7 +12,7 @@ environment = "${LOGYARD_ENVIRONMENT:-local}"
 shutdown_timeout = "2s"
 watch = false
 
-# Each output has its own queue. Full queues drop and count new events.
+# Each output has its own queue. WARN and ERROR briefly wait, then drop and count.
 [delivery]
 mode = "async"
 capacity = 256
@@ -21,8 +21,8 @@ capacity = 256
 trace = "drop"
 debug = "drop"
 info = "drop"
-warn = "drop"
-error = "drop"
+warn = { action = "wait_drop", timeout = "2ms" }
+error = { action = "wait_drop", timeout = "20ms" }
 
 # Capture only selected MDC keys; redact matching keys and nested paths.
 [context]
