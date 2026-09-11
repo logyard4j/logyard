@@ -25,7 +25,7 @@ class ZoltExampleTest(unittest.TestCase):
             (first.project_directory / "target/stale.jar").touch()
             staged = runner.stage(example).project_directory
             config = tomllib.loads((staged / "zolt.toml").read_text())
-            self.assertEqual("9.8.7", config["platforms"]["com.zsumz.logyard:logyard-bom"])
+            self.assertEqual("9.8.7", config["platforms"]["com.logyard4j:logyard-bom"])
             self.assertEqual("3.5.16", config["platforms"]["org.springframework.boot:spring-boot-dependencies"])
             self.assertIn("org.springframework.boot:spring-boot-starter-webflux", config["dependencies"])
             self.assertNotIn("org.springframework.boot:spring-boot-starter-actuator", config["dependencies"])
@@ -38,13 +38,13 @@ class ZoltExampleTest(unittest.TestCase):
     def test_rejects_a_cached_artifact_that_differs_from_the_release_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            artifact = "com/zsumz/logyard/logyard-api/1.0/logyard-api-1.0.jar"
+            artifact = "com/logyard4j/logyard-api/1.0/logyard-api-1.0.jar"
             for location, content in (("bundle", b"current"), ("cache", b"stale")):
                 file = target / location / artifact
                 file.parent.mkdir(parents=True)
                 file.write_bytes(content)
             (target / "zolt.lock").write_text(f'''[[package]]
-id = "com.zsumz.logyard:logyard-api"
+id = "com.logyard4j:logyard-api"
 version = "1.0"
 source = "repository"
 jar = "{artifact}"

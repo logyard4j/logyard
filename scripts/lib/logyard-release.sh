@@ -183,7 +183,7 @@ logyard_copy_maven_publication() {
   local module="$1"
   local artifact="$2"
   local version="$3"
-  local destination="$4/com/zsumz/logyard/$artifact/$version"
+  local destination="$4/com/logyard4j/$artifact/$version"
   local source="$LOGYARD_ROOT/$module/target"
   local file
   mkdir -p "$destination"

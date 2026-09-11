@@ -62,7 +62,7 @@ def execute(built: BuiltProvider, case: Case, run: Path, java: str, cpus: int) -
         if len(affinity) != cpus:
             raise ValueError("requested CPU count exceeds available affinity")
         command.extend([f"-XX:ActiveProcessorCount={cpus}"])
-    command.extend(["-cp", built.classpath, "com.zsumz.logyard.compare.ComparisonMain", str(output), str(case.events),
+    command.extend(["-cp", built.classpath, "com.logyard4j.compare.ComparisonMain", str(output), str(case.events),
                     str(case.producers), str(case.arguments), str(case.fields), case.format, str(case.rate),
                     str(case.stall_ms), str(case.delay_us), str(case.virtual).lower(), case.policy, case.disabled])
     peak_rss = None

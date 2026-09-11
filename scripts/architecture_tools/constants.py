@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 
-PREFIX = "com.zsumz.logyard."
+PREFIX = "com.logyard4j."
 MAX_NEW_PRODUCTION_LINES = 220
 MAX_GRANDFATHERED_PRODUCTION_LINES = 300
 MAX_TEST_OR_EXAMPLE_LINES = 300
@@ -57,70 +57,70 @@ ALLOWED_IMPORT_PREFIXES = {
 }
 
 EXPECTED_DEPENDENCIES = {
-    "modules/logyard-test": {"com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core"},
+    "modules/logyard-test": {"com.logyard4j:logyard-api", "com.logyard4j:logyard-core"},
     "modules/logyard-api": set(),
-    "modules/logyard-core": {"com.zsumz.logyard:logyard-api"},
-    "modules/logyard-config-toml": {"com.zsumz.logyard:logyard-api"},
-    "modules/logyard-output-console": {"com.zsumz.logyard:logyard-api"},
-    "modules/logyard-output-json": {"com.zsumz.logyard:logyard-api"},
+    "modules/logyard-core": {"com.logyard4j:logyard-api"},
+    "modules/logyard-config-toml": {"com.logyard4j:logyard-api"},
+    "modules/logyard-output-console": {"com.logyard4j:logyard-api"},
+    "modules/logyard-output-json": {"com.logyard4j:logyard-api"},
     "modules/logyard-runtime": {
-        "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core", "com.zsumz.logyard:logyard-config-toml", "com.zsumz.logyard:logyard-output-console", "com.zsumz.logyard:logyard-output-json",
+        "com.logyard4j:logyard-api", "com.logyard4j:logyard-core", "com.logyard4j:logyard-config-toml", "com.logyard4j:logyard-output-console", "com.logyard4j:logyard-output-json",
     },
-    "modules/logyard-slf4j2": {"com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-runtime", "org.slf4j:slf4j-api"},
-    "modules/logyard-opentelemetry": {"com.zsumz.logyard:logyard-api", "io.opentelemetry:opentelemetry-api"},
+    "modules/logyard-slf4j2": {"com.logyard4j:logyard-api", "com.logyard4j:logyard-runtime", "org.slf4j:slf4j-api"},
+    "modules/logyard-opentelemetry": {"com.logyard4j:logyard-api", "io.opentelemetry:opentelemetry-api"},
     "modules/logyard-spring-boot": {
-        "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-jul", "com.zsumz.logyard:logyard-runtime", "org.springframework.boot:spring-boot", "org.springframework.boot:spring-boot-autoconfigure",
+        "com.logyard4j:logyard-api", "com.logyard4j:logyard-jul", "com.logyard4j:logyard-runtime", "org.springframework.boot:spring-boot", "org.springframework.boot:spring-boot-autoconfigure",
     },
     "modules/logyard-spring-boot-starter": {
-        "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-slf4j2", "com.zsumz.logyard:logyard-spring-boot", "org.springframework.boot:spring-boot-starter",
+        "com.logyard4j:logyard-api", "com.logyard4j:logyard-slf4j2", "com.logyard4j:logyard-spring-boot", "org.springframework.boot:spring-boot-starter",
     },
-    "modules/logyard-jul": {"com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-runtime"},
-    "modules/logyard-system-logger": {"com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-runtime"},
+    "modules/logyard-jul": {"com.logyard4j:logyard-api", "com.logyard4j:logyard-runtime"},
+    "modules/logyard-system-logger": {"com.logyard4j:logyard-api", "com.logyard4j:logyard-runtime"},
     "tests/logyard-integration-tests": {
-        "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core", "com.zsumz.logyard:logyard-config-toml", "com.zsumz.logyard:logyard-output-console", "com.zsumz.logyard:logyard-output-json", "com.zsumz.logyard:logyard-runtime",
+        "com.logyard4j:logyard-api", "com.logyard4j:logyard-core", "com.logyard4j:logyard-config-toml", "com.logyard4j:logyard-output-console", "com.logyard4j:logyard-output-json", "com.logyard4j:logyard-runtime",
     },
     "tests/logyard-adapter-canaries": {
-        "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core", "com.zsumz.logyard:logyard-config-toml",
-        "com.zsumz.logyard:logyard-output-console", "com.zsumz.logyard:logyard-output-json",
-        "com.zsumz.logyard:logyard-runtime", "com.zsumz.logyard:logyard-jul", "com.zsumz.logyard:logyard-system-logger",
-        "com.zsumz.logyard:logyard-slf4j2",
+        "com.logyard4j:logyard-api", "com.logyard4j:logyard-core", "com.logyard4j:logyard-config-toml",
+        "com.logyard4j:logyard-output-console", "com.logyard4j:logyard-output-json",
+        "com.logyard4j:logyard-runtime", "com.logyard4j:logyard-jul", "com.logyard4j:logyard-system-logger",
+        "com.logyard4j:logyard-slf4j2",
     },
     "benchmarks/logyard-benchmarks": {
-        "com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core", "com.zsumz.logyard:logyard-output-console", "com.zsumz.logyard:logyard-output-json", "com.zsumz.logyard:logyard-runtime", "com.zsumz.logyard:logyard-slf4j2", "org.openjdk.jmh:jmh-core", "org.slf4j:slf4j-api",
+        "com.logyard4j:logyard-api", "com.logyard4j:logyard-core", "com.logyard4j:logyard-output-console", "com.logyard4j:logyard-output-json", "com.logyard4j:logyard-runtime", "com.logyard4j:logyard-slf4j2", "org.openjdk.jmh:jmh-core", "org.slf4j:slf4j-api",
     },
 }
 
 ARTIFACT_CONTRACTS = {
-    "modules/logyard-test": ("com.zsumz.logyard.test", {"com.zsumz.logyard.test"}),
+    "modules/logyard-test": ("com.logyard4j.test", {"com.logyard4j.test"}),
     "modules/logyard-api": (
-        "com.zsumz.logyard.api",
+        "com.logyard4j.api",
         {
-            "com.zsumz.logyard.api", "com.zsumz.logyard.api.annotation", "com.zsumz.logyard.api.context", "com.zsumz.logyard.api.delivery", "com.zsumz.logyard.api.diagnostics", "com.zsumz.logyard.api.event", "com.zsumz.logyard.api.failure", "com.zsumz.logyard.api.format", "com.zsumz.logyard.api.ingress", "com.zsumz.logyard.api.reload", "com.zsumz.logyard.api.spi", "com.zsumz.logyard.api.spi.config", "com.zsumz.logyard.api.spi.context", "com.zsumz.logyard.api.spi.diagnostics", "com.zsumz.logyard.api.spi.encoding", "com.zsumz.logyard.api.spi.formatting", "com.zsumz.logyard.api.spi.output", "com.zsumz.logyard.api.spi.processing",
+            "com.logyard4j.api", "com.logyard4j.api.annotation", "com.logyard4j.api.context", "com.logyard4j.api.delivery", "com.logyard4j.api.diagnostics", "com.logyard4j.api.event", "com.logyard4j.api.failure", "com.logyard4j.api.format", "com.logyard4j.api.ingress", "com.logyard4j.api.reload", "com.logyard4j.api.spi", "com.logyard4j.api.spi.config", "com.logyard4j.api.spi.context", "com.logyard4j.api.spi.diagnostics", "com.logyard4j.api.spi.encoding", "com.logyard4j.api.spi.formatting", "com.logyard4j.api.spi.output", "com.logyard4j.api.spi.processing",
         },
     ),
-    "modules/logyard-core": ("com.zsumz.logyard.core", set()),
-    "modules/logyard-config-toml": ("com.zsumz.logyard.config.toml", set()),
-    "modules/logyard-output-console": ("com.zsumz.logyard.output.console", set()),
-    "modules/logyard-output-json": ("com.zsumz.logyard.output.json", set()),
-    "modules/logyard-runtime": ("com.zsumz.logyard.runtime", {"com.zsumz.logyard.runtime.bootstrap", "com.zsumz.logyard.runtime.management"}),
-    "modules/logyard-slf4j2": ("com.zsumz.logyard.slf4j2", set()),
-    "modules/logyard-opentelemetry": ("com.zsumz.logyard.opentelemetry", {"com.zsumz.logyard.opentelemetry"}),
+    "modules/logyard-core": ("com.logyard4j.core", set()),
+    "modules/logyard-config-toml": ("com.logyard4j.config.toml", set()),
+    "modules/logyard-output-console": ("com.logyard4j.output.console", set()),
+    "modules/logyard-output-json": ("com.logyard4j.output.json", set()),
+    "modules/logyard-runtime": ("com.logyard4j.runtime", {"com.logyard4j.runtime.bootstrap", "com.logyard4j.runtime.management"}),
+    "modules/logyard-slf4j2": ("com.logyard4j.slf4j2", set()),
+    "modules/logyard-opentelemetry": ("com.logyard4j.opentelemetry", {"com.logyard4j.opentelemetry"}),
     "modules/logyard-spring-boot": (
-        "com.zsumz.logyard.spring.boot",
-        {"com.zsumz.logyard.spring.boot.autoconfigure", "com.zsumz.logyard.spring.boot.logging", "com.zsumz.logyard.spring.boot.nativeimage"},
+        "com.logyard4j.spring.boot",
+        {"com.logyard4j.spring.boot.autoconfigure", "com.logyard4j.spring.boot.logging", "com.logyard4j.spring.boot.nativeimage"},
     ),
-    "modules/logyard-spring-boot-starter": ("com.zsumz.logyard.spring.boot.starter", set()),
-    "modules/logyard-jul": ("com.zsumz.logyard.jul", {"com.zsumz.logyard.jul"}),
-    "modules/logyard-system-logger": ("com.zsumz.logyard.system.logger", set()),
+    "modules/logyard-spring-boot-starter": ("com.logyard4j.spring.boot.starter", set()),
+    "modules/logyard-jul": ("com.logyard4j.jul", {"com.logyard4j.jul"}),
+    "modules/logyard-system-logger": ("com.logyard4j.system.logger", set()),
 }
 
 SERVICE_CONTRACTS = {
-    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.output.OutputProvider": ["com.zsumz.logyard.opentelemetry.OtelOutputProvider"],
-    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.context.ContextProvider": ["com.zsumz.logyard.opentelemetry.OpenTelemetryContextProvider"],
-    "modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider": ["com.zsumz.logyard.slf4j.LogyardServiceProvider"],
-    "modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder": ["com.zsumz.logyard.systemlogger.LogyardLoggerFinder"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.formatting.TextFormatterProvider": ["com.zsumz.logyard.tests.extensions.TestFormatterProvider"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.encoding.EventEncoderProvider": ["com.zsumz.logyard.tests.extensions.TestEncoderProvider"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.processing.EventProcessorProvider": ["com.zsumz.logyard.tests.extensions.TestEnricherProvider", "com.zsumz.logyard.tests.extensions.TestFilterProvider"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.output.OutputProvider": ["com.zsumz.logyard.tests.extensions.TestOutputProvider"],
+    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.logyard4j.api.spi.output.OutputProvider": ["com.logyard4j.opentelemetry.OtelOutputProvider"],
+    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.logyard4j.api.spi.context.ContextProvider": ["com.logyard4j.opentelemetry.OpenTelemetryContextProvider"],
+    "modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider": ["com.logyard4j.slf4j.LogyardServiceProvider"],
+    "modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder": ["com.logyard4j.systemlogger.LogyardLoggerFinder"],
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.formatting.TextFormatterProvider": ["com.logyard4j.tests.extensions.TestFormatterProvider"],
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.encoding.EventEncoderProvider": ["com.logyard4j.tests.extensions.TestEncoderProvider"],
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.processing.EventProcessorProvider": ["com.logyard4j.tests.extensions.TestEnricherProvider", "com.logyard4j.tests.extensions.TestFilterProvider"],
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.output.OutputProvider": ["com.logyard4j.tests.extensions.TestOutputProvider"],
 }

@@ -28,44 +28,44 @@ run_suite() {
 }
 
 run_suite modules/logyard-output-json \
-  --test com.zsumz.logyard.output.json.encoding.JsonEncoderConcurrencyTest \
-  --test com.zsumz.logyard.output.json.file.FileDurabilityTest \
-  --test com.zsumz.logyard.output.json.file.TimedDurabilityTest \
-  --test com.zsumz.logyard.output.json.file.ActiveDataFileFailureTest \
-  --test com.zsumz.logyard.output.json.file.JsonFileSinkInitializationTest \
-  --test com.zsumz.logyard.output.json.file.JsonFileSinkIdentityTest \
-  --test com.zsumz.logyard.output.json.file.JsonFileFlushConcurrencyTest \
-  --test com.zsumz.logyard.output.json.file.JsonFileTimedFlushTest \
-  --test com.zsumz.logyard.output.json.file.RotatingFileWriterFailureTest \
-  --test com.zsumz.logyard.output.json.file.rotation.ArchiveMaintenanceLifecycleTest \
-  --test com.zsumz.logyard.output.json.flush.FlushDispatcherSinkSaturationTest \
-  --test com.zsumz.logyard.output.json.flush.FlushDiagnosticsTest \
-  --test com.zsumz.logyard.output.json.flush.TimedFlushConcurrencyTest \
-  --test com.zsumz.logyard.output.json.flush.TimedFlushFailureIsolationTest \
-  --test com.zsumz.logyard.output.json.flush.BoundedElasticFlushDispatcherTest \
-  --test com.zsumz.logyard.output.json.stream.JsonLinesFlushConcurrencyTest \
-  --test com.zsumz.logyard.output.json.stream.JsonLinesFatalFailureTest \
-  --test com.zsumz.logyard.output.json.stream.JsonLinesSinkCloseFailureTest \
-  --test com.zsumz.logyard.output.json.stream.JsonLinesSinkFailureTest \
-  --test com.zsumz.logyard.output.json.stream.JsonLinesTimedFlushTest \
+  --test com.logyard4j.output.json.encoding.JsonEncoderConcurrencyTest \
+  --test com.logyard4j.output.json.file.FileDurabilityTest \
+  --test com.logyard4j.output.json.file.TimedDurabilityTest \
+  --test com.logyard4j.output.json.file.ActiveDataFileFailureTest \
+  --test com.logyard4j.output.json.file.JsonFileSinkInitializationTest \
+  --test com.logyard4j.output.json.file.JsonFileSinkIdentityTest \
+  --test com.logyard4j.output.json.file.JsonFileFlushConcurrencyTest \
+  --test com.logyard4j.output.json.file.JsonFileTimedFlushTest \
+  --test com.logyard4j.output.json.file.RotatingFileWriterFailureTest \
+  --test com.logyard4j.output.json.file.rotation.ArchiveMaintenanceLifecycleTest \
+  --test com.logyard4j.output.json.flush.FlushDispatcherSinkSaturationTest \
+  --test com.logyard4j.output.json.flush.FlushDiagnosticsTest \
+  --test com.logyard4j.output.json.flush.TimedFlushConcurrencyTest \
+  --test com.logyard4j.output.json.flush.TimedFlushFailureIsolationTest \
+  --test com.logyard4j.output.json.flush.BoundedElasticFlushDispatcherTest \
+  --test com.logyard4j.output.json.stream.JsonLinesFlushConcurrencyTest \
+  --test com.logyard4j.output.json.stream.JsonLinesFatalFailureTest \
+  --test com.logyard4j.output.json.stream.JsonLinesSinkCloseFailureTest \
+  --test com.logyard4j.output.json.stream.JsonLinesSinkFailureTest \
+  --test com.logyard4j.output.json.stream.JsonLinesTimedFlushTest \
   --jvm-arg=-Djdk.virtualThreadScheduler.parallelism=2 \
   --jvm-arg=-Djdk.virtualThreadScheduler.maxPoolSize=2 \
   --no-progress \
   --color never
 
 run_suite modules/logyard-runtime \
-  --test com.zsumz.logyard.runtime.assembly.output.FileOutputReloadIdentityTest \
-  --test com.zsumz.logyard.runtime.assembly.output.DeliveryAssemblerOwnershipTest \
-  --test com.zsumz.logyard.runtime.assembly.OutputAssemblerTest \
-  --test com.zsumz.logyard.runtime.assembly.RuntimeJsonConcurrencyTest \
-  --test com.zsumz.logyard.runtime.installation.process.FileOutputInstallationFailureTest \
-  --test com.zsumz.logyard.runtime.reload.coordination.DuplicateOutputReloadTest \
-  --test com.zsumz.logyard.runtime.reload.coordination.ContextPolicyReloadTest \
-  --test com.zsumz.logyard.runtime.reload.coordination.FileOutputReloadPublicationFailureTest \
-  --test com.zsumz.logyard.runtime.reload.coordination.RejectedConfigurationReconciliationTest \
-  --test com.zsumz.logyard.runtime.reload.coordination.ReloadCoordinatorTransientResourceTest \
-  --test com.zsumz.logyard.runtime.reload.watcher.ReloadDebouncerTest \
-  --test com.zsumz.logyard.runtime.reload.coordination.ReloadFailureClassifierTest \
+  --test com.logyard4j.runtime.assembly.output.FileOutputReloadIdentityTest \
+  --test com.logyard4j.runtime.assembly.output.DeliveryAssemblerOwnershipTest \
+  --test com.logyard4j.runtime.assembly.OutputAssemblerTest \
+  --test com.logyard4j.runtime.assembly.RuntimeJsonConcurrencyTest \
+  --test com.logyard4j.runtime.installation.process.FileOutputInstallationFailureTest \
+  --test com.logyard4j.runtime.reload.coordination.DuplicateOutputReloadTest \
+  --test com.logyard4j.runtime.reload.coordination.ContextPolicyReloadTest \
+  --test com.logyard4j.runtime.reload.coordination.FileOutputReloadPublicationFailureTest \
+  --test com.logyard4j.runtime.reload.coordination.RejectedConfigurationReconciliationTest \
+  --test com.logyard4j.runtime.reload.coordination.ReloadCoordinatorTransientResourceTest \
+  --test com.logyard4j.runtime.reload.watcher.ReloadDebouncerTest \
+  --test com.logyard4j.runtime.reload.coordination.ReloadFailureClassifierTest \
   --no-progress \
   --color never
 

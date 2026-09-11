@@ -1,7 +1,7 @@
 [project]
 name = "logyard-bom"
 version = "0.1.0-rc.1"
-group = "com.zsumz.logyard"
+group = "com.logyard4j"
 java = "21"
 
 [bom]
@@ -23,13 +23,13 @@ members = [
 
 [bom.versions]
 # These two published artifacts are produced by Quarkus' official Maven extension reactor.
-"com.zsumz.logyard:logyard-quarkus" = "0.1.0-rc.1"
-"com.zsumz.logyard:logyard-quarkus-deployment" = "0.1.0-rc.1"
+"com.logyard4j:logyard-quarkus" = "0.1.0-rc.1"
+"com.logyard4j:logyard-quarkus-deployment" = "0.1.0-rc.1"
 
 [package.metadata]
 name = "Logyard Bill of Materials"
 description = "Dependency management for the complete Logyard module family."
-url = "https://github.com/zsumz/logyard"
+url = "https://logyard4j.com"
 license = "Apache-2.0"
 licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
 developers = ["zsumz <shawn@zsumz.com>"]

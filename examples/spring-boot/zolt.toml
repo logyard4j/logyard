@@ -1,12 +1,12 @@
 [project]
 name = "logyard-spring-boot-example"
 version = "1.0.0-SNAPSHOT"
-group = "com.zsumz.logyard.examples"
+group = "com.logyard4j.examples"
 java = "21"
-main = "com.zsumz.logyard.examples.springboot.SpringBootExampleApplication"
+main = "com.logyard4j.examples.springboot.SpringBootExampleApplication"
 
 [platforms]
-"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+"com.logyard4j:logyard-bom" = "0.1.0-rc.1"
 "org.springframework.boot:spring-boot-dependencies" = "4.1.0"
 
 [dependencies]
@@ -16,8 +16,8 @@ main = "com.zsumz.logyard.examples.springboot.SpringBootExampleApplication"
 "org.springframework.boot:spring-boot-starter-actuator" = { exclusions = [
   { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" }
 ] }
-"com.zsumz.logyard:logyard-spring-boot-starter" = {}
-"com.zsumz.logyard:logyard-opentelemetry" = {}
+"com.logyard4j:logyard-spring-boot-starter" = {}
+"com.logyard4j:logyard-opentelemetry" = {}
 "io.opentelemetry:opentelemetry-api" = {}
 
 [package]

@@ -1,9 +1,9 @@
 [project]
 name = "comparison-logback"
 version = "0.1.0"
-group = "com.zsumz.logyard.benchmarks"
+group = "com.logyard4j.benchmarks"
 java = "21"
-main = "com.zsumz.logyard.compare.ComparisonMain"
+main = "com.logyard4j.compare.ComparisonMain"
 
 [dependencies]
 "ch.qos.logback:logback-classic" = "1.6.3"

@@ -46,7 +46,7 @@ def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunn
         return
     if scenario == "lifecycle":
         example = ZoltExample(scenario, root / "examples/lifecycle",
-                              "com.zsumz.logyard.examples.lifecycle.LifecycleExampleApplication", runtime_arguments=())
+                              "com.logyard4j.examples.lifecycle.LifecycleExampleApplication", runtime_arguments=())
         events = EventLog.read(runner.build_and_run(example))
         events.require_real_timestamps()
         for cycle in (0, 1):
@@ -72,7 +72,7 @@ def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunn
             raise AssertionError("competing provider failure omitted starter exclusion guidance")
         return
     if scenario == "opentelemetry":
-        logger = "com.zsumz.logyard.examples.opentelemetry.OpenTelemetryExampleApplication"
+        logger = "com.logyard4j.examples.opentelemetry.OpenTelemetryExampleApplication"
         example = ZoltExample(scenario, root / "examples/opentelemetry", logger, test=True)
         events = EventLog.read(runner.build_and_run(example))
         events.require_real_timestamps()
@@ -90,7 +90,7 @@ def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunn
     if scenario in ("slf4j", "vertx", "micronaut"):
         name = {"slf4j": "Slf4j", "vertx": "Vertx", "micronaut": "Micronaut"}[scenario]
         example = ZoltExample(scenario, root / "examples" / scenario,
-                              f"com.zsumz.logyard.examples.{scenario}.{name}ExampleApplication")
+                              f"com.logyard4j.examples.{scenario}.{name}ExampleApplication")
         if scenario == "slf4j":
             verify_plain_slf4j(runner, example)
         elif scenario == "vertx":

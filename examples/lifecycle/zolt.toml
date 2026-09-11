@@ -1,14 +1,14 @@
 [project]
 name = "logyard-lifecycle-example"
 version = "1.0.0-SNAPSHOT"
-group = "com.zsumz.logyard.examples"
+group = "com.logyard4j.examples"
 java = "21"
-main = "com.zsumz.logyard.examples.lifecycle.LifecycleExampleApplication"
+main = "com.logyard4j.examples.lifecycle.LifecycleExampleApplication"
 
 [platforms]
-"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+"com.logyard4j:logyard-bom" = "0.1.0-rc.1"
 
 [dependencies]
-"com.zsumz.logyard:logyard-slf4j2" = {}
-"com.zsumz.logyard:logyard-jul" = {}
-"com.zsumz.logyard:logyard-system-logger" = {}
+"com.logyard4j:logyard-slf4j2" = {}
+"com.logyard4j:logyard-jul" = {}
+"com.logyard4j:logyard-system-logger" = {}

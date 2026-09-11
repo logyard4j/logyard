@@ -68,7 +68,7 @@ done < <(logyard_publish_members)
 while IFS=$'\t' read -r module artifact module_name record_version artifact_count; do
   [[ "$record_version" == "$VERSION" ]] || logyard_release_fail "$module does not use release version $VERSION"
   source="$ROOT/$module/target"
-  destination="$TARGET/com/zsumz/logyard/$artifact/$VERSION"
+  destination="$TARGET/com/logyard4j/$artifact/$VERSION"
   for file in "$artifact-$VERSION.jar" "$artifact-$VERSION-sources.jar" "$artifact-$VERSION-javadoc.jar" "$artifact-$VERSION.pom"; do
     logyard_require_file "$destination/$file"
     source_file="$source/$file"
@@ -83,9 +83,9 @@ while IFS=$'\t' read -r module artifact module_name record_version artifact_coun
   ! grep -Fq '<repositories>' "$destination/$artifact-$VERSION.pom" || logyard_release_fail "$artifact POM leaks a build repository"
 done < <(logyard_maven_publication_records)
 
-grep -Fq '<artifactId>logyard-quarkus</artifactId>' "$TARGET/com/zsumz/logyard/logyard-bom/$VERSION/logyard-bom-$VERSION.pom" \
+grep -Fq '<artifactId>logyard-quarkus</artifactId>' "$TARGET/com/logyard4j/logyard-bom/$VERSION/logyard-bom-$VERSION.pom" \
   || logyard_release_fail 'Zolt-native BOM does not manage logyard-quarkus'
-grep -Fq '<artifactId>logyard-quarkus-deployment</artifactId>' "$TARGET/com/zsumz/logyard/logyard-bom/$VERSION/logyard-bom-$VERSION.pom" \
+grep -Fq '<artifactId>logyard-quarkus-deployment</artifactId>' "$TARGET/com/logyard4j/logyard-bom/$VERSION/logyard-bom-$VERSION.pom" \
   || logyard_release_fail 'Zolt-native BOM does not manage logyard-quarkus-deployment'
 
 sort -u "$EXPECTED_PRIMARY" -o "$EXPECTED_PRIMARY"

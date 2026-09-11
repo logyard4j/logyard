@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.zsumz.logyard</groupId>
+        <groupId>com.logyard4j</groupId>
         <artifactId>logyard-quarkus-parent</artifactId>
         <version>0.1.0-rc.1</version>
     </parent>
@@ -13,7 +13,7 @@
     <artifactId>logyard-quarkus</artifactId>
     <name>Logyard Quarkus Runtime</name>
     <description>Runtime logging capture and lifecycle integration for Quarkus.</description>
-    <url>https://github.com/zsumz/logyard</url>
+    <url>https://logyard4j.com</url>
 
     <scm>
         <connection>scm:git:https://github.com/zsumz/logyard.git</connection>
@@ -24,12 +24,12 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.zsumz.logyard</groupId>
+            <groupId>com.logyard4j</groupId>
             <artifactId>logyard-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.zsumz.logyard</groupId>
+            <groupId>com.logyard4j</groupId>
             <artifactId>logyard-runtime</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -101,7 +101,7 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Automatic-Module-Name>com.zsumz.logyard.quarkus</Automatic-Module-Name>
+                            <Automatic-Module-Name>com.logyard4j.quarkus</Automatic-Module-Name>
                         </manifestEntries>
                     </archive>
                 </configuration>

@@ -1,0 +1,76 @@
+package com.logyard4j.jul.internal.event;
+
+import com.logyard4j.api.Level;
+import com.logyard4j.api.LogyardRuntime;
+import com.logyard4j.api.event.AttributeSet;
+import com.logyard4j.api.ingress.IngressMetadata;
+import com.logyard4j.api.ingress.LogEventIngress;
+
+import java.time.Instant;
+import java.util.Objects;
+import java.util.logging.LogRecord;
+
+/** Converts one JUL record without leaking JUL types beyond the ingress boundary. */
+public final class JulEventMapper {
+    public void publish(LogyardRuntime runtime, LogRecord record) {
+        Objects.requireNonNull(runtime, "runtime");
+        Objects.requireNonNull(record, "record");
+        java.util.logging.Level sourceLevel = Objects.requireNonNull(record.getLevel(), "record level");
+        // JUL gates entirely on the numeric level space, so a custom OFF-valued Level must be
+        // suppressed just like the java.util.logging.Level.OFF singleton.
+        if (sourceLevel.intValue() == java.util.logging.Level.OFF.intValue()) {
+            return;
+        }
+        Level level = JulLevelMapper.toLogyard(sourceLevel);
+        LogEventIngress logger = runtime.logger(loggerName(record));
+        if (!logger.isEnabled(level)) {
+            return;
+        }
+
+        // Resolve JUL's lazy caller metadata before an asynchronous sink can observe the event.
+        String sourceClass = record.getSourceClassName();
+        String sourceMethod = record.getSourceMethodName();
+        JulMessageRenderer.Result rendered = JulMessageRenderer.render(record);
+        AttributeSet.Builder attributes = AttributeSet.builder()
+                .put("jul.level", sourceLevel.getName())
+                .put("jul.sequence_number", record.getSequenceNumber());
+        if (rendered.template() != null && !Objects.equals(rendered.template(), rendered.message())) {
+            attributes.put("jul.message_template", rendered.template());
+        }
+        if (sourceClass != null) {
+            attributes.put("code.namespace", sourceClass);
+        }
+        if (sourceMethod != null) {
+            attributes.put("code.function.name", sourceMethod);
+        }
+        if (record.getResourceBundleName() != null) {
+            attributes.put("jul.resource_bundle", record.getResourceBundleName());
+        }
+        AttributeSet captured = attributes.build();
+        if (rendered.formatFailed()) {
+            captured = captured.mergedWith(
+                    AttributeSet.systemBuilder(1).put("logyard.jul.message_format_failed", true).build());
+        }
+        if (rendered.truncated()) {
+            captured = captured.mergedWith(
+                    AttributeSet.systemBuilder(1).put("logyard.capture.truncated", true).build());
+        }
+        Instant instant = record.getInstant();
+        logger.log(
+                level,
+                null,
+                rendered.message(),
+                null,
+                captured,
+                record.getThrown(),
+                IngressMetadata.source(
+                        instant.toEpochMilli(),
+                        record.getLongThreadID(),
+                        null));
+    }
+
+    private static String loggerName(LogRecord record) {
+        String name = record.getLoggerName();
+        return name == null || name.isBlank() ? "java.util.logging" : name;
+    }
+}

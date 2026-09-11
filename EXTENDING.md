@@ -10,7 +10,7 @@ Add `logyard-api` to your extension project:
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-api</artifactId>
     <version>0.1.0-rc.1</version>
   </dependency>
@@ -24,7 +24,7 @@ Add `logyard-api` to your extension project:
 
 ```kotlin
 dependencies {
-    implementation("com.zsumz.logyard:logyard-api:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-api:0.1.0-rc.1")
 }
 ```
 
@@ -35,7 +35,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.zsumz.logyard:logyard-api" = "0.1.0-rc.1"
+"com.logyard4j:logyard-api" = "0.1.0-rc.1"
 ```
 
 </details>
@@ -58,12 +58,12 @@ This provider adds a configured tenant to every event on its route:
 ```java
 package com.example.logging;
 
-import com.zsumz.logyard.api.event.AttributeSet;
-import com.zsumz.logyard.api.spi.config.ProviderConfiguration;
-import com.zsumz.logyard.api.spi.config.ProviderConfigurationSpec;
-import com.zsumz.logyard.api.spi.processing.EventProcessor;
-import com.zsumz.logyard.api.spi.processing.EventProcessorKind;
-import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
+import com.logyard4j.api.event.AttributeSet;
+import com.logyard4j.api.spi.config.ProviderConfiguration;
+import com.logyard4j.api.spi.config.ProviderConfigurationSpec;
+import com.logyard4j.api.spi.processing.EventProcessor;
+import com.logyard4j.api.spi.processing.EventProcessorKind;
+import com.logyard4j.api.spi.processing.EventProcessorProvider;
 import java.util.Set;
 
 public final class TenantEnricherProvider implements EventProcessorProvider {
@@ -93,7 +93,7 @@ public final class TenantEnricherProvider implements EventProcessorProvider {
 Create this file under `src/main/resources`:
 
 ```text
-META-INF/services/com.zsumz.logyard.api.spi.processing.EventProcessorProvider
+META-INF/services/com.logyard4j.api.spi.processing.EventProcessorProvider
 ```
 
 Its content is the provider's fully qualified class name:
@@ -133,6 +133,6 @@ Other provider failures are isolated and retried with bounded watcher backoff. S
 
 ## Supported API
 
-The supported public surface includes all `logyard-api` packages, runtime `bootstrap` and `management`, the public JUL and Spring Boot integration packages, and `com.zsumz.logyard.quarkus.runtime.*`.
+The supported public surface includes all `logyard-api` packages, runtime `bootstrap` and `management`, the public JUL and Spring Boot integration packages, and `com.logyard4j.quarkus.runtime.*`.
 
 Other packages are implementation details marked `@InternalApi`. Use the public SPI when building extensions. Published JARs include stable `Automatic-Module-Name` values, source JARs, and Javadoc JARs.

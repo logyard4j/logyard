@@ -140,7 +140,7 @@ mkdir -p "$descriptor_target"
 )
 deployment_coordinate="$(sed -n 's/^deployment-artifact=//p' \
   "$descriptor_target/META-INF/quarkus-extension.properties" | tr -d '\\')"
-[[ "$deployment_coordinate" == "com.zsumz.logyard:logyard-quarkus-deployment:$VERSION" ]] \
+[[ "$deployment_coordinate" == "com.logyard4j:logyard-quarkus-deployment:$VERSION" ]] \
   || fail "Quarkus descriptor names unexpected deployment artifact: $deployment_coordinate"
 
 require_entry "$ROOT/modules/logyard-slf4j2/target/logyard-slf4j2-$VERSION.jar" \
@@ -148,7 +148,7 @@ require_entry "$ROOT/modules/logyard-slf4j2/target/logyard-slf4j2-$VERSION.jar" 
 require_entry "$ROOT/modules/logyard-system-logger/target/logyard-system-logger-$VERSION.jar" \
   'META-INF/services/java.lang.System$LoggerFinder'
 require_entry "$ROOT/modules/logyard-opentelemetry/target/logyard-opentelemetry-$VERSION.jar" \
-  'META-INF/services/com.zsumz.logyard.api.spi.context.ContextProvider'
+  'META-INF/services/com.logyard4j.api.spi.context.ContextProvider'
 
 slf4j_api="$(find_dependency 'slf4j-api-2.0.18.jar')"
 [[ -n "$slf4j_api" ]] || fail "slf4j-api-2.0.18.jar is not available in the Zolt cache"
@@ -181,11 +181,11 @@ done < <(find "$ROOT/tests/logyard-integration-tests/src/main/java" -type f -nam
   "${extension_sources[@]}"
 cp -R "$ROOT/tests/logyard-integration-tests/src/main/resources/." "$TARGET/extensions/"
 "$JAVA" -cp "$packaged_classpath$classpath_separator$TARGET/extensions" \
-  com.zsumz.logyard.tests.CoreVerificationMain
+  com.logyard4j.tests.CoreVerificationMain
 
 cat > "$TARGET/PackagedFacadeCanary.java" <<'JAVA'
-import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
-import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
+import com.logyard4j.runtime.bootstrap.LogyardBootstrap;
+import com.logyard4j.runtime.bootstrap.RuntimeBundle;
 import org.slf4j.LoggerFactory;
 import org.slf4j.spi.SLF4JServiceProvider;
 

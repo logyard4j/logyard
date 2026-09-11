@@ -49,8 +49,8 @@ def _check_project_block(root: Path, manifest: Path, block: str, versions: dict[
         state.add_error(f"{manifest.relative_to(root)}: missing version")
     else:
         versions[manifest.parent.relative_to(root).as_posix()] = fields["version"].group(1)
-    if fields["group"] is None or fields["group"].group(1) != "com.zsumz.logyard":
-        state.add_error(f"{manifest.relative_to(root)}: group must be com.zsumz.logyard")
+    if fields["group"] is None or fields["group"].group(1) != "com.logyard4j":
+        state.add_error(f"{manifest.relative_to(root)}: group must be com.logyard4j")
     if fields["java"] is None or fields["java"].group(1) != "21":
         state.add_error(f"{manifest.relative_to(root)}: Java baseline must be 21")
 
@@ -61,7 +61,7 @@ def _check_workspace_version(root: Path, manifest_versions: dict[str, str], stat
         state.add_error("workspace versions must move together: " + ", ".join(f"{path}={version}" for path, version in sorted(manifest_versions.items())))
         return
     version = next(iter(versions))
-    version_source = root / "modules/logyard-api/src/main/java/com/zsumz/logyard/api/LogyardVersion.java"
+    version_source = root / "modules/logyard-api/src/main/java/com/logyard4j/api/LogyardVersion.java"
     if f'public static final String CURRENT = "{version}";' not in version_source.read_text():
         state.add_error("LogyardVersion does not match the workspace version")
     if f"LOGYARD_SERVICE_VERSION:-{version}" not in (root / "logyard.toml").read_text():
@@ -72,7 +72,7 @@ def _check_artifact_contracts(root: Path, state: CheckState) -> None:
     required_fragments = (
         'mode = "thin"', "sources = true", "javadoc = true", 'license = "Apache-2.0"',
         'licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"', 'developers = ["zsumz <shawn@zsumz.com>"]',
-        'url = "https://github.com/zsumz/logyard"', 'scm = "https://github.com/zsumz/logyard"',
+        'url = "https://logyard4j.com"', 'scm = "https://github.com/zsumz/logyard"',
         'scmConnection = "scm:git:https://github.com/zsumz/logyard.git"', 'scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"',
         'issues = "https://github.com/zsumz/logyard/issues"', 'artifacts = ["main"]', '[publish.signing]',
         'keyId = "EC8E4D26598A0373"', '[publish.central]', 'tokenEnv = "ZOLT_CENTRAL_TOKEN"', 'publishingType = "user-managed"',
@@ -98,7 +98,7 @@ def _check_internal_packages(root: Path, project_path: str, supported_packages: 
         package_match = PACKAGE.search(package_info.read_text(encoding="utf-8"))
         if package_match is None or package_match.group(1) in supported_packages:
             continue
-        if "@com.zsumz.logyard.api.annotation.InternalApi" not in package_info.read_text(encoding="utf-8"):
+        if "@com.logyard4j.api.annotation.InternalApi" not in package_info.read_text(encoding="utf-8"):
             state.add_error(f"{package_info.relative_to(root)}: unsupported packages must declare @InternalApi")
 
 

@@ -65,7 +65,7 @@ fetch_baseline_artifact() {
     exit 2
   }
   group="$(baseline_value group)"
-  group="${group:-com.zsumz.logyard}"
+  group="${group:-com.logyard4j}"
   repository="$(baseline_value repository)"
   [[ -n "$repository" ]] || {
     printf 'error: compatibility baseline has no repository\n' >&2
@@ -209,12 +209,12 @@ else
 fi
 
 install_japicmp
-compare "$old_api" "$CURRENT_DIR/logyard-api-current.jar" "com.zsumz.logyard.api.*"
-compare "$old_runtime" "$CURRENT_DIR/logyard-runtime-current.jar" "com.zsumz.logyard.runtime.bootstrap.*"
-compare "$old_runtime" "$CURRENT_DIR/logyard-runtime-current.jar" "com.zsumz.logyard.runtime.management.*"
-compare "$old_jul" "$CURRENT_DIR/logyard-jul-current.jar" "com.zsumz.logyard.jul.*"
-compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.zsumz.logyard.spring.boot.autoconfigure.*"
-compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.zsumz.logyard.spring.boot.logging.*"
-compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.zsumz.logyard.spring.boot.nativeimage.*"
-compare "$old_quarkus" "$CURRENT_DIR/logyard-quarkus-current.jar" "com.zsumz.logyard.quarkus.runtime.*"
+compare "$old_api" "$CURRENT_DIR/logyard-api-current.jar" "com.logyard4j.api.*"
+compare "$old_runtime" "$CURRENT_DIR/logyard-runtime-current.jar" "com.logyard4j.runtime.bootstrap.*"
+compare "$old_runtime" "$CURRENT_DIR/logyard-runtime-current.jar" "com.logyard4j.runtime.management.*"
+compare "$old_jul" "$CURRENT_DIR/logyard-jul-current.jar" "com.logyard4j.jul.*"
+compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.logyard4j.spring.boot.autoconfigure.*"
+compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.logyard4j.spring.boot.logging.*"
+compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.logyard4j.spring.boot.nativeimage.*"
+compare "$old_quarkus" "$CURRENT_DIR/logyard-quarkus-current.jar" "com.logyard4j.quarkus.runtime.*"
 printf 'API compatibility %s passed for Logyard API, bootstrap, management, JUL, Spring Boot, and Quarkus surfaces.\n' "$mode"

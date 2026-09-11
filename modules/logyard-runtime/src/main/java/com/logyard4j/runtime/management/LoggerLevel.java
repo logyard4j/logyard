@@ -1,0 +1,38 @@
+package com.logyard4j.runtime.management;
+
+import com.logyard4j.api.Level;
+import com.logyard4j.core.level.RuntimeLevelOverride;
+
+/** Operational logger threshold, including a fully disabled state. */
+public enum LoggerLevel {
+    /** Trace and more severe events are enabled. */
+    TRACE(Level.TRACE),
+    /** Debug and more severe events are enabled. */
+    DEBUG(Level.DEBUG),
+    /** Informational and more severe events are enabled. */
+    INFO(Level.INFO),
+    /** Warning and error events are enabled. */
+    WARN(Level.WARN),
+    /** Only error events are enabled. */
+    ERROR(Level.ERROR),
+    /** All events are disabled. */
+    OFF(null);
+
+    private final Level eventLevel;
+
+    LoggerLevel(Level eventLevel) {
+        this.eventLevel = eventLevel;
+    }
+
+    RuntimeLevelOverride toOverride() {
+        return this == OFF ? RuntimeLevelOverride.off() : RuntimeLevelOverride.threshold(eventLevel);
+    }
+
+    static LoggerLevel from(RuntimeLevelOverride override) {
+        return override.disabled() ? OFF : valueOf(override.threshold().name());
+    }
+
+    static LoggerLevel from(Level level) {
+        return valueOf(level.name());
+    }
+}

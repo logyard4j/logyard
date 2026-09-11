@@ -27,7 +27,7 @@ class BenchmarkDeliveryTest(unittest.TestCase):
 
     def test_requires_all_results_including_single_shot_cases(self) -> None:
         self.assertEqual(len(required_scenarios("smoke")), len(check([], [], "smoke")))
-        result = {"benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderFirstCallBenchmark.firstCall",
+        result = {"benchmark": "com.logyard4j.benchmarks.ingress.Slf4jProviderFirstCallBenchmark.firstCall",
                   "mode": "thrpt", "primaryMetric": {"score": 1}}
         self.assertTrue(any("finite ss" in failure for failure in check([result], [], "smoke")))
 

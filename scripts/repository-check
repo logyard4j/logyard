@@ -85,7 +85,7 @@ required_files=(
   extensions/logyard-quarkus/runtime/pom.xml
   extensions/logyard-quarkus/runtime/src/main/resources/META-INF/quarkus-extension.yaml
   extensions/logyard-quarkus/deployment/pom.xml
-  extensions/logyard-quarkus/deployment/src/main/java/com/zsumz/logyard/quarkus/deployment/LogyardQuarkusProcessor.java
+  extensions/logyard-quarkus/deployment/src/main/java/com/logyard4j/quarkus/deployment/LogyardQuarkusProcessor.java
   scripts/example_tools/zolt.py
   smoke/examples.smoke.mts
   scripts/verify
@@ -93,10 +93,10 @@ required_files=(
   scripts/java-size-baseline.tsv
   modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider
   'modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder'
-  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.formatting.TextFormatterProvider
-  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.encoding.EventEncoderProvider
-  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.processing.EventProcessorProvider
-  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.zsumz.logyard.api.spi.output.OutputProvider
+  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.formatting.TextFormatterProvider
+  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.encoding.EventEncoderProvider
+  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.processing.EventProcessorProvider
+  tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.output.OutputProvider
 )
 for required in "${required_files[@]}"; do
   [[ -f "$required" ]] || fail "required file is missing: $required"

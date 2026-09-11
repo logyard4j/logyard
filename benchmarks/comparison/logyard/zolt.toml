@@ -1,13 +1,13 @@
 [project]
 name = "comparison-logyard"
 version = "0.1.0"
-group = "com.zsumz.logyard.benchmarks"
+group = "com.logyard4j.benchmarks"
 java = "21"
-main = "com.zsumz.logyard.compare.ComparisonMain"
+main = "com.logyard4j.compare.ComparisonMain"
 
 [dependencies]
-"com.zsumz.logyard:logyard-slf4j2" = "0.1.0-rc.1"
-"com.zsumz.logyard:logyard-runtime" = "0.1.0-rc.1"
+"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.1"
+"com.logyard4j:logyard-runtime" = "0.1.0-rc.1"
 "org.slf4j:slf4j-api" = "2.0.18"
 
 [test.dependencies]

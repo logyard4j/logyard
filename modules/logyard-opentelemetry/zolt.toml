@@ -1,20 +1,20 @@
 [project]
 name = "logyard-opentelemetry"
 version = "0.1.0-rc.1"
-group = "com.zsumz.logyard"
+group = "com.logyard4j"
 java = "21"
 
 [repositories]
 central = "https://repo.maven.apache.org/maven2"
 
 [dependencies]
-"com.zsumz.logyard:logyard-api" = { workspace = "modules/logyard-api" }
+"com.logyard4j:logyard-api" = { workspace = "modules/logyard-api" }
 "io.opentelemetry:opentelemetry-api" = "1.65.0"
 
 [test.dependencies]
 "io.opentelemetry:opentelemetry-sdk" = "1.65.0"
 "io.opentelemetry:opentelemetry-sdk-testing" = "1.65.0"
-"com.zsumz.logyard:logyard-runtime" = { workspace = "modules/logyard-runtime" }
+"com.logyard4j:logyard-runtime" = { workspace = "modules/logyard-runtime" }
 "org.junit.platform:junit-platform-console-standalone" = "1.11.4"
 
 [build]
@@ -37,7 +37,7 @@ javadoc = true
 [package.metadata]
 name = "Logyard OpenTelemetry"
 description = "OpenTelemetry trace capture and forwarding to the application-owned Logs API."
-url = "https://github.com/zsumz/logyard"
+url = "https://logyard4j.com"
 license = "Apache-2.0"
 licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
 developers = ["zsumz <shawn@zsumz.com>"]
@@ -47,7 +47,7 @@ scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"
 issues = "https://github.com/zsumz/logyard/issues"
 
 [package.manifest]
-"Automatic-Module-Name" = "com.zsumz.logyard.opentelemetry"
+"Automatic-Module-Name" = "com.logyard4j.opentelemetry"
 
 [publish]
 artifacts = ["main"]

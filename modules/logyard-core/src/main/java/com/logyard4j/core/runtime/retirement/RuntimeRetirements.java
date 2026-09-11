@@ -1,0 +1,118 @@
+package com.logyard4j.core.runtime.retirement;
+
+import com.logyard4j.core.diagnostics.EmergencyText;
+import com.logyard4j.core.diagnostics.EmergencyReporter;
+import com.logyard4j.core.failure.ComponentInvocationBoundary;
+import com.logyard4j.core.routing.PlanEpoch;
+import com.logyard4j.core.runtime.RuntimePlan;
+
+import java.time.Duration;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+/** Coordinates bounded scheduling, observation, and shutdown waiting for retired runtime plans. */
+public final class RuntimeRetirements {
+    private final ConcurrentLinkedQueue<CompletableFuture<Void>> pending = new ConcurrentLinkedQueue<>();
+    private final RetirementExecutor executor;
+    private final RuntimeRetirementDiagnostics diagnostics;
+    private final RetirementSequence sequence = new RetirementSequence();
+
+    public RuntimeRetirements() {
+        this(new RetirementExecutor(), new StderrRuntimeRetirementDiagnostics());
+    }
+
+    RuntimeRetirements(RetirementExecutor executor, RuntimeRetirementDiagnostics diagnostics) {
+        this.executor = Objects.requireNonNull(executor, "executor");
+        this.diagnostics = Objects.requireNonNull(diagnostics, "diagnostics");
+    }
+
+    public int pendingCount() {
+        return pending.size();
+    }
+
+    /** Flushes the active plan's unique output identities. */
+    public void flush(RuntimePlan plan) {
+        RuntimeOutputs.flush(Objects.requireNonNull(plan, "plan"));
+    }
+
+    public void replacePlan(RuntimePlan previousPlan, PlanEpoch previousEpoch, RuntimePlan nextPlan, Runnable activation) {
+        Objects.requireNonNull(previousPlan, "previousPlan");
+        Objects.requireNonNull(previousEpoch, "previousEpoch");
+        Objects.requireNonNull(nextPlan, "nextPlan");
+        Objects.requireNonNull(activation, "activation");
+        try (ReloadReservation reservation = ReloadReservation.acquire(executor)) {
+            activation.run();
+            observe(sequence.retire(
+                    previousEpoch,
+                    () -> RuntimeOutputs.closeNotReused(previousPlan, nextPlan),
+                    executor::scheduleReload));
+            reservation.transferToRetirementTask();
+        }
+    }
+
+    public CompletableFuture<Void> finishPlan(RuntimePlan plan, PlanEpoch epoch) {
+        Objects.requireNonNull(plan, "plan");
+        Objects.requireNonNull(epoch, "epoch");
+        return observe(sequence.retire(epoch, () -> RuntimeOutputs.closeAll(plan), executor::scheduleFinal));
+    }
+
+    public void await(Duration timeout) {
+        long timeoutNanos = saturatedNanos(Objects.requireNonNull(timeout, "timeout"));
+        long startedAt = System.nanoTime();
+        for (CompletableFuture<Void> retirement : pending) {
+            long remaining = timeoutNanos - (System.nanoTime() - startedAt);
+            if (remaining <= 0) {
+                diagnostics.shutdownDeadlineElapsed();
+                return;
+            }
+            try {
+                retirement.get(remaining, TimeUnit.NANOSECONDS);
+            } catch (TimeoutException timeoutFailure) {
+                diagnostics.shutdownDeadlineElapsed();
+                return;
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (ExecutionException alreadyReported) {
+                // Completion observation reports the original retirement failure once.
+            }
+        }
+    }
+
+    private CompletableFuture<Void> observe(CompletableFuture<Void> retirement) {
+        CompletableFuture<Void> observation = new CompletableFuture<>();
+        pending.add(observation);
+        retirement.whenComplete((ignored, failure) -> {
+            try {
+                if (failure != null) {
+                    ComponentInvocationBoundary.invoke(
+                            "runtime retirement diagnostics",
+                            () -> diagnostics.retirementFailed(failure),
+                            (component, reportingFailure) -> EmergencyReporter.STDERR.report(
+                                    "Logyard retirement diagnostics failed: "
+                                            + EmergencyText.failureSummary(reportingFailure, 4_096)));
+                }
+            } finally {
+                pending.remove(observation);
+                if (failure == null) {
+                    observation.complete(null);
+                } else {
+                    observation.completeExceptionally(failure);
+                }
+            }
+        });
+        return observation;
+    }
+
+    private static long saturatedNanos(Duration duration) {
+        try {
+            return duration.toNanos();
+        } catch (ArithmeticException overflow) {
+            return Long.MAX_VALUE;
+        }
+    }
+}

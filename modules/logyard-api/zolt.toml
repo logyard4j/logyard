@@ -1,7 +1,7 @@
 [project]
 name = "logyard-api"
 version = "0.1.0-rc.1"
-group = "com.zsumz.logyard"
+group = "com.logyard4j"
 java = "21"
 
 [repositories]
@@ -30,7 +30,7 @@ javadoc = true
 [package.metadata]
 name = "Logyard API"
 description = "Stable native logging API and extension contracts for Logyard."
-url = "https://github.com/zsumz/logyard"
+url = "https://logyard4j.com"
 license = "Apache-2.0"
 licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
 developers = ["zsumz <shawn@zsumz.com>"]
@@ -40,7 +40,7 @@ scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"
 issues = "https://github.com/zsumz/logyard/issues"
 
 [package.manifest]
-"Automatic-Module-Name" = "com.zsumz.logyard.api"
+"Automatic-Module-Name" = "com.logyard4j.api"
 
 [publish]
 artifacts = ["main"]

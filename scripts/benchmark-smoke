@@ -41,7 +41,7 @@ mvn --batch-mode --no-transfer-progress \
   package
 
 version="$(logyard_release_version)"
-quarkus_artifact="com/zsumz/logyard/logyard-quarkus/$version/logyard-quarkus-$version.jar"
+quarkus_artifact="com/logyard4j/logyard-quarkus/$version/logyard-quarkus-$version.jar"
 cmp "$MAVEN_REPOSITORY/$quarkus_artifact" "$ROOT/target/release-bundle/$quarkus_artifact"
 "$ROOT/scripts/release-verify"
 

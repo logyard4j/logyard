@@ -16,7 +16,7 @@ Add the SLF4J provider. It includes the runtime, TOML configuration, console out
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-slf4j2</artifactId>
     <version>0.1.0-rc.1</version>
   </dependency>
@@ -30,7 +30,7 @@ Add the SLF4J provider. It includes the runtime, TOML configuration, console out
 
 ```kotlin
 dependencies {
-    implementation("com.zsumz.logyard:logyard-slf4j2:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.1")
 }
 ```
 
@@ -41,7 +41,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.zsumz.logyard:logyard-slf4j2" = "0.1.0-rc.1"
+"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.1"
 ```
 
 </details>
@@ -72,7 +72,7 @@ Add the starter and exclude Boot's default logging starter. These snippets targe
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-spring-boot-starter</artifactId>
     <version>0.1.0-rc.1</version>
   </dependency>
@@ -96,7 +96,7 @@ Add the starter and exclude Boot's default logging starter. These snippets targe
 
 ```kotlin
 dependencies {
-    implementation("com.zsumz.logyard:logyard-spring-boot-starter:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-spring-boot-starter:0.1.0-rc.1")
     implementation("org.springframework.boot:spring-boot-starter-web") {
         exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
     }
@@ -113,7 +113,7 @@ dependencies {
 "org.springframework.boot:spring-boot-dependencies" = "3.5.16"
 
 [dependencies]
-"com.zsumz.logyard:logyard-spring-boot-starter" = "0.1.0-rc.1"
+"com.logyard4j:logyard-spring-boot-starter" = "0.1.0-rc.1"
 "org.springframework.boot:spring-boot-starter-web" = { exclusions = [
     { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" },
 ] }
@@ -148,7 +148,7 @@ Add the runtime extension to your Quarkus application; Quarkus selects its deplo
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-quarkus</artifactId>
     <version>0.1.0-rc.1</version>
   </dependency>
@@ -162,7 +162,7 @@ Add the runtime extension to your Quarkus application; Quarkus selects its deplo
 
 ```kotlin
 dependencies {
-    implementation("com.zsumz.logyard:logyard-quarkus:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-quarkus:0.1.0-rc.1")
 }
 ```
 
@@ -173,7 +173,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.zsumz.logyard:logyard-quarkus" = "0.1.0-rc.1"
+"com.logyard4j:logyard-quarkus" = "0.1.0-rc.1"
 ```
 
 </details>
@@ -211,7 +211,7 @@ Add the native runtime:
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-runtime</artifactId>
     <version>0.1.0-rc.1</version>
   </dependency>
@@ -225,7 +225,7 @@ Add the native runtime:
 
 ```kotlin
 dependencies {
-    implementation("com.zsumz.logyard:logyard-runtime:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-runtime:0.1.0-rc.1")
 }
 ```
 
@@ -236,7 +236,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.zsumz.logyard:logyard-runtime" = "0.1.0-rc.1"
+"com.logyard4j:logyard-runtime" = "0.1.0-rc.1"
 ```
 
 </details>
@@ -244,9 +244,9 @@ dependencies {
 Start the runtime for the lifetime of your application:
 
 ```java
-import com.zsumz.logyard.api.LogyardLogger;
-import com.zsumz.logyard.runtime.bootstrap.LogyardBootstrap;
-import com.zsumz.logyard.runtime.bootstrap.RuntimeBundle;
+import com.logyard4j.api.LogyardLogger;
+import com.logyard4j.runtime.bootstrap.LogyardBootstrap;
+import com.logyard4j.runtime.bootstrap.RuntimeBundle;
 
 try (RuntimeBundle logyard = LogyardBootstrap.start()) {
     LogyardLogger log = logyard.runtime().logger("com.example.checkout");
@@ -273,7 +273,7 @@ Use `argumentLazy(supplier)` for lazy message arguments and `addAll(attributes)`
 Attach request context with a scope, and stable component context with `with`:
 
 ```java
-import com.zsumz.logyard.api.context.LogContext;
+import com.logyard4j.api.context.LogContext;
 
 var orders = log.with("component", "orders");
 try (var scope = LogContext.push("request.id", "req-42")) {
@@ -286,8 +286,8 @@ Explicit event fields override `with` fields, which override scoped fields. Scop
 Applications can pass an explicit source to `LogyardBootstrap.start(source)`. Framework integrations acquire their own lease:
 
 ```java
-import com.zsumz.logyard.runtime.bootstrap.LogyardConfigurationSource;
-import com.zsumz.logyard.runtime.bootstrap.RuntimeOwner;
+import com.logyard4j.runtime.bootstrap.LogyardConfigurationSource;
+import com.logyard4j.runtime.bootstrap.RuntimeOwner;
 
 LogyardConfigurationSource source = LogyardConfigurationSource.classpath(
         applicationClassLoader, "logging/logyard.toml", applicationDirectory);
@@ -310,7 +310,7 @@ Add the JUL adapter:
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-jul</artifactId>
     <version>0.1.0-rc.1</version>
   </dependency>
@@ -324,7 +324,7 @@ Add the JUL adapter:
 
 ```kotlin
 dependencies {
-    implementation("com.zsumz.logyard:logyard-jul:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-jul:0.1.0-rc.1")
 }
 ```
 
@@ -335,7 +335,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.zsumz.logyard:logyard-jul" = "0.1.0-rc.1"
+"com.logyard4j:logyard-jul" = "0.1.0-rc.1"
 ```
 
 </details>
@@ -343,7 +343,7 @@ dependencies {
 Select the handler in `logging.properties`:
 
 ```properties
-handlers=com.zsumz.logyard.jul.LogyardHandler
+handlers=com.logyard4j.jul.LogyardHandler
 .level=ALL
 ```
 
@@ -359,7 +359,7 @@ Add the provider; its `System.LoggerFinder` is discovered automatically:
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-system-logger</artifactId>
     <version>0.1.0-rc.1</version>
   </dependency>
@@ -373,7 +373,7 @@ Add the provider; its `System.LoggerFinder` is discovered automatically:
 
 ```kotlin
 dependencies {
-    implementation("com.zsumz.logyard:logyard-system-logger:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-system-logger:0.1.0-rc.1")
 }
 ```
 
@@ -384,7 +384,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.zsumz.logyard:logyard-system-logger" = "0.1.0-rc.1"
+"com.logyard4j:logyard-system-logger" = "0.1.0-rc.1"
 ```
 
 </details>
@@ -399,7 +399,7 @@ Add the optional OpenTelemetry module alongside your Logyard integration. It use
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-opentelemetry</artifactId>
     <version>0.1.0-rc.1</version>
   </dependency>
@@ -413,7 +413,7 @@ Add the optional OpenTelemetry module alongside your Logyard integration. It use
 
 ```kotlin
 dependencies {
-    implementation("com.zsumz.logyard:logyard-opentelemetry:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-opentelemetry:0.1.0-rc.1")
 }
 ```
 
@@ -424,7 +424,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.zsumz.logyard:logyard-opentelemetry" = "0.1.0-rc.1"
+"com.logyard4j:logyard-opentelemetry" = "0.1.0-rc.1"
 ```
 
 </details>
@@ -439,14 +439,14 @@ Logyard captures valid active trace IDs, span IDs, flags, and only the named bag
 
 Logyard and compact JSON keep `trace_id`, `span_id`, `trace_flags`, and `baggage.tenant.id` in their attribute object. ECS projects trace identity to `trace.id`, `span.id`, and `logyard.trace_flags`; baggage becomes a label.
 
-Your application or instrumentation must propagate context across executors and framework callbacks. Logyard does not create spans or propagate context automatically. See the [executor example](examples/opentelemetry) and the Spring Boot example's [`/trace` endpoint](examples/spring-boot/src/main/java/com/zsumz/logyard/examples/springboot/TraceExampleController.java).
+Your application or instrumentation must propagate context across executors and framework callbacks. Logyard does not create spans or propagate context automatically. See the [executor example](examples/opentelemetry) and the Spring Boot example's [`/trace` endpoint](examples/spring-boot/src/main/java/com/logyard4j/examples/springboot/TraceExampleController.java).
 
 ### Forward to an OpenTelemetry SDK
 
 Install your **configured, application-owned SDK** before starting Logyard:
 
 ```java
-import com.zsumz.logyard.opentelemetry.LogyardOpenTelemetry;
+import com.logyard4j.opentelemetry.LogyardOpenTelemetry;
 
 LogyardOpenTelemetry.install(applicationSdk);
 ```
@@ -494,7 +494,7 @@ Import the BOM when using several Logyard artifacts, then declare dependencies w
 <dependencyManagement>
   <dependencies>
     <dependency>
-      <groupId>com.zsumz.logyard</groupId>
+      <groupId>com.logyard4j</groupId>
       <artifactId>logyard-bom</artifactId>
       <version>0.1.0-rc.1</version>
       <type>pom</type>
@@ -505,7 +505,7 @@ Import the BOM when using several Logyard artifacts, then declare dependencies w
 
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-slf4j2</artifactId>
   </dependency>
 </dependencies>
@@ -518,8 +518,8 @@ Import the BOM when using several Logyard artifacts, then declare dependencies w
 
 ```kotlin
 dependencies {
-    implementation(platform("com.zsumz.logyard:logyard-bom:0.1.0-rc.1"))
-    implementation("com.zsumz.logyard:logyard-slf4j2")
+    implementation(platform("com.logyard4j:logyard-bom:0.1.0-rc.1"))
+    implementation("com.logyard4j:logyard-slf4j2")
 }
 ```
 
@@ -530,10 +530,10 @@ dependencies {
 
 ```toml
 [platforms]
-"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+"com.logyard4j:logyard-bom" = "0.1.0-rc.1"
 
 [dependencies]
-"com.zsumz.logyard:logyard-slf4j2" = {}
+"com.logyard4j:logyard-slf4j2" = {}
 ```
 
 </details>
@@ -550,7 +550,7 @@ Add `logyard-test` as a test dependency:
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-test</artifactId>
     <version>0.1.0-rc.1</version>
     <scope>test</scope>
@@ -565,7 +565,7 @@ Add `logyard-test` as a test dependency:
 
 ```kotlin
 dependencies {
-    testImplementation("com.zsumz.logyard:logyard-test:0.1.0-rc.1")
+    testImplementation("com.logyard4j:logyard-test:0.1.0-rc.1")
 }
 ```
 
@@ -576,7 +576,7 @@ dependencies {
 
 ```toml
 [test.dependencies]
-"com.zsumz.logyard:logyard-test" = "0.1.0-rc.1"
+"com.logyard4j:logyard-test" = "0.1.0-rc.1"
 ```
 
 </details>
@@ -584,8 +584,8 @@ dependencies {
 Inject a kit logger or runtime into the code under test:
 
 ```java
-import com.zsumz.logyard.api.Level;
-import com.zsumz.logyard.test.LogyardTestKit;
+import com.logyard4j.api.Level;
+import com.logyard4j.test.LogyardTestKit;
 
 try (LogyardTestKit kit = LogyardTestKit.isolated()) {
     kit.logger("checkout").atInfo().add("order.id", 7L).log("order accepted");

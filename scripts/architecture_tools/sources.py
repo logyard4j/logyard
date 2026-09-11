@@ -130,8 +130,8 @@ def _check_source_safety(root: Path, source: Path, text: str, member: str, state
         if pattern.search(text):
             state.add_error(f"{relative}: {description} are forbidden")
     for marker in (
-        "com.zsumz.logyard.output.otlp", "org.apache.kafka.",
-        "com.zsumz.logyard.kafka.", "com.zsumz.logyard.slf4j17.", "org.slf4j.impl.",
+        "com.logyard4j.output.otlp", "org.apache.kafka.",
+        "com.logyard4j.kafka.", "com.logyard4j.slf4j17.", "org.slf4j.impl.",
     ):
         if marker in text:
             state.add_error(f"{relative}: removed integration marker {marker!r} remains")
@@ -160,8 +160,8 @@ def _check_package_cycles(state: CheckState) -> None:
     dependencies = _package_dependencies(state, production_types)
     components = _package_components(state.package_names, dependencies)
     allowed = (
-        {"com.zsumz.logyard.api", "com.zsumz.logyard.api.diagnostics", "com.zsumz.logyard.api.event", "com.zsumz.logyard.api.ingress"},
-        {"com.zsumz.logyard.core.runtime", "com.zsumz.logyard.core.runtime.management", "com.zsumz.logyard.core.runtime.publication", "com.zsumz.logyard.core.runtime.retirement"},
+        {"com.logyard4j.api", "com.logyard4j.api.diagnostics", "com.logyard4j.api.event", "com.logyard4j.api.ingress"},
+        {"com.logyard4j.core.runtime", "com.logyard4j.core.runtime.management", "com.logyard4j.core.runtime.publication", "com.logyard4j.core.runtime.retirement"},
     )
     for component in components:
         if component not in allowed:

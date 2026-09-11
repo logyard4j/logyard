@@ -45,7 +45,7 @@ class ZoltExampleRunner:
     def __enter__(self) -> ZoltExampleRunner:
         self._target.mkdir(parents=True, exist_ok=True)
         # Each run must resolve Logyard from this bundle, even at the same version.
-        shutil.rmtree(self._cache / "com/zsumz/logyard", ignore_errors=True)
+        shutil.rmtree(self._cache / "com/logyard4j", ignore_errors=True)
         handler = partial(RepositoryHandler, directory=str(self._release_repository))
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
@@ -67,9 +67,9 @@ class ZoltExampleRunner:
             if old not in text:
                 raise AssertionError(f"example variant cannot replace {old!r} in {manifest}")
             text = text.replace(old, new)
-        declared = tomllib.loads(text)["platforms"]["com.zsumz.logyard:logyard-bom"]
-        text = text.replace(f'"com.zsumz.logyard:logyard-bom" = "{declared}"',
-                            f'"com.zsumz.logyard:logyard-bom" = "{self._version}"')
+        declared = tomllib.loads(text)["platforms"]["com.logyard4j:logyard-bom"]
+        text = text.replace(f'"com.logyard4j:logyard-bom" = "{declared}"',
+                            f'"com.logyard4j:logyard-bom" = "{self._version}"')
         text += (f'\n[repositories]\nlogyard = "http://127.0.0.1:{self._server.server_port}"\n'
                  'central = "https://repo.maven.apache.org/maven2"\n')
         manifest.write_text(text, encoding="utf-8")
@@ -96,14 +96,14 @@ class ZoltExampleRunner:
                                                  "io.opentelemetry:opentelemetry-common")}
         if len(context_versions) > 1:
             raise AssertionError(f"example resolved incompatible OpenTelemetry API versions: {context_versions}")
-        logyard = [package for package in packages if package["id"].startswith("com.zsumz.logyard:")]
+        logyard = [package for package in packages if package["id"].startswith("com.logyard4j:")]
         if not logyard:
             raise AssertionError("example resolved no Logyard artifacts")
         for package in logyard:
             if package.get("source") == "workspace" or package["version"] != self._version:
                 raise AssertionError(f"example bypassed the release bundle: {package['id']}")
             artifact = package["id"].split(":")[1]
-            directory = self._release_repository / "com/zsumz/logyard" / artifact / self._version
+            directory = self._release_repository / "com/logyard4j" / artifact / self._version
             for kind in ("pom", "jar"):
                 if kind not in package:
                     continue

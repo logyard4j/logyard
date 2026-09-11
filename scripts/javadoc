@@ -11,8 +11,8 @@ JAVADOC="${JAVADOC:-javadoc}"
 documented_roots=(
   "$ROOT/modules/logyard-test/src/main/java"
   "$ROOT/modules/logyard-api/src/main/java"
-  "$ROOT/modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/bootstrap"
-  "$ROOT/modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/management"
+  "$ROOT/modules/logyard-runtime/src/main/java/com/logyard4j/runtime/bootstrap"
+  "$ROOT/modules/logyard-runtime/src/main/java/com/logyard4j/runtime/management"
 )
 source_roots=(
   "$ROOT/modules/logyard-test/src/main/java"
@@ -32,8 +32,8 @@ for source_root in "${documented_roots[@]}"; do
   done < <(find "$source_root" -type f -name '*.java' -print | LC_ALL=C sort)
 done
 sources+=(
-  "$ROOT/modules/logyard-opentelemetry/src/main/java/com/zsumz/logyard/opentelemetry/LogyardOpenTelemetry.java"
-  "$ROOT/modules/logyard-opentelemetry/src/main/java/com/zsumz/logyard/opentelemetry/package-info.java"
+  "$ROOT/modules/logyard-opentelemetry/src/main/java/com/logyard4j/opentelemetry/LogyardOpenTelemetry.java"
+  "$ROOT/modules/logyard-opentelemetry/src/main/java/com/logyard4j/opentelemetry/package-info.java"
 )
 
 mkdir -p "$TARGET"

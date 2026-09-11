@@ -27,7 +27,7 @@ For an SLF4J 2 application, add the provider using your build tool:
 ```xml
 <dependencies>
   <dependency>
-    <groupId>com.zsumz.logyard</groupId>
+    <groupId>com.logyard4j</groupId>
     <artifactId>logyard-slf4j2</artifactId>
     <version>0.1.0-rc.1</version>
   </dependency>
@@ -41,7 +41,7 @@ For an SLF4J 2 application, add the provider using your build tool:
 
 ```kotlin
 dependencies {
-    implementation("com.zsumz.logyard:logyard-slf4j2:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.1")
 }
 ```
 
@@ -52,7 +52,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.zsumz.logyard:logyard-slf4j2" = "0.1.0-rc.1"
+"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.1"
 ```
 
 </details>

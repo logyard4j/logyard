@@ -13,7 +13,7 @@ export LOGYARD_BENCHMARK_EVIDENCE="${RESULT%.json}.delivery.jsonl"
 rm -f "$LOGYARD_BENCHMARK_EVIDENCE"
 cd "$ROOT"
 "$ZOLT" run --directory "$ROOT" --workspace --member benchmarks/logyard-benchmarks -- \
-  'com.zsumz.logyard.benchmarks.*' \
+  'com.logyard4j.benchmarks.*' \
   -foe true \
   -prof gc \
   -rf json \

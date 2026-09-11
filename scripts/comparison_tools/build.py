@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 PROVIDERS = {
-    "logyard": "com.zsumz.logyard.slf4j.LogyardServiceProvider",
+    "logyard": "com.logyard4j.slf4j.LogyardServiceProvider",
     "logback": "ch.qos.logback.classic.spi.LogbackServiceProvider",
     "log4j2": "org.apache.logging.slf4j.SLF4JServiceProvider",
 }
@@ -43,7 +43,7 @@ class ProviderBuilds:
 
     def __enter__(self) -> ProviderBuilds:
         # Only this harness owns the comparison cache; same-version Logyard artifacts must be refreshed.
-        shutil.rmtree(self.cache / "com/zsumz/logyard", ignore_errors=True)
+        shutil.rmtree(self.cache / "com/logyard4j", ignore_errors=True)
         handler = partial(QuietRepository, directory=str(self.repository))
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -84,7 +84,7 @@ class ProviderBuilds:
                     continue
                 cached = self.cache / package[kind]
                 digest = hashlib.sha256(cached.read_bytes()).hexdigest()
-                if package["id"].startswith("com.zsumz.logyard:"):
+                if package["id"].startswith("com.logyard4j:"):
                     group, artifact = package["id"].split(":")[:2]
                     bundled = self.repository / group.replace(".", "/") / artifact / package["version"] / f"{artifact}-{package['version']}.{kind}"
                     if digest != hashlib.sha256(bundled.read_bytes()).hexdigest():

@@ -12,7 +12,7 @@ class ComparisonManifestTest(unittest.TestCase):
     def test_provider_classpaths_are_isolated_and_versions_are_pinned(self) -> None:
         version = tomllib.loads((ROOT / "modules/logyard-api/zolt.toml").read_text())["project"]["version"]
         expected = {
-            "logyard": {"com.zsumz.logyard:logyard-slf4j2": version, "com.zsumz.logyard:logyard-runtime": version,
+            "logyard": {"com.logyard4j:logyard-slf4j2": version, "com.logyard4j:logyard-runtime": version,
                         "org.slf4j:slf4j-api": "2.0.18"},
             "logback": {"ch.qos.logback:logback-classic": "1.6.3", "org.slf4j:slf4j-api": "2.0.18",
                         "net.logstash.logback:logstash-logback-encoder": "9.0"},

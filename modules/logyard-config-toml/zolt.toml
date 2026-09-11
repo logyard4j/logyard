@@ -1,14 +1,14 @@
 [project]
 name = "logyard-config-toml"
 version = "0.1.0-rc.1"
-group = "com.zsumz.logyard"
+group = "com.logyard4j"
 java = "21"
 
 [repositories]
 central = "https://repo.maven.apache.org/maven2"
 
 [dependencies]
-"com.zsumz.logyard:logyard-api" = { workspace = "modules/logyard-api" }
+"com.logyard4j:logyard-api" = { workspace = "modules/logyard-api" }
 
 [test.dependencies]
 "org.junit.platform:junit-platform-console-standalone" = "1.11.4"
@@ -33,7 +33,7 @@ javadoc = true
 [package.metadata]
 name = "Logyard TOML Configuration"
 description = "Strict TOML configuration loading for Logyard."
-url = "https://github.com/zsumz/logyard"
+url = "https://logyard4j.com"
 license = "Apache-2.0"
 licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
 developers = ["zsumz <shawn@zsumz.com>"]
@@ -43,7 +43,7 @@ scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"
 issues = "https://github.com/zsumz/logyard/issues"
 
 [package.manifest]
-"Automatic-Module-Name" = "com.zsumz.logyard.config.toml"
+"Automatic-Module-Name" = "com.logyard4j.config.toml"
 
 [publish]
 artifacts = ["main"]

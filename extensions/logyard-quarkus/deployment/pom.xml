@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.zsumz.logyard</groupId>
+        <groupId>com.logyard4j</groupId>
         <artifactId>logyard-quarkus-parent</artifactId>
         <version>0.1.0-rc.1</version>
     </parent>
@@ -13,7 +13,7 @@
     <artifactId>logyard-quarkus-deployment</artifactId>
     <name>Logyard Quarkus Deployment</name>
     <description>Build-time wiring for the Logyard Quarkus extension.</description>
-    <url>https://github.com/zsumz/logyard</url>
+    <url>https://logyard4j.com</url>
 
     <scm>
         <connection>scm:git:https://github.com/zsumz/logyard.git</connection>
@@ -24,7 +24,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.zsumz.logyard</groupId>
+            <groupId>com.logyard4j</groupId>
             <artifactId>logyard-quarkus</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -66,7 +66,7 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Automatic-Module-Name>com.zsumz.logyard.quarkus.deployment</Automatic-Module-Name>
+                            <Automatic-Module-Name>com.logyard4j.quarkus.deployment</Automatic-Module-Name>
                         </manifestEntries>
                     </archive>
                 </configuration>
