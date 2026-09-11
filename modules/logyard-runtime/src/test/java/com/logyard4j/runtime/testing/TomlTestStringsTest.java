@@ -9,8 +9,8 @@ final class TomlTestStringsTest {
     @Test
     void escapesWindowsPathsForTomlBasicStrings() {
         assertEquals(
-                "C:\\\\Users\\\\runner\\\\log\\\"yard.jsonl",
-                TomlTestStrings.escapeBasicString(Path.of("C:\\Users\\runner\\log\"yard.jsonl")));
+                "C:\\\\Users\\\\runner\\\\logyard.jsonl",
+                TomlTestStrings.escapeBasicString(Path.of("C:\\Users\\runner\\logyard.jsonl")));
     }
 
     @Test
