@@ -65,8 +65,9 @@ final class CaptureBoundariesTest {
                     .logger(hostile).eventName(hostile).attribute(hostile, hostile).assertPresent());
             String message = failure.getMessage();
             assertEquals(4, message.lines().count());
+            String terminalContent = message.replace(System.lineSeparator(), "");
             for (char control : new char[]{'\r', '\u001b', '\u2028', '\u202e'}) {
-                assertFalse(message.contains(String.valueOf(control)), message);
+                assertFalse(terminalContent.contains(String.valueOf(control)), message);
             }
             assertTrue(message.contains("\\n"), message);
         }
