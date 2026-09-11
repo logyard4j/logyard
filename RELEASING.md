@@ -21,13 +21,14 @@ Run from the repository root before tagging:
 ./scripts/ci
 ./scripts/api-compatibility --baseline
 ./scripts/examples-verify
+./scripts/ecs-verify
 ./scripts/benchmark-smoke
 ./scripts/release-bundle --sign
 ./scripts/zolt-publication-check --signed
 ./scripts/central-publish
 ```
 
-These gates cover runtime failures, packaged JVM consumers through Smoque, API compatibility, allocation budgets, and the signed Central bundle. Linux, macOS, and Windows [CI](.github/workflows/ci.yml) must also pass.
+These gates cover runtime failures, packaged JVM consumers and ECS ingestion through Smoque, API compatibility, allocation budgets, and the signed Central bundle. The ECS gate needs Docker. Linux, macOS, and Windows [CI](.github/workflows/ci.yml) must also pass.
 
 The final command creates a signed, deterministic ZIP locally. It does not upload.
 

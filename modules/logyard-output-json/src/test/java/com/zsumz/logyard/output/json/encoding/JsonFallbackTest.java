@@ -67,7 +67,7 @@ final class JsonFallbackTest {
                 List.of("body", "message_template", "logger", "severity_text", "severity_number",
                         "observed_timestamp_unix_nano", "thread"), JsonAttributeTransform.nested());
 
-        assertEquals("{\"time\":\"1970-01-01T00:00:00Z\",\"event.action\":\"event.identity\","
+        assertEquals("{\"time\":\"1970-01-01T00:00:00Z\",\"ecs.version\":\"9.4.0\",\"event.action\":\"event.identity\","
                         + "\"logyard.output.truncated\":true}",
                 new JsonEncoder(LARGE_RESOURCE, profile).encode(oversizedEvent()));
     }

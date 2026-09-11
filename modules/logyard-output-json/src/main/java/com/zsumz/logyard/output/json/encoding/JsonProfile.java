@@ -30,13 +30,13 @@ public final class JsonProfile {
             "logyard", identity(),
             "ecs", mapping(
                     "timestamp", "@timestamp",
-                    "observed_timestamp_unix_nano", "event.created_unix_nano",
+                    "observed_timestamp_unix_nano", "event.created",
                     "severity_number", "event.severity",
                     "severity_text", "log.level",
                     "logger", "log.logger",
                     "event_name", "event.action",
                     "body", "message",
-                    "message_template", "message.template",
+                    "message_template", "logyard.message_template",
                     "attributes", "labels",
                     "resource", "service",
                     "thread", "process.thread",
@@ -56,16 +56,19 @@ public final class JsonProfile {
                     "exception", "error"));
 
     private final String name;
+    private final boolean ecs;
     private final Map<String, String> outputNames;
     private final Set<String> dropped;
     private final JsonAttributeTransform attributes;
 
     private JsonProfile(
             String name,
+            boolean ecs,
             Map<String, String> outputNames,
             Set<String> dropped,
             JsonAttributeTransform attributes) {
         this.name = name;
+        this.ecs = ecs;
         this.outputNames = outputNames;
         this.dropped = dropped;
         this.attributes = attributes;
@@ -111,6 +114,9 @@ public final class JsonProfile {
         JsonAttributeTransform transform = Objects.requireNonNullElse(
                 attributes, JsonAttributeTransform.nested());
         LinkedHashSet<String> destinations = new LinkedHashSet<>(Set.of(TRUNCATED));
+        if ("ecs".equals(normalizedPreset)) {
+            destinations.addAll(EcsProjection.RESERVED);
+        }
         for (String field : FIELDS) {
             if (dropped.contains(field)
                     || ("attributes".equals(field)
@@ -133,6 +139,7 @@ public final class JsonProfile {
         }
         return new JsonProfile(
                 normalizedName,
+                "ecs".equals(normalizedPreset),
                 Collections.unmodifiableMap(names),
                 Set.copyOf(dropped),
                 transform);
@@ -140,6 +147,10 @@ public final class JsonProfile {
 
     public String name() {
         return name;
+    }
+
+    boolean ecs() {
+        return ecs;
     }
 
     public boolean emits(String canonicalField) {

@@ -11,6 +11,7 @@ final class JsonFallback {
     private final String logger;
     private final String eventName;
     private final String body;
+    private final boolean ecs;
 
     JsonFallback(JsonProfile profile) {
         timestamp = profile.outputName("timestamp");
@@ -18,6 +19,7 @@ final class JsonFallback {
         logger = permittedName(profile, "logger");
         eventName = permittedName(profile, "event_name");
         body = permittedName(profile, "body");
+        ecs = profile.ecs();
     }
 
     String encode(JsonWriter json, LogEvent event) {
@@ -26,6 +28,10 @@ final class JsonFallback {
         json.reset();
         json.beginObject();
         json.field(timestamp, Instant.ofEpochMilli(event.timestampMillis()).toString());
+        if (ecs) {
+            json.comma();
+            json.field("ecs.version", EcsProjection.VERSION);
+        }
         field(json, severity, event.level().name());
         field(json, logger, event.loggerName());
         if (event.eventName() != null && !event.eventName().isBlank()) {

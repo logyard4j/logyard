@@ -190,6 +190,26 @@ Canonical fields are `timestamp`, `observed_timestamp_unix_nano`, `severity_numb
 
 Excluded fields stay excluded in normal, truncated, and error output. Oversized JSON falls back to the profile's timestamp and permitted severity, logger, event name, and body. `logyard.output.truncated` is reserved and cannot be renamed or overwritten.
 
+### ECS projection
+
+The `ecs` preset targets ECS 9.4 and emits `ecs.version = "9.4.0"`, including on truncation.
+
+| Captured field | ECS output |
+| --- | --- |
+| Source and observed timestamps | `@timestamp` and `event.created`, as ISO timestamps |
+| Service name, environment, version | `service.name`, `service.environment`, `service.version` |
+| Service instance ID | `service.node.name` |
+| Other resource keys, including namespace | `logyard.resource` |
+| Thread ID and name | `process.thread.id`, `process.thread.name` |
+| Exception | `error.type`, `error.message`, plain-text `error.stack_trace` with causes and suppressed exceptions |
+| Message template | `logyard.message_template` |
+| Attributes | Scalar strings in `labels`; objects and arrays become JSON text |
+| String attributes `trace_id`, `span_id`, `trace_flags` | `trace.id`, `span.id`, `logyard.trace_flags` |
+
+Attribute selection and renaming happen before trace projection. Dropping `attributes` also drops trace fields; dropping `resource` also drops `logyard.resource`. Explicit flattening keeps the configured attribute names and value types. Custom renames or flattening can change ECS compatibility.
+
+The [ingestion gate](CONTRIBUTING.md#choose-a-check) checks service, trace, thread, error, and label queries against [typed ECS mappings](tests/ecs/mapping.json), with no repair pipeline.
+
 ## Delivery and overflow
 
 ```toml

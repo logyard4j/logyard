@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-release.sh"
+export ZOLT="$(logyard_require_zolt)"
+command -v npx >/dev/null 2>&1 || { printf 'ECS smoke tests require Node.js and npm (npx)\n' >&2; exit 2; }
+cd "$ROOT"
+mkdir -p target/ecs-verify
+rm -f target/ecs-verify/smoque.json target/ecs-verify/smoque.xml target/ecs-verify/result.json
+"$ZOLT" run --directory "$ROOT" --workspace --member tests/logyard-integration-tests -- \
+  --ecs-fixtures "$ROOT/target/ecs-verify" > target/ecs-verify/build.log 2>&1
+exec npx --yes smoque@0.1.2 run smoke/ecs.smoke.mts \
+  --json target/ecs-verify/smoque.json --junit target/ecs-verify/smoque.xml --ci

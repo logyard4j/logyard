@@ -1,0 +1,41 @@
+{
+  "settings": {"number_of_shards": 1, "number_of_replicas": 0},
+  "mappings": {
+    "_meta": {
+      "ecs_version": "9.4.0",
+      "scope": "Fields emitted by Logyard's default ECS profile; no ingest pipeline",
+      "schema": "https://github.com/elastic/ecs/tree/v9.4.0/schemas"
+    },
+    "dynamic": "strict",
+    "dynamic_templates": [
+      {"labels": {"path_match": "labels.*", "mapping": {"type": "keyword", "ignore_above": 1024}}}
+    ],
+    "properties": {
+      "@timestamp": {"type": "date"},
+      "ecs": {"properties": {"version": {"type": "keyword"}}},
+      "message": {"type": "match_only_text"},
+      "service": {"properties": {
+        "name": {"type": "keyword"}, "environment": {"type": "keyword"}, "version": {"type": "keyword"},
+        "node": {"properties": {"name": {"type": "keyword"}}}
+      }},
+      "log": {"properties": {"level": {"type": "keyword"}, "logger": {"type": "keyword"}}},
+      "event": {"properties": {
+        "created": {"type": "date"}, "severity": {"type": "long"}, "action": {"type": "keyword"}
+      }},
+      "process": {"properties": {"thread": {"properties": {"id": {"type": "long"}, "name": {"type": "keyword"}}}}},
+      "error": {"properties": {
+        "type": {"type": "keyword"}, "message": {"type": "match_only_text"},
+        "stack_trace": {"type": "wildcard", "fields": {"text": {"type": "match_only_text"}}}
+      }},
+      "labels": {"type": "object", "subobjects": false, "dynamic": true},
+      "trace": {"properties": {"id": {"type": "keyword"}}},
+      "span": {"properties": {"id": {"type": "keyword"}}},
+      "logyard": {"properties": {
+        "message_template": {"type": "text", "index": false},
+        "resource": {"type": "object", "enabled": false},
+        "trace_flags": {"type": "keyword"},
+        "output": {"properties": {"truncated": {"type": "boolean"}}}
+      }}
+    }
+  }
+}

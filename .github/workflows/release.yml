@@ -57,6 +57,7 @@ jobs:
           ./scripts/release-bundle --sign
           ./scripts/zolt-publication-check --signed
           LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-verify
+          ./scripts/ecs-verify
           LOGYARD_BENCHMARK_SKIP_RELEASE=1 ./scripts/benchmark-smoke
       - name: Upload example smoke results
         if: always()
@@ -68,6 +69,7 @@ jobs:
             target/examples-verify/smoque.xml
             target/examples-verify/*.log
             target/examples-verify/*.jsonl
+            target/ecs-verify/
           if-no-files-found: ignore
       - name: Create the Central Portal archive
         env:
