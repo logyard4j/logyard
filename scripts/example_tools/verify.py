@@ -25,7 +25,7 @@ def main() -> None:
     parser.add_argument("release_repository", type=Path)
     parser.add_argument("version")
     parser.add_argument("--scenario", required=True, choices=(
-        "slf4j", "opentelemetry", "vertx", "micronaut", "spring-boot-3-mvc", "spring-boot-4-mvc",
+        "slf4j", "lifecycle", "opentelemetry", "vertx", "micronaut", "spring-boot-3-mvc", "spring-boot-4-mvc",
         "spring-boot-3-webflux", "spring-boot-4-webflux", "spring-boot-4-no-actuator",
         "spring-boot-4-external-config", "spring-boot-4-safe-defaults", "quarkus", "quarkus-disabled",
         "spring-boot-4-provider-conflict",
@@ -41,6 +41,17 @@ def main() -> None:
 
 def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunner, scenario: str) -> None:
     versions = framework_versions(root)
+    if scenario == "lifecycle":
+        example = ZoltExample(scenario, root / "examples/lifecycle",
+                              "com.zsumz.logyard.examples.lifecycle.LifecycleExampleApplication", runtime_arguments=())
+        events = EventLog.read(runner.build_and_run(example))
+        events.require_real_timestamps()
+        for cycle in (0, 1):
+            for facade in ("slf4j", "jul", "system", "native"):
+                severity = "WARN" if cycle == 1 or facade == "native" else "INFO"
+                events.require(EventExpectation(f"{facade} cycle {cycle}", f"lifecycle.{facade}", severity))
+        events.require_last("native cycle 1")
+        return
     if scenario == "spring-boot-4-provider-conflict":
         base = spring_boot_example(root, "4-provider-conflict", versions["spring_boot_current"],
                                    "spring-boot-starter-webmvc").zolt

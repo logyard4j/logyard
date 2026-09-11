@@ -15,6 +15,8 @@ Native applications, frameworks, and adapters share one runtime identity with re
 
 Keep a runtime lease for the application's lifetime; see [native setup](INTEGRATIONS.md#native-java).
 
+Adapters also hold leases. For a coordinated process-wide stop or restart, first stop logging callers, then call `Logyard.shutdown()` to retire every managed lease. Cached facade loggers follow the next installation; see the [lifecycle example](examples/lifecycle).
+
 ## Health and diagnostics
 
 With an active `RuntimeBundle logyard`:

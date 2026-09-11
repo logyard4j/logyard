@@ -50,6 +50,8 @@ Bundle assembly also requires Maven 3.9+ for the official Quarkus extension reac
 
 Set `LOGYARD_EXAMPLES_SKIP_RELEASE=1` to reuse an existing bundle. JSON and JUnit reports go to `target/examples-verify/`. See [Examples](INTEGRATIONS.md#examples) for coverage.
 
+CI runs the supported JVM consumers and provider-comparison smoke cases on JDK 21 and 25. These are functional and accounting checks; performance claims require longer, matched experiments.
+
 | Command | Produces or verifies |
 | --- | --- |
 | `./scripts/package` | Native Zolt packages and Maven-built Quarkus artifacts; runs extension tests |

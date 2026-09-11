@@ -34,12 +34,13 @@ jobs:
           LOGYARD_VERIFY_FORCE_FALLBACK: '1'
           LOGYARD_VERIFY_TARGET: ${{ runner.temp }}/logyard-offline-verify
         run: ./scripts/verify
-      - name: Package and verify the published Maven surface
-        run: ./scripts/release-bundle
       - name: Enforce the reviewed API compatibility baseline policy
         run: ./scripts/api-compatibility --baseline
       - name: Smoke japicmp wiring and public-surface filters
         run: ./scripts/api-compatibility --self-test
+      # Compatibility checks rebuild packages; assemble the consumer bundle afterward.
+      - name: Package and verify the published Maven surface
+        run: ./scripts/release-bundle
       - name: Verify the Zolt workspace publication family
         run: ./scripts/zolt-publication-check
       - name: Smoke Zolt consumer examples
@@ -158,6 +159,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
       - name: Bootstrap the pinned Zolt revision
         run: ./scripts/bootstrap-zolt
       - name: Put Zolt on PATH
@@ -169,3 +173,23 @@ jobs:
           zolt resolve --workspace
           zolt build --workspace --all --no-progress --color never
           zolt test --workspace --members "$test_members" --no-progress --color never
+      - name: Package and smoke the supported JVM consumers
+        run: |
+          ./scripts/release-bundle
+          LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-verify
+          LOGYARD_COMPARISON_SKIP_RELEASE=1 ./scripts/comparison-verify
+      - name: Upload JDK 25 consumer evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: jdk25-consumer-results
+          path: |
+            target/examples-verify/smoque.*
+            target/examples-verify/*.log
+            target/examples-verify/*.jsonl
+            target/benchmark-compare/smoque.*
+            target/benchmark-compare/smoke.log
+            target/benchmark-compare/*/results.json
+            target/benchmark-compare/*/environment.json
+            target/benchmark-compare/*/artifacts.json
+          if-no-files-found: ignore

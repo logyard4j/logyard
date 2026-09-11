@@ -486,6 +486,7 @@ Each example includes a `zolt.toml` build and a Logyard configuration:
 | Application | Shows |
 | --- | --- |
 | [SLF4J](examples/slf4j) | Fluent structured logging |
+| [Managed lifecycle](examples/lifecycle) | Cached SLF4J, JUL, and System.Logger instances across restart, level changes, formatting, and close-time drain |
 | [OpenTelemetry](examples/opentelemetry) | Active trace identity, allowlisted baggage, explicit executor propagation |
 | [Vert.x](examples/vertx) | Logging from a Vert.x application |
 | [Micronaut](examples/micronaut) | Startup, structured events, and shutdown flush |
