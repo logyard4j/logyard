@@ -20,11 +20,8 @@ final class CaptureContextScope {
         try {
             return action.get();
         } finally {
-            if (previous == null) {
-                CURRENT.remove();
-            } else {
-                CURRENT.set(previous);
-            }
+            // Keep the thread-local slot, but release the completed graph and its application objects.
+            CURRENT.set(previous);
         }
     }
 }
