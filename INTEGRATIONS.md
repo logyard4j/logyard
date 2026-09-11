@@ -4,9 +4,49 @@
 
 All integrations share one process-wide runtime and the same [TOML configuration](CONFIGURATION.md). Use Java 21+ and the same version for every Logyard dependency.
 
+Choose your build tool below and merge the snippet into your existing build file. Gradle examples use Kotlin DSL.
+
 ## SLF4J, Vert.x, and Micronaut
 
-Add `com.zsumz.logyard:logyard-slf4j2:0.1.0-rc.1` and keep it as the only SLF4J provider. The dependency includes the runtime, TOML configuration, console output, and JSON output.
+Add the SLF4J provider. It includes the runtime, TOML configuration, console output, and JSON output.
+
+<details>
+<summary>Maven (pom.xml)</summary>
+
+```xml
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-slf4j2</artifactId>
+    <version>0.1.0-rc.1</version>
+  </dependency>
+</dependencies>
+```
+
+</details>
+
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
+
+```kotlin
+dependencies {
+    implementation("com.zsumz.logyard:logyard-slf4j2:0.1.0-rc.1")
+}
+```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[dependencies]
+"com.zsumz.logyard:logyard-slf4j2" = "0.1.0-rc.1"
+```
+
+</details>
+
+Keep Logyard as the only SLF4J provider.
 
 Continue using `LoggerFactory`, fluent SLF4J logging, and MDC. Logyard starts lazily when the adapter first needs it.
 
@@ -14,41 +54,64 @@ See the [SLF4J](examples/slf4j), [Vert.x](examples/vertx), and [Micronaut](examp
 
 ## Spring Boot
 
-Add the starter:
+Add the starter and exclude Boot's default logging starter. These snippets target an existing Boot 3.5 MVC application:
+
+<details>
+<summary>Maven (pom.xml)</summary>
 
 ```xml
-<dependency>
-  <groupId>com.zsumz.logyard</groupId>
-  <artifactId>logyard-spring-boot-starter</artifactId>
-  <version>0.1.0-rc.1</version>
-</dependency>
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-spring-boot-starter</artifactId>
+    <version>0.1.0-rc.1</version>
+  </dependency>
+  <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+    <exclusions>
+      <exclusion>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-logging</artifactId>
+      </exclusion>
+    </exclusions>
+  </dependency>
+</dependencies>
 ```
 
-Exclude Boot's default logging starter from every dependency that brings it. For Boot 3.5 MVC:
+</details>
 
-```xml
-<dependency>
-  <groupId>org.springframework.boot</groupId>
-  <artifactId>spring-boot-starter-web</artifactId>
-  <exclusions>
-    <exclusion>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-logging</artifactId>
-    </exclusion>
-  </exclusions>
-</dependency>
-```
-
-For Boot 4.1 MVC, use `spring-boot-starter-webmvc`. Apply the same exclusion to WebFlux, Actuator, and any other starter that brings Logback.
-
-With Gradle Kotlin DSL:
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
 
 ```kotlin
-implementation("com.zsumz.logyard:logyard-spring-boot-starter:0.1.0-rc.1")
-implementation("org.springframework.boot:spring-boot-starter-web") {
-    exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
+dependencies {
+    implementation("com.zsumz.logyard:logyard-spring-boot-starter:0.1.0-rc.1")
+    implementation("org.springframework.boot:spring-boot-starter-web") {
+        exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
+    }
 }
 ```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[platforms]
+"org.springframework.boot:spring-boot-dependencies" = "3.5.16"
+
+[dependencies]
+"com.zsumz.logyard:logyard-spring-boot-starter" = "0.1.0-rc.1"
+"org.springframework.boot:spring-boot-starter-web" = { exclusions = [
+    { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" },
+] }
+```
+
+</details>
+
+For Boot 4.1 MVC, use `spring-boot-starter-webmvc` and update the Boot platform to `4.1.0`. Apply the logging exclusion to WebFlux, Actuator, and every other dependency that brings Logback.
 
 Use `logyard.toml` for logging policy. Boot properties select the source:
 
@@ -67,15 +130,43 @@ See the [Spring Boot example](examples/spring-boot).
 
 ## Quarkus
 
-Add the runtime extension; Quarkus selects its deployment companion automatically:
+Add the runtime extension to your Quarkus application; Quarkus selects its deployment companion automatically:
+
+<details>
+<summary>Maven (pom.xml)</summary>
 
 ```xml
-<dependency>
-  <groupId>com.zsumz.logyard</groupId>
-  <artifactId>logyard-quarkus</artifactId>
-  <version>0.1.0-rc.1</version>
-</dependency>
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-quarkus</artifactId>
+    <version>0.1.0-rc.1</version>
+  </dependency>
+</dependencies>
 ```
+
+</details>
+
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
+
+```kotlin
+dependencies {
+    implementation("com.zsumz.logyard:logyard-quarkus:0.1.0-rc.1")
+}
+```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[dependencies]
+"com.zsumz.logyard:logyard-quarkus" = "0.1.0-rc.1"
+```
+
+</details>
 
 Keep the Quarkus/JBoss logging API. In `application.properties`, disable the built-in console handler to avoid duplicate output:
 
@@ -102,7 +193,45 @@ See the [Quarkus example](examples/quarkus).
 
 ## Native Java
 
-Add `com.zsumz.logyard:logyard-runtime:0.1.0-rc.1`. Start the runtime for the lifetime of your application:
+Add the native runtime:
+
+<details>
+<summary>Maven (pom.xml)</summary>
+
+```xml
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-runtime</artifactId>
+    <version>0.1.0-rc.1</version>
+  </dependency>
+</dependencies>
+```
+
+</details>
+
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
+
+```kotlin
+dependencies {
+    implementation("com.zsumz.logyard:logyard-runtime:0.1.0-rc.1")
+}
+```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[dependencies]
+"com.zsumz.logyard:logyard-runtime" = "0.1.0-rc.1"
+```
+
+</details>
+
+Start the runtime for the lifetime of your application:
 
 ```java
 import com.zsumz.logyard.api.LogyardLogger;
@@ -146,12 +275,47 @@ try (RuntimeBundle logyard = LogyardBootstrap.acquire(RuntimeOwner.FRAMEWORK, so
 
 ## JDK logging
 
-| API | Setup |
-| --- | --- |
-| JUL | Add `logyard-jul` and install `com.zsumz.logyard.jul.LogyardHandler` |
-| `System.Logger` | Add `logyard-system-logger`; its `System.LoggerFinder` is discovered automatically |
+### JUL
 
-For standalone JUL applications, select the handler in `logging.properties`:
+Add the JUL adapter:
+
+<details>
+<summary>Maven (pom.xml)</summary>
+
+```xml
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-jul</artifactId>
+    <version>0.1.0-rc.1</version>
+  </dependency>
+</dependencies>
+```
+
+</details>
+
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
+
+```kotlin
+dependencies {
+    implementation("com.zsumz.logyard:logyard-jul:0.1.0-rc.1")
+}
+```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[dependencies]
+"com.zsumz.logyard:logyard-jul" = "0.1.0-rc.1"
+```
+
+</details>
+
+Select the handler in `logging.properties`:
 
 ```properties
 handlers=com.zsumz.logyard.jul.LogyardHandler
@@ -159,6 +323,46 @@ handlers=com.zsumz.logyard.jul.LogyardHandler
 ```
 
 Load it with `-Djava.util.logging.config.file=/path/to/logging.properties`. JUL's own levels filter first; `ALL` lets TOML choose the effective threshold.
+
+### System.Logger
+
+Add the provider; its `System.LoggerFinder` is discovered automatically:
+
+<details>
+<summary>Maven (pom.xml)</summary>
+
+```xml
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-system-logger</artifactId>
+    <version>0.1.0-rc.1</version>
+  </dependency>
+</dependencies>
+```
+
+</details>
+
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
+
+```kotlin
+dependencies {
+    implementation("com.zsumz.logyard:logyard-system-logger:0.1.0-rc.1")
+}
+```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[dependencies]
+"com.zsumz.logyard:logyard-system-logger" = "0.1.0-rc.1"
+```
+
+</details>
 
 ## Native images
 
@@ -168,7 +372,10 @@ Native-image support includes Micronaut, Spring Boot 4, and Quarkus with GraalVM
 
 ## Manage dependency versions
 
-Import the BOM when using several Logyard artifacts:
+Import the BOM when using several Logyard artifacts, then declare dependencies without individual versions:
+
+<details>
+<summary>Maven (pom.xml)</summary>
 
 ```xml
 <dependencyManagement>
@@ -182,11 +389,43 @@ Import the BOM when using several Logyard artifacts:
     </dependency>
   </dependencies>
 </dependencyManagement>
+
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-slf4j2</artifactId>
+  </dependency>
+</dependencies>
 ```
 
-Then omit versions from individual Logyard dependencies. The BOM covers the complete fourteen-artifact family, including both Quarkus artifacts.
+</details>
 
-For Gradle, use `implementation(platform("com.zsumz.logyard:logyard-bom:0.1.0-rc.1"))`.
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
+
+```kotlin
+dependencies {
+    implementation(platform("com.zsumz.logyard:logyard-bom:0.1.0-rc.1"))
+    implementation("com.zsumz.logyard:logyard-slf4j2")
+}
+```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[platforms]
+"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+
+[dependencies]
+"com.zsumz.logyard:logyard-slf4j2" = {}
+```
+
+</details>
+
+The BOM manages the complete fourteen-artifact family, including both Quarkus artifacts.
 
 ## Examples
 

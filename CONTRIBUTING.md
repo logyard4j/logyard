@@ -55,6 +55,7 @@ The native examples require GraalVM 25. After building a bundle, set `LOGYARD_EX
 - Reload state stays free of I/O and extension callbacks.
 - Keep generated Python bytecode out of the repository.
 - Use concise, single-subject Conventional Commits.
+- Document dependency installation with Maven, Gradle Kotlin DSL, and Zolt examples.
 
 The [architecture checker](scripts/architecture-check) enforces source boundaries and size limits. [Framework versions](framework-versions.toml) and the [compatibility baseline](compatibility-baseline.toml) are checked inputs.
 

@@ -2,7 +2,45 @@
 
 [← Logyard](README.md) · [Configuration](CONFIGURATION.md) · [Runtime behavior](RUNTIME.md)
 
-Add custom behavior through the SPI in `logyard-api`. Providers are discovered with `ServiceLoader` and create runtime-owned instances from bounded, immutable configuration.
+Add `logyard-api` to your extension project:
+
+<details>
+<summary>Maven (pom.xml)</summary>
+
+```xml
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-api</artifactId>
+    <version>0.1.0-rc.1</version>
+  </dependency>
+</dependencies>
+```
+
+</details>
+
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
+
+```kotlin
+dependencies {
+    implementation("com.zsumz.logyard:logyard-api:0.1.0-rc.1")
+}
+```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[dependencies]
+"com.zsumz.logyard:logyard-api" = "0.1.0-rc.1"
+```
+
+</details>
+
+Providers are discovered with `ServiceLoader` and create runtime-owned instances from bounded, immutable configuration.
 
 | Extension | Purpose |
 | --- | --- |

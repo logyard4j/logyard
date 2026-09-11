@@ -19,21 +19,43 @@ Readable console logs. Structured JSON. One runtime for native Java, SLF4J 2, JU
 
 ### 1. Add Logyard
 
-For an SLF4J 2 application, add the provider:
+For an SLF4J 2 application, add the provider using your build tool:
+
+<details open>
+<summary>Maven (pom.xml)</summary>
 
 ```xml
-<dependency>
-  <groupId>com.zsumz.logyard</groupId>
-  <artifactId>logyard-slf4j2</artifactId>
-  <version>0.1.0-rc.1</version>
-</dependency>
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-slf4j2</artifactId>
+    <version>0.1.0-rc.1</version>
+  </dependency>
+</dependencies>
 ```
 
-Or with Gradle Kotlin DSL:
+</details>
+
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
 
 ```kotlin
-implementation("com.zsumz.logyard:logyard-slf4j2:0.1.0-rc.1")
+dependencies {
+    implementation("com.zsumz.logyard:logyard-slf4j2:0.1.0-rc.1")
+}
 ```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[dependencies]
+"com.zsumz.logyard:logyard-slf4j2" = "0.1.0-rc.1"
+```
+
+</details>
 
 Keep one SLF4J provider on the classpath. Remove an existing provider such as Logback when adding Logyard.
 
@@ -100,12 +122,12 @@ JSON supports `logyard`, `ecs`, and `compact` profiles, plus field renaming and 
 
 | Application | Dependency |
 | --- | --- |
-| SLF4J 2, Vert.x, Micronaut | `logyard-slf4j2` |
-| Spring Boot | `logyard-spring-boot-starter` |
-| Quarkus | `logyard-quarkus` |
-| Native Java | `logyard-runtime` |
-| JUL | `logyard-jul` |
-| `System.Logger` | `logyard-system-logger` |
+| SLF4J 2, Vert.x, Micronaut | [logyard-slf4j2](INTEGRATIONS.md#slf4j-vertx-and-micronaut) |
+| Spring Boot | [logyard-spring-boot-starter](INTEGRATIONS.md#spring-boot) |
+| Quarkus | [logyard-quarkus](INTEGRATIONS.md#quarkus) |
+| Native Java | [logyard-runtime](INTEGRATIONS.md#native-java) |
+| JUL | [logyard-jul](INTEGRATIONS.md#jul) |
+| `System.Logger` | [logyard-system-logger](INTEGRATIONS.md#systemlogger) |
 
 Integrations cover plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16 and 4.1.0, and Quarkus 3.37.3. Native-image support includes Micronaut, Spring Boot 4, and Quarkus on GraalVM 25.
 
