@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Function;
 
-/** Serializes equal output, then timestamps successful writes to an actual unbuffered file stream. */
+/** Writes shared or native encoding, then timestamps successful writes to an actual unbuffered file stream. */
 public final class MeasuredDestination implements AutoCloseable {
     private enum Phase { WARMUP, MEASUREMENT, CLOSED }
     private final RunOptions options;
@@ -43,32 +43,58 @@ public final class MeasuredDestination implements AutoCloseable {
     }
 
     public synchronized void accept(String message, String level, Function<String, ?> attributes) {
+        try {
+            if (options.nativeJson()) throw new IllegalStateException("native encoding was bypassed");
+            int identity = prepare(message);
+            if (identity >= 0) write(identity, encode(message, level, attributes));
+        } catch (RuntimeException | IOException error) {
+            throw failed(error);
+        }
+    }
+
+    public synchronized <E> void acceptEncoded(String message, E event, Function<E, byte[]> encoder) {
+        try {
+            if (!options.nativeJson()) throw new IllegalStateException("unexpected native encoding");
+            int identity = prepare(message);
+            if (identity >= 0) write(identity, encoder.apply(event));
+        } catch (RuntimeException | IOException error) {
+            throw failed(error);
+        }
+    }
+
+    private int prepare(String message) {
+        if (phase == Phase.CLOSED) throw new IllegalStateException("delivery after close");
         if (message.equals(Workload.BARRIER)) {
             barrier.countDown();
-            return;
+            return -1;
         }
-        try {
-            if (phase == Phase.CLOSED) throw new IllegalStateException("delivery after close");
-            int identity = Integer.parseInt(message, 0, 8, 16);
-            if (identity < 0 || identity >= completed.length) throw new IllegalStateException("unknown event identity");
-            if (phase == Phase.MEASUREMENT) {
-                if (seen.get(identity)) throw new IllegalStateException("duplicate event identity");
-                if (seen.isEmpty() && options.stallMillis() > 0) park(TimeUnit.MILLISECONDS.toNanos(options.stallMillis()));
-                if (options.delayMicros() > 0) park(TimeUnit.MICROSECONDS.toNanos(options.delayMicros()));
-            }
-            byte[] encoded = encode(message, level, attributes);
-            output.write(encoded);
-            if (phase == Phase.MEASUREMENT) {
-                long now = System.nanoTime();
-                completed[identity] = now;
-                seen.set(identity);
-                bytes += encoded.length;
-                lastWrite = now;
-            }
-        } catch (RuntimeException | IOException error) {
-            failure = error.toString();
-            throw error instanceof IOException io ? new UncheckedIOException(io) : (RuntimeException) error;
+        int identity = Integer.parseInt(message, 0, 8, 16);
+        if (identity < 0 || identity >= completed.length) throw new IllegalStateException("unknown event identity");
+        if (phase == Phase.MEASUREMENT) {
+            if (seen.get(identity)) throw new IllegalStateException("duplicate event identity");
+            if (seen.isEmpty() && options.stallMillis() > 0) park(TimeUnit.MILLISECONDS.toNanos(options.stallMillis()));
+            if (options.delayMicros() > 0) park(TimeUnit.MICROSECONDS.toNanos(options.delayMicros()));
         }
+        return identity;
+    }
+
+    private void write(int identity, byte[] encoded) throws IOException {
+        if (encoded == null || encoded.length == 0 || encoded[encoded.length - 1] != '\n') {
+            throw new IllegalStateException("encoder did not produce a framed record");
+        }
+        output.write(encoded);
+        if (phase == Phase.MEASUREMENT) {
+            long now = System.nanoTime();
+            completed[identity] = now;
+            seen.set(identity);
+            bytes += encoded.length;
+            lastWrite = now;
+        }
+    }
+
+    private RuntimeException failed(Exception error) {
+        failure = error.toString();
+        return error instanceof IOException io ? new UncheckedIOException(io) : (RuntimeException) error;
     }
 
     public boolean awaitBarrier(long timeoutMillis) throws InterruptedException {

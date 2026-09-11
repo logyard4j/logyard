@@ -44,6 +44,11 @@ def smoke_cases() -> list[Case]:
         Case("virtual-json", producers=16, arguments=1, fields=16, format="json", virtual=True),
         Case("overload", events=20_000, arguments=1, fields=4, format="json", rate=100_000, stall_ms=100, delay_us=50),
         Case("default-policy", policy="default"),
+        Case("native-json-empty", producers=1, arguments=0, format="native-json"),
+        Case("native-json-mdc", arguments=4, fields=4, format="native-json"),
+        Case("native-json-virtual", producers=16, arguments=1, fields=16, format="native-json", virtual=True),
+        Case("native-json-overload", events=20_000, arguments=2, fields=16, format="native-json",
+             rate=100_000, stall_ms=100, delay_us=50),
     ]
 
 
@@ -99,7 +104,7 @@ def main() -> None:
     parser.add_argument("--producers", type=int, choices=(1, 4, 16, 64), default=4)
     parser.add_argument("--arguments", type=int, choices=(0, 1, 2, 4), default=2)
     parser.add_argument("--fields", type=int, choices=(0, 4, 16), default=0)
-    parser.add_argument("--format", choices=("text", "json"), default="text")
+    parser.add_argument("--format", choices=("text", "json", "native-json"), default="text")
     parser.add_argument("--rate", type=int, default=0)
     parser.add_argument("--stall-ms", type=int, default=0)
     parser.add_argument("--delay-us", type=int, default=0)

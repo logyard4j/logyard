@@ -37,7 +37,18 @@ public final class Backend implements AutoCloseable {
                 type = "custom"
                 provider = "comparison"
                 implementation = "com.zsumz.logyard.compare.ComparisonOutput"
-                """.formatted(capacity, keys);
+                %s
+                """.formatted(capacity, keys, options.nativeJson() ? """
+                encoder = "comparison"
+                [encoders.comparison]
+                type = "json"
+                profile = "comparison"
+                [json_profiles.comparison]
+                preset = "logyard"
+                rename = { severity_text = "level", body = "message" }
+                drop = ["observed_timestamp_unix_nano", "severity_number", "logger", "event_name",
+                        "message_template", "resource", "thread", "exception"%s]
+                """.formatted(options.fields() == 0 ? ", \"attributes\"" : "") : "");
         return new Backend(LogyardBootstrap.acquire(RuntimeOwner.APPLICATION,
                 LogyardConfigurationSource.text("delivery comparison", configuration, Path.of("."))));
     }

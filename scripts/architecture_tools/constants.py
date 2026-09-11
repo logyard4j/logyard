@@ -18,7 +18,7 @@ UNBOUNDED = (
 ALLOWED_IMPORT_PREFIXES = {
     "common": ("java.", "com.sun.management.", "org.slf4j.", PREFIX + "compare."),
     "logyard": ("java.", PREFIX + "api.", PREFIX + "runtime.", PREFIX + "compare."),
-    "logback": ("java.", "ch.qos.logback.", "org.slf4j.", PREFIX + "compare."),
+    "logback": ("java.", "ch.qos.logback.", "net.logstash.logback.", "org.slf4j.", PREFIX + "compare."),
     "log4j2": ("java.", "org.apache.logging.log4j.", PREFIX + "compare."),
     "logyard-api": ("java.", PREFIX + "api."),
     "logyard-core": ("java.", PREFIX + "api.", PREFIX + "core."),

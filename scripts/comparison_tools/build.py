@@ -64,7 +64,7 @@ class ProviderBuilds:
         manifest.write_text(manifest.read_text() + f'\n[repositories]\nlogyard = "http://127.0.0.1:{self.server.server_port}"\n'
                             'central = "https://repo.maven.apache.org/maven2"\n', encoding="utf-8")
         with (self.run / f"{provider}-build.log").open("w", encoding="utf-8") as log:
-            for command in ("resolve", "build"):
+            for command in ("resolve", "build", "test"):
                 subprocess.run(self.command(command), cwd=directory, check=True, timeout=300, stdout=log, stderr=subprocess.STDOUT)
         classpath = subprocess.check_output(self.command("classpath", "runtime"), cwd=directory, timeout=30, text=True).strip()
         artifacts = self.artifacts(directory)

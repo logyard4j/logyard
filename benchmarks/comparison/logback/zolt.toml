@@ -7,8 +7,14 @@ main = "com.zsumz.logyard.compare.ComparisonMain"
 
 [dependencies]
 "ch.qos.logback:logback-classic" = "1.6.3"
+"net.logstash.logback:logstash-logback-encoder" = "9.0"
 "org.slf4j:slf4j-api" = "2.0.18"
+
+[test.dependencies]
+"org.junit.platform:junit-platform-console-standalone" = "1.11.4"
 
 [build]
 source = "src/main/java"
+test = "src/test/java"
 output = "target/classes"
+testOutput = "target/test-classes"

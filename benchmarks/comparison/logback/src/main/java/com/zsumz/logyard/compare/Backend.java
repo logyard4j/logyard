@@ -8,6 +8,7 @@ import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.function.Function;
 
 /** Uses Logback's real AsyncAppender with an explicitly matched or default overflow policy. */
 public final class Backend implements AutoCloseable {
@@ -23,10 +24,19 @@ public final class Backend implements AutoCloseable {
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         context.reset();
         context.start();
+        var encoder = options.nativeJson() ? NativeJson.create(context, options) : null;
+        Function<ILoggingEvent, byte[]> encode = encoder == null ? null : encoder::encode;
         var output = new UnsynchronizedAppenderBase<ILoggingEvent>() {
             @Override
             protected void append(ILoggingEvent event) {
-                destination.accept(event.getFormattedMessage(), event.getLevel().toString(), event.getMDCPropertyMap()::get);
+                if (encode == null) destination.accept(event.getFormattedMessage(), event.getLevel().toString(), event.getMDCPropertyMap()::get);
+                else destination.acceptEncoded(event.getFormattedMessage(), event, encode);
+            }
+
+            @Override
+            public void stop() {
+                super.stop();
+                if (encoder != null) encoder.stop();
             }
         };
         output.setContext(context);

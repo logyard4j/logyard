@@ -27,7 +27,7 @@ public final class Workload {
             case 4 -> "accepted {} {} {} {}";
             default -> throw new IllegalArgumentException("unsupported argument count");
         };
-        if (options.format().equals("json")) message += " \"escaped\"\\path\t\nλ";
+        if (!options.format().equals("text")) message += " \"escaped\"\\path\t\nλ";
         templates = new String[options.events()];
         for (int index = 0; index < templates.length; index++) {
             String identity = Integer.toHexString(index);

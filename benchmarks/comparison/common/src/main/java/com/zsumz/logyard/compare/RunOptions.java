@@ -14,7 +14,7 @@ public record RunOptions(Path output, int events, int producers, int arguments, 
                 Long.parseLong(args[7]), Long.parseLong(args[8]), Boolean.parseBoolean(args[9]), args[10], args[11]);
         if (options.events < 1 || options.events > 200_000 || !List.of(1, 4, 16, 64).contains(options.producers)
                 || !List.of(0, 1, 2, 4).contains(options.arguments) || !List.of(0, 4, 16).contains(options.fields)
-                || !List.of("text", "json").contains(options.format) || options.rate < 0 || options.rate > 10_000_000
+                || !List.of("text", "json", "native-json").contains(options.format) || options.rate < 0 || options.rate > 10_000_000
                 || options.stallMillis < 0 || options.stallMillis > 5_000 || options.delayMicros < 0 || options.delayMicros > 10_000
                 || !List.of("matched-drop", "default").contains(options.policy)
                 || !List.of("none", "classic", "fluent", "supplier").contains(options.disabled)) {
@@ -37,5 +37,9 @@ public record RunOptions(Path output, int events, int producers, int arguments, 
 
     public boolean enabled() {
         return disabled.equals("none");
+    }
+
+    public boolean nativeJson() {
+        return format.equals("native-json");
     }
 }

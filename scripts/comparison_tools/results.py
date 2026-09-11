@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from pathlib import Path
 from typing import Any
+
+from .records import decode, validate_message
 
 
 def validate(result: dict[str, Any], output: Path, format: str, fields: int) -> dict[int, str]:
@@ -18,19 +19,14 @@ def validate(result: dict[str, Any], output: Path, format: str, fields: int) -> 
             if not line.endswith(b"\n"):
                 raise AssertionError("partial output record")
             text = line.decode("utf-8").rstrip("\n")
-            if format == "json":
-                data = json.loads(text)
-                if set(data) != {"level", "message", "attributes"} or len(data["attributes"]) != fields:
-                    raise AssertionError("unexpected JSON output shape")
-                message, level = data["message"], data["level"]
-                text = json.dumps(data, sort_keys=True, ensure_ascii=False)
-            else:
-                level, message = text.split(" ", 1)
+            level, message, text = decode(text, format, fields, result)
             identity = int(message[:8], 16)
             if identity < 0 or identity >= expected or identity in records:
                 raise AssertionError("unknown or duplicate completed record")
             if level != ("ERROR" if identity % 8 == 0 else "INFO"):
                 raise AssertionError("incorrect severity")
+            if "case" in result:
+                validate_message(message, identity, result["case"])
             records[identity] = hashlib.sha256(text.encode("utf-8")).hexdigest()
     if len(records) != result["sink_written"] or written_bytes != result["written_bytes"]:
         raise AssertionError("file and completion counters disagree")

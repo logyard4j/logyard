@@ -8,9 +8,15 @@ main = "com.zsumz.logyard.compare.ComparisonMain"
 [dependencies]
 "org.apache.logging.log4j:log4j-slf4j2-impl" = "2.26.1"
 "org.apache.logging.log4j:log4j-core" = "2.26.1"
+"org.apache.logging.log4j:log4j-layout-template-json" = "2.26.1"
 "org.slf4j:slf4j-api" = "2.0.18"
 "com.lmax:disruptor" = "4.0.0"
 
+[test.dependencies]
+"org.junit.platform:junit-platform-console-standalone" = "1.11.4"
+
 [build]
 source = "src/main/java"
+test = "src/test/java"
 output = "target/classes"
+testOutput = "target/test-classes"

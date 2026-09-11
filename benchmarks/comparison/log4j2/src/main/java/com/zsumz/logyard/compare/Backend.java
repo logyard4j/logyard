@@ -11,6 +11,7 @@ import org.apache.logging.log4j.core.jmx.RingBufferAdmin;
 
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
+import java.util.function.Function;
 
 /** Uses Disruptor-based AsyncLogger instances, with one asynchronous boundary. */
 public final class Backend implements AutoCloseable {
@@ -35,10 +36,13 @@ public final class Backend implements AutoCloseable {
         builder.setStatusLevel(Level.ERROR);
         builder.add(builder.newRootLogger(Level.INFO));
         var configuration = builder.build();
-        var output = new AbstractAppender("comparison-file", null, null, false, Property.EMPTY_ARRAY) {
+        var layout = options.nativeJson() ? NativeJson.create(configuration, options) : null;
+        Function<LogEvent, byte[]> encode = layout == null ? null : layout::toByteArray;
+        var output = new AbstractAppender("comparison-file", null, layout, false, Property.EMPTY_ARRAY) {
             @Override
             public void append(LogEvent event) {
-                destination.accept(event.getMessage().getFormattedMessage(), event.getLevel().name(), event.getContextData()::getValue);
+                if (encode == null) destination.accept(event.getMessage().getFormattedMessage(), event.getLevel().name(), event.getContextData()::getValue);
+                else destination.acceptEncoded(event.getMessage().getFormattedMessage(), event, encode);
             }
         };
         output.start();

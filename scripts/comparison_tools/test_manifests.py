@@ -14,9 +14,11 @@ class ComparisonManifestTest(unittest.TestCase):
         expected = {
             "logyard": {"com.zsumz.logyard:logyard-slf4j2": version, "com.zsumz.logyard:logyard-runtime": version,
                         "org.slf4j:slf4j-api": "2.0.18"},
-            "logback": {"ch.qos.logback:logback-classic": "1.6.3", "org.slf4j:slf4j-api": "2.0.18"},
+            "logback": {"ch.qos.logback:logback-classic": "1.6.3", "org.slf4j:slf4j-api": "2.0.18",
+                        "net.logstash.logback:logstash-logback-encoder": "9.0"},
             "log4j2": {"org.apache.logging.log4j:log4j-slf4j2-impl": "2.26.1", "org.apache.logging.log4j:log4j-core": "2.26.1",
-                       "org.slf4j:slf4j-api": "2.0.18", "com.lmax:disruptor": "4.0.0"},
+                       "org.slf4j:slf4j-api": "2.0.18", "com.lmax:disruptor": "4.0.0",
+                       "org.apache.logging.log4j:log4j-layout-template-json": "2.26.1"},
         }
         for provider, dependencies in expected.items():
             with self.subTest(provider=provider):
