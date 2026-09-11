@@ -1,8 +1,19 @@
 package com.zsumz.logyard.api;
 
+import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.ingress.LogEventIngress;
 
-/** Stable native logger contract with level checks before any argument, supplier, context, or clock access. */
+/**
+ * Native logger contract with level checks before capture or supplier evaluation.
+ *
+ * <p>Two-argument and varargs convenience methods extract a trailing Throwable as the
+ * cause, independently of the number of placeholders, following SLF4J normalization.
+ * An explicitly typed {@code (String, Throwable)} call always records its cause;
+ * use {@code atInfo().argument(value)} to render a throwable as an ordinary value.</p>
+ *
+ * <p>The {@code with} methods attach preset attributes to every event. Event attributes
+ * override presets, which override scoped context. Repeated presets merge into one wrapper.</p>
+ */
 public interface LogyardLogger extends LogEventIngress {
     /** Reports trace-level enablement.
      * @return whether trace events are enabled
@@ -50,6 +61,18 @@ public interface LogyardLogger extends LogEventIngress {
      * @return structured error-event builder
      */
     default LogBuilder atError() { return at(Level.ERROR); }
+
+    /** Returns a logger presetting attributes on every event it publishes.
+     * @param attributes preset attributes
+     * @return curried logger
+     */
+    default LogyardLogger with(AttributeSet attributes) { return AttributedLogger.of(this, attributes); }
+    /** Returns a logger presetting one attribute on every event it publishes.
+     * @param key attribute key
+     * @param value attribute value
+     * @return curried logger
+     */
+    default LogyardLogger with(String key, Object value) { return with(AttributeSet.of(key, value)); }
 
     /** Logs a trace message.
      * @param message trace message template

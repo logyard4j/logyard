@@ -128,7 +128,7 @@ public final class AttributeSet {
 
     /** Mutable, bounded assembler for an immutable {@link AttributeSet}. */
     public static final class Builder {
-        private final AttributeSetBuilderState state;
+        final AttributeSetBuilderState state;
 
         private Builder(int expectedSize, boolean systemAttributesAllowed) {
             state = new AttributeSetBuilderState(expectedSize, systemAttributesAllowed);

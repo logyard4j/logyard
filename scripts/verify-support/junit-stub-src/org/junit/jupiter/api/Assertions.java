@@ -62,8 +62,22 @@ public final class Assertions {
     }
 
     public static void assertSame(Object expected, Object actual) {
+        assertSame(expected, actual, "expected same instance");
+    }
+
+    public static void assertSame(Object expected, Object actual, String message) {
         if (expected != actual) {
-            throw new AssertionError("expected same instance");
+            throw new AssertionError(message);
+        }
+    }
+
+    public static void assertNotSame(Object unexpected, Object actual) {
+        assertNotSame(unexpected, actual, "expected different instances");
+    }
+
+    public static void assertNotSame(Object unexpected, Object actual, String message) {
+        if (unexpected == actual) {
+            throw new AssertionError(message);
         }
     }
 
@@ -78,8 +92,50 @@ public final class Assertions {
         return expectedType.cast(actual);
     }
 
+    public static void assertEquals(long expected, long actual) {
+        assertEquals(expected, actual, (String) null);
+    }
+
+    public static void assertEquals(long expected, long actual, String message) {
+        if (expected != actual) {
+            throw message == null ? unequal(expected, actual) : new AssertionError(message);
+        }
+    }
+
+    public static void assertEquals(int expected, int actual) {
+        assertEquals((long) expected, (long) actual);
+    }
+
+    public static void assertEquals(int expected, Integer actual) {
+        if (actual == null || expected != actual) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(Integer expected, int actual) {
+        if (expected == null || expected != actual) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(long expected, Long actual) {
+        if (actual == null || expected != actual) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(Long expected, long actual) {
+        if (expected == null || expected != actual) {
+            throw unequal(expected, actual);
+        }
+    }
+
+    public static void assertEquals(Long expected, Long actual) {
+        assertEquals((Object) expected, (Object) actual);
+    }
+
     public static void assertEquals(Object expected, Object actual) {
-        assertEquals(expected, actual, null);
+        assertEquals(expected, actual, (String) null);
     }
 
     public static void assertEquals(Object expected, Object actual, String message) {
@@ -94,9 +150,20 @@ public final class Assertions {
         }
     }
 
+    public static void assertEquals(Object expected, Object actual, Supplier<String> messageSupplier) {
+        if (!Objects.equals(expected, actual)) {
+            throw new AssertionError(messageSupplier.get());
+        }
+    }
+
     public static void assertNotEquals(Object unexpected, Object actual) {
+        assertNotEquals(unexpected, actual, null);
+    }
+
+    public static void assertNotEquals(Object unexpected, Object actual, String message) {
         if (Objects.equals(unexpected, actual)) {
-            throw new AssertionError("expected values to differ, but both were <" + actual + ">");
+            throw new AssertionError(
+                    message == null ? "expected values to differ, but both were <" + actual + ">" : message);
         }
     }
 

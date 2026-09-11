@@ -44,6 +44,10 @@ final class AttributeAccumulator {
         }
     }
 
+    void replaceCapturedValue(String key, Object value) {
+        entries.replaceCapturedValue(key, value);
+    }
+
     void putSupplied(
             String original,
             String canonicalKey,

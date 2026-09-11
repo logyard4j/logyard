@@ -4,7 +4,7 @@ import java.util.function.Supplier;
 
 /** Applies exact-key replacement and bounded normalized-key collision policy to mutable attribute entries. */
 final class AttributeEntryStorage {
-    private static final String TRUNCATION_KEY = "logyard.attributes.truncated";
+    private static final String TRUNCATION_KEY = SystemAttributes.ATTRIBUTES_TRUNCATED;
 
     private final AttributeEntrySlots slots;
     private int size;
@@ -65,6 +65,12 @@ final class AttributeEntryStorage {
         return true;
     }
 
+    void replaceCapturedValue(String key, Object value) {
+        int index = indexOf(key);
+        if (index < 0) throw new IllegalArgumentException("captured attribute is absent: " + key);
+        slots.value(index, value);
+    }
+
     boolean replaceOriginal(String original, String canonicalKey, boolean keyTruncated, Supplier<?> supplier) {
         int existingOriginal = indexOfOriginal(original, canonicalKey, keyTruncated);
         if (existingOriginal < 0) {
@@ -113,6 +119,10 @@ final class AttributeEntryStorage {
         int canonical = indexOf(canonicalKey);
         if (canonical < 0) {
             return canonical;
+        }
+        if (!keyTruncated && slots.normalizedIdentity(canonical) != null) {
+            // A captured shortened key has no original identity; its spelling is not an exact caller key.
+            return -1;
         }
         if (!slots.tracksOriginals()) {
             return keyTruncated ? -1 : canonical;

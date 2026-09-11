@@ -29,7 +29,7 @@ public final class ContextSnapshotPolicy {
             return AttributeSet.EMPTY;
         }
         Map<String, String> values = adapter.currentValues();
-        if (values.isEmpty()) {
+        if (values.isEmpty() && !adapter.captureLossy()) {
             return AttributeSet.EMPTY;
         }
         AttributeSet.Builder attributes = AttributeSet.builder(
@@ -38,15 +38,23 @@ public final class ContextSnapshotPolicy {
                         : Math.min(values.size(), current.includedKeys().size()));
         for (Map.Entry<String, String> entry : values.entrySet()) {
             if (current.includes(entry.getKey())) {
+                String key = entry.getKey();
+                if (key.isBlank() || AttributeSet.isReservedKey(key)) {
+                    attributes.markCaptureTruncated();
+                    continue;
+                }
                 if (attributes.isFull()) {
                     attributes.markTruncated();
                     break;
                 }
-                attributes.put(entry.getKey(), entry.getValue());
-                if (adapter.valueTruncated(entry.getKey())) {
+                attributes.put(key, entry.getValue());
+                if (adapter.valueTruncated(key)) {
                     attributes.markCaptureTruncated();
                 }
             }
+        }
+        if (adapter.captureLossy()) {
+            attributes.markCaptureTruncated();
         }
         return attributes.build();
     }

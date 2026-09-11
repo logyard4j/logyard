@@ -50,6 +50,16 @@ Keep Logyard as the only SLF4J provider.
 
 Continue using `LoggerFactory`, fluent SLF4J logging, and MDC. Logyard starts lazily when the adapter first needs it.
 
+MDC capture is opt-in through `context.mdc`.
+
+| MDC boundary | Behavior |
+| --- | --- |
+| Map capacity | 128 entries per thread; excess entries are dropped |
+| Key length | Keys over 256 characters are dropped without collisions |
+| Bulk import | Inspects at most 128 entries |
+| Capture loss | `logyard.capture.truncated`; reset by `clear()` or `setContextMap()` |
+| Invalid operations | Null keys and deque overflow throw; push/pop pairs stay balanced |
+
 See the [SLF4J](examples/slf4j), [Vert.x](examples/vertx), and [Micronaut](examples/micronaut) examples.
 
 ## Spring Boot
@@ -252,11 +262,26 @@ Use suppliers for expensive attributes:
 
 ```java
 log.atDebug()
-        .add("plan", this::expensivePlan)
+        .addLazy("plan", this::expensivePlan)
         .log("selected execution plan");
 ```
 
 `expensivePlan()` runs only when an enabled event enters publication. Closing the final runtime owner shuts down watching, delivery, and outputs.
+
+Use `argumentLazy(supplier)` for lazy message arguments and `addAll(attributes)` for a captured attribute set. Two-argument and varargs convenience calls extract a trailing exception as the cause, as SLF4J does. Use a builder argument to render an exception as a value.
+
+Attach request context with a scope, and stable component context with `with`:
+
+```java
+import com.zsumz.logyard.api.context.LogContext;
+
+var orders = log.with("component", "orders");
+try (var scope = LogContext.push("request.id", "req-42")) {
+    orders.atInfo().add("order.id", "ord-1042").log("order accepted");
+}
+```
+
+Explicit event fields override `with` fields, which override scoped fields. Scope values are captured on the caller thread. Use `executor.execute(LogContext.wrap(task))` to propagate a snapshot to another thread; the wrapper restores the worker's previous context even when the task fails.
 
 Applications can pass an explicit source to `LogyardBootstrap.start(source)`. Framework integrations acquire their own lease:
 

@@ -48,10 +48,10 @@ final class LogEventCapture {
             int omittedArguments = Math.max(0, suppliedArgumentCount - capturedArguments.length);
             if (omittedArguments > 0) {
                 context.markTruncated();
-                capturedAttributes = capturedAttributes.withSystemAttribute("logyard.arguments.omitted", omittedArguments);
+                capturedAttributes = capturedAttributes.withSystemAttribute(SystemAttributes.ARGUMENTS_OMITTED, omittedArguments);
             }
             if (context.truncated()) {
-                capturedAttributes = capturedAttributes.withSystemAttribute("logyard.capture.truncated", true);
+                capturedAttributes = capturedAttributes.withSystemAttribute(SystemAttributes.CAPTURE_TRUNCATED, true);
             }
             return new CapturedLogEvent(
                     timestampMillis,

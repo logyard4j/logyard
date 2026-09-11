@@ -15,7 +15,7 @@ final class MdcDequeStore {
     private final ThreadLocal<HashMap<String, ArrayDeque<String>>> stacks = new ThreadLocal<>();
 
     void push(String key, String value) {
-        String validKey = MdcKey.requireValid(key);
+        String validKey = MdcKey.stackKey(key);
         Objects.requireNonNull(value, "value");
         HashMap<String, ArrayDeque<String>> current = stacks.get();
         if (current == null) {
@@ -37,7 +37,7 @@ final class MdcDequeStore {
     }
 
     String pop(String key) {
-        String validKey = MdcKey.requireValid(key);
+        String validKey = MdcKey.stackKey(key);
         HashMap<String, ArrayDeque<String>> current = stacks.get();
         if (current == null) {
             return null;
@@ -57,14 +57,14 @@ final class MdcDequeStore {
     }
 
     Deque<String> copy(String key) {
-        String validKey = MdcKey.requireValid(key);
+        String validKey = MdcKey.stackKey(key);
         Map<String, ArrayDeque<String>> current = stacks.get();
         Deque<String> stack = current == null ? null : current.get(validKey);
         return stack == null ? null : new ArrayDeque<>(stack);
     }
 
     void clear(String key) {
-        String validKey = MdcKey.requireValid(key);
+        String validKey = MdcKey.stackKey(key);
         HashMap<String, ArrayDeque<String>> current = stacks.get();
         if (current == null) {
             return;

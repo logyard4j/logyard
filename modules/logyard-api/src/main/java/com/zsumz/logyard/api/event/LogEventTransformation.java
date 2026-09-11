@@ -47,7 +47,7 @@ final class LogEventTransformation {
             return EventAttributeCapture.capture(replacement, source.attributeAllowance(), inheritedTruncation);
         }
         AttributeSet attributes = inheritedTruncation
-                ? source.attributes().withSystemAttribute("logyard.capture.truncated", true)
+                ? source.attributes().withSystemAttribute(SystemAttributes.CAPTURE_TRUNCATED, true)
                 : source.attributes();
         return new EventAttributeCapture.Result(attributes, source.remainingTraversalEntries(), inheritedTruncation);
     }

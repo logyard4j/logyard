@@ -37,7 +37,7 @@ final class DefaultLogyardRuntimeLevelOverrideTest {
 
             runtime.setLevelOverride("com.acme.noisy", RuntimeLevelOverride.off());
             AtomicBoolean evaluated = new AtomicBoolean();
-            noisy.atError().argument(() -> {
+            noisy.atError().argumentLazy(() -> {
                 evaluated.set(true);
                 return "must-not-run";
             }).log("disabled {}");

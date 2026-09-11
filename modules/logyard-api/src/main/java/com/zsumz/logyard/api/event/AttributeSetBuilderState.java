@@ -52,6 +52,18 @@ final class AttributeSetBuilderState {
         }
     }
 
+    void replaceCapturedValue(String key, Object value) {
+        attributes.replaceCapturedValue(key, value);
+    }
+
+    void putCaptured(AttributeSet source, int index) {
+        Objects.requireNonNull(source, "source");
+        attributes.putCaptured(source.keyAt(index),
+                source.normalizedKeyIdentities == null ? null : source.normalizedKeyIdentities[index],
+                source.valueAt(index));
+        if (source.captureTruncated) attributes.markCaptureTruncated();
+    }
+
     void putAll(Map<String, ?> source) {
         for (Map.Entry<String, ?> entry : source.entrySet()) {
             put(entry.getKey(), entry.getValue());

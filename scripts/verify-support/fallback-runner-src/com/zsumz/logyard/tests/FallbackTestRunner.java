@@ -1,12 +1,17 @@
 package com.zsumz.logyard.tests;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 
 public final class FallbackTestRunner {
     private FallbackTestRunner() {
@@ -37,7 +42,13 @@ public final class FallbackTestRunner {
                 }
                 method.setAccessible(true);
                 try {
-                    method.invoke(instance);
+                    try {
+                        invokeAll(instance, lifecycle(methods, BeforeEach.class));
+                        method.invoke(instance);
+                    } finally {
+                        // Cleanup must run even when the test failed, matching JUnit's contract.
+                        invokeAll(instance, lifecycle(methods, AfterEach.class));
+                    }
                     passed++;
                 } catch (InvocationTargetException invocationFailure) {
                     failed++;
@@ -59,5 +70,22 @@ public final class FallbackTestRunner {
                 "Fallback JUnit verification passed: %d test method(s), %d parameterized method(s) skipped%n",
                 passed,
                 skipped);
+    }
+
+    private static List<Method> lifecycle(Method[] methods, Class<? extends Annotation> annotation) {
+        List<Method> selected = new ArrayList<>();
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(annotation) && method.getParameterCount() == 0) {
+                method.setAccessible(true);
+                selected.add(method);
+            }
+        }
+        return selected;
+    }
+
+    private static void invokeAll(Object instance, List<Method> methods) throws Exception {
+        for (Method method : methods) {
+            method.invoke(instance);
+        }
     }
 }

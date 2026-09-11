@@ -76,4 +76,8 @@ public final class LogyardMdcAdapter implements MDCAdapter {
     boolean valueTruncated(String key) {
         return values.valueTruncated(key);
     }
+
+    boolean captureLossy() {
+        return values.lossy();
+    }
 }

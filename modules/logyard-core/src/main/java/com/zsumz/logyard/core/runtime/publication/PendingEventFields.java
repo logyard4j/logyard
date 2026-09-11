@@ -16,8 +16,8 @@ final class PendingEventFields {
         return arguments.capture();
     }
 
-    AttributeSet captureAttributes() {
-        return attributes.capture();
+    AttributeSet captureAttributes(AttributeSet scopedContext) {
+        return attributes.capture(scopedContext);
     }
 
     int suppliedArgumentCount() {

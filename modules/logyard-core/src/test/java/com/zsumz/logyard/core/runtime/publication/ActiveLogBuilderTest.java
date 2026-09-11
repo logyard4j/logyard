@@ -26,8 +26,8 @@ final class ActiveLogBuilderTest {
         try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
             LogBuilder builder = runtime.logger("test.Fluent")
                     .atInfo()
-                    .argument(() -> evaluations.incrementAndGet())
-                    .add("supplied", () -> evaluations.incrementAndGet());
+                    .argumentLazy(() -> evaluations.incrementAndGet())
+                    .addLazy("supplied", () -> evaluations.incrementAndGet());
 
             assertEquals(0, evaluations.get());
             builder.log("values {}");
@@ -44,7 +44,7 @@ final class ActiveLogBuilderTest {
         List<LogEvent> events = new ArrayList<>();
         try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
             LogyardLogger logger = runtime.logger("test.Fluent");
-            assertDoesNotThrow(() -> logger.atInfo().argument(() -> {
+            assertDoesNotThrow(() -> logger.atInfo().argumentLazy(() -> {
                 throw new AssertionError("supplier boom");
             }).log("supplier"));
             assertDoesNotThrow(() -> logger.atInfo().add("hostile", hostileMap()).log("map"));
@@ -59,7 +59,7 @@ final class ActiveLogBuilderTest {
             TestVirtualMachineError fatal = new TestVirtualMachineError();
             assertSame(fatal, assertThrows(TestVirtualMachineError.class, () -> runtime.logger("test.Fatal")
                     .atInfo()
-                    .argument(() -> {
+                    .argumentLazy(() -> {
                         throw fatal;
                     })
                     .log("fatal")));
@@ -67,7 +67,7 @@ final class ActiveLogBuilderTest {
             try {
                 assertDoesNotThrow(() -> runtime.logger("test.Interrupted")
                         .atInfo()
-                        .argument(() -> sneakyThrow(new InterruptedException("interrupted")))
+                        .argumentLazy(() -> sneakyThrow(new InterruptedException("interrupted")))
                         .log("interrupted"));
                 assertTrue(Thread.currentThread().isInterrupted());
             } finally {
@@ -84,16 +84,17 @@ final class ActiveLogBuilderTest {
             assertThrows(NullPointerException.class, () -> builder.add(null, "value"));
             assertThrows(IllegalArgumentException.class, () -> builder.add(" ", "value"));
             assertThrows(IllegalArgumentException.class, () -> builder.add(" ".repeat(256) + "x", "value"));
-            assertThrows(NullPointerException.class, () -> builder.add("key", (java.util.function.Supplier<?>) null));
-            assertThrows(NullPointerException.class, () -> builder.argument((java.util.function.Supplier<?>) null));
+            assertThrows(NullPointerException.class, () -> builder.addLazy("key", null));
+            assertThrows(NullPointerException.class, () -> builder.argumentLazy(null));
+            assertThrows(NullPointerException.class, () -> builder.addAll(null));
             builder.log("once");
             assertThrows(IllegalStateException.class, () -> builder.log("twice"));
             assertThrows(IllegalStateException.class, () -> builder.event("late"));
             assertThrows(IllegalStateException.class, () -> builder.message("late"));
             assertThrows(IllegalStateException.class, () -> builder.argument("late"));
-            assertThrows(IllegalStateException.class, () -> builder.argument(() -> "late"));
+            assertThrows(IllegalStateException.class, () -> builder.argumentLazy(() -> "late"));
             assertThrows(IllegalStateException.class, () -> builder.add("late", "value"));
-            assertThrows(IllegalStateException.class, () -> builder.add("late", () -> "value"));
+            assertThrows(IllegalStateException.class, () -> builder.addLazy("late", () -> "value"));
             assertThrows(IllegalStateException.class, () -> builder.cause(new IllegalStateException("late")));
         }
     }

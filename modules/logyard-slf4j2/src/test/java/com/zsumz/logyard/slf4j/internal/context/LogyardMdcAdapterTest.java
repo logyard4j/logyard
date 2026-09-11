@@ -1,6 +1,7 @@
 package com.zsumz.logyard.slf4j.internal.context;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -114,19 +115,37 @@ final class LogyardMdcAdapterTest {
     }
 
     @Test
-    void rejectsUnboundedKeysAndEntryCounts() {
+    void boundsKeysAndEntryCountsWithoutThrowingIntoTheApplication() {
         LogyardMdcAdapter mdc = new LogyardMdcAdapter();
-        assertThrows(NullPointerException.class, () -> mdc.put(null, "value"));
-        assertThrows(IllegalArgumentException.class, () -> mdc.put(" ", "value"));
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> mdc.put(
-                        "x".repeat(CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS + 1),
-                        "value"));
+        assertThrows(IllegalArgumentException.class, () -> mdc.put(null, "value"));
+
+        mdc.put(" ", "blank-key-value");
+        assertEquals("blank-key-value", mdc.get(" "), "blank keys are stored faithfully");
+
+        String oversized = "x".repeat(CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS + 32);
+        String prefix = oversized.substring(0, CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS);
+        mdc.put(prefix, "original");
+        mdc.put(oversized, "value");
+        assertNull(mdc.get(oversized), "oversized keys are dropped without aliasing another key");
+        assertEquals("original", mdc.get(prefix));
+        mdc.remove(oversized);
+        assertEquals("original", mdc.get(prefix));
+        assertTrue(mdc.captureLossy());
+        assertThrows(IllegalArgumentException.class, () -> mdc.pushByKey(oversized, "value"));
+        mdc.clear();
+
         for (int index = 0; index < LogyardMdcAdapter.MAX_ENTRIES; index++) {
             mdc.put("key." + index, "value");
         }
-        assertThrows(IllegalStateException.class, () -> mdc.put("one.too.many", "value"));
+        mdc.put("one.too.many", "value");
+        assertNull(mdc.get("one.too.many"), "an entry beyond the bound is dropped, not thrown");
+        assertEquals("value", mdc.get("key.0"), "existing entries survive a dropped put");
+        mdc.put("key.0", "replacement");
+        assertEquals("replacement", mdc.get("key.0"), "replacing an existing key still works at the bound");
+
+        assertTrue(mdc.captureLossy(), "dropped MDC entries surface to event capture as loss");
+        mdc.clear();
+        assertFalse(mdc.captureLossy(), "clearing the MDC resets the loss signal");
     }
     @Test
     void preservesConfiguredAllowlistOrder() {

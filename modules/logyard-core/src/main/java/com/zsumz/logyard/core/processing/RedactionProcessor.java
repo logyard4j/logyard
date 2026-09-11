@@ -1,6 +1,7 @@
 package com.zsumz.logyard.core.processing;
 
 import com.zsumz.logyard.api.event.AttributeSet;
+import com.zsumz.logyard.api.event.CapturedAttributeAccess;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.spi.processing.EventProcessor;
 
@@ -58,7 +59,7 @@ public final class RedactionProcessor implements EventProcessor {
                 if (redacted == null) {
                     redacted = AttributeSet.systemBuilder(attributes.size()).putAll(attributes);
                 }
-                redacted.put(key, replacement);
+                CapturedAttributeAccess.replaceValue(redacted, key, replacement);
             }
         }
         if (redactionTruncated) {

@@ -2,6 +2,7 @@ package com.zsumz.logyard.core.runtime.publication;
 
 import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.LogBuilder;
+import com.zsumz.logyard.api.event.AttributeSet;
 
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -26,7 +27,7 @@ final class ActiveLogBuilder implements LogBuilder {
     @Override public LogBuilder argument(Object value) { ensureUnpublished(); addArgument(value); return this; }
 
     @Override
-    public LogBuilder argument(Supplier<?> supplier) {
+    public LogBuilder argumentLazy(Supplier<?> supplier) {
         ensureUnpublished();
         arguments.add(Objects.requireNonNull(supplier, "valueSupplier"));
         return this;
@@ -35,9 +36,16 @@ final class ActiveLogBuilder implements LogBuilder {
     @Override public LogBuilder add(String key, Object value) { ensureUnpublished(); attributes.add(key, value); return this; }
 
     @Override
-    public LogBuilder add(String key, Supplier<?> supplier) {
+    public LogBuilder addLazy(String key, Supplier<?> supplier) {
         ensureUnpublished();
         attributes.add(key, supplier);
+        return this;
+    }
+
+    @Override
+    public LogBuilder addAll(AttributeSet values) {
+        ensureUnpublished();
+        attributes.addAll(values);
         return this;
     }
 

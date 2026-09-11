@@ -144,10 +144,10 @@ final class ValueContainerCapture {
     }
 
     private static String uniqueTruncationKey(Map<String, Object> values) {
-        String key = "logyard.truncated";
+        String key = SystemAttributes.VALUE_TRUNCATED;
         int suffix = 1;
         while (values.containsKey(key)) {
-            key = "logyard.truncated." + suffix++;
+            key = SystemAttributes.VALUE_TRUNCATED + "." + suffix++;
         }
         return key;
     }

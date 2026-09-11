@@ -82,7 +82,7 @@ ARTIFACT_CONTRACTS = {
     "modules/logyard-api": (
         "com.zsumz.logyard.api",
         {
-            "com.zsumz.logyard.api", "com.zsumz.logyard.api.annotation", "com.zsumz.logyard.api.delivery", "com.zsumz.logyard.api.diagnostics", "com.zsumz.logyard.api.event", "com.zsumz.logyard.api.failure", "com.zsumz.logyard.api.format", "com.zsumz.logyard.api.ingress", "com.zsumz.logyard.api.reload", "com.zsumz.logyard.api.spi", "com.zsumz.logyard.api.spi.config", "com.zsumz.logyard.api.spi.context", "com.zsumz.logyard.api.spi.diagnostics", "com.zsumz.logyard.api.spi.encoding", "com.zsumz.logyard.api.spi.formatting", "com.zsumz.logyard.api.spi.output", "com.zsumz.logyard.api.spi.processing",
+            "com.zsumz.logyard.api", "com.zsumz.logyard.api.annotation", "com.zsumz.logyard.api.context", "com.zsumz.logyard.api.delivery", "com.zsumz.logyard.api.diagnostics", "com.zsumz.logyard.api.event", "com.zsumz.logyard.api.failure", "com.zsumz.logyard.api.format", "com.zsumz.logyard.api.ingress", "com.zsumz.logyard.api.reload", "com.zsumz.logyard.api.spi", "com.zsumz.logyard.api.spi.config", "com.zsumz.logyard.api.spi.context", "com.zsumz.logyard.api.spi.diagnostics", "com.zsumz.logyard.api.spi.encoding", "com.zsumz.logyard.api.spi.formatting", "com.zsumz.logyard.api.spi.output", "com.zsumz.logyard.api.spi.processing",
         },
     ),
     "modules/logyard-core": ("com.zsumz.logyard.core", set()),

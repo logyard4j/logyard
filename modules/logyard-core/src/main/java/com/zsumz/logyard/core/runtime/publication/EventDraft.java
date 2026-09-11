@@ -1,6 +1,7 @@
 package com.zsumz.logyard.core.runtime.publication;
 
 import com.zsumz.logyard.api.Level;
+import com.zsumz.logyard.api.context.LogContext;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
@@ -12,6 +13,9 @@ import java.util.Objects;
  * Uncaptured event data carried from a logger to the runtime.
  *
  * <p>Clock and thread metadata are intentionally read only after the runtime confirms that the active route accepts the event.</p>
+ *
+ * <p>Every enabled ingress path builds a draft, so this is where the caller thread's scoped context is
+ * read. Construction always runs on the thread that logged, which is what makes the read correct.</p>
  */
 final class EventDraft {
     private final String loggerName;
@@ -23,6 +27,7 @@ final class EventDraft {
     private final PendingEventFields pendingFields;
     private final Throwable throwable;
     private final IngressMetadata ingressMetadata;
+    private final AttributeSet scopedContext;
 
     EventDraft(
             String loggerName,
@@ -42,6 +47,7 @@ final class EventDraft {
         pendingFields = null;
         this.throwable = throwable;
         this.ingressMetadata = Objects.requireNonNull(ingressMetadata, "ingressMetadata");
+        scopedContext = LogContext.current();
     }
 
     EventDraft(
@@ -61,6 +67,7 @@ final class EventDraft {
         this.pendingFields = Objects.requireNonNull(pendingFields, "pendingFields");
         this.throwable = throwable;
         this.ingressMetadata = Objects.requireNonNull(ingressMetadata, "ingressMetadata");
+        scopedContext = LogContext.current();
     }
 
     String loggerName() {
@@ -95,7 +102,7 @@ final class EventDraft {
                     eventName,
                     messageTemplate,
                     pendingFields::captureArguments,
-                    pendingFields::captureAttributes,
+                    this::captureAttributes,
                     pendingFields.suppliedArgumentCount(),
                     throwable,
                     threadId,
@@ -109,10 +116,21 @@ final class EventDraft {
                 eventName,
                 messageTemplate,
                 arguments,
-                attributes,
+                withScopedContext(attributes),
                 throwable,
                 threadId,
                 threadName);
+    }
+
+    private AttributeSet captureAttributes() {
+        return pendingFields.captureAttributes(scopedContext);
+    }
+
+    private AttributeSet withScopedContext(AttributeSet eventAttributes) {
+        if (scopedContext.isEmpty()) {
+            return eventAttributes;
+        }
+        return eventAttributes == null ? scopedContext : scopedContext.mergedWith(eventAttributes);
     }
 
     private static long unixNanos(Instant instant) {

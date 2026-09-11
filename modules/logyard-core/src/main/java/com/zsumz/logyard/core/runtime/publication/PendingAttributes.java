@@ -3,45 +3,60 @@ package com.zsumz.logyard.core.runtime.publication;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.AttributeKey;
 import com.zsumz.logyard.api.event.CaptureLimits;
+import com.zsumz.logyard.api.event.CapturedAttributeAccess;
 import com.zsumz.logyard.api.event.NormalizedAttributeKey;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 
-/** Validated attribute declarations whose caller-owned values are captured at publication. */
+/** Bounded attribute declarations retained until an enabled event is captured. */
 final class PendingAttributes {
     private final List<Entry> values = new ArrayList<>(4);
     private boolean truncated;
+    private boolean captureTruncated;
 
     void add(String key, Object value) {
-        add(requireKey(key), PendingValue.direct(value));
+        add(new Entry(AttributeKey.normalize(key, false), PendingValue.direct(value), null, 0));
     }
 
     void add(String key, Supplier<?> supplier) {
-        add(requireKey(key), PendingValue.supplied(supplier));
+        add(new Entry(AttributeKey.normalize(key, false), PendingValue.supplied(supplier), null, 0));
     }
 
-    AttributeSet capture() {
-        AttributeSet.Builder captured = AttributeSet.builder(values.size());
+    void addAll(AttributeSet source) {
+        Objects.requireNonNull(source, "values");
+        captureTruncated |= CapturedAttributeAccess.truncated(source);
+        for (int index = 0; index < source.size(); index++) {
+            String key = source.keyAt(index);
+            add(new Entry(new NormalizedAttributeKey(key, key, false), null, source, index));
+        }
+    }
+
+    AttributeSet capture(AttributeSet scopedContext) {
+        AttributeSet.Builder captured = AttributeSet.builder(scopedContext.size() + values.size());
+        captured.putAll(scopedContext);
         for (Entry entry : values) {
-            if (captured.isFull()) {
-                captured.markTruncated();
-                break;
+            if (entry.source != null) {
+                CapturedAttributeAccess.copyEntry(captured, entry.source, entry.index);
+            } else {
+                // The builder replaces existing keys even when full, without evaluating dropped suppliers.
+                captured.putSupplied(entry.key.original(), entry.value::resolve);
             }
-            captured.putNormalized(entry.key, entry.value.resolve());
         }
-        if (truncated) {
-            captured.markTruncated();
-        }
+        if (truncated) captured.markTruncated();
+        if (captureTruncated) captured.markCaptureTruncated();
         return captured.build();
     }
 
-    private void add(NormalizedAttributeKey key, PendingValue value) {
-        for (Entry entry : values) {
-            if (entry.key.storageKey().equals(key.storageKey())
-                    && entry.key.original().equals(key.original())) {
-                entry.value = value;
+    private void add(Entry value) {
+        for (int index = 0; index < values.size(); index++) {
+            Entry existing = values.get(index);
+            if (!existing.normalizedCapture() && !value.normalizedCapture()
+                    && existing.key.storageKey().equals(value.key.storageKey())
+                    && existing.key.original().equals(value.key.original())) {
+                values.set(index, value);
                 return;
             }
         }
@@ -49,25 +64,18 @@ final class PendingAttributes {
             truncated = true;
             return;
         }
-        values.add(new Entry(key, value));
+        values.add(value);
     }
 
     void clear() {
         values.clear();
         truncated = false;
+        captureTruncated = false;
     }
 
-    private static NormalizedAttributeKey requireKey(String key) {
-        return AttributeKey.normalize(key, false);
-    }
-
-    private static final class Entry {
-        private final NormalizedAttributeKey key;
-        private PendingValue value;
-
-        private Entry(NormalizedAttributeKey key, PendingValue value) {
-            this.key = key;
-            this.value = value;
+    private record Entry(NormalizedAttributeKey key, PendingValue value, AttributeSet source, int index) {
+        boolean normalizedCapture() {
+            return source != null && CapturedAttributeAccess.normalizedKey(source, index);
         }
     }
 }

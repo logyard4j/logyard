@@ -4,7 +4,7 @@ import java.util.Objects;
 
 /** Reapplies the event's attribute allowance after processors replace or enrich attributes. */
 final class EventAttributeCapture {
-    private static final String TRUNCATED_KEY = "logyard.capture.truncated";
+    private static final String TRUNCATED_KEY = SystemAttributes.CAPTURE_TRUNCATED;
 
     private EventAttributeCapture() {
     }

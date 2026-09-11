@@ -60,7 +60,7 @@ public final class CoreBehaviorTest {
             check(enabled.isDebugEnabled(), "com.acme should inherit DEBUG");
             check(!noisy.isInfoEnabled(), "longest prefix should raise noisy logger to WARN");
             AtomicBoolean evaluated = new AtomicBoolean();
-            noisy.atDebug().argument(() -> {
+            noisy.atDebug().argumentLazy(() -> {
                 evaluated.set(true);
                 return "expensive";
             }).log("not emitted {}");
@@ -117,7 +117,7 @@ public final class CoreBehaviorTest {
             for (int index = 0; index < CaptureLimits.MAX_ATTRIBUTES - 1; index++) {
                 builder.add("field." + index, index);
             }
-            builder.add("discarded", () -> {
+            builder.addLazy("discarded", () -> {
                 discardedSupplier.set(true);
                 return "must-not-run";
             }).log("attributes");

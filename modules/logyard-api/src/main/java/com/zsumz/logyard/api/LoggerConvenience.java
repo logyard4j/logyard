@@ -2,6 +2,7 @@ package com.zsumz.logyard.api;
 
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.CaptureLimits;
+import com.zsumz.logyard.api.event.SystemAttributes;
 
 import java.util.Arrays;
 
@@ -50,7 +51,7 @@ final class LoggerConvenience {
             int retained = Math.min(supplied, CaptureLimits.MAX_ARGUMENTS);
             actual = Arrays.copyOf(arguments, retained);
             if (supplied > retained) {
-                attributes = AttributeSet.systemBuilder(1).put("logyard.arguments.omitted", supplied - retained).build();
+                attributes = AttributeSet.systemBuilder(1).put(SystemAttributes.ARGUMENTS_OMITTED, supplied - retained).build();
             }
         }
         logger.log(level, null, message, actual, attributes, throwable);

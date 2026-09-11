@@ -1,5 +1,7 @@
 package com.zsumz.logyard.output.json.encoding;
 
+import com.zsumz.logyard.api.event.SystemAttributes;
+
 import com.zsumz.logyard.api.event.CaptureLimits;
 
 import java.lang.reflect.Array;
@@ -143,7 +145,7 @@ final class JsonValueWriter {
         if (priorEntries > 0) {
             json.comma();
         }
-        json.field("logyard.output.truncated", true);
+        json.field(SystemAttributes.OUTPUT_TRUNCATED, true);
     }
 
     private void appendArrayTruncation(int priorEntries) {
