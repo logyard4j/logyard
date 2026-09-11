@@ -23,7 +23,11 @@ if [[ "${LOGYARD_RELEASE_SKIP_PACKAGE:-0}" != "1" ]]; then
   "$ROOT/scripts/package"
   "$ROOT/scripts/package-verify"
 fi
-"$ROOT/scripts/zolt-publication-check"
+if "$SIGN"; then
+  "$ROOT/scripts/zolt-publication-check" --signed
+else
+  "$ROOT/scripts/zolt-publication-check"
+fi
 logyard_assemble_release_bundle "$TARGET"
 
 if "$SIGN"; then

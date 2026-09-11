@@ -36,7 +36,8 @@ fail() {
 require_entry() {
   local archive="$1"
   local entry="$2"
-  "$JAR" tf "$archive" | grep -Fxq "$entry" || fail "$(basename "$archive") is missing $entry"
+  # Drain pipeline producers: grep -q can cause a false SIGPIPE failure under pipefail.
+  "$JAR" tf "$archive" | grep -Fx "$entry" >/dev/null || fail "$(basename "$archive") is missing $entry"
 }
 
 find_dependency() {
@@ -77,12 +78,12 @@ for index in "${!members[@]}"; do
     [[ -s "$artifact" ]] || fail "missing or empty artifact: $artifact"
   done
   module_description="$("$JAR" --describe-module --file "$main")"
-  printf '%s\n' "$module_description" | grep -Eq "^${module_name}@${VERSION} automatic$" \
+  printf '%s\n' "$module_description" | grep -Fx "${module_name}@${VERSION} automatic" >/dev/null \
     || fail "$member does not expose automatic module name $module_name"
-  "$JAR" tf "$main" | grep -qE '\.class$' || fail "$member main jar has no classes"
-  "$JAR" tf "$sources" | grep -qE '\.java$' || fail "$member sources jar has no Java sources"
+  "$JAR" tf "$main" | grep -E '\.class$' >/dev/null || fail "$member main jar has no classes"
+  "$JAR" tf "$sources" | grep -E '\.java$' >/dev/null || fail "$member sources jar has no Java sources"
   require_entry "$javadoc" "index.html"
-  if "$JAR" tf "$main" | grep -qE '(^|/)test(s)?/|Test\\.class$'; then
+  if "$JAR" tf "$main" | grep -E '(^|/)test(s)?/|Test\\.class$' >/dev/null; then
     fail "$member main jar contains test classes"
   fi
   main_jars+=("$main")
@@ -108,12 +109,12 @@ while IFS=$'\t' read -r module_path member module_name version artifact_count; d
     [[ -s "$artifact" ]] || fail "missing or empty Maven artifact: $artifact"
   done
   module_description="$("$JAR" --describe-module --file "$main")"
-  printf '%s\n' "$module_description" | grep -Eq "^${module_name}@${VERSION} automatic$" \
+  printf '%s\n' "$module_description" | grep -Fx "${module_name}@${VERSION} automatic" >/dev/null \
     || fail "$member does not expose automatic module name $module_name"
-  "$JAR" tf "$main" | grep -qE '\.class$' || fail "$member main jar has no classes"
-  "$JAR" tf "$sources" | grep -qE '\.java$' || fail "$member sources jar has no Java sources"
+  "$JAR" tf "$main" | grep -E '\.class$' >/dev/null || fail "$member main jar has no classes"
+  "$JAR" tf "$sources" | grep -E '\.java$' >/dev/null || fail "$member sources jar has no Java sources"
   require_entry "$javadoc" "index.html"
-  if "$JAR" tf "$main" | grep -qE '(^|/)test(s)?/|Test\\.class$'; then
+  if "$JAR" tf "$main" | grep -E '(^|/)test(s)?/|Test\\.class$' >/dev/null; then
     fail "$member main jar contains test classes"
   fi
 done < <(logyard_maven_publication_records)

@@ -18,6 +18,10 @@ JAVA_HOME="$ZOLT_JAVA_HOME" PATH="$ZOLT_JAVA_HOME/bin:$PATH" "$ZOLT" package \
   --no-progress \
   --color never
 
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" \
+  JAVA_HOME="$ZOLT_JAVA_HOME" PATH="$ZOLT_JAVA_HOME/bin:$PATH" \
+  python3 -m verify_tools.publications "$ROOT" "$ZOLT"
+
 logyard_stage_native_repository "$STAGING"
 
 rm -rf "$MAVEN_CACHE"

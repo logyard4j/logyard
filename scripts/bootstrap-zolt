@@ -31,9 +31,7 @@ if [[ -x "$BIN_ROOT/zolt" ]]; then
       && grep -aq 'zolt-bootstrap.jar' "$BIN_ROOT/zolt"; then
     printf '%s\n' "$ZOLT_COMMIT" > "$COMMIT_FILE"
     printf 'Using installed Zolt %s at %s.\n' "$installed_version" "$BIN_ROOT/zolt"
-    exit 0
-  fi
-  if [[ -n "$installed_source_commit" ]] && grep -aq 'zolt-bootstrap.jar' "$BIN_ROOT/zolt"; then
+  elif [[ -n "$installed_source_commit" ]] && grep -aq 'zolt-bootstrap.jar' "$BIN_ROOT/zolt"; then
     printf 'Upgrading project-managed Zolt from commit %s to %s.\n' "$installed_source_commit" "$ZOLT_COMMIT"
   elif [[ "$installed_version" != *"${ZOLT_COMMIT:0:12}"* ]]; then
     fail "Zolt $installed_version is installed at $BIN_ROOT/zolt but is not managed by this bootstrap; expected commit ${ZOLT_COMMIT:0:12}"
@@ -108,7 +106,7 @@ awk '
     gsub(/"/, "", jar)
   }
   /^jarSha256 = / {
-    if (scope != "test" && jar != "") {
+    if (scope != "test" && scope != "provided" && jar != "") {
       print jar
     }
   }

@@ -7,6 +7,17 @@ source "$ROOT/scripts/lib/logyard-release.sh"
 ZOLT="$(logyard_require_zolt)"
 ZOLT_JAVA_HOME="$(logyard_jdk_home)"
 VERSION="$(logyard_release_version)"
+if [[ $# -eq 0 ]]; then
+  "$ROOT/scripts/package-verify"
+  PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" \
+    JAVA_HOME="$ZOLT_JAVA_HOME" PATH="$ZOLT_JAVA_HOME/bin:$PATH" \
+    python3 -m verify_tools.publications "$ROOT" "$ZOLT" --central
+  exit 0
+fi
+[[ $# -eq 1 && "$1" == "--signed" ]] || {
+  printf 'usage: %s [--signed]\n' "$0" >&2
+  exit 2
+}
 mkdir -p "$ROOT/target"
 REPORT="$(mktemp "$ROOT/target/zolt-central-readiness.XXXXXX")"
 

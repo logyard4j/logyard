@@ -9,7 +9,7 @@ logyard_release_fail() {
 }
 
 logyard_zolt() {
-  printf '%s\n' "${ZOLT:-$HOME/.zolt/bin/zolt}"
+  printf '%s\n' "${ZOLT:-$(command -v zolt || printf '%s' "$HOME/.zolt/bin/zolt")}"
 }
 
 logyard_require_zolt() {
