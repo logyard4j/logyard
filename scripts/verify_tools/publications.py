@@ -10,6 +10,12 @@ import tomllib
 from pathlib import Path
 
 
+def zolt_command(zolt: str, *arguments: str) -> tuple[str, ...]:
+    if sys.platform == "win32" and Path(zolt).suffix.lower() not in {".bat", ".cmd", ".com", ".exe"}:
+        return ("bash", zolt, *arguments)
+    return (zolt, *arguments)
+
+
 def unsigned_manifest(content: str) -> str:
     config = tomllib.loads(content)
     if "publish" not in config:
@@ -71,8 +77,9 @@ def prepare(root: Path, zolt: str, central: bool = False) -> None:
             for name in ("src", "target"):
                 if (source / name).exists():
                     shutil.copytree(source / name, destination / name)
-        command = (zolt, "publish", "--directory", str(staged), "--workspace", "--all",
-                   "--dry-run", "--no-progress", "--color", "never", *(("--central",) if central else ()))
+        command = zolt_command(zolt, "publish", "--directory", str(staged), "--workspace", "--all",
+                               "--dry-run", "--no-progress", "--color", "never",
+                               *(("--central",) if central else ()))
         result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=120)
         if central and result.returncode == 1:
             try:
