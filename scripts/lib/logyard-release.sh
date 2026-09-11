@@ -130,10 +130,26 @@ logyard_group_path() {
   printf '%s\n' "$1" | tr '.' '/'
 }
 
+logyard_native_path() {
+  case "$(uname -s)" in
+    CYGWIN*|MINGW*|MSYS*)
+      command -v cygpath >/dev/null 2>&1 \
+        || logyard_release_fail 'cygpath is required for Windows build paths'
+      cygpath -am "$1"
+      ;;
+    *) printf '%s\n' "$1" ;;
+  esac
+}
+
 logyard_file_uri() {
-  local directory="$1"
+  local directory
+  directory="$(logyard_native_path "$1")"
   [[ "$directory" != *' '* ]] || logyard_release_fail "Maven repository paths cannot contain spaces: $directory"
-  printf 'file://%s\n' "$directory"
+  case "$directory" in
+    [[:alpha:]]:/*) printf 'file:///%s\n' "$directory" ;;
+    /*) printf 'file://%s\n' "$directory" ;;
+    *) logyard_release_fail "Maven repository path is not absolute: $directory" ;;
+  esac
 }
 
 logyard_require_file() {

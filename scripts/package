@@ -10,6 +10,8 @@ members="$(logyard_publish_members | paste -sd, -)"
 STAGING="$ROOT/target/maven-build-repository"
 MAVEN_CACHE="$ROOT/target/maven-package-repository"
 STAGING_URI="$(logyard_file_uri "$STAGING")"
+MAVEN_CACHE_PATH="$(logyard_native_path "$MAVEN_CACHE")"
+QUARKUS_POM="$(logyard_native_path "$ROOT/extensions/logyard-quarkus/pom.xml")"
 
 JAVA_HOME="$ZOLT_JAVA_HOME" PATH="$ZOLT_JAVA_HOME/bin:$PATH" "$ZOLT" package \
   --directory "$ROOT" \
@@ -29,7 +31,7 @@ mkdir -p "$MAVEN_CACHE"
 cp -R "$STAGING/." "$MAVEN_CACHE/"
 
 mvn --batch-mode --no-transfer-progress \
-  -f "$ROOT/extensions/logyard-quarkus/pom.xml" \
-  -Dmaven.repo.local="$MAVEN_CACHE" \
+  -f "$QUARKUS_POM" \
+  -Dmaven.repo.local="$MAVEN_CACHE_PATH" \
   -Dlogyard.repository="$STAGING_URI" \
   package

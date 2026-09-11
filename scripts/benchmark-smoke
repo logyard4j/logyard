@@ -7,6 +7,8 @@ source "$ROOT/scripts/lib/logyard-release.sh"
 ZOLT="$(logyard_require_zolt)"
 TARGET="$ROOT/target/benchmark-smoke"
 MAVEN_REPOSITORY="$TARGET/maven-repository"
+MAVEN_REPOSITORY_PATH="$(logyard_native_path "$MAVEN_REPOSITORY")"
+RELEASE_BUNDLE_URI="$(logyard_file_uri "$ROOT/target/release-bundle")"
 CORE_RESULTS="$TARGET/core.json"
 QUARKUS_RESULTS="$TARGET/quarkus.json"
 MANAGEMENT_RESULTS="$TARGET/management.json"
@@ -32,8 +34,8 @@ PYTHONPATH="$ROOT/scripts" python3 -m benchmark_tools.delivery "$CORE_RESULTS" "
 rm -rf "$MAVEN_REPOSITORY"
 # Resolve the extension under test from the verified release bundle.
 mvn --batch-mode --no-transfer-progress \
-  -Dmaven.repo.local="$MAVEN_REPOSITORY" \
-  -Dlogyard.repository="file://$ROOT/target/release-bundle" \
+  -Dmaven.repo.local="$MAVEN_REPOSITORY_PATH" \
+  -Dlogyard.repository="$RELEASE_BUNDLE_URI" \
   -DskipTests \
   -f extensions/logyard-quarkus/pom.xml \
   -Pbenchmarks \
