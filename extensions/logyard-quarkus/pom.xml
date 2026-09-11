@@ -77,15 +77,15 @@
     </developers>
 
     <scm>
-        <connection>scm:git:https://github.com/zsumz/logyard.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com/zsumz/logyard.git</developerConnection>
+        <connection>scm:git:https://github.com/logyard4j/logyard.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/logyard4j/logyard.git</developerConnection>
         <tag>v${project.version}</tag>
-        <url>https://github.com/zsumz/logyard</url>
+        <url>https://github.com/logyard4j/logyard</url>
     </scm>
 
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/zsumz/logyard/issues</url>
+        <url>https://github.com/logyard4j/logyard/issues</url>
     </issueManagement>
 
     <build>

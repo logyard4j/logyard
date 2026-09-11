@@ -37,10 +37,10 @@ url = "https://logyard4j.com"
 license = "Apache-2.0"
 licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
 developers = ["zsumz <shawn@zsumz.com>"]
-scm = "https://github.com/zsumz/logyard"
-scmConnection = "scm:git:https://github.com/zsumz/logyard.git"
-scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"
-issues = "https://github.com/zsumz/logyard/issues"
+scm = "https://github.com/logyard4j/logyard"
+scmConnection = "scm:git:https://github.com/logyard4j/logyard.git"
+scmDeveloperConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"
+issues = "https://github.com/logyard4j/logyard/issues"
 
 [package.manifest]
 "Automatic-Module-Name" = "com.logyard4j.core"

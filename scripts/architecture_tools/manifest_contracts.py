@@ -72,9 +72,9 @@ def _check_artifact_contracts(root: Path, state: CheckState) -> None:
     required_fragments = (
         'mode = "thin"', "sources = true", "javadoc = true", 'license = "Apache-2.0"',
         'licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"', 'developers = ["zsumz <shawn@zsumz.com>"]',
-        'url = "https://logyard4j.com"', 'scm = "https://github.com/zsumz/logyard"',
-        'scmConnection = "scm:git:https://github.com/zsumz/logyard.git"', 'scmDeveloperConnection = "scm:git:ssh://git@github.com/zsumz/logyard.git"',
-        'issues = "https://github.com/zsumz/logyard/issues"', 'artifacts = ["main"]', '[publish.signing]',
+        'url = "https://logyard4j.com"', 'scm = "https://github.com/logyard4j/logyard"',
+        'scmConnection = "scm:git:https://github.com/logyard4j/logyard.git"', 'scmDeveloperConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"',
+        'issues = "https://github.com/logyard4j/logyard/issues"', 'artifacts = ["main"]', '[publish.signing]',
         'keyId = "EC8E4D26598A0373"', '[publish.central]', 'tokenEnv = "ZOLT_CENTRAL_TOKEN"', 'publishingType = "user-managed"',
     )
     for project_path, (expected_module, supported_packages) in ARTIFACT_CONTRACTS.items():
