@@ -35,6 +35,7 @@ final class Log4j2Loggers {
             return;
         }
         if (!kind.equals(tag)) {
+            model.delivery.put("mode", "async");
             model.note("<" + tag + "> was treated as <" + kind + ">: Logyard delivery is asynchronous per"
                     + " output, so there is no separate asynchronous logger");
         }

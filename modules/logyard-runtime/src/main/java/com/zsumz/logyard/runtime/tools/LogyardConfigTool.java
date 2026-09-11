@@ -60,9 +60,9 @@ public final class LogyardConfigTool {
                     ToolArguments.parse(args, 1, List.of("profile", "logger", "key")), out);
             case "schema" -> ConfigSchemaCommand.run(ToolArguments.parse(args, 1, List.of()), out);
             case "migrate-logback" -> LogbackMigrateCommand.run(
-                    ToolArguments.parse(args, 1, List.of("output")), out, err);
+                    ToolArguments.parse(args, 1, List.of("output", "strict")), out, err);
             case "migrate-log4j2" -> Log4j2MigrateCommand.run(
-                    ToolArguments.parse(args, 1, List.of("output")), out, err);
+                    ToolArguments.parse(args, 1, List.of("output", "strict")), out, err);
             case "help", "--help", "-h" -> {
                 usage(out);
                 yield 0;
@@ -92,11 +92,11 @@ public final class LogyardConfigTool {
                   schema
                       Print the machine-readable configuration key vocabulary as JSON.
 
-                  migrate-logback <logback.xml> [--output <file>]
-                  migrate-log4j2 <log4j2.xml> [--output <file>]
+                  migrate-logback <logback.xml> [--output <file>] [--strict]
+                  migrate-log4j2 <log4j2.xml> [--output <file>] [--strict]
                       Convert an existing configuration to logyard.toml, reporting every
-                      construct that has no equivalent.
+                      construct that has no equivalent. Strict mode writes only exact conversions.
 
-                Exit codes: 0 success, 1 invalid configuration, 2 usage or I/O failure.""");
+                Exit codes: 0 success, 1 invalid configuration, 2 usage or I/O failure, 3 strict migration refused.""");
     }
 }

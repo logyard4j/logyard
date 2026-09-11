@@ -148,10 +148,10 @@ final class ExtensionConfigurationTest {
                 schema = 1
                 [formatters.bad]
                 type = "template"
-                template = "{logger}"
+                template = "{unknown}"
                 [outputs.console]
                 type = "console"
-                """, "bad-template.toml", "must contain {message}");
+                """, "bad-template.toml", "unknown placeholder");
         expectFailure("""
                 schema = 1
                 [filters.bad]

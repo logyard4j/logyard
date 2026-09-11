@@ -27,7 +27,14 @@ final class ToolArguments {
                 if (!allowedFlags.contains(name)) {
                     throw new IllegalArgumentException("unknown option '--" + name + "'");
                 }
-                if (index + 1 >= args.length) {
+                if (result.flags.containsKey(name)) {
+                    throw new IllegalArgumentException("duplicate option '--" + name + "'");
+                }
+                if (name.equals("strict")) {
+                    result.flags.put(name, "true");
+                    continue;
+                }
+                if (index + 1 >= args.length || args[index + 1].startsWith("--")) {
                     throw new IllegalArgumentException("option '--" + name + "' requires a value");
                 }
                 result.flags.put(name, args[++index]);

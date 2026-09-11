@@ -12,6 +12,6 @@ final class LogbackMigrateCommand {
         LogbackMigration.Result result =
                 LogbackMigration.migrate(MigrationEmitter.read(arguments, "logback.xml file"));
         return MigrationEmitter.emit(
-                result.toml(), result.notes(), result.valid(), result.validationError(), arguments, out, err);
+                result.toml(), result.notes(), result.valid(), result.validationError(), result.outcome(), arguments, out, err);
     }
 }

@@ -29,7 +29,6 @@ final class TextTemplatePropertyTest {
     private static GeneratedTemplate generate(SplittableRandom random) {
         StringBuilder source = new StringBuilder();
         StringBuilder rendered = new StringBuilder();
-        boolean containsMessage = false;
         int segments = random.nextInt(1, 33);
         for (int index = 0; index < segments; index++) {
             switch (random.nextInt(4)) {
@@ -46,13 +45,8 @@ final class TextTemplatePropertyTest {
                     String placeholder = PLACEHOLDERS.get(random.nextInt(PLACEHOLDERS.size()));
                     source.append('{').append(placeholder).append('}');
                     rendered.append('<').append(placeholder).append('>');
-                    containsMessage |= "message".equals(placeholder);
                 }
             }
-        }
-        if (!containsMessage) {
-            source.append("{message}");
-            rendered.append("<message>");
         }
         return new GeneratedTemplate(source.toString(), rendered.toString());
     }

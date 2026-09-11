@@ -28,23 +28,23 @@ final class LogbackAppenders {
     private static void console(String name, Element appender, LogbackModel model) {
         Map<String, Object> output = new LinkedHashMap<>();
         output.put("type", "console");
+        output.put("color", new LinkedHashMap<>(Map.of("mode", "never")));
+        output.put("exception", new LinkedHashMap<>(Map.of("style", "full")));
         String target = model.substitute(LogbackXml.childText(appender, "target"));
         output.put("stream", "System.err".equalsIgnoreCase(target) ? "stderr" : "stdout");
         if (target != null && !target.equalsIgnoreCase("System.out") && !target.equalsIgnoreCase("System.err")) {
-            model.note("appender '" + name + "': unsupported console target '" + target + "'; review stdout fallback");
+            model.unsupported("appender '" + name + "': unsupported console target '" + target + "'; review stdout fallback");
         }
         String pattern = encoderPattern(appender, model);
         if (pattern != null) {
-            LogbackPatternTranslator.Translation translation = LogbackPatternTranslator.translate(pattern);
+            PatternTranslation translation = LogbackPatternTranslator.translate(pattern);
             String formatterName = model.outputName(name) + "-format";
             model.formatters.put(formatterName, new LinkedHashMap<>(
                     Map.of("type", "template", "template", translation.template())));
             output.put("formatter", formatterName);
-            if (!translation.dropped().isEmpty()) {
-                model.note("appender '" + name + "': pattern conversions "
-                        + String.join(", ", translation.dropped())
-                        + " have no template equivalent and were dropped");
-            }
+            translation.report(name, model);
+        } else {
+            model.unsupported("appender '" + name + "': a supported explicit pattern is required; review the draft formatter");
         }
         threshold(appender, output, model, name);
         model.outputs.put(model.outputName(name), output);
@@ -109,6 +109,7 @@ final class LogbackAppenders {
     }
 
     private static void async(String name, Element appender, LogbackModel model) {
+        model.delivery.put("mode", "async");
         List<Element> references = LogbackXml.children(appender, "appender-ref");
         for (Element reference : references) {
             model.appenderAliases.put(name, reference.getAttribute("ref"));

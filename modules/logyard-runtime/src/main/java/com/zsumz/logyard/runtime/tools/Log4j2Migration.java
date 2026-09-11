@@ -23,7 +23,7 @@ final class Log4j2Migration {
     /** Component name pattern accepted by {@code service.name}. */
     private static final String SERVICE_NAME = "[A-Za-z][A-Za-z0-9_.-]{0,63}";
 
-    record Result(String toml, List<String> notes, boolean valid, String validationError) {
+    record Result(String toml, List<String> notes, boolean valid, String validationError, MigrationOutcome outcome) {
     }
 
     private final LogbackModel model = new LogbackModel();
@@ -37,6 +37,7 @@ final class Log4j2Migration {
             throw new IllegalArgumentException(
                     "root element must be <Configuration>, found <" + root.getTagName() + ">");
         }
+        MigrationSupport.audit(root, model, false);
         properties(root);
         header(root);
         unsupported(root);
@@ -44,7 +45,8 @@ final class Log4j2Migration {
         Log4j2Loggers.convert(root, model);
         String body = TomlDocumentWriter.write(model.toDocument());
         String validationError = validate(body);
-        return new Result(document(body), List.copyOf(model.notes), validationError == null, validationError);
+        return new Result(document(body), List.copyOf(model.notes), validationError == null, validationError,
+                validationError == null ? model.outcome() : MigrationOutcome.UNSUPPORTED);
     }
 
     private String document(String body) {

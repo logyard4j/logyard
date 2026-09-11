@@ -89,10 +89,14 @@ Use the same command with these arguments:
 | `explain logyard.toml --key delivery.capacity` | Selected input value and its origin |
 | `explain logyard.toml --logger com.example.Checkout` | Resolved level, outputs, enrichers, and filters |
 | `schema` | Accepted configuration keys as JSON |
-| `migrate-logback logback.xml --output logyard.toml` | Convert supported Logback XML settings |
-| `migrate-log4j2 log4j2.xml --output logyard.toml` | Convert supported Log4j 2 XML settings |
+| `migrate-logback logback.xml --output logyard.toml --strict` | Convert supported Logback XML settings |
+| `migrate-log4j2 log4j2.xml --output logyard.toml --strict` | Convert supported Log4j 2 XML settings |
 
-`explain` shows environment expressions as written. Migration never overwrites an existing file. Review its notes: additive routing, custom plugins, calendar rollover, and lookup semantics may need manual changes. Exit codes are 0 for success, 1 for invalid configuration, and 2 for usage or I/O errors.
+`explain` shows environment expressions as written. Migration reports `EXACT`, `LOSSY`, or `UNSUPPORTED` on stderr. `--strict` writes only exact conversions and never overwrites a file. Omit it to generate a draft with diagnostics for manual review.
+
+Exact conversion covers explicit console patterns, destinations, supported thresholds, and non-additive routes. Width/date options are lossy. MDC selection, custom plugins, file layouts, async wrappers, and other unhandled XML are unsupported in strict mode. MDC patterns never enable capture or expand into all fields. Synchronous source appenders stay synchronous; review delivery before switching to async. Logyard's event bounds, sanitization, and exception rendering still apply.
+
+Exit codes: 0 valid output (including a non-strict draft), 1 invalid configuration, 2 usage or I/O error, 3 strict refusal. Refusal writes no TOML to stdout or the requested file.
 
 ## Service identity
 
@@ -162,7 +166,7 @@ color = { mode = "auto", theme = "ember" }
 | `exception.style` | `compact` | `compact`, `full` |
 | `exception.common_frames` | `collapse` | `collapse`, `show` |
 
-Template fields: `{timestamp}`, `{level}`, `{logger}`, `{thread}`, `{event}`, `{message}`, and `{fields}`.
+Template fields: `{timestamp}`, `{level}`, `{logger}`, `{thread}`, `{event}`, `{message}`, and `{fields}`. Any field may be omitted; `{level} approved-marker` never renders the message.
 
 Custom themes use `[themes.NAME]` with styles for `timestamp`, `logger`, `thread`, `event`, `message`, `field_key`, `field_value`, `punctuation`, `exception`, and `stack_frame`. Each style accepts `fg`, `bg`, `bold`, `dim`, `italic`, and `underline`; level styles live under `[themes.NAME.level]`.
 

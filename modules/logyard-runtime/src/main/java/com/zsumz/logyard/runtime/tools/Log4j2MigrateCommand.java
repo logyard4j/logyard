@@ -12,6 +12,6 @@ final class Log4j2MigrateCommand {
         Log4j2Migration.Result result =
                 Log4j2Migration.migrate(MigrationEmitter.read(arguments, "log4j2.xml file"));
         return MigrationEmitter.emit(
-                result.toml(), result.notes(), result.valid(), result.validationError(), arguments, out, err);
+                result.toml(), result.notes(), result.valid(), result.validationError(), result.outcome(), arguments, out, err);
     }
 }

@@ -25,15 +25,30 @@ final class LogbackModel {
     private final Map<String, String> outputNames = new LinkedHashMap<>();
     private final Set<String> allocatedNames = new HashSet<>();
     final List<String> notes = new ArrayList<>();
+    private MigrationOutcome outcome = MigrationOutcome.EXACT;
     private int remainingExpansion = MigrationProperties.MAX_CHARACTERS;
 
+    LogbackModel() {
+        delivery.put("mode", "sync");
+    }
+
     void note(String note) {
+        if (outcome == MigrationOutcome.EXACT) outcome = MigrationOutcome.LOSSY;
         String bounded = EmergencyText.sanitize(note, 1_024);
         if (notes.size() < 128 && !notes.contains(bounded)) {
             notes.add(bounded);
         } else if (notes.size() == 128) {
             notes.add("additional migration notes omitted; review the original configuration");
         }
+    }
+
+    void unsupported(String note) {
+        outcome = MigrationOutcome.UNSUPPORTED;
+        note(note);
+    }
+
+    MigrationOutcome outcome() {
+        return outcome;
     }
 
     /** Substitutes bounded local properties while retaining environment expressions. */

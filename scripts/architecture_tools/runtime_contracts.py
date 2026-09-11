@@ -101,7 +101,7 @@ def _check_failure_boundaries(root: Path, state: CheckState) -> None:
 def _check_bound_contracts(root: Path, state: CheckState) -> None:
     contracts = {
         "modules/logyard-core/src/main/java/com/zsumz/logyard/core/delivery/CompositeSink.java": ("FailureIsolation.prepareForRecovery(", "ComponentInvocationBoundary.exception("),
-        "modules/logyard-api/src/main/java/com/zsumz/logyard/api/format/TextTemplate.java": ("MAX_TEMPLATE_CHARS = 4_096", "MAX_PLACEHOLDERS = 64", "text template must contain {message}"),
+        "modules/logyard-api/src/main/java/com/zsumz/logyard/api/format/TextTemplate.java": ("MAX_TEMPLATE_CHARS = 4_096", "MAX_PLACEHOLDERS = 64", "text template must not be blank"),
         "modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/config/ProviderConfiguration.java": ("MAX_ENTRIES = 64", "MAX_TEXT_CHARS = 4_096", "MAX_LIST_ITEMS = 128"),
         "modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/extension/discovery/NamedProviderDiscovery.java": ("MAX_PROVIDERS = 64", "duplicate Logyard"),
         "modules/logyard-api/src/main/java/com/zsumz/logyard/api/spi/encoding/EventEncoderBoundary.java": ("MAX_ENCODED_UTF8_BYTES = 1_048_576", "record.length() > MAX_ENCODED_UTF8_BYTES", "must return exactly one record without line breaks"),

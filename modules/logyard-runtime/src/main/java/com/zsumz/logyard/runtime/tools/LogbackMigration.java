@@ -13,7 +13,7 @@ import java.util.Map;
 
 /** Converts one Logback XML configuration into Logyard TOML with an honest loss report. */
 final class LogbackMigration {
-    record Result(String toml, List<String> notes, boolean valid, String validationError) {
+    record Result(String toml, List<String> notes, boolean valid, String validationError, MigrationOutcome outcome) {
     }
 
     private final LogbackModel model = new LogbackModel();
@@ -26,6 +26,7 @@ final class LogbackMigration {
         if (!root.getTagName().equals("configuration")) {
             throw new IllegalArgumentException("root element must be <configuration>, found <" + root.getTagName() + ">");
         }
+        MigrationSupport.audit(root, model, true);
         properties(root);
         header(root);
         for (Element appender : LogbackXml.children(root, "appender")) {
@@ -44,7 +45,8 @@ final class LogbackMigration {
             toml.append("# NOTE: ").append(note).append('\n');
         }
         toml.append('\n').append(body);
-        return new Result(toml.toString(), List.copyOf(model.notes), validationError == null, validationError);
+        return new Result(toml.toString(), List.copyOf(model.notes), validationError == null, validationError,
+                validationError == null ? model.outcome() : MigrationOutcome.UNSUPPORTED);
     }
 
     private void properties(Element root) {

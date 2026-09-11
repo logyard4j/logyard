@@ -44,7 +44,8 @@ final class TemplateAndJsonVerification implements VerificationCase {
                 AttributeSet.of("tenant", "acme")));
         require(formatted.contains("[INFO] hello world tenant=acme"), "validated formatter did not render expected fields");
         expect(IllegalArgumentException.class, () -> TextTemplate.compile("{unknown} {message}"));
-        expect(IllegalArgumentException.class, () -> TextTemplate.compile("{level}"));
+        require("INFO approved".equals(TextTemplate.compile("{level} approved").render(name -> "INFO")),
+                "templates must preserve deliberate message omission");
     }
 
     private static void verifyJsonProfile() {

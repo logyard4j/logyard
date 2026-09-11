@@ -16,7 +16,7 @@ final class TemplateTextFormatterTest {
     @Test
     void validatesTheNonExecutableTemplateGrammar() {
         assertThrows(IllegalArgumentException.class,
-                () -> TextTemplate.compile("{logger}"));
+                () -> TextTemplate.compile(" "));
         assertThrows(IllegalArgumentException.class,
                 () -> TextTemplate.compile("{message} {unknown}"));
         assertThrows(IllegalArgumentException.class,
@@ -25,6 +25,20 @@ final class TemplateTextFormatterTest {
                 () -> TextTemplate.compile("{message}\n"));
         assertThrows(IllegalArgumentException.class,
                 () -> TextTemplate.compile("{message}".repeat(65)));
+    }
+
+    @Test
+    void omittedMessageAndFieldsAreNeverResolvedOrRendered() {
+        TextTemplate template = TextTemplate.compile("{level} approved-marker");
+        assertEquals("INFO approved-marker", template.render(name -> {
+            assertEquals("level", name);
+            return "INFO";
+        }));
+        assertEquals("INFO approved-marker", new TemplateTextFormatter(template, ZoneOffset.UTC)
+                .format(event(AttributeSet.builder().put("private", "secret").build())));
+        assertEquals("approved", TextTemplate.compile("approved").render(name -> {
+            throw new AssertionError("literal templates must not resolve event data");
+        }));
     }
 
     @Test

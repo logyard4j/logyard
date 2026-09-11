@@ -4,48 +4,34 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Best-effort translation of Log4j2 PatternLayout patterns to Logyard console templates.
- *
- * <p>Log4j2 and Logback spell their conversions differently, so this table is deliberately
- * separate from {@link LogbackPatternTranslator}. Conversions that only decorate a nested
- * pattern — colouring and truncation — keep the nested pattern and report the decoration,
- * because Logyard styles the console through themes instead of the format string.</p>
- */
+/** Translates supported Log4j2 patterns and reports every discarded option or wrapper. */
 final class Log4j2PatternTranslator {
-    /** Conversions that wrap a nested pattern Logyard renders without the decoration. */
+    /** Unsupported wrappers whose inner pattern can still be shown in a reviewable draft. */
     private static final Set<String> WRAPPERS = Set.of("highlight", "style", "notEmpty", "encode", "maxLen");
     private static final int MAX_NESTING = 8;
 
     private Log4j2PatternTranslator() {
     }
 
-    record Translation(String template, List<String> dropped) {
+    static PatternTranslation translate(String pattern) {
+        List<String> losses = new ArrayList<>();
+        List<String> unsupported = new ArrayList<>();
+        if (!pattern.endsWith("%n")) losses.add("a final record newline was added by the console output");
+        String template = convert(pattern, losses, unsupported, 0);
+        return new PatternTranslation(template, losses, unsupported);
     }
 
-    static Translation translate(String pattern) {
-        List<String> dropped = new ArrayList<>();
-        String template = convert(pattern, dropped, 0).replaceAll(" +", " ").trim();
-        if (!template.contains("{message}")) {
-            template = template.isEmpty() ? "{timestamp} {level} {logger} {message}" : template + " {message}";
-        }
-        return new Translation(template, dropped);
-    }
-
-    private static String convert(String pattern, List<String> dropped, int depth) {
+    private static String convert(String pattern, List<String> losses, List<String> unsupported, int depth) {
         StringBuilder template = new StringBuilder();
         int index = 0;
         while (index < pattern.length()) {
             char character = pattern.charAt(index);
             if (character == '%') {
-                index = conversion(pattern, index + 1, template, dropped, depth);
+                index = conversion(pattern, index + 1, template, losses, unsupported, depth);
                 continue;
             }
-            if (character == '{' || character == '}') {
-                dropped.add(String.valueOf(character));
-            } else {
-                template.append(character);
-            }
+            template.append(character);
+            if (character == '{' || character == '}') template.append(character);
             index++;
         }
         return template.toString();
@@ -53,7 +39,8 @@ final class Log4j2PatternTranslator {
 
     /** Consumes one conversion starting after its {@code %} and returns the next index. */
     private static int conversion(
-            String pattern, int start, StringBuilder template, List<String> dropped, int depth) {
+            String pattern, int start, StringBuilder template,
+            List<String> losses, List<String> unsupported, int depth) {
         if (start < pattern.length() && pattern.charAt(start) == '%') {
             template.append('%');
             return start + 1;
@@ -74,23 +61,32 @@ final class Log4j2PatternTranslator {
             groups.add(pattern.substring(index + 1, closing < 0 ? pattern.length() : closing));
             index = closing < 0 ? pattern.length() : closing + 1;
         }
-        append(name, groups, template, dropped, depth);
+        String token = pattern.substring(start - 1, index);
+        if (nameStart != start || !groups.isEmpty()) losses.add(token + ": width or options were not preserved");
+        if (name.equals("n") && index != pattern.length()) losses.add("embedded %n was dropped; templates render one line");
+        append(name, groups, token, template, losses, unsupported, depth);
         return index;
     }
 
     private static void append(
-            String name, List<String> groups, StringBuilder template, List<String> dropped, int depth) {
+            String name, List<String> groups, String token, StringBuilder template,
+            List<String> losses, List<String> unsupported, int depth) {
         String placeholder = placeholder(name);
         if (placeholder != null) {
             template.append(placeholder);
+            if (placeholder.equals("{timestamp}")) losses.add(token + ": timestamp format becomes Logyard ISO-8601");
+            if (placeholder.isEmpty() && !name.equals("n")) {
+                losses.add(token + ": exception rendering uses the Logyard output policy");
+            }
             return;
         }
-        if (name.isEmpty()) {
-            return;
+        if (name.equals("X") || name.equals("mdc") || name.equals("MDC")) {
+            unsupported.add(token + ": context selection is unsupported; no fields or MDC capture were added");
+        } else {
+            unsupported.add(token + " has no template equivalent and was dropped");
         }
-        dropped.add(WRAPPERS.contains(name) ? "%" + name + " (decoration)" : "%" + name);
         if (WRAPPERS.contains(name) && !groups.isEmpty() && depth < MAX_NESTING) {
-            template.append(convert(groups.getFirst(), dropped, depth + 1));
+            template.append(convert(groups.getFirst(), losses, unsupported, depth + 1));
         }
     }
 
@@ -114,7 +110,6 @@ final class Log4j2PatternTranslator {
             case "c", "logger" -> "{logger}";
             case "m", "msg", "message" -> "{message}";
             case "t", "tn", "thread", "threadName" -> "{thread}";
-            case "X", "mdc", "MDC" -> "{fields}";
             case "n", "ex", "exception", "throwable",
                  "xEx", "xThrowable", "rEx", "rThrowable" -> "";
             default -> null;

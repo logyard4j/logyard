@@ -33,6 +33,7 @@ final class MigrationEmitter {
             List<String> notes,
             boolean valid,
             String validationError,
+            MigrationOutcome outcome,
             ToolArguments arguments,
             PrintStream out,
             PrintStream err) throws IOException {
@@ -40,11 +41,16 @@ final class MigrationEmitter {
         if (encoded.length > MigrationProperties.MAX_CHARACTERS) {
             throw new IllegalArgumentException("generated configuration exceeds 1MiB");
         }
+        err.println("MIGRATION: " + outcome);
         for (String note : notes) {
             err.println("NOTE: " + note);
         }
         if (!valid) {
             err.println("WARNING: the generated configuration failed validation: " + validationError);
+        }
+        if (arguments.flag("strict") != null && outcome != MigrationOutcome.EXACT) {
+            err.println("REFUSED: strict migration requires an exact conversion; no configuration was written");
+            return 3;
         }
         String output = arguments.flag("output");
         if (output == null) {

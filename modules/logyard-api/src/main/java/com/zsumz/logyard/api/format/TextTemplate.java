@@ -14,7 +14,8 @@ import java.util.function.Function;
  * <p>Supported placeholders are {@code timestamp}, {@code level}, {@code logger},
  * {@code thread}, {@code event}, {@code message}, and {@code fields}. Literal braces
  * are written as <code>{{</code> and <code>}}</code>. Templates have no conditionals,
- * expressions, reflection, or arbitrary field lookup.</p>
+ * expressions, reflection, or arbitrary field lookup. Only named placeholders are
+ * resolved; templates may deliberately omit the message or contain only literal text.</p>
  */
 public final class TextTemplate {
     /** Maximum UTF-16 characters accepted in a template source. */
@@ -55,7 +56,6 @@ public final class TextTemplate {
         List<Segment> segments = new ArrayList<>();
         StringBuilder literal = new StringBuilder();
         int placeholders = 0;
-        boolean message = false;
         int cursor = 0;
         while (cursor < source.length()) {
             char current = source.charAt(cursor);
@@ -79,7 +79,6 @@ public final class TextTemplate {
                     throw new IllegalArgumentException(
                             "text template contains more than " + MAX_PLACEHOLDERS + " placeholders");
                 }
-                message |= "message".equals(name);
                 segments.add(new Segment(null, name));
                 cursor = closing + 1;
                 continue;
@@ -96,9 +95,6 @@ public final class TextTemplate {
             cursor++;
         }
         flushLiteral(segments, literal);
-        if (!message) {
-            throw new IllegalArgumentException("text template must contain {message}");
-        }
         return new TextTemplate(source, segments);
     }
 

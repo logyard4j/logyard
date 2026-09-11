@@ -39,8 +39,13 @@ final class Log4j2Appenders {
         String context = "appender '" + name + "'";
         Map<String, Object> output = new LinkedHashMap<>();
         output.put("type", "console");
+        output.put("color", new LinkedHashMap<>(Map.of("mode", "never")));
+        output.put("exception", new LinkedHashMap<>(Map.of("style", "full")));
         String target = Log4j2Xml.attribute(appender, "target");
-        output.put("stream", target != null && target.toUpperCase(Locale.ROOT).contains("ERR") ? "stderr" : "stdout");
+        output.put("stream", "SYSTEM_ERR".equals(target) ? "stderr" : "stdout");
+        if (target != null && !target.equals("SYSTEM_OUT") && !target.equals("SYSTEM_ERR")) {
+            model.unsupported(context + ": unsupported console target '" + target + "'; review stdout fallback");
+        }
         template(name, appender, output, model, context);
         layouts(context, appender, model, true);
         Log4j2Filters.apply(context, appender, output, model);
@@ -68,6 +73,7 @@ final class Log4j2Appenders {
     }
 
     private static void async(String name, Element appender, LogbackModel model) {
+        model.delivery.put("mode", "async");
         List<Element> references = Log4j2Xml.children(appender, "AppenderRef");
         for (Element reference : references) {
             model.appenderAliases.put(name, Log4j2Xml.attribute(reference, "ref"));
@@ -93,17 +99,15 @@ final class Log4j2Appenders {
                 ? null
                 : Log4j2Lookups.resolve(Log4j2Xml.value(layout, "pattern"), model, context);
         if (pattern == null) {
+            model.unsupported(context + ": a supported explicit pattern is required; review the draft formatter");
             return;
         }
-        Log4j2PatternTranslator.Translation translation = Log4j2PatternTranslator.translate(pattern);
+        PatternTranslation translation = Log4j2PatternTranslator.translate(pattern);
         String formatter = model.outputName(name) + "-format";
         model.formatters.put(formatter, new LinkedHashMap<>(
                 Map.of("type", "template", "template", translation.template())));
         output.put("formatter", formatter);
-        if (!translation.dropped().isEmpty()) {
-            model.note(context + ": pattern conversions " + String.join(", ", translation.dropped())
-                    + " have no template equivalent and were dropped");
-        }
+        translation.report(name, model);
     }
 
     /** Reports every layout that did not become a template formatter. */
