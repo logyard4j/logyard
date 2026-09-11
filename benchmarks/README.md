@@ -15,7 +15,7 @@ Use JDK 21+ and the repository's pinned Zolt:
 ./scripts/benchmark        # complete Logyard JMH suite
 ```
 
-The smoke gate also exercises the official Quarkus extension reactor. Its packaging requires Maven; the Logyard benchmarks run through Zolt.
+The smoke gate also exercises the official Quarkus extension benchmark. Its packaging requires Maven and resolves the extension from the verified release bundle. The Logyard benchmarks run through Zolt.
 
 | Benchmark | Measured work |
 | --- | --- |

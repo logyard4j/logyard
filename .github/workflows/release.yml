@@ -78,6 +78,7 @@ jobs:
             target/benchmark-compare/*/results.json
             target/benchmark-compare/*/artifacts.json
             target/benchmark-compare/*/environment.json
+            target/benchmark-compare/*/*-build.log
             target/benchmark-compare/*/iteration-*/*.log
             target/benchmark-compare/*/iteration-*/*.jsonl
             target/benchmark-compare/*/projects/*/zolt.lock

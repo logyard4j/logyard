@@ -30,6 +30,7 @@ PYTHONPATH="$ROOT/scripts" python3 -m benchmark_tools.delivery "$CORE_RESULTS" "
   '.*LoggerManagementBenchmark.*' -foe true -wi 5 -i 5 -w 1s -r 1s -f 1 -prof gc -rf json -rff "$MANAGEMENT_RESULTS"
 
 rm -rf "$MAVEN_REPOSITORY"
+# Resolve the extension under test from the verified release bundle.
 mvn --batch-mode --no-transfer-progress \
   -Dmaven.repo.local="$MAVEN_REPOSITORY" \
   -Dlogyard.repository="file://$ROOT/target/release-bundle" \
@@ -37,8 +38,12 @@ mvn --batch-mode --no-transfer-progress \
   -f extensions/logyard-quarkus/pom.xml \
   -Pbenchmarks \
   -pl benchmarks \
-  -am \
   package
+
+version="$(logyard_release_version)"
+quarkus_artifact="com/zsumz/logyard/logyard-quarkus/$version/logyard-quarkus-$version.jar"
+cmp "$MAVEN_REPOSITORY/$quarkus_artifact" "$ROOT/target/release-bundle/$quarkus_artifact"
+"$ROOT/scripts/release-verify"
 
 java -jar extensions/logyard-quarkus/benchmarks/target/logyard-quarkus-benchmarks.jar \
   '.*QuarkusEventMappingBenchmark\.(mapFreshRecord|mapCopiedRecord).*' \
