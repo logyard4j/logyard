@@ -35,10 +35,11 @@ final class LogyardConfigurationSourceTest {
         assertFalse(config.runtime().watch());
         assertEquals(Level.INFO, config.rootLogger().level());
         assertTrue(config.delivery().asynchronous());
-        assertEquals(2_048, config.delivery().capacity());
-        assertEquals(OverflowAction.DROP, config.delivery().overflow().get(Level.INFO).action());
-        assertEquals(OverflowAction.STDERR, config.delivery().overflow().get(Level.WARN).action());
-        assertTrue(config.delivery().overflow().get(Level.WARN).after().isZero());
+        assertEquals(256, config.delivery().capacity());
+        for (Level level : Level.values()) {
+            assertEquals(OverflowAction.DROP, config.delivery().overflow().get(level).action());
+            assertTrue(config.delivery().overflow().get(level).after().isZero());
+        }
         assertEquals(1, config.outputs().size());
         ConsoleOutputConfig console = (ConsoleOutputConfig) config.outputs().get("console");
         assertEquals("stderr", console.stream());

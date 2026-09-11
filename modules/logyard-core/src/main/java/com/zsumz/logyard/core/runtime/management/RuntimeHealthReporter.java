@@ -6,6 +6,7 @@ import com.zsumz.logyard.api.diagnostics.RuntimeHealth;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
+import com.zsumz.logyard.core.diagnostics.EmergencyReporter;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
 
@@ -32,6 +33,7 @@ public final class RuntimeHealthReporter {
         runtimeMetrics.put("logger_count", (long) loggerCount);
         runtimeMetrics.put("output_count", (long) plan.outputs().size());
         runtimeMetrics.put("pending_retirements", (long) pendingRetirements);
+        runtimeMetrics.put("diagnostics_suppressed_total", EmergencyReporter.STDERR.suppressedReports());
         components.add(new ComponentHealth(
                 "runtime",
                 "runtime",

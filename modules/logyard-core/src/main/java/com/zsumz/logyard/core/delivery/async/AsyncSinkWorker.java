@@ -15,16 +15,19 @@ final class AsyncSinkWorker {
     private final AsyncWorkerLifecycle lifecycle;
     private final AsyncDeliveryLoop deliveryLoop;
     private final AsyncWorkerThread worker;
+    private final OverflowPolicy overflowPolicy;
 
     AsyncSinkWorker(
             String name,
             EventSink delegate,
             AsyncEventQueue eventQueue,
             AsyncSinkMetrics metrics,
-            AsyncSinkDiagnostics diagnostics) {
+            AsyncSinkDiagnostics diagnostics,
+            OverflowPolicy overflowPolicy) {
         this.name = name;
         this.eventQueue = eventQueue;
         this.diagnostics = diagnostics;
+        this.overflowPolicy = overflowPolicy;
         delivery = new AsyncDelegateDelivery(delegate, metrics, diagnostics);
         lifecycle = new AsyncWorkerLifecycle();
         deliveryLoop = new AsyncDeliveryLoop(name, eventQueue, metrics, diagnostics, delivery, lifecycle);
@@ -65,7 +68,7 @@ final class AsyncSinkWorker {
             eventQueue.wakeWorker();
         }
         if (!worker.await(timeout)) {
-            deliveryLoop.drainQueueToEmergency("shutdown deadline elapsed");
+            deliveryLoop.drainQueueToEmergency("shutdown deadline elapsed", overflowPolicy);
             diagnostics.status("worker did not stop within " + timeout + "; daemon cleanup will close the delegate when delivery exits");
         }
     }

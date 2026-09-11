@@ -3,6 +3,7 @@ package com.zsumz.logyard.core.delivery.async;
 import com.zsumz.logyard.api.event.ExceptionSnapshot;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.diagnostics.EmergencyReporter;
 
 import java.time.Instant;
 
@@ -15,7 +16,7 @@ final class AsyncSinkDiagnostics {
     }
 
     void status(String message) {
-        System.err.println("Logyard async output '" + EmergencyText.sanitize(outputName, 256) + "': " + EmergencyText.sanitize(message, 4_096));
+        EmergencyReporter.STDERR.report("Logyard async output '" + EmergencyText.sanitize(outputName, 256) + "': " + EmergencyText.sanitize(message, 4_096));
     }
 
     void failure(String component, Throwable failure) {

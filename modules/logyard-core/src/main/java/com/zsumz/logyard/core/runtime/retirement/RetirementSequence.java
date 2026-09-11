@@ -1,6 +1,7 @@
 package com.zsumz.logyard.core.runtime.retirement;
 
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.diagnostics.EmergencyReporter;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 
@@ -39,7 +40,7 @@ final class RetirementSequence {
         boolean scheduled = ComponentInvocationBoundary.invoke(
                 "ordered runtime retirement scheduler",
                 () -> scheduler.accept(task),
-                (component, failure) -> System.err.println(
+                (component, failure) -> EmergencyReporter.STDERR.report(
                         "Logyard failed to schedule ordered retirement: "
                                 + EmergencyText.failureSummary(failure, 4_096)));
         if (!scheduled) {

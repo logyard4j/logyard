@@ -1,6 +1,7 @@
 package com.zsumz.logyard.core.runtime.retirement;
 
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.diagnostics.EmergencyReporter;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 import com.zsumz.logyard.core.routing.PlanEpoch;
 import com.zsumz.logyard.core.runtime.RuntimePlan;
@@ -91,7 +92,7 @@ public final class RuntimeRetirements {
                     ComponentInvocationBoundary.invoke(
                             "runtime retirement diagnostics",
                             () -> diagnostics.retirementFailed(failure),
-                            (component, reportingFailure) -> System.err.println(
+                            (component, reportingFailure) -> EmergencyReporter.STDERR.report(
                                     "Logyard retirement diagnostics failed: "
                                             + EmergencyText.failureSummary(reportingFailure, 4_096)));
                 }

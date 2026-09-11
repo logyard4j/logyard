@@ -2,6 +2,7 @@ package com.zsumz.logyard.core.failure;
 
 import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.diagnostics.EmergencyReporter;
 
 import java.util.Objects;
 
@@ -67,7 +68,7 @@ public final class ComponentInvocationBoundary {
             reporter.report(label, failure);
         } catch (Throwable reportingFailure) {
             FailureIsolation.prepareForRecovery(reportingFailure);
-            System.err.println(
+            EmergencyReporter.STDERR.report(
                     "Logyard component failure reporter failed for '" + label + "': primary="
                             + EmergencyText.failureSummary(failure, MAX_FAILURE_CHARS)
                             + ", reporter="

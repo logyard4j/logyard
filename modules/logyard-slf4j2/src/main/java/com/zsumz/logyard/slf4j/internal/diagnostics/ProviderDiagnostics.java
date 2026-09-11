@@ -2,8 +2,8 @@ package com.zsumz.logyard.slf4j.internal.diagnostics;
 
 import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.api.diagnostics.DiagnosticRateLimiter;
+import com.zsumz.logyard.runtime.diagnostics.AdapterDiagnostics;
 
-import java.io.PrintStream;
 import java.time.Duration;
 
 /** Emergency diagnostics that never route back through SLF4J or Logyard. */
@@ -16,24 +16,24 @@ public final class ProviderDiagnostics {
 
     public static void initializationFailure(Throwable failure) {
         FailureIsolation.prepareForRecovery(failure);
-        write(System.err, "provider initialization failed", failure, true);
+        write("provider initialization failed", failure, true);
     }
 
     public static void shutdownHookFailure(Throwable failure) {
         FailureIsolation.prepareForRecovery(failure);
-        write(System.err, "could not install shutdown hook", failure, true);
+        write("could not install shutdown hook", failure, true);
     }
 
     public static void eventMappingFailure(String loggerName, Throwable failure) {
         FailureIsolation.prepareForRecovery(failure);
         String stage = "event mapping failed for logger " + sanitize(loggerName);
-        write(System.err, stage, failure, false);
+        write(stage, failure, false);
     }
 
     public static void captureFailure(String loggerName, Throwable failure) {
         FailureIsolation.prepareForRecovery(failure);
         String stage = "event metadata was partially unavailable for logger " + sanitize(loggerName);
-        write(System.err, stage, failure, false);
+        write(stage, failure, false);
     }
 
     /** Retained for internal façade call sites that classify before reporting. */
@@ -41,7 +41,7 @@ public final class ProviderDiagnostics {
         FailureIsolation.prepareForRecovery(failure);
     }
 
-    private static void write(PrintStream stream, String stage, Throwable failure, boolean force) {
+    private static void write(String stage, Throwable failure, boolean force) {
         if (!force && !REPORTS.tryAcquire()) {
             return;
         }
@@ -59,7 +59,7 @@ public final class ProviderDiagnostics {
         if (suppressed > 0L) {
             message.append(" (").append(suppressed).append(" similar diagnostic(s) suppressed)");
         }
-        stream.println(bound(message.toString()));
+        AdapterDiagnostics.report(bound(message.toString()));
     }
     private static String safeMessage(Throwable failure) {
         try {

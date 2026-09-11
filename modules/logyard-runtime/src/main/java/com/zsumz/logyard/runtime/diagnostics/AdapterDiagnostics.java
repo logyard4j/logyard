@@ -3,6 +3,7 @@ package com.zsumz.logyard.runtime.diagnostics;
 import com.zsumz.logyard.api.failure.FailureIsolation;
 import com.zsumz.logyard.api.diagnostics.DiagnosticRateLimiter;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.diagnostics.EmergencyReporter;
 
 import java.time.Duration;
 
@@ -28,6 +29,11 @@ public final class AdapterDiagnostics {
         FailureIsolation.prepareForRecovery(failure);
     }
 
+    /** Dispatches bounded internal text without writing to stderr on the caller thread. */
+    public static void report(String message) {
+        EmergencyReporter.STDERR.report(message);
+    }
+
     private static void report(String stage, Throwable failure, boolean force) {
         if (!force && !REPORTS.tryAcquire()) {
             return;
@@ -41,6 +47,6 @@ public final class AdapterDiagnostics {
         if (suppressed > 0L) {
             text.append(" (").append(suppressed).append(" similar diagnostic(s) suppressed)");
         }
-        System.err.println(EmergencyText.sanitize(text.toString(), 4_096));
+        report(text.toString());
     }
 }

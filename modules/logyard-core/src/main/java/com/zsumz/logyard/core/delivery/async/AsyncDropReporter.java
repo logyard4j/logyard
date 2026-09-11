@@ -43,7 +43,7 @@ final class AsyncDropReporter {
                 Level.WARN,
                 "logyard.internal.async",
                 "logyard.async.events_dropped",
-                "Dropped {} log events because an output queue was full",
+                "Dropped {} log events because an output was full or closing",
                 new Object[] {total},
                 attributes.put("logyard.dropped.total", total).build(),
                 null,

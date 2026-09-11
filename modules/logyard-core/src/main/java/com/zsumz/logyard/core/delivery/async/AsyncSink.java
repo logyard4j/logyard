@@ -4,6 +4,7 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.diagnostics.ComponentHealth;
 import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.delivery.OverflowAction;
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.api.spi.diagnostics.HealthContributor;
 
@@ -55,7 +56,8 @@ public final class AsyncSink implements EventSink, HealthContributor {
                 Objects.requireNonNull(delegate, "delegate"),
                 eventQueue,
                 metrics,
-                diagnostics);
+                diagnostics,
+                overflowPolicy);
         worker.start();
     }
 
@@ -63,8 +65,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     public void accept(LogEvent event) {
         Objects.requireNonNull(event, "event");
         if (!worker.acceptingEvents()) {
-            metrics.recordEmergencyFallback();
-            diagnostics.emergency(event, "output is closing");
+            rejectClosed(event, "output is closing");
             return;
         }
         if (offerImmediately(event)) {
@@ -183,11 +184,19 @@ public final class AsyncSink implements EventSink, HealthContributor {
             return false;
         }
         if (result == AsyncEventQueue.OfferResult.CLOSED) {
-            metrics.recordEmergencyFallback();
-            diagnostics.emergency(event, "output closed while the event was being enqueued");
+            rejectClosed(event, "output closed while the event was being enqueued");
         } else {
             metrics.recordEnqueued();
         }
         return true;
+    }
+
+    private void rejectClosed(LogEvent event, String reason) {
+        if (overflowPolicy.ruleFor(event.level()).action() == OverflowAction.DROP) {
+            metrics.recordDrop(event.level());
+        } else {
+            metrics.recordEmergencyFallback();
+            diagnostics.emergency(event, reason);
+        }
     }
 }

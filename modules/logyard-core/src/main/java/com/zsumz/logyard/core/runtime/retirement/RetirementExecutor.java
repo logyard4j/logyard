@@ -1,6 +1,7 @@
 package com.zsumz.logyard.core.runtime.retirement;
 
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.diagnostics.EmergencyReporter;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.util.Objects;
@@ -104,7 +105,7 @@ final class RetirementExecutor {
                 ComponentInvocationBoundary.report(
                         "runtime retirement worker",
                         failure,
-                        (component, current) -> System.err.println(
+                        (component, current) -> EmergencyReporter.STDERR.report(
                                 "Logyard retirement worker failure: "
                                         + EmergencyText.failureSummary(current, 4_096)));
             }

@@ -1,8 +1,8 @@
 package com.zsumz.logyard.core.runtime.publication;
 
-import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.diagnostics.EmergencyReporter;
 
 /** Bounded standard-error fallback for processor and sink failures. */
 final class EmergencyPublicationFailureHandler implements PublicationFailureHandler {
@@ -10,10 +10,10 @@ final class EmergencyPublicationFailureHandler implements PublicationFailureHand
     public void handle(EventDraft draft, LogEvent event, Throwable failure) {
         String message = EmergencyText.sanitize(
                 event == null ? draft.messageTemplate() : event.renderedMessage(),
-                CaptureLimits.MAX_TEXT_CHARS);
-        System.err.println(
+                1_024);
+        EmergencyReporter.STDERR.report(
                 "Logyard delivery failure for " + (event == null ? draft.level() : event.level()) + " "
-                        + EmergencyText.sanitize(event == null ? draft.loggerName() : event.loggerName(), CaptureLimits.MAX_NAME_CHARS)
-                        + " - " + message + ": " + EmergencyText.failureSummary(failure, 4_096));
+                        + EmergencyText.sanitize(event == null ? draft.loggerName() : event.loggerName(), 512)
+                        + ": " + EmergencyText.failureSummary(failure, 2_048) + " - " + message);
     }
 }

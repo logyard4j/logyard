@@ -19,7 +19,14 @@ if [[ -x "$ZOLT" ]]; then
     "$ZOLT" resolve --directory "$ROOT" --workspace
   fi
   "$ZOLT" build --directory "$ROOT" --workspace --all
-  "$ZOLT" test --directory "$ROOT" --workspace --members "$test_members"
+  while IFS= read -r member; do
+    rm -rf "$ROOT/$member/target/ci-test-reports"
+  done < <(logyard_test_members)
+  "$ZOLT" test --directory "$ROOT" --workspace --members "$test_members" --reports-dir target/ci-test-reports
+  while IFS= read -r member; do
+    PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.junit_reports \
+      "$ROOT/$member/target/ci-test-reports"
+  done < <(logyard_test_members)
   "$ZOLT" run --directory "$ROOT" --workspace --member tests/logyard-integration-tests
   "$ROOT/scripts/failure-injection-verify"
 else

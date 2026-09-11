@@ -4,6 +4,7 @@ import com.zsumz.logyard.core.runtime.RuntimePlan;
 
 import com.zsumz.logyard.api.spi.output.EventSink;
 import com.zsumz.logyard.core.diagnostics.EmergencyText;
+import com.zsumz.logyard.core.diagnostics.EmergencyReporter;
 import com.zsumz.logyard.core.failure.ComponentFailureCollector;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
@@ -66,7 +67,7 @@ final class RuntimeOutputs {
         ComponentInvocationBoundary.invoke(
                 "runtime output close",
                 sink::close,
-                (component, failure) -> System.err.println(
+                (component, failure) -> EmergencyReporter.STDERR.report(
                         "Logyard failed to close output: " + EmergencyText.failureSummary(failure, 4_096)));
     }
 }

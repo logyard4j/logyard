@@ -16,8 +16,8 @@ capacity = 64
 trace = "drop"
 debug = "drop"
 info = "drop"
-warn = { action = "block", timeout = "2ms" }
-error = "stderr"
+warn = "drop"
+error = "drop"
 
 [loggers]
 root = { level = "info", outputs = ["json"] }

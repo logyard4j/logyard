@@ -10,7 +10,9 @@ import com.zsumz.logyard.output.console.rendering.ConsoleEventRenderer;
 import com.zsumz.logyard.output.console.style.ConsoleTheme;
 import com.zsumz.logyard.output.console.terminal.ColorCapability;
 
+import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,6 +90,7 @@ public final class ConsoleSink implements EventSink, HealthContributor {
         synchronized (streamState) {
             ensureOpen();
             lines.forEach(stream::println);
+            verifyStream();
         }
     }
 
@@ -96,42 +99,72 @@ public final class ConsoleSink implements EventSink, HealthContributor {
         synchronized (streamState) {
             ensureOpen();
             stream.flush();
+            verifyStream();
         }
     }
 
     @Override
     public void close() {
         synchronized (streamState) {
-            if (phase == StreamPhase.CLOSED) {
+            if (phase.closed()) {
                 return;
             }
-            phase = StreamPhase.CLOSED;
+            boolean alreadyFailed = phase.failed();
+            phase = alreadyFailed ? StreamPhase.FAILED_CLOSED : StreamPhase.CLOSED;
             if (closeStream) {
                 stream.close();
             } else {
                 stream.flush();
+            }
+            if (!alreadyFailed) {
+                verifyStream();
             }
         }
     }
 
     @Override
     public ComponentHealth health(String componentName) {
+        StreamPhase snapshot = phase;
         return new ComponentHealth(
                 componentName,
                 "console-output",
-                phase == StreamPhase.CLOSED ? HealthStatus.STOPPED : HealthStatus.HEALTHY,
+                snapshot.failed() ? HealthStatus.FAILED : snapshot.closed() ? HealthStatus.STOPPED : HealthStatus.HEALTHY,
                 renderer.healthDetails(),
                 Map.of());
     }
 
     private void ensureOpen() {
-        if (phase == StreamPhase.CLOSED) {
+        if (phase.failed()) {
+            throw streamFailure();
+        }
+        if (phase.closed()) {
             throw new IllegalStateException("Logyard console output is closed");
         }
     }
 
+    private void verifyStream() {
+        if (stream.checkError()) {
+            phase = phase.closed() ? StreamPhase.FAILED_CLOSED : StreamPhase.FAILED;
+            throw streamFailure();
+        }
+    }
+
+    private static UncheckedIOException streamFailure() {
+        return new UncheckedIOException(new IOException("Logyard console stream reported an I/O failure"));
+    }
+
     private enum StreamPhase {
         OPEN,
-        CLOSED
+        FAILED,
+        CLOSED,
+        FAILED_CLOSED;
+
+        boolean closed() {
+            return this == CLOSED || this == FAILED_CLOSED;
+        }
+
+        boolean failed() {
+            return this == FAILED || this == FAILED_CLOSED;
+        }
     }
 }

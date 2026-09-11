@@ -10,10 +10,24 @@ ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
   exit 2
 }
 
-"$ZOLT" test \
-  --directory "$ROOT" \
-  --workspace \
-  --member modules/logyard-output-json \
+run_suite() {
+  local member="$1"
+  shift
+  local -a arguments=("$@") selected=()
+  local index
+  for ((index = 0; index < ${#arguments[@]}; index++)); do
+    if [[ "${arguments[index]}" == "--test" ]]; then
+      selected+=("${arguments[index + 1]%%#*}")
+    fi
+  done
+  rm -rf "$ROOT/$member/target/failure-injection-reports"
+  "$ZOLT" test --directory "$ROOT" --workspace --member "$member" \
+    --reports-dir target/failure-injection-reports "$@"
+  PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.junit_reports \
+    "$ROOT/$member/target/failure-injection-reports" "${selected[@]}"
+}
+
+run_suite modules/logyard-output-json \
   --test com.zsumz.logyard.output.json.encoding.JsonEncoderConcurrencyTest \
   --test com.zsumz.logyard.output.json.file.ActiveDataFileFailureTest \
   --test com.zsumz.logyard.output.json.file.JsonFileSinkInitializationTest \
@@ -37,21 +51,18 @@ ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
   --no-progress \
   --color never
 
-"$ZOLT" test \
-  --directory "$ROOT" \
-  --workspace \
-  --member modules/logyard-runtime \
+run_suite modules/logyard-runtime \
   --test com.zsumz.logyard.runtime.assembly.output.DeliveryAssemblerOwnershipTest \
   --test com.zsumz.logyard.runtime.assembly.OutputAssemblerTest \
   --test com.zsumz.logyard.runtime.assembly.RuntimeJsonConcurrencyTest \
-  --test com.zsumz.logyard.runtime.installation.FileOutputInstallationFailureTest \
-  --test com.zsumz.logyard.runtime.reload.DuplicateOutputReloadTest \
-  --test com.zsumz.logyard.runtime.reload.ContextPolicyReloadTest \
-  --test com.zsumz.logyard.runtime.reload.FileOutputReloadPublicationFailureTest \
-  --test com.zsumz.logyard.runtime.reload.RejectedConfigurationReconciliationTest \
-  --test com.zsumz.logyard.runtime.reload.ReloadCoordinatorTransientResourceTest \
-  --test com.zsumz.logyard.runtime.reload.ReloadDebouncerTest \
-  --test com.zsumz.logyard.runtime.reload.ReloadFailureClassifierTest \
+  --test com.zsumz.logyard.runtime.installation.process.FileOutputInstallationFailureTest \
+  --test com.zsumz.logyard.runtime.reload.coordination.DuplicateOutputReloadTest \
+  --test com.zsumz.logyard.runtime.reload.coordination.ContextPolicyReloadTest \
+  --test com.zsumz.logyard.runtime.reload.coordination.FileOutputReloadPublicationFailureTest \
+  --test com.zsumz.logyard.runtime.reload.coordination.RejectedConfigurationReconciliationTest \
+  --test com.zsumz.logyard.runtime.reload.coordination.ReloadCoordinatorTransientResourceTest \
+  --test com.zsumz.logyard.runtime.reload.watcher.ReloadDebouncerTest \
+  --test com.zsumz.logyard.runtime.reload.coordination.ReloadFailureClassifierTest \
   --no-progress \
   --color never
 

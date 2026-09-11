@@ -13,6 +13,12 @@ public final class DiagnosticRateLimiter {
     private final AtomicLong nextAllowedNanos = new AtomicLong();
     private final AtomicLong suppressed = new AtomicLong();
 
+    /**
+     * Creates a diagnostic report limiter.
+     *
+     * @param interval minimum time between granted report permits
+     * @throws IllegalArgumentException when the interval is negative
+     */
     public DiagnosticRateLimiter(Duration interval) {
         Duration configured = Objects.requireNonNull(interval, "interval");
         if (configured.isNegative()) {
@@ -21,7 +27,11 @@ public final class DiagnosticRateLimiter {
         intervalNanos = saturatedNanos(configured);
     }
 
-    /** Acquires the next report window, or counts this attempt as suppressed. */
+    /**
+     * Acquires the next report window, or counts this attempt as suppressed.
+     *
+     * @return whether this attempt acquired a report permit
+     */
     public boolean tryAcquire() {
         long now = System.nanoTime();
         while (true) {
@@ -36,7 +46,11 @@ public final class DiagnosticRateLimiter {
         }
     }
 
-    /** Returns and clears the number of suppressed reports observed since the last drain. */
+    /**
+     * Returns and clears the number of suppressed reports observed since the last drain.
+     *
+     * @return the suppressed report count before clearing
+     */
     public long drainSuppressed() {
         return suppressed.getAndSet(0L);
     }

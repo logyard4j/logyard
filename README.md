@@ -116,7 +116,7 @@ Configuration discovery is deterministic, in this order:
 5. `./logyard.toml`
 6. Built-in safe defaults
 
-The built-in default is root `INFO` to a color-aware stderr console through bounded, nonblocking asynchronous delivery. It has no file output or watcher. Set `-Dlogyard.config.required=true` when configuration must exist. Explicit locations may be filesystem paths or classpath resources named `logyard.toml` or `logyard-*.toml`, including paths such as `classpath:logging/logyard-prod.toml`; those names are included automatically in Spring and Quarkus native images. A missing or invalid explicit source always fails.
+The built-in default is root `INFO` to a color-aware stderr console, with a 256-event asynchronous queue. Saturation drops and counts events at every severity, including errors, so application threads do not wait for the output. It has no file output or watcher. Set `-Dlogyard.config.required=true` when configuration must exist. Explicit locations may be filesystem paths or classpath resources named `logyard.toml` or `logyard-*.toml`, including paths such as `classpath:logging/logyard-prod.toml`; those names are included automatically in Spring and Quarkus native images. A missing or invalid explicit source always fails.
 
 Native and framework integrations can also supply bounded configuration directly:
 
@@ -218,14 +218,14 @@ Delivery is asynchronous by default. Each output has an isolated queue and worke
 ```toml
 [delivery]
 mode = "async"
-capacity = 2048
+capacity = 256
 
 [delivery.overflow]
 trace = "drop"
 debug = "drop"
 info = "drop"
-warn = { action = "block", timeout = "2ms" }
-error = "stderr"
+warn = "drop"
+error = "drop"
 ```
 
 Overflow actions are:
@@ -235,7 +235,11 @@ Overflow actions are:
 - `sync`: wait for the optional timeout, then deliver on the caller thread.
 - `stderr`: wait for the optional timeout, then write the emergency representation directly to standard error.
 
-The default policy drops trace, debug, and info events; sends warnings and errors immediately to emergency stderr; and uses 2,048 slots per async output. The queue's reference array is small, but a completely full queue of maximum-text events can still approach 256 MiB before object overhead. Rich-event or memory-constrained services should choose a smaller capacity. Runtime health exposes queue capacity, depth, dropped-event counts, and failure state.
+The default uses 256 slots per output and drops new events at every severity when full. Drops remain visible in health and are summarized by the output worker. The same drop policy applies to events arriving after closure or left queued at the shutdown deadline.
+
+A full default queue can retain about 32 MiB of event text before object overhead; multiple outputs have separate queues. Size capacity for the service's heap and expected bursts. Health exposes queue capacity, depth, dropped-event counts, and output failure state.
+
+Choose `block`, `sync`, or `stderr` only when caller-thread waiting is acceptable. Their timeout limits queue waiting, not the subsequent output or stderr write. Logging is best effort: use a durable event path for records that must survive overload or process failure.
 
 ## Outputs
 
@@ -252,6 +256,8 @@ stream = "stderr"
 formatter = "console"
 color = { mode = "auto", theme = "ember" }
 ```
+
+Console output detects the error state that `PrintStream` normally suppresses. A write, flush, or close failure marks health as failed; later records are rejected without retrying the stream. Failure remains visible after close.
 
 JSON output writes newline-delimited JSON and supports buffered files, timed flushes, size rotation, retention, and gzip compression:
 
@@ -368,6 +374,8 @@ Inspect a running instance without parsing internal state:
 RuntimeHealth health = logyard.runtime().health();
 EffectiveRoute route = logyard.runtime().explain("com.example.checkout");
 ```
+
+Core publication failures and asynchronous-delivery/shutdown status messages use a shared, rate-limited daemon with at most one bounded message in flight. A stalled stderr cannot create more reporters or block the calling thread on these diagnostic paths. The runtime health metric `diagnostics_suppressed_total` counts suppressed internal reports across the process.
 
 `health()` reports output and worker status. `explain()` reports the effective level, inherited logger rule, processors, outputs, and context keys for one logger name. Set `runtime.internal_status = "off"` only when reload diagnostics on stderr are intentionally unwanted.
 

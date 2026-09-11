@@ -14,14 +14,14 @@ final class ConfigurationSourceFactory {
 
             [delivery]
             mode = "async"
-            capacity = 2048
+            capacity = 256
 
             [delivery.overflow]
             trace = "drop"
             debug = "drop"
             info = "drop"
-            warn = "stderr"
-            error = "stderr"
+            warn = "drop"
+            error = "drop"
 
             [loggers]
             root = { level = "info", outputs = ["console"] }

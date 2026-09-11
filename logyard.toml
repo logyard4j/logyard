@@ -11,14 +11,14 @@ watch = false
 
 [delivery]
 mode = "async"
-capacity = 4096
+capacity = 256
 
 [delivery.overflow]
 trace = "drop"
 debug = "drop"
 info = "drop"
-warn = { action = "block", timeout = "2ms" }
-error = "stderr"
+warn = "drop"
+error = "drop"
 
 [context]
 mdc = ["request.id"]

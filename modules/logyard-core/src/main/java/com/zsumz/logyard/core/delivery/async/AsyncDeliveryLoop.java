@@ -1,6 +1,7 @@
 package com.zsumz.logyard.core.delivery.async;
 
 import com.zsumz.logyard.api.event.LogEvent;
+import com.zsumz.logyard.api.delivery.OverflowAction;
 import com.zsumz.logyard.core.failure.ComponentInvocationBoundary;
 
 import java.time.Duration;
@@ -80,12 +81,16 @@ final class AsyncDeliveryLoop {
         deliverApplicationEvent(event, false);
     }
 
-    void drainQueueToEmergency(String reason) {
+    void drainQueueToEmergency(String reason, OverflowPolicy overflowPolicy) {
         LogEvent remaining;
         while ((remaining = eventQueue.claimNow()) != null) {
             eventQueue.completeClaims(1);
-            metrics.recordEmergencyFallback();
-            diagnostics.emergency(remaining, reason);
+            if (overflowPolicy.ruleFor(remaining.level()).action() == OverflowAction.DROP) {
+                metrics.recordDrop(remaining.level());
+            } else {
+                metrics.recordEmergencyFallback();
+                diagnostics.emergency(remaining, reason);
+            }
         }
     }
 
