@@ -92,7 +92,7 @@ Use the same command with these arguments:
 | `migrate-logback logback.xml --output logyard.toml` | Convert supported Logback XML settings |
 | `migrate-log4j2 log4j2.xml --output logyard.toml` | Convert supported Log4j 2 XML settings |
 
-`explain` shows environment expressions as written. Migration never overwrites an existing file. Review its notes: custom plugins, calendar rollover, and lookup semantics may need manual changes. Exit codes are 0 for success, 1 for invalid configuration, and 2 for usage or I/O errors.
+`explain` shows environment expressions as written. Migration never overwrites an existing file. Review its notes: additive routing, custom plugins, calendar rollover, and lookup semantics may need manual changes. Exit codes are 0 for success, 1 for invalid configuration, and 2 for usage or I/O errors.
 
 ## Service identity
 
@@ -197,7 +197,7 @@ Add `"json"` to your root logger's `outputs` list.
 | `buffer` | `"256KiB"` | Process buffer; accepts `1KiB`–`16MiB` |
 | `flush` | `"1s"` | Flush interval; `"0s"` flushes every record |
 | `fsync` | `false` | Force file contents after each flush and on close |
-| `rotate` | Disabled | Add a table to enable rotation |
+| `rotate` | Disabled | A nonempty table enables rotation |
 | `rotate.size` | `"1GiB"` when enabled | Rotation threshold |
 | `rotate.interval` | Disabled | Elapsed-time rotation, `"1s"`–`"365d"` |
 | `rotate.keep` | `10` when enabled | Archive retention count |

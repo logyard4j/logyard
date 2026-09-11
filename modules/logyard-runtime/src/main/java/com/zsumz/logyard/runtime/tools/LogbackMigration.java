@@ -35,7 +35,7 @@ final class LogbackMigration {
             model.outputs.put("console", new LinkedHashMap<>(Map.of("type", "console", "stream", "stderr")));
             model.note("no convertible appenders were found; a stderr console output was generated");
         }
-        loggers(root, model.loggers, "");
+        loggers(root, model.loggers, "", false);
         profiles(root);
         String body = TomlDocumentWriter.write(model.toDocument());
         String validationError = validate(body);
@@ -84,10 +84,10 @@ final class LogbackMigration {
         }
     }
 
-    private void loggers(Element container, Map<String, Object> target, String context) {
+    private void loggers(Element container, Map<String, Object> target, String context, boolean profile) {
         Element rootLogger = LogbackXml.child(container, "root");
         if (rootLogger != null) {
-            target.put("root", rule(rootLogger, "root logger" + context, true));
+            target.put("root", rule(rootLogger, "root logger" + context, true, profile));
         }
         for (Element logger : LogbackXml.children(container, "logger")) {
             String name = LogbackXml.attribute(logger, "name");
@@ -95,14 +95,14 @@ final class LogbackMigration {
                 model.note("a <logger> without a name attribute was ignored");
                 continue;
             }
-            Map<String, Object> rule = rule(logger, "logger '" + name + "'" + context, false);
+            Map<String, Object> rule = rule(logger, "logger '" + name + "'" + context, false, profile);
             if (!rule.isEmpty()) {
                 target.put(name, rule);
             }
         }
     }
 
-    private Map<String, Object> rule(Element logger, String context, boolean isRoot) {
+    private Map<String, Object> rule(Element logger, String context, boolean isRoot, boolean profile) {
         Map<String, Object> rule = new LinkedHashMap<>();
         String level = LogbackXml.attribute(logger, "level");
         List<String> outputs = new ArrayList<>();
@@ -115,12 +115,16 @@ final class LogbackMigration {
                 outputs.add(resolved);
             }
         }
-        if (!outputs.isEmpty()) {
+        boolean additive = !"false".equalsIgnoreCase(LogbackXml.attribute(logger, "additivity"));
+        if (!outputs.isEmpty() || (!profile && (isRoot || !additive))) {
             rule.put("outputs", outputs);
-            if (!isRoot && !"false".equals(LogbackXml.attribute(logger, "additivity"))) {
+            if (!outputs.isEmpty() && (isRoot ? profile : additive)) {
                 model.note(context + ": Logyard logger outputs replace inherited outputs instead of"
                         + " adding to them (Logback additivity)");
             }
+        }
+        if (profile && !isRoot && !additive && outputs.isEmpty()) {
+            model.note(context + ": profile changes to additivity need explicit outputs and manual review");
         }
         LogbackLevels.loggerRule(level, rule, model, context);
         return rule;
@@ -147,7 +151,7 @@ final class LogbackMigration {
                             + " converted; declare outputs at the top level");
                 }
                 Map<String, Object> loggers = new LinkedHashMap<>();
-                loggers(profile, loggers, " (profile '" + trimmed + "')");
+                loggers(profile, loggers, " (profile '" + trimmed + "')", true);
                 if (!loggers.isEmpty()) {
                     model.profiles
                             .computeIfAbsent(trimmed, ignored -> new LinkedHashMap<>())

@@ -78,7 +78,7 @@ The workflow verifies the signature, exact version, and ancestry on `main` befor
 To exercise tag verification locally with disposable keys and repositories:
 
 ```sh
-PYTHONPATH=scripts python3 -m verify_tools.provenance_canary
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.provenance_canary
 ```
 
 | GitHub Actions secret | Purpose |

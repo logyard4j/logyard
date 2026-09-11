@@ -53,9 +53,10 @@ final class Log4j2Loggers {
         Map<String, Object> rule = new LinkedHashMap<>();
         String level = Log4j2Lookups.resolve(Log4j2Xml.attribute(logger, "level"), model, context);
         List<String> outputs = references(logger, model, context);
-        if (!outputs.isEmpty()) {
+        boolean additive = !"false".equalsIgnoreCase(Log4j2Xml.attribute(logger, "additivity"));
+        if (!outputs.isEmpty() || isRoot || !additive) {
             rule.put("outputs", outputs);
-            if (!isRoot && !"false".equalsIgnoreCase(Log4j2Xml.attribute(logger, "additivity"))) {
+            if (!outputs.isEmpty() && !isRoot && additive) {
                 model.note(context + ": Logyard logger outputs replace inherited outputs instead of adding"
                         + " to them (Log4j2 additivity)");
             }

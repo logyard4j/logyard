@@ -538,7 +538,7 @@ dependencies {
 
 </details>
 
-The BOM manages the complete fourteen-artifact family, including both Quarkus artifacts.
+The BOM manages every Logyard module, including both Quarkus artifacts.
 
 ## Testing
 
