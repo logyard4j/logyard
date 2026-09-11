@@ -162,6 +162,7 @@ done
 
 packaged_classpath=""
 for archive in "${main_jars[@]}" "$slf4j_api" "${context_jars[@]}"; do
+  archive="$(logyard_native_path "$archive")"
   if [[ -z "$packaged_classpath" ]]; then
     packaged_classpath="$archive"
   else
@@ -174,14 +175,15 @@ mkdir -p "$TARGET/extensions" "$TARGET/facades"
 
 extension_sources=()
 while IFS= read -r source; do
-  extension_sources+=("$source")
+  extension_sources+=("$(logyard_native_path "$source")")
 done < <(find "$ROOT/tests/logyard-integration-tests/src/main/java" -type f -name '*.java' -print | LC_ALL=C sort)
+extension_classes="$(logyard_native_path "$TARGET/extensions")"
 "$JAVAC" --release 21 -encoding UTF-8 -Xlint:all -Werror \
   -cp "$packaged_classpath" \
-  -d "$TARGET/extensions" \
+  -d "$extension_classes" \
   "${extension_sources[@]}"
 cp -R "$ROOT/tests/logyard-integration-tests/src/main/resources/." "$TARGET/extensions/"
-"$JAVA" -cp "$packaged_classpath$classpath_separator$TARGET/extensions" \
+"$JAVA" -cp "$packaged_classpath$classpath_separator$extension_classes" \
   com.logyard4j.tests.CoreVerificationMain
 
 cat > "$TARGET/PackagedFacadeCanary.java" <<'JAVA'
@@ -215,7 +217,8 @@ public final class PackagedFacadeCanary {
 JAVA
 
 output="$TARGET/events.jsonl"
-escaped_output="${output//\\/\\\\}"
+runtime_output="$(logyard_native_path "$output")"
+escaped_output="${runtime_output//\\/\\\\}"
 cat > "$TARGET/logyard.toml" <<TOML
 schema = 1
 [runtime]
@@ -234,12 +237,15 @@ buffer = "4KiB"
 flush = "0s"
 TOML
 
+facade_classes="$(logyard_native_path "$TARGET/facades")"
+facade_source="$(logyard_native_path "$TARGET/PackagedFacadeCanary.java")"
+configuration="$(logyard_native_path "$TARGET/logyard.toml")"
 "$JAVAC" --release 21 -encoding UTF-8 -Xlint:all -Werror \
   -cp "$packaged_classpath" \
-  -d "$TARGET/facades" \
-  "$TARGET/PackagedFacadeCanary.java"
-"$JAVA" -cp "$packaged_classpath$classpath_separator$TARGET/facades" \
-  PackagedFacadeCanary "$TARGET/logyard.toml"
+  -d "$facade_classes" \
+  "$facade_source"
+"$JAVA" -cp "$packaged_classpath$classpath_separator$facade_classes" \
+  PackagedFacadeCanary "$configuration"
 
 for message in "native packaged canary" "slf4j packaged canary" "system packaged canary"; do
   grep -Fq "$message" "$output" || fail "packaged façade output is missing: $message"
