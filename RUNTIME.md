@@ -30,6 +30,18 @@ var route = logyard.runtime().explain("com.example.checkout");
 | `explain(name)` | Effective level, inherited rule, processors, outputs, and context keys |
 | `diagnostics_suppressed_total` | Process-wide count of suppressed internal reports |
 
+Async health counters are live, independent snapshots; changing values need not reconcile during traffic.
+
+| Metric | Meaning |
+| --- | --- |
+| `capacity` | Fixed queue slot limit |
+| `queued` | Unclaimed events, including offers waiting for a slot; may exceed `capacity` |
+| `outstanding_queued_events` | Unclaimed events plus worker-claimed events awaiting completion |
+| `active_deliveries` | In-progress delivery calls or batches, including calls waiting on the delegate lock |
+| `delivered_total` | Events accepted by the delegate; buffered writes may still fail later |
+
+`queued` is an admission-pressure measure, not an exact count of occupied slots. Waiting offers and queued records are not exposed as separate counters. Successful delivery does not imply flushing or durable storage.
+
 Core publication failures and async delivery/shutdown reports use a shared, rate-limited daemon with at most one bounded message in flight. A stalled stderr cannot block callers on those diagnostic paths or create extra reporters.
 
 `runtime.internal_status` controls reload diagnostics. Set it to `off` to suppress those messages.

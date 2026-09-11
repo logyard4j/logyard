@@ -17,12 +17,14 @@ import java.util.function.BooleanSupplier;
  * interrupting delegate code.</p>
  */
 final class AsyncEventQueue {
+    private final int capacity;
     private final ArrayBlockingQueue<QueueEntry> entries;
     private final AtomicInteger queuedEvents = new AtomicInteger();
     private final AtomicInteger outstanding = new AtomicInteger();
 
     AsyncEventQueue(int capacity) {
         entries = new ArrayBlockingQueue<>(capacity);
+        this.capacity = capacity;
     }
 
     OfferResult offerImmediately(LogEvent event, BooleanSupplier accepting) {
@@ -84,7 +86,7 @@ final class AsyncEventQueue {
     }
 
     int capacity() {
-        return entries.size() + entries.remainingCapacity();
+        return capacity;
     }
 
     int queued() {

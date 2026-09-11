@@ -91,10 +91,12 @@ public final class AsyncSink implements EventSink, HealthContributor {
         worker.close(shutdownTimeout);
     }
 
+    /** Returns the fixed number of queue slots, independent of concurrent offers and claims. */
     public int capacity() {
         return eventQueue.capacity();
     }
 
+    /** Returns unclaimed events, including offers still waiting for a slot; this may exceed capacity. */
     public int queued() {
         return eventQueue.queued();
     }
