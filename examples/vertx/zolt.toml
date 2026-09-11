@@ -2,7 +2,7 @@
 name = "logyard-vertx-example"
 version = "1.0.0-SNAPSHOT"
 group = "com.logyard4j.examples"
-java = "21"
+java = 21
 main = "com.logyard4j.examples.vertx.VertxExampleApplication"
 
 [platforms]
@@ -10,14 +10,8 @@ main = "com.logyard4j.examples.vertx.VertxExampleApplication"
 "io.vertx:vertx-stack-depchain" = "5.1.5"
 
 [dependencies]
-"io.vertx:vertx-web" = {}
-"com.logyard4j:logyard-slf4j2" = {}
-
-[build]
-source = "src/main/java"
-test = "src/test/java"
-output = "target/classes"
-testOutput = "target/test-classes"
+"io.vertx:vertx-web" = { managed = true }
+"com.logyard4j:logyard-slf4j2" = { managed = true }
 
 [resources]
 main = ["src/main/resources"]

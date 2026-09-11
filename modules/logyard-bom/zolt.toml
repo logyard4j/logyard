@@ -2,7 +2,19 @@
 name = "logyard-bom"
 version = "0.1.0-rc.1"
 group = "com.logyard4j"
-java = "21"
+description = "Dependency management for the complete Logyard module family."
+url = "https://logyard4j.com"
+issues = "https://github.com/logyard4j/logyard/issues"
+license = "Apache-2.0"
+
+[project.scm]
+url = "https://github.com/logyard4j/logyard"
+connection = "scm:git:https://github.com/logyard4j/logyard.git"
+developerConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"
+
+[project.developers.zsumz]
+name = "zsumz"
+email = "shawn@zsumz.com"
 
 [bom]
 members = [
@@ -26,22 +38,10 @@ members = [
 "com.logyard4j:logyard-quarkus" = "0.1.0-rc.1"
 "com.logyard4j:logyard-quarkus-deployment" = "0.1.0-rc.1"
 
-[package.metadata]
-name = "Logyard Bill of Materials"
-description = "Dependency management for the complete Logyard module family."
-url = "https://logyard4j.com"
-license = "Apache-2.0"
-licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-developers = ["zsumz <shawn@zsumz.com>"]
-scm = "https://github.com/logyard4j/logyard"
-scmConnection = "scm:git:https://github.com/logyard4j/logyard.git"
-scmDeveloperConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"
-issues = "https://github.com/logyard4j/logyard/issues"
-
 [publish.signing]
-enabled = true
+method = "gpg"
 keyId = "EC8E4D26598A0373"
 
 [publish.central]
 tokenEnv = "ZOLT_CENTRAL_TOKEN"
-publishingType = "user-managed"
+mode = "manual"

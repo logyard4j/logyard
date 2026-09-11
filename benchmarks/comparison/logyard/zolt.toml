@@ -2,7 +2,7 @@
 name = "comparison-logyard"
 version = "0.1.0"
 group = "com.logyard4j.benchmarks"
-java = "21"
+java = 21
 main = "com.logyard4j.compare.ComparisonMain"
 
 [dependencies]
@@ -10,14 +10,8 @@ main = "com.logyard4j.compare.ComparisonMain"
 "com.logyard4j:logyard-runtime" = "0.1.0-rc.1"
 "org.slf4j:slf4j-api" = "2.0.18"
 
-[test.dependencies]
+[dependencies.test]
 "org.junit.platform:junit-platform-console-standalone" = "1.11.4"
-
-[build]
-source = "src/main/java"
-test = "src/test/java"
-output = "target/classes"
-testOutput = "target/test-classes"
 
 [resources]
 main = ["src/main/resources"]

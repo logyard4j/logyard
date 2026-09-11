@@ -2,13 +2,15 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-readonly ZOLT_COMMIT="${ZOLT_BOOTSTRAP_COMMIT:-79fabd17aa2fb0ec8773132341d2e94b4f791ff9}"
+readonly ZOLT_COMMIT="${ZOLT_BOOTSTRAP_COMMIT:-49c0a48bddd9968a8f0ac82088a92242a01b4112}"
+readonly ZOLT_VERSION="${ZOLT_BOOTSTRAP_VERSION:-0.1.0-alpha.1}"
 readonly ZOLT_REPOSITORY="${ZOLT_BOOTSTRAP_REPOSITORY:-https://github.com/zoltsh/zolt.git}"
 readonly INSTALL_ROOT="${ZOLT_HOME:-$HOME/.zolt}"
 readonly SOURCE_ROOT="$INSTALL_ROOT/source"
 readonly BIN_ROOT="$INSTALL_ROOT/bin"
 readonly CLASSPATH_FILE="$INSTALL_ROOT/runtime-classpath.txt"
 readonly COMMIT_FILE="$INSTALL_ROOT/bootstrap-commit.txt"
+readonly VERSION_FILE="$INSTALL_ROOT/bootstrap-version.txt"
 
 fail() {
   printf 'error: %s\n' "$1" >&2
@@ -19,6 +21,7 @@ for tool in git javac jar java; do
   command -v "$tool" >/dev/null 2>&1 || fail "$tool is required to bootstrap the pinned Zolt source"
 done
 
+installed_version=""
 if [[ -x "$BIN_ROOT/zolt" ]]; then
   installed_version="$("$BIN_ROOT/zolt" --version)"
   installed_source_commit=""
@@ -26,7 +29,9 @@ if [[ -x "$BIN_ROOT/zolt" ]]; then
     installed_source_commit="$(git -C "$SOURCE_ROOT" rev-parse HEAD 2>/dev/null || true)"
   fi
   if [[ "$installed_source_commit" == "$ZOLT_COMMIT" \
+      && "$installed_version" == "$ZOLT_VERSION" \
       && -s "$CLASSPATH_FILE" \
+      && -s "$VERSION_FILE" \
       && -f "$SOURCE_ROOT/build/bootstrap-zolt/zolt-bootstrap.jar" ]] \
       && grep -aq 'zolt-bootstrap.jar' "$BIN_ROOT/zolt"; then
     printf '%s\n' "$ZOLT_COMMIT" > "$COMMIT_FILE"
@@ -56,6 +61,7 @@ if [[ -d "$SOURCE_ROOT/.git" ]]; then
 fi
 
 if [[ "$installed_commit" != "$ZOLT_COMMIT" \
+    || "$installed_version" != "$ZOLT_VERSION" \
     || ! -f "$SOURCE_ROOT/build/bootstrap-zolt/zolt-bootstrap.jar" ]]; then
   mkdir -p "$INSTALL_ROOT"
   work_root="$(mktemp -d "$INSTALL_ROOT/source.tmp.XXXXXX")"
@@ -79,7 +85,7 @@ if [[ "$installed_commit" != "$ZOLT_COMMIT" \
 
   (
     cd "$work_root"
-    ./scripts/bootstrap-zolt-jvm --version
+    ZOLT_VERSION_OVERRIDE="$ZOLT_VERSION" ./scripts/bootstrap-zolt-jvm --version
   )
 
   rm -rf "$SOURCE_ROOT.previous"
@@ -118,20 +124,24 @@ while IFS= read -r jar_path; do
     || fail "pinned Zolt bootstrap artifact is missing: $jar_path"
 done < "$CLASSPATH_FILE"
 
+printf '%s\n' "$ZOLT_VERSION" > "$VERSION_FILE"
 cat > "$BIN_ROOT/zolt" <<'WRAPPER'
 #!/usr/bin/env bash
 set -euo pipefail
 INSTALL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_ROOT="$INSTALL_ROOT/source"
+BUILD_VERSION="$(tr -d '\r\n' < "$INSTALL_ROOT/bootstrap-version.txt")"
 CLASSPATH="$SOURCE_ROOT/build/bootstrap-zolt/zolt-bootstrap.jar"
 while IFS= read -r jar_path; do
   CLASSPATH="$CLASSPATH:$SOURCE_ROOT/.zolt/cache/$jar_path"
 done < "$INSTALL_ROOT/runtime-classpath.txt"
-exec java -cp "$CLASSPATH" sh.zolt.cli.ZoltCli "$@"
+exec java "-Dzolt.build.version=$BUILD_VERSION" -cp "$CLASSPATH" sh.zolt.cli.ZoltCli "$@"
 WRAPPER
 chmod 0755 "$BIN_ROOT/zolt"
 printf '%s\n' "$ZOLT_COMMIT" > "$COMMIT_FILE"
 
 version="$($BIN_ROOT/zolt --version)"
+[[ "$version" == "$ZOLT_VERSION" ]] \
+  || fail "bootstrapped Zolt reported $version; expected $ZOLT_VERSION"
 printf 'Installed project-local Zolt %s from commit %s.\n' "$version" "$ZOLT_COMMIT"
 printf 'Wrapper: %s\n' "$BIN_ROOT/zolt"

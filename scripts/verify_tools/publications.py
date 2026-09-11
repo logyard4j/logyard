@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import shutil
 import subprocess
 import sys
@@ -22,12 +21,10 @@ def unsigned_manifest(content: str) -> str:
             publishing = line == "[publish]" or line.startswith("[publish.")
         if not publishing:
             lines.append(line)
-    artifacts = json.dumps(config["publish"].get("artifacts", ["main"]))
-    return "\n".join(lines) + f'''
+    return "\n".join(lines) + '''
 [publish]
-artifacts = {artifacts}
-releaseRepository = "local-plan"
-snapshotRepository = "local-plan"
+release = "local-plan"
+snapshot = "local-plan"
 
 [publish.repositories.local-plan]
 url = "http://127.0.0.1:9"
@@ -51,7 +48,7 @@ def require_unsigned_readiness(output: str, coordinates: list[str]) -> None:
 
 
 def prepare(root: Path, zolt: str, central: bool = False) -> None:
-    members = tomllib.loads((root / "zolt.toml").read_text())["workspace"]["members"]
+    members = tomllib.loads((root / "zolt.toml").read_text())["workspace"]["members"]["include"]
     coordinates = []
     publication_target = root / "target"
     publication_target.mkdir(exist_ok=True)

@@ -23,5 +23,6 @@ class ComparisonManifestTest(unittest.TestCase):
         for provider, dependencies in expected.items():
             with self.subTest(provider=provider):
                 manifest = tomllib.loads((ROOT / "benchmarks/comparison" / provider / "zolt.toml").read_text())
-                self.assertEqual(dependencies, manifest["dependencies"])
-                self.assertEqual("21", manifest["project"]["java"])
+                actual = {name: value for name, value in manifest["dependencies"].items() if ":" in name}
+                self.assertEqual(dependencies, actual)
+                self.assertEqual(21, manifest["project"]["java"])

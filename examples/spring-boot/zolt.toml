@@ -2,7 +2,7 @@
 name = "logyard-spring-boot-example"
 version = "1.0.0-SNAPSHOT"
 group = "com.logyard4j.examples"
-java = "21"
+java = 21
 main = "com.logyard4j.examples.springboot.SpringBootExampleApplication"
 
 [platforms]
@@ -10,25 +10,15 @@ main = "com.logyard4j.examples.springboot.SpringBootExampleApplication"
 "org.springframework.boot:spring-boot-dependencies" = "4.1.0"
 
 [dependencies]
-"org.springframework.boot:spring-boot-starter-webmvc" = { exclusions = [
-  { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" }
-] }
-"org.springframework.boot:spring-boot-starter-actuator" = { exclusions = [
-  { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" }
-] }
-"com.logyard4j:logyard-spring-boot-starter" = {}
-"com.logyard4j:logyard-opentelemetry" = {}
-"io.opentelemetry:opentelemetry-api" = {}
-
-[package]
-mode = "spring-boot"
-
-[build]
-source = "src/main/java"
-test = "src/test/java"
-output = "target/classes"
-testOutput = "target/test-classes"
+"org.springframework.boot:spring-boot-starter-webmvc" = { managed = true, exclude = ["org.springframework.boot:spring-boot-starter-logging"] }
+"org.springframework.boot:spring-boot-starter-actuator" = { managed = true, exclude = ["org.springframework.boot:spring-boot-starter-logging"] }
+"com.logyard4j:logyard-spring-boot-starter" = { managed = true }
+"com.logyard4j:logyard-opentelemetry" = { managed = true }
+"io.opentelemetry:opentelemetry-api" = { managed = true }
 
 [resources]
 main = ["src/main/resources"]
 test = ["src/test/resources"]
+
+[package]
+mode = "spring-boot"

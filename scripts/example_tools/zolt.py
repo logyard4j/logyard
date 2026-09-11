@@ -70,8 +70,7 @@ class ZoltExampleRunner:
         declared = tomllib.loads(text)["platforms"]["com.logyard4j:logyard-bom"]
         text = text.replace(f'"com.logyard4j:logyard-bom" = "{declared}"',
                             f'"com.logyard4j:logyard-bom" = "{self._version}"')
-        text += (f'\n[repositories]\nlogyard = "http://127.0.0.1:{self._server.server_port}"\n'
-                 'central = "https://repo.maven.apache.org/maven2"\n')
+        text += f'\n[repositories.logyard]\nurl = "http://127.0.0.1:{self._server.server_port}"\n'
         manifest.write_text(text, encoding="utf-8")
         if example.omit_config:
             (project / "src/main/resources/logyard.toml").unlink()

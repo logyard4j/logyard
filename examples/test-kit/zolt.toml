@@ -2,14 +2,14 @@
 name = "logyard-test-kit-example"
 version = "1.0.0-SNAPSHOT"
 group = "com.logyard4j.examples"
-java = "21"
+java = 21
 
 [platforms]
 "com.logyard4j:logyard-bom" = "0.1.0-rc.1"
 
 [dependencies]
-"com.logyard4j:logyard-api" = {}
+"com.logyard4j:logyard-api" = { managed = true }
 
-[test.dependencies]
-"com.logyard4j:logyard-test" = {}
+[dependencies.test]
+"com.logyard4j:logyard-test" = { managed = true }
 "org.junit.platform:junit-platform-console-standalone" = "1.11.4"

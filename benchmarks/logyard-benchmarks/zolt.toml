@@ -2,28 +2,21 @@
 name = "logyard-benchmarks"
 version = "0.1.0-rc.1"
 group = "com.logyard4j"
-java = "21"
+java = 21
 main = "org.openjdk.jmh.Main"
 
-[repositories]
-central = "https://repo.maven.apache.org/maven2"
-
 [dependencies]
-"com.logyard4j:logyard-api" = { workspace = "modules/logyard-api" }
-"com.logyard4j:logyard-core" = { workspace = "modules/logyard-core" }
-"com.logyard4j:logyard-output-console" = { workspace = "modules/logyard-output-console" }
-"com.logyard4j:logyard-output-json" = { workspace = "modules/logyard-output-json" }
-"com.logyard4j:logyard-runtime" = { workspace = "modules/logyard-runtime" }
-"com.logyard4j:logyard-slf4j2" = { workspace = "modules/logyard-slf4j2" }
+"com.logyard4j:logyard-api" = { workspace = true }
+"com.logyard4j:logyard-core" = { workspace = true }
+"com.logyard4j:logyard-output-console" = { workspace = true }
+"com.logyard4j:logyard-output-json" = { workspace = true }
+"com.logyard4j:logyard-runtime" = { workspace = true }
+"com.logyard4j:logyard-slf4j2" = { workspace = true }
 "org.openjdk.jmh:jmh-core" = "1.37"
 "org.slf4j:slf4j-api" = "2.0.18"
 
-[annotationProcessors]
+[dependencies.processor]
 "org.openjdk.jmh:jmh-generator-annprocess" = "1.37"
-
-[build]
-source = "src/main/java"
-output = "target/classes"
 
 [resources]
 main = ["src/main/resources"]

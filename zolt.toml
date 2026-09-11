@@ -1,6 +1,9 @@
 [workspace]
 name = "logyard"
-members = [
+
+[workspace.members]
+default = ["tests/logyard-integration-tests"]
+include = [
     "modules/logyard-api",
     "modules/logyard-core",
     "modules/logyard-config-toml",
@@ -19,7 +22,6 @@ members = [
     "tests/logyard-adapter-canaries",
     "benchmarks/logyard-benchmarks",
 ]
-defaultMembers = ["tests/logyard-integration-tests"]
 
-[repositories]
-central = "https://repo.maven.apache.org/maven2"
+[toolchain.zolt]
+version = "0.1.0-alpha.1"

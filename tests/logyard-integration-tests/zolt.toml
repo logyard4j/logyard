@@ -2,23 +2,16 @@
 name = "logyard-integration-tests"
 version = "0.1.0-rc.1"
 group = "com.logyard4j"
-java = "21"
+java = 21
 main = "com.logyard4j.tests.CoreVerificationMain"
 
-[repositories]
-central = "https://repo.maven.apache.org/maven2"
-
 [dependencies]
-"com.logyard4j:logyard-api" = { workspace = "modules/logyard-api" }
-"com.logyard4j:logyard-core" = { workspace = "modules/logyard-core" }
-"com.logyard4j:logyard-config-toml" = { workspace = "modules/logyard-config-toml" }
-"com.logyard4j:logyard-output-console" = { workspace = "modules/logyard-output-console" }
-"com.logyard4j:logyard-output-json" = { workspace = "modules/logyard-output-json" }
-"com.logyard4j:logyard-runtime" = { workspace = "modules/logyard-runtime" }
-
-[build]
-source = "src/main/java"
-output = "target/classes"
+"com.logyard4j:logyard-api" = { workspace = true }
+"com.logyard4j:logyard-core" = { workspace = true }
+"com.logyard4j:logyard-config-toml" = { workspace = true }
+"com.logyard4j:logyard-output-console" = { workspace = true }
+"com.logyard4j:logyard-output-json" = { workspace = true }
+"com.logyard4j:logyard-runtime" = { workspace = true }
 
 [resources]
 main = ["src/main/resources"]

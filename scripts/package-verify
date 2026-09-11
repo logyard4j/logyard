@@ -42,14 +42,15 @@ require_entry() {
 
 find_dependency() {
   local filename="$1"
-  local candidate search_root
-  for candidate in "$ROOT/.zolt/cache/$filename" "$HOME/.zolt/cache/$filename"; do
+  local candidate search_root user_home
+  user_home="${ZOLT_USER_HOME:-$HOME/.zolt}"
+  for candidate in "$ROOT/.zolt/cache/$filename" "$user_home/cache/$filename"; do
     [[ -f "$candidate" ]] && {
       printf '%s\n' "$candidate"
       return
     }
   done
-  for search_root in "$ROOT/.zolt" "$HOME/.zolt"; do
+  for search_root in "$ROOT/.zolt" "$user_home"; do
     [[ -d "$search_root" ]] || continue
     candidate="$(find "$search_root" -type f -name "$filename" -print -quit 2>/dev/null || true)"
     [[ -z "$candidate" ]] || {

@@ -19,7 +19,8 @@ while IFS= read -r member; do
   declared_members+=("$member")
 done < <(
   awk '
-    /^members = \[/ { inside = 1; next }
+    /^\[workspace\.members\]$/ { members = 1; next }
+    members && /^include = \[/ { inside = 1; next }
     inside && /^]/ { exit }
     inside && match($0, /"[^"]+"/) {
       print substr($0, RSTART + 1, RLENGTH - 2)

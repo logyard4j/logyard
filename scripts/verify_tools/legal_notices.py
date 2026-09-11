@@ -10,7 +10,7 @@ from pathlib import Path
 def verify_sources(root: Path) -> None:
     workspace = tomllib.loads((root / "zolt.toml").read_text())
     members = []
-    for member in workspace["workspace"]["members"]:
+    for member in workspace["workspace"]["members"]["include"]:
         config = tomllib.loads((root / member / "zolt.toml").read_text())
         if "publish" in config and "bom" not in config:
             members.append(member)

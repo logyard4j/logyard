@@ -2,20 +2,20 @@
 name = "logyard-opentelemetry-example"
 version = "1.0.0-SNAPSHOT"
 group = "com.logyard4j.examples"
-java = "21"
+java = 21
 main = "com.logyard4j.examples.opentelemetry.OpenTelemetryExampleApplication"
 
 [platforms]
 "com.logyard4j:logyard-bom" = "0.1.0-rc.1"
 
 [dependencies]
-"com.logyard4j:logyard-slf4j2" = {}
-"com.logyard4j:logyard-opentelemetry" = {}
+"com.logyard4j:logyard-slf4j2" = { managed = true }
+"com.logyard4j:logyard-opentelemetry" = { managed = true }
 
-[resources]
-main = ["src/main/resources"]
-
-[test.dependencies]
+[dependencies.test]
 "io.opentelemetry:opentelemetry-sdk" = "1.65.0"
 "io.opentelemetry:opentelemetry-sdk-testing" = "1.65.0"
 "org.junit.platform:junit-platform-console-standalone" = "1.11.4"
+
+[resources]
+main = ["src/main/resources"]

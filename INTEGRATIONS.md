@@ -114,9 +114,7 @@ dependencies {
 
 [dependencies]
 "com.logyard4j:logyard-spring-boot-starter" = "0.1.0-rc.1"
-"org.springframework.boot:spring-boot-starter-web" = { exclusions = [
-    { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" },
-] }
+"org.springframework.boot:spring-boot-starter-web" = { managed = true, exclude = ["org.springframework.boot:spring-boot-starter-logging"] }
 ```
 
 </details>
@@ -533,7 +531,7 @@ dependencies {
 "com.logyard4j:logyard-bom" = "0.1.0-rc.1"
 
 [dependencies]
-"com.logyard4j:logyard-slf4j2" = {}
+"com.logyard4j:logyard-slf4j2" = { managed = true }
 ```
 
 </details>
@@ -575,7 +573,7 @@ dependencies {
 <summary>Zolt (zolt.toml)</summary>
 
 ```toml
-[test.dependencies]
+[dependencies.test]
 "com.logyard4j:logyard-test" = "0.1.0-rc.1"
 ```
 

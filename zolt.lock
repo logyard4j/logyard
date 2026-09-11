@@ -1,6 +1,525 @@
-version = 5
-projectResolutionFingerprint = "sha256:965572ac8fbe0d20f954cb7ccb12c2d8b6cf3b173d13f215701129e0f4d40846"
-projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:302219e5d09902fdedb329707232a849f9d86846309c65e5018cb60a49718166", "dependencies.compile=sha256:e29a87bb86a25934ac1d9da7a6a4a8c654b378d5052fec1906a7b6f7b746213a", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:38058139032fc535da4af4c9b8c0fccbc4640418cafa8a8c5c8390856c19faac", "dependencies.test=sha256:c2cd5ca6411e5499ec02883b6978eacf8bf85b6607936df8d7d6002658f64a63", "dependencyMetadata=sha256:e5f55f68bafce466c84652b0f0724d9c813a384a5af187165a13fc5d8030421a", "framework.quarkus=sha256:48e8e093ab172fce36712e57dcae3a106f954ab20aa835860ad0ee4a7013e0ad", "framework.springBoot.native=sha256:207684aba27b63fc0dc5bba4c50d6f7ac96393193639e7cb74cd99fff5585414", "java=sha256:99482b0f9609b131cde512b1b17956463ebdf92625cce9163ef3c2a05a3675b6", "package=sha256:d0ffc0ca9bfbdbf0af4faec3fa1659ae621efeeb79c584666e1eff0894516232", "repositories=sha256:2b07d4ae6d9b11ded13294596c7060b4c14c3946e4ecb4b4b763fb1a61ffe74d", "schema=sha256:d9dc580d184cef756c37b409e1cde24a912875e3f4878a74ea21c45f0cbce9d2"]
+version = 7
+projectResolutionFingerprint = "sha256:93d23013c3c3be35a71c9d6b1c41171007a2286781723b664e620f51169a59ee"
+projectResolutionInputFingerprints = ["dependencies.api.workspace=sha256:7847305a184dcb8ea19150919597a3ec04f445d5ca2118eaca379052c75af999", "dependencies.api=sha256:39f5fd06a42367ae0ef58cd55d9f0250316ab47dd4da3fea440edd035cf07ea5", "dependencies.compile.workspace=sha256:f3ad551f39a1b093e0caf159baed26309d897adba0ec2e181c106103e53afbe9", "dependencies.compile=sha256:e3683fb26ffacb3e650d81a4505c7cf5aacf216b1f404f1193a0dbe430f98f45", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:38058139032fc535da4af4c9b8c0fccbc4640418cafa8a8c5c8390856c19faac", "dependencies.test=sha256:c2cd5ca6411e5499ec02883b6978eacf8bf85b6607936df8d7d6002658f64a63", "dependencyMetadata=sha256:680ffc4d1437d12e7cc9f38abec225f231c5492525d2d876a4b91fb75483502c", "framework.quarkus=sha256:48e8e093ab172fce36712e57dcae3a106f954ab20aa835860ad0ee4a7013e0ad", "framework.springBoot.native=sha256:207684aba27b63fc0dc5bba4c50d6f7ac96393193639e7cb74cd99fff5585414", "java=sha256:d2e95bf9f835e0684207d92af1405999be608edb7ce13e71a5f133f4f30b6deb", "package=sha256:38a46871a2485b18f067fca61c6586945244020a94813750d8238e16812c960a", "repositories=sha256:8d83fcace96a7c99979aa18f9632de48e161a2f8f311ea685c4d17730a00b848", "schema=sha256:4080635e231be413ba40f3532f116fdf339d085e15a235fe8ba786955f78456c"]
+workspaceResolutionInputFingerprint = "sha256:eb309033a59778c4d41028d281ec57e13eb7752a2467f1b82451b217490e4397"
+
+[[dependencyRoot]]
+member = "benchmarks/logyard-benchmarks"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "benchmarks/logyard-benchmarks"
+id = "com.logyard4j:logyard-core"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "benchmarks/logyard-benchmarks"
+id = "com.logyard4j:logyard-output-console"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "benchmarks/logyard-benchmarks"
+id = "com.logyard4j:logyard-output-json"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "benchmarks/logyard-benchmarks"
+id = "com.logyard4j:logyard-runtime"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "benchmarks/logyard-benchmarks"
+id = "com.logyard4j:logyard-slf4j2"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "benchmarks/logyard-benchmarks"
+id = "org.openjdk.jmh:jmh-core"
+version = "1.37"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "benchmarks/logyard-benchmarks"
+id = "org.slf4j:slf4j-api"
+version = "2.0.18"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "benchmarks/logyard-benchmarks"
+id = "org.openjdk.jmh:jmh-generator-annprocess"
+version = "1.37"
+lane = "processor"
+resolvedScope = "processor"
+
+[[dependencyRoot]]
+member = "modules/logyard-api"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-config-toml"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-config-toml"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-core"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-core"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-jul"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-jul"
+id = "com.logyard4j:logyard-runtime"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-jul"
+id = "com.logyard4j:logyard-core"
+version = "0.1.0-rc.1"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-jul"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-opentelemetry"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-opentelemetry"
+id = "io.opentelemetry:opentelemetry-api"
+version = "1.65.0"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-opentelemetry"
+id = "com.logyard4j:logyard-runtime"
+version = "0.1.0-rc.1"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-opentelemetry"
+id = "io.opentelemetry:opentelemetry-sdk"
+version = "1.65.0"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-opentelemetry"
+id = "io.opentelemetry:opentelemetry-sdk-testing"
+version = "1.65.0"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-opentelemetry"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-output-console"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-output-console"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-output-json"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-output-json"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-runtime"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-runtime"
+id = "com.logyard4j:logyard-config-toml"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-runtime"
+id = "com.logyard4j:logyard-core"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-runtime"
+id = "com.logyard4j:logyard-output-console"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-runtime"
+id = "com.logyard4j:logyard-output-json"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-runtime"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-slf4j2"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-slf4j2"
+id = "com.logyard4j:logyard-runtime"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-slf4j2"
+id = "org.slf4j:slf4j-api"
+version = "2.0.18"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-slf4j2"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "com.logyard4j:logyard-jul"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "com.logyard4j:logyard-runtime"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "org.springframework.boot:spring-boot"
+version = "3.5.16"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "org.springframework.boot:spring-boot-autoconfigure"
+version = "3.5.16"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "com.logyard4j:logyard-slf4j2"
+version = "0.1.0-rc.1"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "org.springframework.boot:spring-boot-actuator"
+version = "3.5.16"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "org.springframework.boot:spring-boot-autoconfigure-processor"
+version = "3.5.16"
+lane = "processor"
+resolvedScope = "processor"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot"
+id = "org.springframework.boot:spring-boot-configuration-processor"
+version = "3.5.16"
+lane = "processor"
+resolvedScope = "processor"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot-starter"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot-starter"
+id = "com.logyard4j:logyard-slf4j2"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot-starter"
+id = "com.logyard4j:logyard-spring-boot"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-spring-boot-starter"
+id = "org.springframework.boot:spring-boot-starter"
+version = "3.5.16"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-system-logger"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-system-logger"
+id = "com.logyard4j:logyard-runtime"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-system-logger"
+id = "com.logyard4j:logyard-core"
+version = "0.1.0-rc.1"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-system-logger"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "modules/logyard-test"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-test"
+id = "com.logyard4j:logyard-core"
+version = "0.1.0-rc.1"
+lane = "api"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-test"
+id = "org.junit.platform:junit-platform-console-standalone"
+version = "1.11.4"
+lane = "test"
+resolvedScope = "test"
+
+[[dependencyRoot]]
+member = "tests/logyard-adapter-canaries"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-adapter-canaries"
+id = "com.logyard4j:logyard-config-toml"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-adapter-canaries"
+id = "com.logyard4j:logyard-core"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-adapter-canaries"
+id = "com.logyard4j:logyard-jul"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-adapter-canaries"
+id = "com.logyard4j:logyard-output-console"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-adapter-canaries"
+id = "com.logyard4j:logyard-output-json"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-adapter-canaries"
+id = "com.logyard4j:logyard-runtime"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-adapter-canaries"
+id = "com.logyard4j:logyard-slf4j2"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-adapter-canaries"
+id = "com.logyard4j:logyard-system-logger"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-integration-tests"
+id = "com.logyard4j:logyard-api"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-integration-tests"
+id = "com.logyard4j:logyard-config-toml"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-integration-tests"
+id = "com.logyard4j:logyard-core"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-integration-tests"
+id = "com.logyard4j:logyard-output-console"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-integration-tests"
+id = "com.logyard4j:logyard-output-json"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "tests/logyard-integration-tests"
+id = "com.logyard4j:logyard-runtime"
+version = "0.1.0-rc.1"
+lane = "implementation"
+resolvedScope = "compile"
 
 [[package]]
 id = "com.logyard4j:logyard-api"
@@ -11,6 +530,7 @@ direct = true
 workspace = "modules/logyard-api"
 workspaceOutput = "target/classes"
 members = ["benchmarks/logyard-benchmarks", "modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-opentelemetry", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-spring-boot-starter", "modules/logyard-system-logger", "modules/logyard-test", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
+exportedBy = ["modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-opentelemetry", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-spring-boot-starter", "modules/logyard-system-logger", "modules/logyard-test"]
 dependencies = []
 
 [[package]]
@@ -22,6 +542,7 @@ direct = true
 workspace = "modules/logyard-config-toml"
 workspaceOutput = "target/classes"
 members = ["modules/logyard-runtime", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
+exportedBy = ["modules/logyard-runtime"]
 dependencies = []
 
 [[package]]
@@ -33,6 +554,7 @@ direct = true
 workspace = "modules/logyard-core"
 workspaceOutput = "target/classes"
 members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "modules/logyard-test", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
+exportedBy = ["modules/logyard-runtime", "modules/logyard-test"]
 dependencies = []
 
 [[package]]
@@ -55,6 +577,7 @@ direct = true
 workspace = "modules/logyard-jul"
 workspaceOutput = "target/classes"
 members = ["modules/logyard-spring-boot", "tests/logyard-adapter-canaries"]
+exportedBy = ["modules/logyard-spring-boot"]
 dependencies = []
 
 [[package]]
@@ -66,6 +589,7 @@ direct = true
 workspace = "modules/logyard-output-console"
 workspaceOutput = "target/classes"
 members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
+exportedBy = ["modules/logyard-runtime"]
 dependencies = []
 
 [[package]]
@@ -77,6 +601,7 @@ direct = true
 workspace = "modules/logyard-output-json"
 workspaceOutput = "target/classes"
 members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
+exportedBy = ["modules/logyard-runtime"]
 dependencies = []
 
 [[package]]
@@ -88,6 +613,7 @@ direct = true
 workspace = "modules/logyard-runtime"
 workspaceOutput = "target/classes"
 members = ["benchmarks/logyard-benchmarks", "modules/logyard-jul", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-system-logger", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
+exportedBy = ["modules/logyard-jul", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-system-logger"]
 dependencies = []
 
 [[package]]
@@ -110,6 +636,7 @@ direct = true
 workspace = "modules/logyard-slf4j2"
 workspaceOutput = "target/classes"
 members = ["benchmarks/logyard-benchmarks", "modules/logyard-spring-boot-starter", "tests/logyard-adapter-canaries"]
+exportedBy = ["modules/logyard-spring-boot-starter"]
 dependencies = ["org.slf4j:slf4j-api:2.0.18:jar:compile"]
 
 [[package]]
@@ -132,6 +659,7 @@ direct = true
 workspace = "modules/logyard-spring-boot"
 workspaceOutput = "target/classes"
 members = ["modules/logyard-spring-boot-starter"]
+exportedBy = ["modules/logyard-spring-boot-starter"]
 dependencies = ["org.springframework.boot:spring-boot-autoconfigure:3.5.16:jar:compile", "org.springframework.boot:spring-boot:3.5.16:jar:compile"]
 
 [[package]]
@@ -148,11 +676,11 @@ dependencies = []
 [[package]]
 id = "io.micrometer:micrometer-commons"
 version = "1.15.12"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "io/micrometer/micrometer-commons/1.15.12/micrometer-commons-1.15.12.jar"
-pom = "io/micrometer/micrometer-commons/1.15.12/micrometer-commons-1.15.12.pom"
+jar = "blobs/v2/sha256/4b779cf7acb0534bb1f8e964f25200037ecb3944368f859a630fa637d6d5d7c0/micrometer-commons-1.15.12.jar"
+pom = "blobs/v2/sha256/cd1c64187bdf9b851d1900de45918978416df79abab66859be51cd6f7c89e651/micrometer-commons-1.15.12.pom"
 jarSha256 = "4b779cf7acb0534bb1f8e964f25200037ecb3944368f859a630fa637d6d5d7c0"
 pomSha256 = "cd1c64187bdf9b851d1900de45918978416df79abab66859be51cd6f7c89e651"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
@@ -161,11 +689,11 @@ dependencies = []
 [[package]]
 id = "io.micrometer:micrometer-commons"
 version = "1.15.12"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "io/micrometer/micrometer-commons/1.15.12/micrometer-commons-1.15.12.jar"
-pom = "io/micrometer/micrometer-commons/1.15.12/micrometer-commons-1.15.12.pom"
+jar = "blobs/v2/sha256/4b779cf7acb0534bb1f8e964f25200037ecb3944368f859a630fa637d6d5d7c0/micrometer-commons-1.15.12.jar"
+pom = "blobs/v2/sha256/cd1c64187bdf9b851d1900de45918978416df79abab66859be51cd6f7c89e651/micrometer-commons-1.15.12.pom"
 jarSha256 = "4b779cf7acb0534bb1f8e964f25200037ecb3944368f859a630fa637d6d5d7c0"
 pomSha256 = "cd1c64187bdf9b851d1900de45918978416df79abab66859be51cd6f7c89e651"
 members = ["modules/logyard-spring-boot"]
@@ -174,11 +702,11 @@ dependencies = []
 [[package]]
 id = "io.micrometer:micrometer-observation"
 version = "1.15.12"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "io/micrometer/micrometer-observation/1.15.12/micrometer-observation-1.15.12.jar"
-pom = "io/micrometer/micrometer-observation/1.15.12/micrometer-observation-1.15.12.pom"
+jar = "blobs/v2/sha256/54483e68ed44af1bb0c36d1df2235d36f233e459d52f5a3be3e69813827a6300/micrometer-observation-1.15.12.jar"
+pom = "blobs/v2/sha256/7bc391b32ca147fd5df32f425f4ea91f153ee04afe808c4676c039f4b1340f48/micrometer-observation-1.15.12.pom"
 jarSha256 = "54483e68ed44af1bb0c36d1df2235d36f233e459d52f5a3be3e69813827a6300"
 pomSha256 = "7bc391b32ca147fd5df32f425f4ea91f153ee04afe808c4676c039f4b1340f48"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
@@ -187,11 +715,11 @@ dependencies = ["io.micrometer:micrometer-commons:1.15.12:jar:compile"]
 [[package]]
 id = "io.micrometer:micrometer-observation"
 version = "1.15.12"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "io/micrometer/micrometer-observation/1.15.12/micrometer-observation-1.15.12.jar"
-pom = "io/micrometer/micrometer-observation/1.15.12/micrometer-observation-1.15.12.pom"
+jar = "blobs/v2/sha256/54483e68ed44af1bb0c36d1df2235d36f233e459d52f5a3be3e69813827a6300/micrometer-observation-1.15.12.jar"
+pom = "blobs/v2/sha256/7bc391b32ca147fd5df32f425f4ea91f153ee04afe808c4676c039f4b1340f48/micrometer-observation-1.15.12.pom"
 jarSha256 = "54483e68ed44af1bb0c36d1df2235d36f233e459d52f5a3be3e69813827a6300"
 pomSha256 = "7bc391b32ca147fd5df32f425f4ea91f153ee04afe808c4676c039f4b1340f48"
 members = ["modules/logyard-spring-boot"]
@@ -200,37 +728,39 @@ dependencies = ["io.micrometer:micrometer-commons:1.15.12:jar:test"]
 [[package]]
 id = "io.opentelemetry:opentelemetry-api"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = true
-jar = "io/opentelemetry/opentelemetry-api/1.65.0/opentelemetry-api-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-api/1.65.0/opentelemetry-api-1.65.0.pom"
+jar = "blobs/v2/sha256/ffaad9334ac41c02b6820b19da589d13dca72d7c6663cc9621c3ca64901f7995/opentelemetry-api-1.65.0.jar"
+pom = "blobs/v2/sha256/a1d07af9c643c41942a3551efef9dabea35f31b86cd0f07a577222e3fc2a7fe4/opentelemetry-api-1.65.0.pom"
 jarSha256 = "ffaad9334ac41c02b6820b19da589d13dca72d7c6663cc9621c3ca64901f7995"
 pomSha256 = "a1d07af9c643c41942a3551efef9dabea35f31b86cd0f07a577222e3fc2a7fe4"
 members = ["modules/logyard-opentelemetry"]
+exportedBy = ["modules/logyard-opentelemetry"]
 dependencies = ["io.opentelemetry:opentelemetry-context:1.65.0:jar:compile"]
 
 [[package]]
 id = "io.opentelemetry:opentelemetry-api"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "io/opentelemetry/opentelemetry-api/1.65.0/opentelemetry-api-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-api/1.65.0/opentelemetry-api-1.65.0.pom"
+jar = "blobs/v2/sha256/ffaad9334ac41c02b6820b19da589d13dca72d7c6663cc9621c3ca64901f7995/opentelemetry-api-1.65.0.jar"
+pom = "blobs/v2/sha256/a1d07af9c643c41942a3551efef9dabea35f31b86cd0f07a577222e3fc2a7fe4/opentelemetry-api-1.65.0.pom"
 jarSha256 = "ffaad9334ac41c02b6820b19da589d13dca72d7c6663cc9621c3ca64901f7995"
 pomSha256 = "a1d07af9c643c41942a3551efef9dabea35f31b86cd0f07a577222e3fc2a7fe4"
 members = ["modules/logyard-opentelemetry"]
+exportedBy = ["modules/logyard-opentelemetry"]
 dependencies = ["io.opentelemetry:opentelemetry-context:1.65.0:jar:test"]
 
 [[package]]
 id = "io.opentelemetry:opentelemetry-common"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "io/opentelemetry/opentelemetry-common/1.65.0/opentelemetry-common-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-common/1.65.0/opentelemetry-common-1.65.0.pom"
+jar = "blobs/v2/sha256/be2a8c3e458a3b3b8de0670c9f6649624b4b6f10f3bde64d3d340a029e86454e/opentelemetry-common-1.65.0.jar"
+pom = "blobs/v2/sha256/7bf522a008b5b965c9468489ccf1bfa9efc5fdeb4abaa1657f764ba4e1f68e08/opentelemetry-common-1.65.0.pom"
 jarSha256 = "be2a8c3e458a3b3b8de0670c9f6649624b4b6f10f3bde64d3d340a029e86454e"
 pomSha256 = "7bf522a008b5b965c9468489ccf1bfa9efc5fdeb4abaa1657f764ba4e1f68e08"
 members = ["modules/logyard-opentelemetry"]
@@ -239,11 +769,11 @@ dependencies = []
 [[package]]
 id = "io.opentelemetry:opentelemetry-common"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "io/opentelemetry/opentelemetry-common/1.65.0/opentelemetry-common-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-common/1.65.0/opentelemetry-common-1.65.0.pom"
+jar = "blobs/v2/sha256/be2a8c3e458a3b3b8de0670c9f6649624b4b6f10f3bde64d3d340a029e86454e/opentelemetry-common-1.65.0.jar"
+pom = "blobs/v2/sha256/7bf522a008b5b965c9468489ccf1bfa9efc5fdeb4abaa1657f764ba4e1f68e08/opentelemetry-common-1.65.0.pom"
 jarSha256 = "be2a8c3e458a3b3b8de0670c9f6649624b4b6f10f3bde64d3d340a029e86454e"
 pomSha256 = "7bf522a008b5b965c9468489ccf1bfa9efc5fdeb4abaa1657f764ba4e1f68e08"
 members = ["modules/logyard-opentelemetry"]
@@ -252,11 +782,11 @@ dependencies = []
 [[package]]
 id = "io.opentelemetry:opentelemetry-context"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "io/opentelemetry/opentelemetry-context/1.65.0/opentelemetry-context-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-context/1.65.0/opentelemetry-context-1.65.0.pom"
+jar = "blobs/v2/sha256/7d763d701412dc10d5c70de8217a25d08bce1b7fe8fe3e3c6818568e14c1aabf/opentelemetry-context-1.65.0.jar"
+pom = "blobs/v2/sha256/42a8c3cfa1f2530cd94ec52b96ac17c6a47996709dafb708e2ab93190d7af3ae/opentelemetry-context-1.65.0.pom"
 jarSha256 = "7d763d701412dc10d5c70de8217a25d08bce1b7fe8fe3e3c6818568e14c1aabf"
 pomSha256 = "42a8c3cfa1f2530cd94ec52b96ac17c6a47996709dafb708e2ab93190d7af3ae"
 members = ["modules/logyard-opentelemetry"]
@@ -265,11 +795,11 @@ dependencies = ["io.opentelemetry:opentelemetry-common:1.65.0:jar:compile"]
 [[package]]
 id = "io.opentelemetry:opentelemetry-context"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "io/opentelemetry/opentelemetry-context/1.65.0/opentelemetry-context-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-context/1.65.0/opentelemetry-context-1.65.0.pom"
+jar = "blobs/v2/sha256/7d763d701412dc10d5c70de8217a25d08bce1b7fe8fe3e3c6818568e14c1aabf/opentelemetry-context-1.65.0.jar"
+pom = "blobs/v2/sha256/42a8c3cfa1f2530cd94ec52b96ac17c6a47996709dafb708e2ab93190d7af3ae/opentelemetry-context-1.65.0.pom"
 jarSha256 = "7d763d701412dc10d5c70de8217a25d08bce1b7fe8fe3e3c6818568e14c1aabf"
 pomSha256 = "42a8c3cfa1f2530cd94ec52b96ac17c6a47996709dafb708e2ab93190d7af3ae"
 members = ["modules/logyard-opentelemetry"]
@@ -278,11 +808,11 @@ dependencies = ["io.opentelemetry:opentelemetry-common:1.65.0:jar:test"]
 [[package]]
 id = "io.opentelemetry:opentelemetry-sdk-common"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "io/opentelemetry/opentelemetry-sdk-common/1.65.0/opentelemetry-sdk-common-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-sdk-common/1.65.0/opentelemetry-sdk-common-1.65.0.pom"
+jar = "blobs/v2/sha256/b7756881df140002c4cf523931ac6cb77a98f2d4386a7a59f4d3c64dac9f051a/opentelemetry-sdk-common-1.65.0.jar"
+pom = "blobs/v2/sha256/2ca9dda8e04d0de9150d9b7c72c490e4a5e3782d7b4582bd9e2fbf2cc06422c1/opentelemetry-sdk-common-1.65.0.pom"
 jarSha256 = "b7756881df140002c4cf523931ac6cb77a98f2d4386a7a59f4d3c64dac9f051a"
 pomSha256 = "2ca9dda8e04d0de9150d9b7c72c490e4a5e3782d7b4582bd9e2fbf2cc06422c1"
 members = ["modules/logyard-opentelemetry"]
@@ -291,11 +821,11 @@ dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test"]
 [[package]]
 id = "io.opentelemetry:opentelemetry-sdk-logs"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "io/opentelemetry/opentelemetry-sdk-logs/1.65.0/opentelemetry-sdk-logs-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-sdk-logs/1.65.0/opentelemetry-sdk-logs-1.65.0.pom"
+jar = "blobs/v2/sha256/7a22fb31101842705a57256ffbd7ee60f5ade75a51944a3b43169c2eb7158358/opentelemetry-sdk-logs-1.65.0.jar"
+pom = "blobs/v2/sha256/b5a086634cce6e5d28565956feb71bbc9e7891c2a2ef721eb97881a33b05800c/opentelemetry-sdk-logs-1.65.0.pom"
 jarSha256 = "7a22fb31101842705a57256ffbd7ee60f5ade75a51944a3b43169c2eb7158358"
 pomSha256 = "b5a086634cce6e5d28565956feb71bbc9e7891c2a2ef721eb97881a33b05800c"
 members = ["modules/logyard-opentelemetry"]
@@ -304,11 +834,11 @@ dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opente
 [[package]]
 id = "io.opentelemetry:opentelemetry-sdk-metrics"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "io/opentelemetry/opentelemetry-sdk-metrics/1.65.0/opentelemetry-sdk-metrics-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-sdk-metrics/1.65.0/opentelemetry-sdk-metrics-1.65.0.pom"
+jar = "blobs/v2/sha256/6ee721f1bb0a2cffc9bb1c002df58d6d4d0d9916e5f9968c3088fbb3aa7d82a8/opentelemetry-sdk-metrics-1.65.0.jar"
+pom = "blobs/v2/sha256/8c00b4640540abc26ac147bea2e0c7ceab1392bc1ac0798f97f724b27c00da7e/opentelemetry-sdk-metrics-1.65.0.pom"
 jarSha256 = "6ee721f1bb0a2cffc9bb1c002df58d6d4d0d9916e5f9968c3088fbb3aa7d82a8"
 pomSha256 = "8c00b4640540abc26ac147bea2e0c7ceab1392bc1ac0798f97f724b27c00da7e"
 members = ["modules/logyard-opentelemetry"]
@@ -317,11 +847,11 @@ dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opente
 [[package]]
 id = "io.opentelemetry:opentelemetry-sdk-testing"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = true
-jar = "io/opentelemetry/opentelemetry-sdk-testing/1.65.0/opentelemetry-sdk-testing-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-sdk-testing/1.65.0/opentelemetry-sdk-testing-1.65.0.pom"
+jar = "blobs/v2/sha256/d661ea152ec9eef40996d3e27c5b9da3f7021afee2f826edaad2d0131f571bbb/opentelemetry-sdk-testing-1.65.0.jar"
+pom = "blobs/v2/sha256/e5b192c04db5ab879db43476f82dbf51f3ab604a98618ee884bdb80bdb90a7db/opentelemetry-sdk-testing-1.65.0.pom"
 jarSha256 = "d661ea152ec9eef40996d3e27c5b9da3f7021afee2f826edaad2d0131f571bbb"
 pomSha256 = "e5b192c04db5ab879db43476f82dbf51f3ab604a98618ee884bdb80bdb90a7db"
 members = ["modules/logyard-opentelemetry"]
@@ -330,11 +860,11 @@ dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opente
 [[package]]
 id = "io.opentelemetry:opentelemetry-sdk-trace"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "io/opentelemetry/opentelemetry-sdk-trace/1.65.0/opentelemetry-sdk-trace-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-sdk-trace/1.65.0/opentelemetry-sdk-trace-1.65.0.pom"
+jar = "blobs/v2/sha256/fe479a975bbe1a5989c37866ea065204230ab835025c7da992cf906536504055/opentelemetry-sdk-trace-1.65.0.jar"
+pom = "blobs/v2/sha256/198fe7759c55fd1cc403961944d2f5fe4162a6456c94b4bee75d258d7a7e63d1/opentelemetry-sdk-trace-1.65.0.pom"
 jarSha256 = "fe479a975bbe1a5989c37866ea065204230ab835025c7da992cf906536504055"
 pomSha256 = "198fe7759c55fd1cc403961944d2f5fe4162a6456c94b4bee75d258d7a7e63d1"
 members = ["modules/logyard-opentelemetry"]
@@ -343,11 +873,11 @@ dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opente
 [[package]]
 id = "io.opentelemetry:opentelemetry-sdk"
 version = "1.65.0"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = true
-jar = "io/opentelemetry/opentelemetry-sdk/1.65.0/opentelemetry-sdk-1.65.0.jar"
-pom = "io/opentelemetry/opentelemetry-sdk/1.65.0/opentelemetry-sdk-1.65.0.pom"
+jar = "blobs/v2/sha256/870f39762211792e902a981ca98d811839987b0586f84d7bb26660a751810553/opentelemetry-sdk-1.65.0.jar"
+pom = "blobs/v2/sha256/d1af111ec120688e5a93f4ae931793bf3607cc311200edbdd7f852b5ea084d99/opentelemetry-sdk-1.65.0.pom"
 jarSha256 = "870f39762211792e902a981ca98d811839987b0586f84d7bb26660a751810553"
 pomSha256 = "d1af111ec120688e5a93f4ae931793bf3607cc311200edbdd7f852b5ea084d99"
 members = ["modules/logyard-opentelemetry"]
@@ -356,11 +886,11 @@ dependencies = ["io.opentelemetry:opentelemetry-api:1.65.0:jar:test", "io.opente
 [[package]]
 id = "jakarta.annotation:jakarta.annotation-api"
 version = "2.1.1"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "jakarta/annotation/jakarta.annotation-api/2.1.1/jakarta.annotation-api-2.1.1.jar"
-pom = "jakarta/annotation/jakarta.annotation-api/2.1.1/jakarta.annotation-api-2.1.1.pom"
+jar = "blobs/v2/sha256/5f65fdaf424eee2b55e1d882ba9bb376be93fb09b37b808be6e22e8851c909fe/jakarta.annotation-api-2.1.1.jar"
+pom = "blobs/v2/sha256/af650eca1de1b98741006acd82507e4408cffedd2fee33a0ea463d61508db7ec/jakarta.annotation-api-2.1.1.pom"
 jarSha256 = "5f65fdaf424eee2b55e1d882ba9bb376be93fb09b37b808be6e22e8851c909fe"
 pomSha256 = "af650eca1de1b98741006acd82507e4408cffedd2fee33a0ea463d61508db7ec"
 members = ["modules/logyard-spring-boot-starter"]
@@ -369,11 +899,11 @@ dependencies = []
 [[package]]
 id = "net.sf.jopt-simple:jopt-simple"
 version = "5.0.4"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "net/sf/jopt-simple/jopt-simple/5.0.4/jopt-simple-5.0.4.jar"
-pom = "net/sf/jopt-simple/jopt-simple/5.0.4/jopt-simple-5.0.4.pom"
+jar = "blobs/v2/sha256/df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28/jopt-simple-5.0.4.jar"
+pom = "blobs/v2/sha256/6a67763b76afcd9c80b95e5c5e24782d18cc1b0e3d9b454ad3f8754c76b76815/jopt-simple-5.0.4.pom"
 jarSha256 = "df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28"
 pomSha256 = "6a67763b76afcd9c80b95e5c5e24782d18cc1b0e3d9b454ad3f8754c76b76815"
 members = ["benchmarks/logyard-benchmarks"]
@@ -382,11 +912,11 @@ dependencies = []
 [[package]]
 id = "net.sf.jopt-simple:jopt-simple"
 version = "5.0.4"
-source = "maven-central"
+source = "central"
 scope = "processor"
 direct = false
-jar = "net/sf/jopt-simple/jopt-simple/5.0.4/jopt-simple-5.0.4.jar"
-pom = "net/sf/jopt-simple/jopt-simple/5.0.4/jopt-simple-5.0.4.pom"
+jar = "blobs/v2/sha256/df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28/jopt-simple-5.0.4.jar"
+pom = "blobs/v2/sha256/6a67763b76afcd9c80b95e5c5e24782d18cc1b0e3d9b454ad3f8754c76b76815/jopt-simple-5.0.4.pom"
 jarSha256 = "df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28"
 pomSha256 = "6a67763b76afcd9c80b95e5c5e24782d18cc1b0e3d9b454ad3f8754c76b76815"
 members = ["benchmarks/logyard-benchmarks"]
@@ -395,11 +925,11 @@ dependencies = []
 [[package]]
 id = "org.apache.commons:commons-math3"
 version = "3.6.1"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar"
-pom = "org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.pom"
+jar = "blobs/v2/sha256/1e56d7b058d28b65abd256b8458e3885b674c1d588fa43cd7d1cbb9c7ef2b308/commons-math3-3.6.1.jar"
+pom = "blobs/v2/sha256/fad72336ea7d7dd06da103144e3740db508fa4b17d9c54d7847737edc24a7e60/commons-math3-3.6.1.pom"
 jarSha256 = "1e56d7b058d28b65abd256b8458e3885b674c1d588fa43cd7d1cbb9c7ef2b308"
 pomSha256 = "fad72336ea7d7dd06da103144e3740db508fa4b17d9c54d7847737edc24a7e60"
 members = ["benchmarks/logyard-benchmarks"]
@@ -408,11 +938,11 @@ dependencies = []
 [[package]]
 id = "org.apache.commons:commons-math3"
 version = "3.6.1"
-source = "maven-central"
+source = "central"
 scope = "processor"
 direct = false
-jar = "org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar"
-pom = "org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.pom"
+jar = "blobs/v2/sha256/1e56d7b058d28b65abd256b8458e3885b674c1d588fa43cd7d1cbb9c7ef2b308/commons-math3-3.6.1.jar"
+pom = "blobs/v2/sha256/fad72336ea7d7dd06da103144e3740db508fa4b17d9c54d7847737edc24a7e60/commons-math3-3.6.1.pom"
 jarSha256 = "1e56d7b058d28b65abd256b8458e3885b674c1d588fa43cd7d1cbb9c7ef2b308"
 pomSha256 = "fad72336ea7d7dd06da103144e3740db508fa4b17d9c54d7847737edc24a7e60"
 members = ["benchmarks/logyard-benchmarks"]
@@ -421,11 +951,11 @@ dependencies = []
 [[package]]
 id = "org.junit.platform:junit-platform-console-standalone"
 version = "1.11.4"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = true
-jar = "org/junit/platform/junit-platform-console-standalone/1.11.4/junit-platform-console-standalone-1.11.4.jar"
-pom = "org/junit/platform/junit-platform-console-standalone/1.11.4/junit-platform-console-standalone-1.11.4.pom"
+jar = "blobs/v2/sha256/b016ef6b1c3454d6d7c2c88ce081dabf289699686af6622d6e4e2e1b54b4a2fc/junit-platform-console-standalone-1.11.4.jar"
+pom = "blobs/v2/sha256/f44619c18edb94360cc382e6baf943e9300625d1a0a949ee158977eace5713d1/junit-platform-console-standalone-1.11.4.pom"
 jarSha256 = "b016ef6b1c3454d6d7c2c88ce081dabf289699686af6622d6e4e2e1b54b4a2fc"
 pomSha256 = "f44619c18edb94360cc382e6baf943e9300625d1a0a949ee158977eace5713d1"
 members = ["modules/logyard-api", "modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-opentelemetry", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-system-logger", "modules/logyard-test"]
@@ -434,11 +964,11 @@ dependencies = []
 [[package]]
 id = "org.openjdk.jmh:jmh-core"
 version = "1.37"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = true
-jar = "org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar"
-pom = "org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.pom"
+jar = "blobs/v2/sha256/dc0eaf2bbf0036a70b60798c785d6e03a9daf06b68b8edb0f1ba9eb3421baeb3/jmh-core-1.37.jar"
+pom = "blobs/v2/sha256/04453be006f06f86d7c43f3c492f7b4eb3362680cae4f1ee80ba65db23373f5a/jmh-core-1.37.pom"
 jarSha256 = "dc0eaf2bbf0036a70b60798c785d6e03a9daf06b68b8edb0f1ba9eb3421baeb3"
 pomSha256 = "04453be006f06f86d7c43f3c492f7b4eb3362680cae4f1ee80ba65db23373f5a"
 members = ["benchmarks/logyard-benchmarks"]
@@ -447,11 +977,11 @@ dependencies = ["net.sf.jopt-simple:jopt-simple:5.0.4:jar:compile", "org.apache.
 [[package]]
 id = "org.openjdk.jmh:jmh-core"
 version = "1.37"
-source = "maven-central"
+source = "central"
 scope = "processor"
 direct = false
-jar = "org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar"
-pom = "org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.pom"
+jar = "blobs/v2/sha256/dc0eaf2bbf0036a70b60798c785d6e03a9daf06b68b8edb0f1ba9eb3421baeb3/jmh-core-1.37.jar"
+pom = "blobs/v2/sha256/04453be006f06f86d7c43f3c492f7b4eb3362680cae4f1ee80ba65db23373f5a/jmh-core-1.37.pom"
 jarSha256 = "dc0eaf2bbf0036a70b60798c785d6e03a9daf06b68b8edb0f1ba9eb3421baeb3"
 pomSha256 = "04453be006f06f86d7c43f3c492f7b4eb3362680cae4f1ee80ba65db23373f5a"
 members = ["benchmarks/logyard-benchmarks"]
@@ -460,11 +990,11 @@ dependencies = ["net.sf.jopt-simple:jopt-simple:5.0.4:jar:processor", "org.apach
 [[package]]
 id = "org.openjdk.jmh:jmh-generator-annprocess"
 version = "1.37"
-source = "maven-central"
+source = "central"
 scope = "processor"
 direct = true
-jar = "org/openjdk/jmh/jmh-generator-annprocess/1.37/jmh-generator-annprocess-1.37.jar"
-pom = "org/openjdk/jmh/jmh-generator-annprocess/1.37/jmh-generator-annprocess-1.37.pom"
+jar = "blobs/v2/sha256/6a5604b5b804e0daca1145df1077609321687734a8b49387e49f10557c186c77/jmh-generator-annprocess-1.37.jar"
+pom = "blobs/v2/sha256/e4240265b5425c39f1cf2733afda3aec3b139dd193e794d55137bec9240ff476/jmh-generator-annprocess-1.37.pom"
 jarSha256 = "6a5604b5b804e0daca1145df1077609321687734a8b49387e49f10557c186c77"
 pomSha256 = "e4240265b5425c39f1cf2733afda3aec3b139dd193e794d55137bec9240ff476"
 members = ["benchmarks/logyard-benchmarks"]
@@ -473,24 +1003,25 @@ dependencies = ["org.openjdk.jmh:jmh-core:1.37:jar:processor"]
 [[package]]
 id = "org.slf4j:slf4j-api"
 version = "2.0.18"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = true
-jar = "org/slf4j/slf4j-api/2.0.18/slf4j-api-2.0.18.jar"
-pom = "org/slf4j/slf4j-api/2.0.18/slf4j-api-2.0.18.pom"
+jar = "blobs/v2/sha256/44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55/slf4j-api-2.0.18.jar"
+pom = "blobs/v2/sha256/6c2c7f2c02774cc2b7b619fbd2df7873cdad29718926e44754b87f70d1eb43cb/slf4j-api-2.0.18.pom"
 jarSha256 = "44508fd1576500688c790b190acdd16fec4f8c79a3e0b900afd70503cf055f55"
 pomSha256 = "6c2c7f2c02774cc2b7b619fbd2df7873cdad29718926e44754b87f70d1eb43cb"
 members = ["benchmarks/logyard-benchmarks", "modules/logyard-slf4j2"]
+exportedBy = ["modules/logyard-slf4j2"]
 dependencies = []
 
 [[package]]
 id = "org.springframework.boot:spring-boot-actuator"
 version = "3.5.16"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = true
-jar = "org/springframework/boot/spring-boot-actuator/3.5.16/spring-boot-actuator-3.5.16.jar"
-pom = "org/springframework/boot/spring-boot-actuator/3.5.16/spring-boot-actuator-3.5.16.pom"
+jar = "blobs/v2/sha256/3251e8197ea7df906086a86730e069deb7290ea17ce87c25a1f7db79661abbd6/spring-boot-actuator-3.5.16.jar"
+pom = "blobs/v2/sha256/8b6d85f40978cf4e05de681820f40ed9e13b5e688443cb6016c33e21be79f968/spring-boot-actuator-3.5.16.pom"
 jarSha256 = "3251e8197ea7df906086a86730e069deb7290ea17ce87c25a1f7db79661abbd6"
 pomSha256 = "8b6d85f40978cf4e05de681820f40ed9e13b5e688443cb6016c33e21be79f968"
 members = ["modules/logyard-spring-boot"]
@@ -499,11 +1030,11 @@ dependencies = ["org.springframework.boot:spring-boot:3.5.16:jar:test"]
 [[package]]
 id = "org.springframework.boot:spring-boot-autoconfigure-processor"
 version = "3.5.16"
-source = "maven-central"
+source = "central"
 scope = "processor"
 direct = true
-jar = "org/springframework/boot/spring-boot-autoconfigure-processor/3.5.16/spring-boot-autoconfigure-processor-3.5.16.jar"
-pom = "org/springframework/boot/spring-boot-autoconfigure-processor/3.5.16/spring-boot-autoconfigure-processor-3.5.16.pom"
+jar = "blobs/v2/sha256/6aaec06898934a80e3a8fded8e713922a1852426664c642f14cb6377cc144624/spring-boot-autoconfigure-processor-3.5.16.jar"
+pom = "blobs/v2/sha256/b977118fee1c4d5a4c8f3be3c0ef3bbfca5136223b359fa20a9ce4eeb33fd0e9/spring-boot-autoconfigure-processor-3.5.16.pom"
 jarSha256 = "6aaec06898934a80e3a8fded8e713922a1852426664c642f14cb6377cc144624"
 pomSha256 = "b977118fee1c4d5a4c8f3be3c0ef3bbfca5136223b359fa20a9ce4eeb33fd0e9"
 members = ["modules/logyard-spring-boot"]
@@ -512,24 +1043,25 @@ dependencies = []
 [[package]]
 id = "org.springframework.boot:spring-boot-autoconfigure"
 version = "3.5.16"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = true
-jar = "org/springframework/boot/spring-boot-autoconfigure/3.5.16/spring-boot-autoconfigure-3.5.16.jar"
-pom = "org/springframework/boot/spring-boot-autoconfigure/3.5.16/spring-boot-autoconfigure-3.5.16.pom"
+jar = "blobs/v2/sha256/0198331231e9bf872a135741d59c6d1f9e9007ff207a1ca910179c550bb12bfc/spring-boot-autoconfigure-3.5.16.jar"
+pom = "blobs/v2/sha256/dfba627e9b59000f5b60eddc9d3d289adca4fec203c5f57427b9d8deb2abbd84/spring-boot-autoconfigure-3.5.16.pom"
 jarSha256 = "0198331231e9bf872a135741d59c6d1f9e9007ff207a1ca910179c550bb12bfc"
 pomSha256 = "dfba627e9b59000f5b60eddc9d3d289adca4fec203c5f57427b9d8deb2abbd84"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
+exportedBy = ["modules/logyard-spring-boot"]
 dependencies = ["org.springframework.boot:spring-boot:3.5.16:jar:compile"]
 
 [[package]]
 id = "org.springframework.boot:spring-boot-configuration-processor"
 version = "3.5.16"
-source = "maven-central"
+source = "central"
 scope = "processor"
 direct = true
-jar = "org/springframework/boot/spring-boot-configuration-processor/3.5.16/spring-boot-configuration-processor-3.5.16.jar"
-pom = "org/springframework/boot/spring-boot-configuration-processor/3.5.16/spring-boot-configuration-processor-3.5.16.pom"
+jar = "blobs/v2/sha256/34dcf76ac251f41af3198398350e50194d81020329a9aad0658538bbf80c3845/spring-boot-configuration-processor-3.5.16.jar"
+pom = "blobs/v2/sha256/a97f31407ff313fcfc87ade89d6b054c3298431487d687ba1e4e1becc318b373/spring-boot-configuration-processor-3.5.16.pom"
 jarSha256 = "34dcf76ac251f41af3198398350e50194d81020329a9aad0658538bbf80c3845"
 pomSha256 = "a97f31407ff313fcfc87ade89d6b054c3298431487d687ba1e4e1becc318b373"
 members = ["modules/logyard-spring-boot"]
@@ -538,50 +1070,53 @@ dependencies = []
 [[package]]
 id = "org.springframework.boot:spring-boot-starter"
 version = "3.5.16"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = true
-jar = "org/springframework/boot/spring-boot-starter/3.5.16/spring-boot-starter-3.5.16.jar"
-pom = "org/springframework/boot/spring-boot-starter/3.5.16/spring-boot-starter-3.5.16.pom"
+jar = "blobs/v2/sha256/649da4576c83a4f814222dcff067cd774eeeb1119e790390eaeab8e9955d0d44/spring-boot-starter-3.5.16.jar"
+pom = "blobs/v2/sha256/c47e293ee33357e9f1314dc53ff61e62a8e29e1672629c0985a8fa1560cd8527/spring-boot-starter-3.5.16.pom"
 jarSha256 = "649da4576c83a4f814222dcff067cd774eeeb1119e790390eaeab8e9955d0d44"
 pomSha256 = "c47e293ee33357e9f1314dc53ff61e62a8e29e1672629c0985a8fa1560cd8527"
 members = ["modules/logyard-spring-boot-starter"]
+exportedBy = ["modules/logyard-spring-boot-starter"]
 dependencies = ["jakarta.annotation:jakarta.annotation-api:2.1.1:jar:compile", "org.springframework.boot:spring-boot-autoconfigure:3.5.16:jar:compile", "org.springframework.boot:spring-boot:3.5.16:jar:compile", "org.springframework:spring-core:6.2.19:jar:compile", "org.yaml:snakeyaml:2.4:jar:compile"]
 
 [[package]]
 id = "org.springframework.boot:spring-boot"
 version = "3.5.16"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = true
-jar = "org/springframework/boot/spring-boot/3.5.16/spring-boot-3.5.16.jar"
-pom = "org/springframework/boot/spring-boot/3.5.16/spring-boot-3.5.16.pom"
+jar = "blobs/v2/sha256/2d5b16632402b840b0425ed52610071890bf8cb24c6c49af343bbde574123265/spring-boot-3.5.16.jar"
+pom = "blobs/v2/sha256/c9a0e75f1c06467fb6932ba2f3e8724d0d6db57aaae8305d7d86274795d74e53/spring-boot-3.5.16.pom"
 jarSha256 = "2d5b16632402b840b0425ed52610071890bf8cb24c6c49af343bbde574123265"
 pomSha256 = "c9a0e75f1c06467fb6932ba2f3e8724d0d6db57aaae8305d7d86274795d74e53"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
+exportedBy = ["modules/logyard-spring-boot"]
 dependencies = ["org.springframework:spring-context:6.2.19:jar:compile", "org.springframework:spring-core:6.2.19:jar:compile"]
 
 [[package]]
 id = "org.springframework.boot:spring-boot"
 version = "3.5.16"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "org/springframework/boot/spring-boot/3.5.16/spring-boot-3.5.16.jar"
-pom = "org/springframework/boot/spring-boot/3.5.16/spring-boot-3.5.16.pom"
+jar = "blobs/v2/sha256/2d5b16632402b840b0425ed52610071890bf8cb24c6c49af343bbde574123265/spring-boot-3.5.16.jar"
+pom = "blobs/v2/sha256/c9a0e75f1c06467fb6932ba2f3e8724d0d6db57aaae8305d7d86274795d74e53/spring-boot-3.5.16.pom"
 jarSha256 = "2d5b16632402b840b0425ed52610071890bf8cb24c6c49af343bbde574123265"
 pomSha256 = "c9a0e75f1c06467fb6932ba2f3e8724d0d6db57aaae8305d7d86274795d74e53"
 members = ["modules/logyard-spring-boot"]
+exportedBy = ["modules/logyard-spring-boot"]
 dependencies = ["org.springframework:spring-context:6.2.19:jar:test", "org.springframework:spring-core:6.2.19:jar:test"]
 
 [[package]]
 id = "org.springframework:spring-aop"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "org/springframework/spring-aop/6.2.19/spring-aop-6.2.19.jar"
-pom = "org/springframework/spring-aop/6.2.19/spring-aop-6.2.19.pom"
+jar = "blobs/v2/sha256/a11b93539d80b02caf76171db2da96df39abebbfef49a2fadd6dda0779f2e20b/spring-aop-6.2.19.jar"
+pom = "blobs/v2/sha256/c27a6385a8ba4f01f226bee38d6c97ac6b697e06e59bd6f38a3538218848ac98/spring-aop-6.2.19.pom"
 jarSha256 = "a11b93539d80b02caf76171db2da96df39abebbfef49a2fadd6dda0779f2e20b"
 pomSha256 = "c27a6385a8ba4f01f226bee38d6c97ac6b697e06e59bd6f38a3538218848ac98"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
@@ -590,11 +1125,11 @@ dependencies = ["org.springframework:spring-beans:6.2.19:jar:compile", "org.spri
 [[package]]
 id = "org.springframework:spring-aop"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "org/springframework/spring-aop/6.2.19/spring-aop-6.2.19.jar"
-pom = "org/springframework/spring-aop/6.2.19/spring-aop-6.2.19.pom"
+jar = "blobs/v2/sha256/a11b93539d80b02caf76171db2da96df39abebbfef49a2fadd6dda0779f2e20b/spring-aop-6.2.19.jar"
+pom = "blobs/v2/sha256/c27a6385a8ba4f01f226bee38d6c97ac6b697e06e59bd6f38a3538218848ac98/spring-aop-6.2.19.pom"
 jarSha256 = "a11b93539d80b02caf76171db2da96df39abebbfef49a2fadd6dda0779f2e20b"
 pomSha256 = "c27a6385a8ba4f01f226bee38d6c97ac6b697e06e59bd6f38a3538218848ac98"
 members = ["modules/logyard-spring-boot"]
@@ -603,11 +1138,11 @@ dependencies = ["org.springframework:spring-beans:6.2.19:jar:test", "org.springf
 [[package]]
 id = "org.springframework:spring-beans"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "org/springframework/spring-beans/6.2.19/spring-beans-6.2.19.jar"
-pom = "org/springframework/spring-beans/6.2.19/spring-beans-6.2.19.pom"
+jar = "blobs/v2/sha256/846dc8f30a639a36eb551ee99a30469be4d11bd285ca9daf164d98321571b404/spring-beans-6.2.19.jar"
+pom = "blobs/v2/sha256/bd2c451646f1e2cb0df22485aff498f5cde979aedb117f9bb54f01100e9bdb43/spring-beans-6.2.19.pom"
 jarSha256 = "846dc8f30a639a36eb551ee99a30469be4d11bd285ca9daf164d98321571b404"
 pomSha256 = "bd2c451646f1e2cb0df22485aff498f5cde979aedb117f9bb54f01100e9bdb43"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
@@ -616,11 +1151,11 @@ dependencies = ["org.springframework:spring-core:6.2.19:jar:compile"]
 [[package]]
 id = "org.springframework:spring-beans"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "org/springframework/spring-beans/6.2.19/spring-beans-6.2.19.jar"
-pom = "org/springframework/spring-beans/6.2.19/spring-beans-6.2.19.pom"
+jar = "blobs/v2/sha256/846dc8f30a639a36eb551ee99a30469be4d11bd285ca9daf164d98321571b404/spring-beans-6.2.19.jar"
+pom = "blobs/v2/sha256/bd2c451646f1e2cb0df22485aff498f5cde979aedb117f9bb54f01100e9bdb43/spring-beans-6.2.19.pom"
 jarSha256 = "846dc8f30a639a36eb551ee99a30469be4d11bd285ca9daf164d98321571b404"
 pomSha256 = "bd2c451646f1e2cb0df22485aff498f5cde979aedb117f9bb54f01100e9bdb43"
 members = ["modules/logyard-spring-boot"]
@@ -629,11 +1164,11 @@ dependencies = ["org.springframework:spring-core:6.2.19:jar:test"]
 [[package]]
 id = "org.springframework:spring-context"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "org/springframework/spring-context/6.2.19/spring-context-6.2.19.jar"
-pom = "org/springframework/spring-context/6.2.19/spring-context-6.2.19.pom"
+jar = "blobs/v2/sha256/ead4b645f94a7f665f00093eaafde634e97b34524294de653b51e43e0b3fc4a4/spring-context-6.2.19.jar"
+pom = "blobs/v2/sha256/9ffe29ed9203202a564114a6b4d86d7b88914ab4c97ed2c162844892e921503b/spring-context-6.2.19.pom"
 jarSha256 = "ead4b645f94a7f665f00093eaafde634e97b34524294de653b51e43e0b3fc4a4"
 pomSha256 = "9ffe29ed9203202a564114a6b4d86d7b88914ab4c97ed2c162844892e921503b"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
@@ -642,11 +1177,11 @@ dependencies = ["io.micrometer:micrometer-observation:1.15.12:jar:compile", "org
 [[package]]
 id = "org.springframework:spring-context"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "org/springframework/spring-context/6.2.19/spring-context-6.2.19.jar"
-pom = "org/springframework/spring-context/6.2.19/spring-context-6.2.19.pom"
+jar = "blobs/v2/sha256/ead4b645f94a7f665f00093eaafde634e97b34524294de653b51e43e0b3fc4a4/spring-context-6.2.19.jar"
+pom = "blobs/v2/sha256/9ffe29ed9203202a564114a6b4d86d7b88914ab4c97ed2c162844892e921503b/spring-context-6.2.19.pom"
 jarSha256 = "ead4b645f94a7f665f00093eaafde634e97b34524294de653b51e43e0b3fc4a4"
 pomSha256 = "9ffe29ed9203202a564114a6b4d86d7b88914ab4c97ed2c162844892e921503b"
 members = ["modules/logyard-spring-boot"]
@@ -655,11 +1190,11 @@ dependencies = ["io.micrometer:micrometer-observation:1.15.12:jar:test", "org.sp
 [[package]]
 id = "org.springframework:spring-core"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "org/springframework/spring-core/6.2.19/spring-core-6.2.19.jar"
-pom = "org/springframework/spring-core/6.2.19/spring-core-6.2.19.pom"
+jar = "blobs/v2/sha256/52146689e71a911c92bac26677d73c692512a739893a57710cc233591756bff6/spring-core-6.2.19.jar"
+pom = "blobs/v2/sha256/e7dffe4f61be06ed3b4e811fc587a2e47bc59c4ba55563a2916d94de1dabcbc4/spring-core-6.2.19.pom"
 jarSha256 = "52146689e71a911c92bac26677d73c692512a739893a57710cc233591756bff6"
 pomSha256 = "e7dffe4f61be06ed3b4e811fc587a2e47bc59c4ba55563a2916d94de1dabcbc4"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
@@ -668,11 +1203,11 @@ dependencies = ["org.springframework:spring-jcl:6.2.19:jar:compile"]
 [[package]]
 id = "org.springframework:spring-core"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "org/springframework/spring-core/6.2.19/spring-core-6.2.19.jar"
-pom = "org/springframework/spring-core/6.2.19/spring-core-6.2.19.pom"
+jar = "blobs/v2/sha256/52146689e71a911c92bac26677d73c692512a739893a57710cc233591756bff6/spring-core-6.2.19.jar"
+pom = "blobs/v2/sha256/e7dffe4f61be06ed3b4e811fc587a2e47bc59c4ba55563a2916d94de1dabcbc4/spring-core-6.2.19.pom"
 jarSha256 = "52146689e71a911c92bac26677d73c692512a739893a57710cc233591756bff6"
 pomSha256 = "e7dffe4f61be06ed3b4e811fc587a2e47bc59c4ba55563a2916d94de1dabcbc4"
 members = ["modules/logyard-spring-boot"]
@@ -681,11 +1216,11 @@ dependencies = ["org.springframework:spring-jcl:6.2.19:jar:test"]
 [[package]]
 id = "org.springframework:spring-expression"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "org/springframework/spring-expression/6.2.19/spring-expression-6.2.19.jar"
-pom = "org/springframework/spring-expression/6.2.19/spring-expression-6.2.19.pom"
+jar = "blobs/v2/sha256/d710a44417d890353895b341a722d7d08199e2b7da52f0a11c0e92571e1d6e19/spring-expression-6.2.19.jar"
+pom = "blobs/v2/sha256/f3f99dfcd0b1229a15faaeda0fba11e3a25f85d01aa11737271a2bce854ef42a/spring-expression-6.2.19.pom"
 jarSha256 = "d710a44417d890353895b341a722d7d08199e2b7da52f0a11c0e92571e1d6e19"
 pomSha256 = "f3f99dfcd0b1229a15faaeda0fba11e3a25f85d01aa11737271a2bce854ef42a"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
@@ -694,11 +1229,11 @@ dependencies = ["org.springframework:spring-core:6.2.19:jar:compile"]
 [[package]]
 id = "org.springframework:spring-expression"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "org/springframework/spring-expression/6.2.19/spring-expression-6.2.19.jar"
-pom = "org/springframework/spring-expression/6.2.19/spring-expression-6.2.19.pom"
+jar = "blobs/v2/sha256/d710a44417d890353895b341a722d7d08199e2b7da52f0a11c0e92571e1d6e19/spring-expression-6.2.19.jar"
+pom = "blobs/v2/sha256/f3f99dfcd0b1229a15faaeda0fba11e3a25f85d01aa11737271a2bce854ef42a/spring-expression-6.2.19.pom"
 jarSha256 = "d710a44417d890353895b341a722d7d08199e2b7da52f0a11c0e92571e1d6e19"
 pomSha256 = "f3f99dfcd0b1229a15faaeda0fba11e3a25f85d01aa11737271a2bce854ef42a"
 members = ["modules/logyard-spring-boot"]
@@ -707,11 +1242,11 @@ dependencies = ["org.springframework:spring-core:6.2.19:jar:test"]
 [[package]]
 id = "org.springframework:spring-jcl"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "org/springframework/spring-jcl/6.2.19/spring-jcl-6.2.19.jar"
-pom = "org/springframework/spring-jcl/6.2.19/spring-jcl-6.2.19.pom"
+jar = "blobs/v2/sha256/9994478bcea1423b8892d4eb0db942c94da0090167c3c684050c1eaef04491d0/spring-jcl-6.2.19.jar"
+pom = "blobs/v2/sha256/cc00211d807821dae35df9dd361a08f9988db588eef76f07369e524e2032636e/spring-jcl-6.2.19.pom"
 jarSha256 = "9994478bcea1423b8892d4eb0db942c94da0090167c3c684050c1eaef04491d0"
 pomSha256 = "cc00211d807821dae35df9dd361a08f9988db588eef76f07369e524e2032636e"
 members = ["modules/logyard-spring-boot", "modules/logyard-spring-boot-starter"]
@@ -720,11 +1255,11 @@ dependencies = []
 [[package]]
 id = "org.springframework:spring-jcl"
 version = "6.2.19"
-source = "maven-central"
+source = "central"
 scope = "test"
 direct = false
-jar = "org/springframework/spring-jcl/6.2.19/spring-jcl-6.2.19.jar"
-pom = "org/springframework/spring-jcl/6.2.19/spring-jcl-6.2.19.pom"
+jar = "blobs/v2/sha256/9994478bcea1423b8892d4eb0db942c94da0090167c3c684050c1eaef04491d0/spring-jcl-6.2.19.jar"
+pom = "blobs/v2/sha256/cc00211d807821dae35df9dd361a08f9988db588eef76f07369e524e2032636e/spring-jcl-6.2.19.pom"
 jarSha256 = "9994478bcea1423b8892d4eb0db942c94da0090167c3c684050c1eaef04491d0"
 pomSha256 = "cc00211d807821dae35df9dd361a08f9988db588eef76f07369e524e2032636e"
 members = ["modules/logyard-spring-boot"]
@@ -733,11 +1268,11 @@ dependencies = []
 [[package]]
 id = "org.yaml:snakeyaml"
 version = "2.4"
-source = "maven-central"
+source = "central"
 scope = "compile"
 direct = false
-jar = "org/yaml/snakeyaml/2.4/snakeyaml-2.4.jar"
-pom = "org/yaml/snakeyaml/2.4/snakeyaml-2.4.pom"
+jar = "blobs/v2/sha256/ef779af5d29a9dde8cc70ce0341f5c6f7735e23edff9685ceaa9d35359b7bb7f/snakeyaml-2.4.jar"
+pom = "blobs/v2/sha256/e154a3231cd6cde68aabf274fd18964d49a9c1a5f5e9ed3bf471e9ae7bdf08e6/snakeyaml-2.4.pom"
 jarSha256 = "ef779af5d29a9dde8cc70ce0341f5c6f7735e23edff9685ceaa9d35359b7bb7f"
 pomSha256 = "e154a3231cd6cde68aabf274fd18964d49a9c1a5f5e9ed3bf471e9ae7bdf08e6"
 members = ["modules/logyard-spring-boot-starter"]

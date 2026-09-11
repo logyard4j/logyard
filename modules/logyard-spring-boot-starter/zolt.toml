@@ -2,56 +2,45 @@
 name = "logyard-spring-boot-starter"
 version = "0.1.0-rc.1"
 group = "com.logyard4j"
-java = "21"
+java = 21
+description = "Opinionated Spring Boot starter with Logyard as the sole SLF4J 2 logging provider."
+url = "https://logyard4j.com"
+issues = "https://github.com/logyard4j/logyard/issues"
+license = "Apache-2.0"
 
-[repositories]
-central = "https://repo.maven.apache.org/maven2"
+[project.scm]
+url = "https://github.com/logyard4j/logyard"
+connection = "scm:git:https://github.com/logyard4j/logyard.git"
+developerConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"
 
-[dependencies]
-"com.logyard4j:logyard-api" = { workspace = "modules/logyard-api" }
-"com.logyard4j:logyard-slf4j2" = { workspace = "modules/logyard-slf4j2" }
-"com.logyard4j:logyard-spring-boot" = { workspace = "modules/logyard-spring-boot" }
-"org.springframework.boot:spring-boot-starter" = { version = "3.5.16", exclusions = [
-    { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" },
-] }
+[project.developers.zsumz]
+name = "zsumz"
+email = "shawn@zsumz.com"
+
+[dependencies.api]
+"com.logyard4j:logyard-api" = { workspace = true }
+"com.logyard4j:logyard-slf4j2" = { workspace = true }
+"com.logyard4j:logyard-spring-boot" = { workspace = true }
+"org.springframework.boot:spring-boot-starter" = { version = "3.5.16", exclude = ["org.springframework.boot:spring-boot-starter-logging"] }
 
 [resources]
 main = ["src/main/resources"]
-
-[build]
-source = "src/main/java"
-output = "target/classes"
 
 [build.metadata]
 reproducible = true
 
 [package]
-mode = "thin"
+mode = "jar"
 sources = true
 javadoc = true
-
-[package.metadata]
-name = "Logyard Spring Boot Starter"
-description = "Opinionated Spring Boot starter with Logyard as the sole SLF4J 2 logging provider."
-url = "https://logyard4j.com"
-license = "Apache-2.0"
-licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-developers = ["zsumz <shawn@zsumz.com>"]
-scm = "https://github.com/logyard4j/logyard"
-scmConnection = "scm:git:https://github.com/logyard4j/logyard.git"
-scmDeveloperConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"
-issues = "https://github.com/logyard4j/logyard/issues"
 
 [package.manifest]
 "Automatic-Module-Name" = "com.logyard4j.spring.boot.starter"
 
-[publish]
-artifacts = ["main"]
-
 [publish.signing]
-enabled = true
+method = "gpg"
 keyId = "EC8E4D26598A0373"
 
 [publish.central]
 tokenEnv = "ZOLT_CENTRAL_TOKEN"
-publishingType = "user-managed"
+mode = "manual"

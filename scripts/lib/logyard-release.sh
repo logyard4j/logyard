@@ -59,7 +59,8 @@ logyard_manifest_value() {
 
 logyard_workspace_members() {
   awk '
-    /^members = \[/ { inside = 1; next }
+    /^\[workspace\.members\]$/ { members = 1; next }
+    members && /^include = \[/ { inside = 1; next }
     inside && /^]/ { exit }
     inside && match($0, /"[^"]+"/) { print substr($0, RSTART + 1, RLENGTH - 2) }
   ' "$LOGYARD_ROOT/zolt.toml"
@@ -76,12 +77,7 @@ logyard_publish_members() {
 logyard_test_members() {
   local member
   while IFS= read -r member; do
-    awk '
-      /^\[build\]$/ { inside = 1; next }
-      inside && /^\[/ { exit }
-      inside && /^[[:space:]]*test[[:space:]]*=/ { found = 1 }
-      END { exit(found ? 0 : 1) }
-    ' "$LOGYARD_ROOT/$member/zolt.toml" && printf '%s\n' "$member"
+    [[ -d "$LOGYARD_ROOT/$member/src/test/java" ]] && printf '%s\n' "$member"
   done < <(logyard_workspace_members)
   return 0
 }

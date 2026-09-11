@@ -2,61 +2,50 @@
 name = "logyard-test"
 version = "0.1.0-rc.1"
 group = "com.logyard4j"
-java = "21"
+java = 21
+description = "Isolated runtime capture and event assertions for tests."
+url = "https://logyard4j.com"
+issues = "https://github.com/logyard4j/logyard/issues"
+license = "Apache-2.0"
 
-[repositories]
-central = "https://repo.maven.apache.org/maven2"
+[project.scm]
+url = "https://github.com/logyard4j/logyard"
+connection = "scm:git:https://github.com/logyard4j/logyard.git"
+developerConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"
 
-[dependencyPolicy.licenses]
+[project.developers.zsumz]
+name = "zsumz"
+email = "shawn@zsumz.com"
+
+[dependencies.api]
+"com.logyard4j:logyard-api" = { workspace = true }
+"com.logyard4j:logyard-core" = { workspace = true }
+
+[dependencies.test]
+"org.junit.platform:junit-platform-console-standalone" = "1.11.4"
+
+[dependencies.policy.licenses]
 allow = ["Apache-2.0", "EPL-2.0", "GPL-2.0-with-classpath-exception", "MIT"]
 unknown = "fail"
 
-[dependencies]
-"com.logyard4j:logyard-api" = { workspace = "modules/logyard-api" }
-"com.logyard4j:logyard-core" = { workspace = "modules/logyard-core" }
-
-[test.dependencies]
-"org.junit.platform:junit-platform-console-standalone" = "1.11.4"
-
 [resources]
 main = ["src/main/resources"]
-
-[build]
-source = "src/main/java"
-test = "src/test/java"
-output = "target/classes"
-testOutput = "target/test-classes"
 
 [build.metadata]
 reproducible = true
 
 [package]
-mode = "thin"
+mode = "jar"
 sources = true
 javadoc = true
-
-[package.metadata]
-name = "Logyard Test Kit"
-description = "Isolated runtime capture and event assertions for tests."
-url = "https://logyard4j.com"
-license = "Apache-2.0"
-licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-developers = ["zsumz <shawn@zsumz.com>"]
-scm = "https://github.com/logyard4j/logyard"
-scmConnection = "scm:git:https://github.com/logyard4j/logyard.git"
-scmDeveloperConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"
-issues = "https://github.com/logyard4j/logyard/issues"
 
 [package.manifest]
 "Automatic-Module-Name" = "com.logyard4j.test"
 
-[publish]
-artifacts = ["main"]
-
 [publish.signing]
-enabled = true
+method = "gpg"
 keyId = "EC8E4D26598A0373"
 
 [publish.central]
 tokenEnv = "ZOLT_CENTRAL_TOKEN"
-publishingType = "user-managed"
+mode = "manual"

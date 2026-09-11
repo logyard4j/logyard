@@ -12,7 +12,7 @@ class PublicationPlanTest(unittest.TestCase):
     def test_prepare_creates_target_in_a_cold_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / "zolt.toml").write_text("[workspace]\nmembers = []\n")
+            (root / "zolt.toml").write_text("[workspace.members]\ninclude = []\n")
             (root / "zolt.lock").write_text("")
             result = subprocess.CompletedProcess(("zolt", "publish"), 0, stdout="")
 
@@ -38,6 +38,8 @@ class PublicationPlanTest(unittest.TestCase):
                 original_publish = original.pop("publish")
                 staged_publish = staged.pop("publish")
                 self.assertEqual(original, staged)
-                self.assertEqual(original_publish.get("artifacts", ["main"]), staged_publish["artifacts"])
                 self.assertNotIn("signing", staged_publish)
+                self.assertNotIn("central", staged_publish)
+                self.assertEqual("local-plan", staged_publish["release"])
+                self.assertEqual("local-plan", staged_publish["snapshot"])
                 self.assertEqual("http://127.0.0.1:9", staged_publish["repositories"]["local-plan"]["url"])

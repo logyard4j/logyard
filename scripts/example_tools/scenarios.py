@@ -24,9 +24,8 @@ def spring_boot_example(
         ("spring-boot-starter-webmvc", web_starter),
     ]
     if not actuator:
-        replacements.append(('"org.springframework.boot:spring-boot-starter-actuator" = { exclusions = [\n'
-                             '  { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" }\n'
-                             '] }\n', ""))
+        replacements.append(('"org.springframework.boot:spring-boot-starter-actuator" = '
+                             '{ managed = true, exclude = ["org.springframework.boot:spring-boot-starter-logging"] }\n', ""))
     actuator_requests = (
         HttpRequestExpectation("/actuator/health", 200, '"logyard"', body_contains=True),
         HttpRequestExpectation(

@@ -9,6 +9,7 @@ from .state import CheckState
 
 
 def check_manifest_contracts(root: Path, state: CheckState) -> None:
+    _check_zolt_preview(root, state)
     versions = _check_project_manifests(root, state)
     _check_workspace_version(root, versions, state)
     _check_artifact_contracts(root, state)
@@ -24,35 +25,43 @@ def _check_project_manifests(root: Path, state: CheckState) -> dict[str, str]:
             state.add_error(f"{manifest.relative_to(root)}: missing project manifest")
             continue
         text = manifest.read_text(encoding="utf-8")
-        block_match = re.search(r"(?ms)^\[project\]\s*(.*?)(?=^\[|\Z)", text)
-        if block_match is None:
+        config = tomllib.loads(text)
+        project = config.get("project")
+        if not isinstance(project, dict):
             state.add_error(f"{manifest.relative_to(root)}: missing [project] block")
             continue
-        _check_project_block(root, manifest, block_match.group(1), versions, state)
-        dependency_match = re.search(r"(?ms)^\[dependencies\]\s*(.*?)(?=^\[|\Z)", text)
-        dependency_block = dependency_match.group(1) if dependency_match else ""
-        actual = set(re.findall(r'(?m)^"([^"]+)"\s*=', dependency_block))
+        _check_project_block(root, manifest, project, versions, state)
+        dependencies = config.get("dependencies", {})
+        actual = {name for name in dependencies if ":" in name}
+        for lane in ("api", "runtime", "provided", "dev"):
+            actual.update(dependencies.get(lane, {}))
         if actual != expected_dependencies:
             state.add_error(f"{manifest.relative_to(root)}: dependencies {sorted(actual)} do not match {sorted(expected_dependencies)}")
     return versions
 
 
-def _check_project_block(root: Path, manifest: Path, block: str, versions: dict[str, str], state: CheckState) -> None:
-    fields = {
-        name: re.search(rf'(?m)^{name}\s*=\s*"([^"]+)"', block)
-        for name in ("name", "version", "group", "java")
-    }
+def _check_project_block(root: Path, manifest: Path, project: dict[str, object], versions: dict[str, str], state: CheckState) -> None:
     expected_name = manifest.parent.name
-    if fields["name"] is None or fields["name"].group(1) != expected_name:
+    if project.get("name") != expected_name:
         state.add_error(f"{manifest.relative_to(root)}: project name must be {expected_name!r}")
-    if fields["version"] is None:
+    version = project.get("version")
+    if not isinstance(version, str):
         state.add_error(f"{manifest.relative_to(root)}: missing version")
     else:
-        versions[manifest.parent.relative_to(root).as_posix()] = fields["version"].group(1)
-    if fields["group"] is None or fields["group"].group(1) != "com.logyard4j":
+        versions[manifest.parent.relative_to(root).as_posix()] = version
+    if project.get("group") != "com.logyard4j":
         state.add_error(f"{manifest.relative_to(root)}: group must be com.logyard4j")
-    if fields["java"] is None or fields["java"].group(1) != "21":
+    if project.get("java") != 21:
         state.add_error(f"{manifest.relative_to(root)}: Java baseline must be 21")
+
+
+def _check_zolt_preview(root: Path, state: CheckState) -> None:
+    version = tomllib.loads((root / "zolt.toml").read_text())["toolchain"]["zolt"].get("version")
+    if version != "0.1.0-alpha.1":
+        state.add_error("workspace must pin Zolt 0.1.0-alpha.1")
+    bootstrap = (root / "scripts/bootstrap-zolt").read_text()
+    if "49c0a48bddd9968a8f0ac82088a92242a01b4112" not in bootstrap:
+        state.add_error("Zolt bootstrap must pin the v0.1.0-alpha.1 commit")
 
 
 def _check_workspace_version(root: Path, manifest_versions: dict[str, str], state: CheckState) -> None:
@@ -70,12 +79,12 @@ def _check_workspace_version(root: Path, manifest_versions: dict[str, str], stat
 
 def _check_artifact_contracts(root: Path, state: CheckState) -> None:
     required_fragments = (
-        'mode = "thin"', "sources = true", "javadoc = true", 'license = "Apache-2.0"',
-        'licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"', 'developers = ["zsumz <shawn@zsumz.com>"]',
-        'url = "https://logyard4j.com"', 'scm = "https://github.com/logyard4j/logyard"',
-        'scmConnection = "scm:git:https://github.com/logyard4j/logyard.git"', 'scmDeveloperConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"',
-        'issues = "https://github.com/logyard4j/logyard/issues"', 'artifacts = ["main"]', '[publish.signing]',
-        'keyId = "EC8E4D26598A0373"', '[publish.central]', 'tokenEnv = "ZOLT_CENTRAL_TOKEN"', 'publishingType = "user-managed"',
+        'mode = "jar"', "sources = true", "javadoc = true", 'license = "Apache-2.0"',
+        '[project.developers.zsumz]', 'name = "zsumz"', 'email = "shawn@zsumz.com"',
+        'url = "https://logyard4j.com"', '[project.scm]', 'url = "https://github.com/logyard4j/logyard"',
+        'connection = "scm:git:https://github.com/logyard4j/logyard.git"', 'developerConnection = "scm:git:ssh://git@github.com/logyard4j/logyard.git"',
+        'issues = "https://github.com/logyard4j/logyard/issues"', '[publish.signing]', 'method = "gpg"',
+        'keyId = "EC8E4D26598A0373"', '[publish.central]', 'tokenEnv = "ZOLT_CENTRAL_TOKEN"', 'mode = "manual"',
     )
     for project_path, (expected_module, supported_packages) in ARTIFACT_CONTRACTS.items():
         descriptor = root / project_path / "src/main/java/module-info.java"

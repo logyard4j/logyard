@@ -2,7 +2,7 @@
 name = "logyard-micronaut-example"
 version = "1.0.0-SNAPSHOT"
 group = "com.logyard4j.examples"
-java = "21"
+java = 21
 main = "com.logyard4j.examples.micronaut.MicronautExampleApplication"
 
 [platforms]
@@ -10,20 +10,14 @@ main = "com.logyard4j.examples.micronaut.MicronautExampleApplication"
 "io.micronaut.platform:micronaut-platform" = "4.10.9"
 
 [dependencies]
-"io.micronaut:micronaut-http-server-netty" = {}
-"io.micronaut.serde:micronaut-serde-jackson" = {}
-"com.logyard4j:logyard-slf4j2" = {}
+"io.micronaut:micronaut-http-server-netty" = { managed = true }
+"io.micronaut.serde:micronaut-serde-jackson" = { managed = true }
+"com.logyard4j:logyard-slf4j2" = { managed = true }
 
-[annotationProcessors]
-"io.micronaut:micronaut-inject-java" = {}
-"io.micronaut:micronaut-http-validation" = {}
-"io.micronaut.serde:micronaut-serde-processor" = {}
-
-[build]
-source = "src/main/java"
-test = "src/test/java"
-output = "target/classes"
-testOutput = "target/test-classes"
+[dependencies.processor]
+"io.micronaut:micronaut-inject-java" = { managed = true }
+"io.micronaut:micronaut-http-validation" = { managed = true }
+"io.micronaut.serde:micronaut-serde-processor" = { managed = true }
 
 [resources]
 main = ["src/main/resources"]

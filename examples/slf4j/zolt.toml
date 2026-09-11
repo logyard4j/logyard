@@ -2,20 +2,14 @@
 name = "logyard-slf4j-example"
 version = "1.0.0-SNAPSHOT"
 group = "com.logyard4j.examples"
-java = "21"
+java = 21
 main = "com.logyard4j.examples.slf4j.Slf4jExampleApplication"
 
 [platforms]
 "com.logyard4j:logyard-bom" = "0.1.0-rc.1"
 
 [dependencies]
-"com.logyard4j:logyard-slf4j2" = {}
-
-[build]
-source = "src/main/java"
-test = "src/test/java"
-output = "target/classes"
-testOutput = "target/test-classes"
+"com.logyard4j:logyard-slf4j2" = { managed = true }
 
 [resources]
 main = ["src/main/resources"]
