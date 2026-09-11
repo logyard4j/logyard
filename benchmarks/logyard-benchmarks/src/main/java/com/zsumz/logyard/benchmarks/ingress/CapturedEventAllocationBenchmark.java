@@ -39,6 +39,11 @@ public class CapturedEventAllocationBenchmark {
         sink = observed.sink();
         logger = runtime.logger("benchmark.CapturedEvent");
         failure = new IllegalStateException("representative failure");
+        StackTraceElement[] frames = new StackTraceElement[8];
+        for (int index = 0; index < frames.length; index++) {
+            frames[index] = new StackTraceElement("com.example.orders.OrderService", "accept", "OrderService.java", 40 + index);
+        }
+        failure.setStackTrace(frames);
     }
 
     /** Releases the benchmark runtime. */
@@ -75,7 +80,7 @@ public class CapturedEventAllocationBenchmark {
     }
 
     /**
-     * Captures a bounded exception snapshot.
+     * Captures a fixed eight-frame exception without JMH's own setup stack.
      *
      * @return escaped captured event
      */

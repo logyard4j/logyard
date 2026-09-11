@@ -26,6 +26,7 @@ The smoke gate also exercises the official Quarkus extension reactor. Its packag
 | `JsonSinkBenchmark.synchronousRuntimeFile` | Native logger call → capture → JSON encoding → buffered UTF-8 file |
 | JSON stream cases | Encoding into a counting writer, without operating-system I/O |
 | First-call and recovery cases | Provider binding or managed-runtime recovery in an already running JVM |
+| `CapturedEventAllocationBenchmark.exceptionEvent` | One exception with eight fixed application frames, without causes or suppression |
 
 Class-specific JMH modes are preserved. First-call, recovery, and synchronous-overflow cases use single-shot timing. Emergency overflow cases write to a null stderr destination; they measure the branch and formatter, not a real pipe.
 
@@ -40,3 +41,5 @@ These counts include JMH transition calls and identified fixture priming. They v
 Files use a 256 KiB buffer and a 1 s flush interval. Set `LOGYARD_BENCHMARK_DIRECTORY` to choose a filesystem with enough temporary space. Record the filesystem, CPU quota, JVM flags, JDK, and revision when sharing results. Neither sink acceptance nor successful close proves durable storage.
 
 Allocation budgets reject missing, non-finite, and over-budget results. Warmed disabled calls have a 1 B/op ceiling; provider startup and initial thread-local setup are separate workloads. Smoke timings are validation data, not a competitive performance claim.
+
+Enabled-call budgets include modest headroom for JIT decisions and profiler overhead. The smoke gate warms each case for three 1 s iterations before measuring (five for management scaling); exception fixtures use fixed application frames so harness setup does not change the workload.
