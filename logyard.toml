@@ -1,14 +1,18 @@
+# Console and rotating JSON file example. See CONFIGURATION.md for all options.
 schema = 1
 
+# Identify this application in structured events.
 [service]
 name = "${LOGYARD_SERVICE_NAME:-logyard-example}"
 version = "${LOGYARD_SERVICE_VERSION:-0.1.0-rc.1}"
 environment = "${LOGYARD_ENVIRONMENT:-local}"
 
+# Runtime settings take effect at installation; watch is opt-in.
 [runtime]
 shutdown_timeout = "2s"
 watch = false
 
+# Each output has its own queue. Full queues drop and count new events.
 [delivery]
 mode = "async"
 capacity = 256
@@ -20,26 +24,33 @@ info = "drop"
 warn = "drop"
 error = "drop"
 
+# Capture only selected MDC keys; redact matching keys and nested paths.
 [context]
 mdc = ["request.id"]
 redact = ["authorization", "cookie", "password", "*.secret", "*.token"]
 
+# Text layout for the console output below.
 [formatters.console]
 type = "template"
 template = "{timestamp} {level} {logger} {message} {fields}"
 
+# JSON layout: omit the template and flatten attributes under field.*.
 [json_profiles.application]
 preset = "logyard"
 drop = ["message_template"]
+
 [json_profiles.application.attributes]
 mode = "flatten"
 prefix = "field."
 exclude = ["authorization", "cookie"]
 
+# Connect the JSON profile to an encoder used by the file output.
 [encoders.application]
 type = "json"
 profile = "application"
 
+# Optional filters. Sampling by logger keeps or drops a whole logger's events.
+# Filters apply to all accepted levels on their route.
 [filters.debug-sample]
 type = "sampling"
 probability = 0.25
@@ -53,17 +64,20 @@ burst = 40
 key = "logger"
 max_keys = 256
 
+# Child rules inherit omitted fields; explicit filter lists replace inherited ones.
 [loggers]
 root = { level = "info", outputs = ["console", "json"] }
 "com.example" = { level = "debug", filters = ["debug-sample"] }
 "com.example.noisy" = { filters = ["noisy-limit"] }
 
+# Human-readable stderr output.
 [outputs.console]
 type = "console"
 stream = "stderr"
 formatter = "console"
 color = { mode = "auto", theme = "ember" }
 
+# JSON file path is relative to this configuration file's directory.
 [outputs.json]
 type = "file"
 path = "target/logyard.jsonl"
