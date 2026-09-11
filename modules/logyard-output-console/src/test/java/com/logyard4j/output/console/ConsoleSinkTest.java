@@ -48,7 +48,7 @@ final class ConsoleSinkTest {
 
         sink.accept(event("ignored", null, AttributeSet.EMPTY, null));
 
-        assertEquals("custom\\nrecord\n", bytes.toString(StandardCharsets.UTF_8));
+        assertEquals("custom\\nrecord" + System.lineSeparator(), bytes.toString(StandardCharsets.UTF_8));
         assertEquals("custom-text", sink.health("console").details().get("format"));
     }
 
@@ -120,7 +120,7 @@ final class ConsoleSinkTest {
         } finally {
             callbacks.shutdownNow();
         }
-        assertEquals("nested\n", bytes.toString(StandardCharsets.UTF_8));
+        assertEquals("nested" + System.lineSeparator(), bytes.toString(StandardCharsets.UTF_8));
     }
 
     private static ConsoleSink sink(

@@ -29,7 +29,9 @@ final class ConsoleIdentityTest {
                     String output = render(identity, identity, identity, template, colors);
                     String plain = output.replaceAll("\u001b\\[[0-9;]*m", "");
                     assertEquals(1L, plain.lines().count());
-                    assertFalse(plain.substring(0, plain.length() - 1).contains(Character.toString(control)));
+                    assertTrue(plain.endsWith(System.lineSeparator()));
+                    String content = plain.substring(0, plain.length() - System.lineSeparator().length());
+                    assertFalse(content.contains(Character.toString(control)));
                     assertTrue(plain.contains("real event"));
                     if (!colors) {
                         assertFalse(output.contains("\u001b"));
@@ -57,7 +59,7 @@ final class ConsoleIdentityTest {
     @Test
     void shortSupplementaryNamesUseOneCodePointPerColumnPosition() {
         String output = render("𐐀.Name", null, "", false, false);
-        assertEquals("00:00:00.000 INFO  𐐀.Name" + " ".repeat(28) + " real event\n", output);
+        assertEquals("00:00:00.000 INFO  𐐀.Name" + " ".repeat(28) + " real event" + System.lineSeparator(), output);
     }
 
     @Test
