@@ -1,11 +1,26 @@
 from pathlib import Path
+import subprocess
+import tempfile
 import tomllib
 import unittest
+from unittest.mock import patch
 
-from verify_tools.publications import require_unsigned_readiness, unsigned_manifest
+from verify_tools.publications import prepare, require_unsigned_readiness, unsigned_manifest
 
 
 class PublicationPlanTest(unittest.TestCase):
+    def test_prepare_creates_target_in_a_cold_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "zolt.toml").write_text("[workspace]\nmembers = []\n")
+            (root / "zolt.lock").write_text("")
+            result = subprocess.CompletedProcess(("zolt", "publish"), 0, stdout="")
+
+            with patch("verify_tools.publications.subprocess.run", return_value=result):
+                prepare(root, "zolt")
+
+            self.assertTrue((root / "target").is_dir())
+
     def test_unsigned_readiness_rejects_missing_metadata_and_missing_members(self) -> None:
         coordinate = "example:library:1.0"
         expected = f"Blockers:\n- {coordinate}: gpg signatures — configure signing\n"

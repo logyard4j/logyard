@@ -53,9 +53,11 @@ def require_unsigned_readiness(output: str, coordinates: list[str]) -> None:
 def prepare(root: Path, zolt: str, central: bool = False) -> None:
     members = tomllib.loads((root / "zolt.toml").read_text())["workspace"]["members"]
     coordinates = []
+    publication_target = root / "target"
+    publication_target.mkdir(exist_ok=True)
     # Only the temporary publication routing changes. Zolt reads the real package
     # metadata, lock and built outputs; it owns POM generation and dependency scopes.
-    with tempfile.TemporaryDirectory(prefix="publication-plan-", dir=root / "target") as temporary:
+    with tempfile.TemporaryDirectory(prefix="publication-plan-", dir=publication_target) as temporary:
         staged = Path(temporary)
         for name in ("zolt.toml", "zolt.lock"):
             shutil.copyfile(root / name, staged / name)
