@@ -9,10 +9,12 @@ JAVADOC="${JAVADOC:-javadoc}"
 # out of generated documentation even when cross-package assembly requires a
 # public Java declaration.
 documented_roots=(
+  "$ROOT/modules/logyard-test/src/main/java"
   "$ROOT/modules/logyard-api/src/main/java"
   "$ROOT/modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/bootstrap"
 )
 source_roots=(
+  "$ROOT/modules/logyard-test/src/main/java"
   "$ROOT/modules/logyard-api/src/main/java"
   "$ROOT/modules/logyard-core/src/main/java"
   "$ROOT/modules/logyard-config-toml/src/main/java"

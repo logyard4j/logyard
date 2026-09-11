@@ -1,0 +1,15 @@
+[project]
+name = "logyard-test-kit-example"
+version = "1.0.0-SNAPSHOT"
+group = "com.zsumz.logyard.examples"
+java = "21"
+
+[platforms]
+"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+
+[dependencies]
+"com.zsumz.logyard:logyard-api" = {}
+
+[test.dependencies]
+"com.zsumz.logyard:logyard-test" = {}
+"org.junit.platform:junit-platform-console-standalone" = "1.11.4"

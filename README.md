@@ -113,7 +113,7 @@ Messages, structured fields, context, and exceptions travel together. Disabled l
 | --- | --- |
 | Console | Readable text, templates, color themes, and compact or full exceptions |
 | JSON stream | Newline-delimited JSON on stdout or stderr |
-| JSON file | Buffered writes, timed flushes, size rotation, retention, and optional gzip |
+| JSON file | Buffered writes, timed flushes, size or interval rotation, retention, and optional gzip |
 | Custom | Your own transport through the [extension SPI](EXTENDING.md) |
 
 JSON supports `logyard`, `ecs`, and `compact` profiles, plus field renaming and attribute transforms. Route one logger to several outputs in the same configuration.
@@ -125,6 +125,7 @@ JSON supports `logyard`, `ecs`, and `compact` profiles, plus field renaming and 
 | SLF4J 2, Vert.x, Micronaut | [logyard-slf4j2](INTEGRATIONS.md#slf4j-vertx-and-micronaut) |
 | Spring Boot | [logyard-spring-boot-starter](INTEGRATIONS.md#spring-boot) |
 | Quarkus | [logyard-quarkus](INTEGRATIONS.md#quarkus) |
+| Tests | [logyard-test](INTEGRATIONS.md#testing) |
 | Native Java | [logyard-runtime](INTEGRATIONS.md#native-java) |
 | JUL | [logyard-jul](INTEGRATIONS.md#jul) |
 | `System.Logger` | [logyard-system-logger](INTEGRATIONS.md#systemlogger) |

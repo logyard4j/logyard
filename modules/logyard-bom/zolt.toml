@@ -14,6 +14,7 @@ members = [
     "modules/logyard-runtime",
     "modules/logyard-slf4j2",
     "modules/logyard-opentelemetry",
+    "modules/logyard-test",
     "modules/logyard-spring-boot",
     "modules/logyard-spring-boot-starter",
     "modules/logyard-jul",

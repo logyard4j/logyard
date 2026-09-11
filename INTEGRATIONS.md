@@ -504,12 +504,71 @@ dependencies {
 
 The BOM manages the complete fourteen-artifact family, including both Quarkus artifacts.
 
+## Testing
+
+Add `logyard-test` as a test dependency:
+
+<details>
+<summary>Maven (pom.xml)</summary>
+
+```xml
+<dependencies>
+  <dependency>
+    <groupId>com.zsumz.logyard</groupId>
+    <artifactId>logyard-test</artifactId>
+    <version>0.1.0-rc.1</version>
+    <scope>test</scope>
+  </dependency>
+</dependencies>
+```
+
+</details>
+
+<details>
+<summary>Gradle (build.gradle.kts)</summary>
+
+```kotlin
+dependencies {
+    testImplementation("com.zsumz.logyard:logyard-test:0.1.0-rc.1")
+}
+```
+
+</details>
+
+<details>
+<summary>Zolt (zolt.toml)</summary>
+
+```toml
+[test.dependencies]
+"com.zsumz.logyard:logyard-test" = "0.1.0-rc.1"
+```
+
+</details>
+
+Inject a kit logger or runtime into the code under test:
+
+```java
+import com.zsumz.logyard.api.Level;
+import com.zsumz.logyard.test.LogyardTestKit;
+
+try (LogyardTestKit kit = LogyardTestKit.isolated()) {
+    kit.logger("checkout").atInfo().add("order.id", 7L).log("order accepted");
+    kit.events().expect().level(Level.INFO).attribute("order.id", 7L).assertCount(1);
+    kit.events().expect().level(Level.ERROR).assertNone();
+}
+```
+
+Each kit owns a synchronous private runtime, suitable for parallel tests. It captures calls through its own loggers; static SLF4J and global Logyard calls use the process runtime.
+
+The default limit is **1,024 events**. Use `isolated(capacity)` to change it. Overflow makes reads and assertions fail until `events().clear()`; clearing also discards captured records. Join application tasks before asserting their logs. Attribute values use exact equality, including numeric types.
+
 ## Examples
 
-Each example includes a `zolt.toml` build and a Logyard configuration:
+Each example includes a `zolt.toml` build; application examples include output configuration.
 
 | Application | Shows |
 | --- | --- |
+| [Test kit](examples/test-kit) | Isolated log assertions, scoped context, lazy values, and capture overflow |
 | [SLF4J](examples/slf4j) | Fluent structured logging |
 | [Managed lifecycle](examples/lifecycle) | Cached SLF4J, JUL, and System.Logger instances across restart, level changes, formatting, and close-time drain |
 | [OpenTelemetry](examples/opentelemetry) | Active trace identity, allowlisted baggage, explicit executor propagation |
@@ -524,7 +583,7 @@ Run every example against freshly packaged Logyard artifacts:
 ./scripts/examples-verify
 ```
 
-This builds `target/release-bundle`, then runs the Zolt examples through Smoque. Checks cover HTTP responses, structured fields, redaction, framework logging, trace correlation, and shutdown flushes.
+This builds `target/release-bundle`, then runs the Zolt examples through Smoque. Checks cover isolated test capture, HTTP responses, structured fields, redaction, framework logging, trace correlation, and shutdown flushes.
 
 Spring Boot covers both supported versions, MVC and WebFlux, Actuator present and absent, external and default configuration, propagated trace context, and rejection of competing SLF4J providers. Quarkus covers tests and packaged JVM applications with Logyard enabled and disabled.
 

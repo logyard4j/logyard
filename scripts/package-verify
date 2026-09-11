@@ -83,8 +83,11 @@ for index in "${!members[@]}"; do
   "$JAR" tf "$main" | grep -E '\.class$' >/dev/null || fail "$member main jar has no classes"
   "$JAR" tf "$sources" | grep -E '\.java$' >/dev/null || fail "$member sources jar has no Java sources"
   require_entry "$javadoc" "index.html"
-  if "$JAR" tf "$main" | grep -E '(^|/)test(s)?/|Test\\.class$' >/dev/null; then
-    fail "$member main jar contains test classes"
+  if "$JAR" tf "$main" | grep -E '(^org/junit/|Test\.class$)' >/dev/null; then
+    fail "$member main jar contains test classes or JUnit substitutes"
+  fi
+  if [[ "$member" != "logyard-test" ]] && "$JAR" tf "$main" | grep -E '(^|/)test(s)?/' >/dev/null; then
+    fail "$member main jar contains test packages"
   fi
   main_jars+=("$main")
 done
@@ -114,8 +117,11 @@ while IFS=$'\t' read -r module_path member module_name version artifact_count; d
   "$JAR" tf "$main" | grep -E '\.class$' >/dev/null || fail "$member main jar has no classes"
   "$JAR" tf "$sources" | grep -E '\.java$' >/dev/null || fail "$member sources jar has no Java sources"
   require_entry "$javadoc" "index.html"
-  if "$JAR" tf "$main" | grep -E '(^|/)test(s)?/|Test\\.class$' >/dev/null; then
-    fail "$member main jar contains test classes"
+  if "$JAR" tf "$main" | grep -E '(^org/junit/|Test\.class$)' >/dev/null; then
+    fail "$member main jar contains test classes or JUnit substitutes"
+  fi
+  if [[ "$member" != "logyard-test" ]] && "$JAR" tf "$main" | grep -E '(^|/)test(s)?/' >/dev/null; then
+    fail "$member main jar contains test packages"
   fi
 done < <(logyard_maven_publication_records)
 

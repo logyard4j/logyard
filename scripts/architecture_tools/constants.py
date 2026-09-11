@@ -20,6 +20,7 @@ ALLOWED_IMPORT_PREFIXES = {
     "logyard": ("java.", PREFIX + "api.", PREFIX + "runtime.", PREFIX + "compare."),
     "logback": ("java.", "ch.qos.logback.", "net.logstash.logback.", "org.slf4j.", PREFIX + "compare."),
     "log4j2": ("java.", "org.apache.logging.log4j.", PREFIX + "compare."),
+    "logyard-test": ("java.", PREFIX + "api.", PREFIX + "core.", PREFIX + "test."),
     "logyard-api": ("java.", PREFIX + "api."),
     "logyard-core": ("java.", PREFIX + "api.", PREFIX + "core."),
     "logyard-config-toml": ("java.", PREFIX + "api.", PREFIX + "config."),
@@ -56,6 +57,7 @@ ALLOWED_IMPORT_PREFIXES = {
 }
 
 EXPECTED_DEPENDENCIES = {
+    "modules/logyard-test": {"com.zsumz.logyard:logyard-api", "com.zsumz.logyard:logyard-core"},
     "modules/logyard-api": set(),
     "modules/logyard-core": {"com.zsumz.logyard:logyard-api"},
     "modules/logyard-config-toml": {"com.zsumz.logyard:logyard-api"},
@@ -89,6 +91,7 @@ EXPECTED_DEPENDENCIES = {
 }
 
 ARTIFACT_CONTRACTS = {
+    "modules/logyard-test": ("com.zsumz.logyard.test", {"com.zsumz.logyard.test"}),
     "modules/logyard-api": (
         "com.zsumz.logyard.api",
         {

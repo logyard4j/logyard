@@ -1,6 +1,6 @@
 version = 5
-projectResolutionFingerprint = "sha256:37074720026e1ff65a3e33f4f8ba65a778633d7d23f70c0af4d869a23fe1639a"
-projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:5029a55b2aff73024a2d0fd78554605ab03d22e82872dce332623f9dd29ae478", "dependencies.compile=sha256:e29a87bb86a25934ac1d9da7a6a4a8c654b378d5052fec1906a7b6f7b746213a", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:9c42369a3714b6ad96020c05ef68b7603e30ba031da4a0462f557c5d7522aa3f", "dependencies.test=sha256:f833c9dbdc9cdd4bbc403ac0e997724417fb9ed9c8dd0ab02b5d034e63c71f15", "dependencyMetadata=sha256:e5f55f68bafce466c84652b0f0724d9c813a384a5af187165a13fc5d8030421a", "framework.quarkus=sha256:9bd4fca7bc5c624bad318eba318091aa1d78802355b9156bc1c57f698f541739", "framework.springBoot.native=sha256:2927a2fa1f00ec6b14da31045320c05ab7961f57e07afbb676d2d07eab03c708", "java=sha256:79aa735c78f1647dc4b58dd10bf8c92a9cbb01d42afb16818655aef84fdd45a7", "package=sha256:bd5036f436a0672b7c8eef952d1d8416fa31678bd2e8018c23d933ebdbd98848", "repositories=sha256:a99c7895f11d0a83bc223d38c592273ee9a3df2209d18f14a8a387c17e90045f", "schema=sha256:3afddef4b848a551dd0b0a32f560e18c8e92b786c6dc20a1ff0b713ae345aedc"]
+projectResolutionFingerprint = "sha256:b58d16f2baf36630ebefb59c6bc5dbd3cf104e683a1e9ba621ba3d12392b5e22"
+projectResolutionInputFingerprints = ["dependencies.compile.workspace=sha256:ea1c822b8349c95a2bb3dbe9dda793ceae279e933a01c3daa678e71cfeba711e", "dependencies.compile=sha256:e29a87bb86a25934ac1d9da7a6a4a8c654b378d5052fec1906a7b6f7b746213a", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:9c42369a3714b6ad96020c05ef68b7603e30ba031da4a0462f557c5d7522aa3f", "dependencies.test=sha256:c3b1c33f077fdf6dbd1e19ae8b5b9792b7d764cc1fe0771cf05d2f5209556e21", "dependencyMetadata=sha256:e5f55f68bafce466c84652b0f0724d9c813a384a5af187165a13fc5d8030421a", "framework.quarkus=sha256:48e8e093ab172fce36712e57dcae3a106f954ab20aa835860ad0ee4a7013e0ad", "framework.springBoot.native=sha256:207684aba27b63fc0dc5bba4c50d6f7ac96393193639e7cb74cd99fff5585414", "java=sha256:99482b0f9609b131cde512b1b17956463ebdf92625cce9163ef3c2a05a3675b6", "package=sha256:d0ffc0ca9bfbdbf0af4faec3fa1659ae621efeeb79c584666e1eff0894516232", "repositories=sha256:2b07d4ae6d9b11ded13294596c7060b4c14c3946e4ecb4b4b763fb1a61ffe74d", "schema=sha256:d9dc580d184cef756c37b409e1cde24a912875e3f4878a74ea21c45f0cbce9d2"]
 
 [[package]]
 id = "com.zsumz.logyard:logyard-api"
@@ -10,7 +10,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-api"
 workspaceOutput = "target/classes"
-members = ["benchmarks/logyard-benchmarks", "modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-opentelemetry", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-spring-boot-starter", "modules/logyard-system-logger", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
+members = ["benchmarks/logyard-benchmarks", "modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-opentelemetry", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-spring-boot-starter", "modules/logyard-system-logger", "modules/logyard-test", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
 dependencies = []
 
 [[package]]
@@ -32,7 +32,7 @@ scope = "compile"
 direct = true
 workspace = "modules/logyard-core"
 workspaceOutput = "target/classes"
-members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
+members = ["benchmarks/logyard-benchmarks", "modules/logyard-runtime", "modules/logyard-test", "tests/logyard-adapter-canaries", "tests/logyard-integration-tests"]
 dependencies = []
 
 [[package]]
@@ -311,7 +311,7 @@ jar = "org/junit/platform/junit-platform-console-standalone/1.11.4/junit-platfor
 pom = "org/junit/platform/junit-platform-console-standalone/1.11.4/junit-platform-console-standalone-1.11.4.pom"
 jarSha256 = "b016ef6b1c3454d6d7c2c88ce081dabf289699686af6622d6e4e2e1b54b4a2fc"
 pomSha256 = "f44619c18edb94360cc382e6baf943e9300625d1a0a949ee158977eace5713d1"
-members = ["modules/logyard-api", "modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-opentelemetry", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-system-logger"]
+members = ["modules/logyard-api", "modules/logyard-config-toml", "modules/logyard-core", "modules/logyard-jul", "modules/logyard-opentelemetry", "modules/logyard-output-console", "modules/logyard-output-json", "modules/logyard-runtime", "modules/logyard-slf4j2", "modules/logyard-spring-boot", "modules/logyard-system-logger", "modules/logyard-test"]
 dependencies = []
 
 [[package]]
