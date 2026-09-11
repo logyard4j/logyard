@@ -223,7 +223,7 @@
     {
       "benchmark": "com.zsumz.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "4"},
-      "maxBytesPerOperation": 3072
+      "maxBytesPerOperation": 3328
     }
   ],
   "scalingBudgets": [

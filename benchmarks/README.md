@@ -45,3 +45,5 @@ Files use a 256 KiB buffer and a 1 s flush interval. Set `LOGYARD_BENCHMARK_DIRE
 Allocation budgets reject missing, non-finite, and over-budget results. Warmed disabled calls have a 1 B/op ceiling; provider startup and initial thread-local setup are separate workloads. Smoke timings are validation data, not a competitive performance claim.
 
 Enabled-call budgets include modest headroom for JIT decisions and profiler overhead. The smoke gate warms each case for three 1 s iterations before measuring (five for management scaling); exception fixtures use fixed application frames so harness setup does not change the workload.
+
+Budgets are calibrated on JDK 21. The copied Quarkus record with four MDC fields has a 3,328 B/op ceiling: three independent JVMs measured about 3,000–3,200 B/op after eight seconds of warmup. The allowance includes those observed JIT differences; disabled-path ceilings remain 1 B/op.
