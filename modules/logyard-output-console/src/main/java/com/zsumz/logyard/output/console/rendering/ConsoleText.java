@@ -35,6 +35,8 @@ final class ConsoleText {
                 || character == '\u061c'
                 || character == '\u200e'
                 || character == '\u200f'
+                || character == '\u2028'
+                || character == '\u2029'
                 || (character >= '\u202a' && character <= '\u202e')
                 || (character >= '\u2066' && character <= '\u2069');
     }

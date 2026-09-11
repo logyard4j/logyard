@@ -73,6 +73,8 @@ Reload observer and diagnostic failures do not change the reload outcome. Recove
 
 Console output detects errors that `PrintStream` normally suppresses. A write, flush, or close failure marks the output failed; later records are rejected without retrying the stream. Failure remains visible after close.
 
+Pretty, template, and emergency output escape control characters, Unicode line separators, and bidirectional controls in logger names. Pretty output accepts arbitrary dotted names and abbreviates without splitting Unicode characters.
+
 JSON stdout/stderr checks the stream when each buffered byte batch is written and on explicit, timed, or shutdown flush. Small records stay buffered until the configured deadline or a flush. Stream failures remain visible after close; neither output closes the process-owned stdout/stderr.
 
 Default asynchronous delivery drops and counts events that arrive after closure or remain queued at the shutdown deadline. See [overflow policies](CONFIGURATION.md#delivery-and-overflow) for caller-thread waiting and fallback behavior.
