@@ -3,21 +3,27 @@ set -euo pipefail
 export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+source "$ROOT/scripts/lib/logyard-release.sh"
+ZOLT="$(logyard_require_zolt)"
 TARGET="$ROOT/target/benchmark-smoke"
 MAVEN_REPOSITORY="$TARGET/maven-repository"
 CORE_RESULTS="$TARGET/core.json"
 QUARKUS_RESULTS="$TARGET/quarkus.json"
+export LOGYARD_BENCHMARK_EVIDENCE="$TARGET/delivery.jsonl"
+export LOGYARD_BENCHMARK_DIRECTORY="${LOGYARD_BENCHMARK_DIRECTORY:-$ROOT/target/benchmark-files}"
 
 cd "$ROOT"
 mkdir -p "$TARGET"
+rm -f "$LOGYARD_BENCHMARK_EVIDENCE"
 if [[ "${LOGYARD_BENCHMARK_SKIP_RELEASE:-0}" != "1" ]]; then
   "$ROOT/scripts/release-bundle"
 fi
 "$ROOT/scripts/release-verify"
 "$ZOLT" run --directory "$ROOT" --workspace --member benchmarks/logyard-benchmarks -- \
-  '.*(AdapterGuardBenchmark|AsyncDeliveryBenchmark\.oneProducer|CapturedEventAllocationBenchmark|CompositeSinkBenchmark\.success|ConcurrentJsonEncoderBenchmark\.encodeOnSharedInstance|ContextPolicyBenchmark|EncodingBenchmark\.(jsonEncoding|literalMessage|messageFormatChoice|messageFormatDate|messageFormatNumber|messageFormatOneString|messageFormatTwoStrings|nestedRedactionWithoutMatch|printfDate|printfNumber|printfString|redactionWithoutMatch|rejectedDefaultNumberExpansion|rejectedRecursiveChoiceExpansion)|JsonSinkBenchmark\.(directFile|directStream|synchronousRuntimeJson)|LoggerManagementBenchmark\.(listAllLevels|pointLevel)|NativeIngressBenchmark\.(disabled|enabledOneArgument|twoOutputFanout)|Slf4jIngressBenchmark\.(disabled|enabledEmptyMdc)|Slf4jProviderBenchmark\.(disabled|enabledOneProducer|enabledFourProducers|enabledSixteenProducers|enabledPopulatedMdc)|Slf4jProviderFirstCallBenchmark\.firstCall|Slf4jProviderRecoveryBenchmark\.recoverAfterManagedShutdown|TimedFlushBenchmark\.recordWhileFlushPending|TimedFlushDispatchBenchmark\.dispatchAndComplete).*' \
-  -wi 1 -i 2 -f 1 -w 200ms -r 200ms -prof gc -rf json -rff "$CORE_RESULTS"
+  '.*(AdapterGuardBenchmark|AsyncDeliveryBenchmark\.oneProducer|CapturedEventAllocationBenchmark|CompositeSinkBenchmark\.success|ConcurrentJsonEncoderBenchmark\.encodeOnSharedInstance|ContextPolicyBenchmark|EncodingBenchmark\.(jsonEncoding|literalMessage|messageFormatChoice|messageFormatDate|messageFormatNumber|messageFormatOneString|messageFormatTwoStrings|nestedRedactionWithoutMatch|printfDate|printfNumber|printfString|redactionWithoutMatch|rejectedDefaultNumberExpansion|rejectedRecursiveChoiceExpansion)|JsonSinkBenchmark|LoggerManagementBenchmark\.(listAllLevels|pointLevel)|OverflowPolicyBenchmark|SynchronousOverflowBenchmark|NativeIngressBenchmark\.(disabled|enabledOneArgument|twoOutputFanout)|Slf4jIngressBenchmark\.(disabled|enabledEmptyMdc)|Slf4jProviderBenchmark\.(disabled|enabledOneProducer|enabledFourProducers|enabledSixteenProducers|enabledPopulatedMdc)|Slf4jProviderFirstCallBenchmark\.firstCall|Slf4jProviderRecoveryBenchmark\.recoverAfterManagedShutdown|TimedFlushBenchmark\.recordWhileFlushPending|TimedFlushDispatchBenchmark\.dispatchAndComplete).*' \
+  -foe true -wi 3 -i 3 -f 1 -w 1s -r 500ms -prof gc -rf json -rff "$CORE_RESULTS"
+
+PYTHONPATH="$ROOT/scripts" python3 -m benchmark_tools.delivery "$CORE_RESULTS" "$LOGYARD_BENCHMARK_EVIDENCE"
 
 rm -rf "$MAVEN_REPOSITORY"
 mvn --batch-mode --no-transfer-progress \
@@ -32,7 +38,7 @@ mvn --batch-mode --no-transfer-progress \
 
 java -jar extensions/logyard-quarkus/benchmarks/target/logyard-quarkus-benchmarks.jar \
   '.*QuarkusEventMappingBenchmark\.(mapFreshRecord|mapCopiedRecord).*' \
-  -wi 2 -i 3 -f 1 -w 500ms -r 500ms -prof gc -rf json -rff "$QUARKUS_RESULTS"
+  -foe true -wi 3 -i 3 -f 1 -w 1s -r 500ms -prof gc -rf json -rff "$QUARKUS_RESULTS"
 
 PYTHONPATH="$ROOT/scripts" python3 -m benchmark_tools.allocations \
   benchmarks/allocation-budgets.json \

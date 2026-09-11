@@ -3,6 +3,7 @@ package com.zsumz.logyard.benchmarks.delivery;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.LogEvent;
 import com.zsumz.logyard.benchmarks.fixture.BenchmarkFixtures;
+import com.zsumz.logyard.benchmarks.fixture.DeliveryEvidence;
 import com.zsumz.logyard.core.delivery.async.AsyncSink;
 import com.zsumz.logyard.core.delivery.async.OverflowPolicy;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -17,12 +18,16 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.BenchmarkParams;
+import org.openjdk.jmh.infra.IterationParams;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 
-/** Bounded asynchronous admission with one, four, and sixteen producers. */
+/** Admission attempts with a reused event; drain reconciliation is separate from the JMH score. */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -32,37 +37,56 @@ import java.util.concurrent.TimeUnit;
 public class AsyncDeliveryBenchmark {
     private final LogEvent event = BenchmarkFixtures.event(AttributeSet.EMPTY);
     private AsyncSink sink;
+    private final LongAdder attempts = new LongAdder();
+    private final LongAdder observed = new LongAdder();
+    private int iteration;
 
-    @Setup
+    @Setup(org.openjdk.jmh.annotations.Level.Iteration)
     public void setUp() {
+        attempts.reset();
+        observed.reset();
+        iteration++;
         sink = new AsyncSink(
                 "benchmark",
-                BenchmarkFixtures.DISCARDING_SINK,
+                delivered -> { if (delivered == event) observed.increment(); },
                 65_536,
                 new OverflowPolicy(Map.of()),
                 Duration.ofSeconds(5));
     }
 
-    @TearDown
-    public void tearDown() {
+    @TearDown(org.openjdk.jmh.annotations.Level.Iteration)
+    public void tearDown(BenchmarkParams benchmark, IterationParams parameters) throws IOException {
         sink.close();
+        DeliveryEvidence.require(sink.emergencyFallbacks() == 0, "unexpected delegate failure");
+        DeliveryEvidence.async(benchmark, parameters, iteration, "admission", attempts.sum(), 0, sink, observed.sum());
     }
 
     @Benchmark
     @Threads(1)
     public void oneProducer() {
-        sink.accept(event);
+        attempt();
     }
 
     @Benchmark
     @Threads(4)
     public void fourProducers() {
-        sink.accept(event);
+        attempt();
     }
 
     @Benchmark
     @Threads(16)
     public void sixteenProducers() {
+        attempt();
+    }
+
+    @Benchmark
+    @Threads(64)
+    public void sixtyFourProducers() {
+        attempt();
+    }
+
+    private void attempt() {
+        attempts.increment();
         sink.accept(event);
     }
 }

@@ -2,16 +2,22 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+source "$ROOT/scripts/lib/logyard-release.sh"
+ZOLT="$(logyard_require_zolt)"
 RESULT="${LOGYARD_BENCHMARK_RESULT:-$ROOT/target/benchmarks/results.json}"
+export PYTHONDONTWRITEBYTECODE=1
+export LOGYARD_BENCHMARK_DIRECTORY="${LOGYARD_BENCHMARK_DIRECTORY:-$ROOT/target/benchmark-files}"
 
 mkdir -p "$(dirname "$RESULT")"
+export LOGYARD_BENCHMARK_EVIDENCE="${RESULT%.json}.delivery.jsonl"
+rm -f "$LOGYARD_BENCHMARK_EVIDENCE"
 cd "$ROOT"
 "$ZOLT" run --directory "$ROOT" --workspace --member benchmarks/logyard-benchmarks -- \
   'com.zsumz.logyard.benchmarks.*' \
-  -bm thrpt,sample \
+  -foe true \
   -prof gc \
   -rf json \
   -rff "$RESULT"
 
+PYTHONPATH="$ROOT/scripts" python3 -m benchmark_tools.delivery "$RESULT" "$LOGYARD_BENCHMARK_EVIDENCE" --suite all
 printf 'JMH results: %s\n' "$RESULT"

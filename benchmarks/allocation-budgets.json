@@ -180,8 +180,16 @@
       "maxBytesPerOperation": 2048
     },
     {
-      "benchmark": "com.zsumz.logyard.benchmarks.output.JsonSinkBenchmark.directFile",
+      "benchmark": "com.zsumz.logyard.benchmarks.output.JsonSinkBenchmark.directFileMechanics",
       "maxBytesPerOperation": 256
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.output.JsonSinkBenchmark.directFile",
+      "maxBytesPerOperation": 2048
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
+      "maxBytesPerOperation": 3072
     },
     {
       "benchmark": "com.zsumz.logyard.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeJson",

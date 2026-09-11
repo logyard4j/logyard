@@ -47,7 +47,18 @@ jobs:
           LOGYARD_EXAMPLES_SKIP_RELEASE: '1'
         run: ./scripts/examples-verify
       - name: Smoke the benchmark harness
+        env:
+          LOGYARD_BENCHMARK_SKIP_RELEASE: '1'
         run: ./scripts/benchmark-smoke
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: benchmark-smoke-results
+          path: |
+            target/benchmark-smoke/*.json
+            target/benchmark-smoke/*.jsonl
+          if-no-files-found: ignore
       - name: Upload example smoke results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

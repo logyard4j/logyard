@@ -70,6 +70,8 @@ jobs:
             target/examples-verify/*.log
             target/examples-verify/*.jsonl
             target/ecs-verify/
+            target/benchmark-smoke/*.json
+            target/benchmark-smoke/*.jsonl
           if-no-files-found: ignore
       - name: Create the Central Portal archive
         env:

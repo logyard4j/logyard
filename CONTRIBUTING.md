@@ -26,12 +26,14 @@ Run commands from the repository root:
 | `./scripts/javadoc` | Public documentation with strict diagnostics |
 | `./scripts/failure-injection-verify` | Durable-resource, delivery, and reload failure cases |
 | `./scripts/ecs-verify` | Zolt-generated JSON, typed Elasticsearch ingestion, and standard ECS queries through Smoque |
-| `./scripts/benchmark-smoke` | Benchmark harness and allocation budgets |
+| `./scripts/benchmark-smoke` | Benchmark harness, delivery accounting, and allocation budgets |
 | `./scripts/api-compatibility --baseline` | Reviewed compatibility policy against immutable release artifacts |
 
 `scripts/verify` uses local JUnit and SLF4J artifacts when available. To run its dependency-free fallback, use `LOGYARD_VERIFY_FORCE_FALLBACK=1 ./scripts/verify`. Use `scripts/ci` for the complete local gate.
 
 The allocation gate allows at most 1 B/op for warmed disabled native/SLF4J calls and the adapter guard, including classic calls and fluent suppliers. It also checks that disabled suppliers stay unevaluated. Initial thread-local setup and provider startup are separate costs.
+
+See [Benchmarks](benchmarks/README.md) for workload scopes, full runs, and delivery evidence.
 
 The ECS gate needs Node.js/npm and Docker. It starts the [pinned Elasticsearch image](tests/ecs/fixture.toml) on loopback and removes its container afterward. To use an existing local instance of that version, set `LOGYARD_ECS_URL=http://127.0.0.1:9200`. The gate creates and deletes only its unique test index; reports go to `target/ecs-verify/`.
 
