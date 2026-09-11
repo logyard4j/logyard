@@ -1,19 +1,61 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Annotated PGP-signed release tag
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: logyard-release
+  cancel-in-progress: false
 
 jobs:
-  release:
+  provenance:
+    name: Verify release provenance
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 10
+    outputs:
+      commit: ${{ steps.verify.outputs.commit }}
+      tag: ${{ steps.verify.outputs.tag }}
+      tag_object: ${{ steps.verify.outputs.tag_object }}
+      version: ${{ steps.verify.outputs.version }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Exercise the provenance boundary with disposable keys
+        run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.provenance_canary
+      - name: Verify the signed tag before executing release code
+        id: verify
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          TRUSTED_MAIN_SHA: ${{ github.sha }}
+        run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.release_provenance
+
+  release:
+    needs: provenance
+    environment: release
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.provenance.outputs.commit }}
+          persist-credentials: false
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
@@ -21,7 +63,10 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
-      - name: Verify the release tag
+      - name: Confirm the verified release metadata
+        env:
+          RELEASE_TAG: ${{ needs.provenance.outputs.tag }}
+          VERIFIED_VERSION: ${{ needs.provenance.outputs.version }}
         run: |
           source "$GITHUB_WORKSPACE/scripts/lib/logyard-release.sh"
           version="$(logyard_release_version)"
@@ -29,8 +74,8 @@ jobs:
             echo "release versions must not end in -SNAPSHOT" >&2
             exit 1
           }
-          [[ "$GITHUB_REF_NAME" == "v$version" ]] || {
-            echo "tag $GITHUB_REF_NAME does not match version $version" >&2
+          [[ "$RELEASE_TAG" == "v$version" && "$version" == "$VERIFIED_VERSION" ]] || {
+            echo "tag $RELEASE_TAG does not match version $version" >&2
             exit 1
           }
       - name: Bootstrap the pinned Zolt revision
@@ -51,9 +96,10 @@ jobs:
           LOGYARD_GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
           LOGYARD_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          zolt resolve --workspace
+          zolt resolve --workspace --locked
           ./scripts/ci
           ./scripts/api-compatibility --baseline
+          ./scripts/api-compatibility --self-test
           ./scripts/release-bundle --sign
           ./scripts/zolt-publication-check --signed
           LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-verify
@@ -106,21 +152,36 @@ jobs:
           CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
           CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
           LOGYARD_CENTRAL_SKIP_RELEASE: '1'
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.provenance.outputs.tag }}
+          VERIFIED_TAG_OBJECT: ${{ needs.provenance.outputs.tag_object }}
         run: |
+          remote_tag_object="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+          [[ "$remote_tag_object" == "$VERIFIED_TAG_OBJECT" ]] || {
+            echo "remote tag changed after provenance verification" >&2
+            exit 1
+          }
           version="$(cat target/release-bundle/VERSION)"
           export LOGYARD_CENTRAL_BUNDLE="$GITHUB_WORKSPACE/target/logyard-$version-central-bundle.zip"
           ./scripts/central-publish --upload --automatic --wait
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.provenance.outputs.tag }}
+          VERIFIED_TAG_OBJECT: ${{ needs.provenance.outputs.tag_object }}
         run: |
+          remote_tag_object="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+          [[ "$remote_tag_object" == "$VERIFIED_TAG_OBJECT" ]] || {
+            echo "remote tag changed during publication" >&2
+            exit 1
+          }
           version="$(cat target/release-bundle/VERSION)"
           archive="target/logyard-$version-central-bundle.zip"
           release_flags=()
           if [[ "$version" == *-* ]]; then
             release_flags+=(--prerelease)
           fi
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$RELEASE_TAG" \
             "$archive" "$archive.sha256" "$archive.asc" \
             --title "Logyard $version" \
             --generate-notes \

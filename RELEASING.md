@@ -2,7 +2,7 @@
 
 [← Logyard](README.md) · [Build and test](CONTRIBUTING.md) · [Release workflow](.github/workflows/release.yml)
 
-Logyard publishes one fourteen-artifact family to Maven Central. Use `scripts/central-publish` for uploads.
+Logyard publishes one sixteen-artifact family to Maven Central. Use `scripts/central-publish` for uploads.
 
 ## Prepare
 
@@ -29,7 +29,7 @@ Run from the repository root before tagging:
 ./scripts/central-publish
 ```
 
-These gates cover runtime failures, packaged JVM consumers and ECS ingestion through Smoque, API compatibility, allocation budgets, and the signed Central bundle. The ECS gate needs Docker. Linux, macOS, and Windows [CI](.github/workflows/ci.yml) must also pass.
+These gates cover runtime failures, packaged JVM consumers and ECS ingestion through Smoque, API compatibility, allocation budgets, and the signed Central bundle. The ECS gate needs Docker or `LOGYARD_ECS_URL` pointing to a disposable Elasticsearch instance. Linux, macOS, and Windows [CI](.github/workflows/ci.yml) must also pass.
 
 The final command creates a signed, deterministic ZIP locally. It does not upload.
 
@@ -37,13 +37,13 @@ The final command creates a signed, deterministic ZIP locally. It does not uploa
 
 | Owner | Publications |
 | --- | --- |
-| Zolt | Eleven Java libraries and `logyard-bom` |
+| Zolt | Thirteen Java libraries and `logyard-bom` |
 | Official Quarkus Maven reactor | `logyard-quarkus` and `logyard-quarkus-deployment` |
-| Central bundle | All fourteen artifacts in one Maven layout |
+| Central bundle | All sixteen artifacts in one Maven layout |
 
 The BOM includes Quarkus through its `[bom.versions]` table. Quarkus POMs are flattened and standalone; the bundle copies Zolt-produced POMs and artifacts without regenerating them.
 
-The bundle includes applicable JARs, sources, Javadocs, CycloneDX SBOMs, detached PGP signatures, and MD5, SHA-1, and SHA-256 checksums.
+Every library JAR includes canonical `META-INF/LICENSE` and `META-INF/NOTICE` files. The bundle includes applicable JARs, sources, Javadocs, CycloneDX SBOMs, detached PGP signatures, and MD5, SHA-1, and SHA-256 checksums.
 
 `scripts/zolt-publication-check` validates workspace artifacts and Central metadata without release credentials. `--signed` also checks signing and assembles the signed Zolt family locally. Only unsigned checks defer signing; snapshot versions remain blocked from Central.
 
@@ -69,9 +69,17 @@ This uploads for validation and manual release in Central Portal.
 
 `CENTRAL_BEARER_TOKEN` can replace the username/password variables when it contains the base64-encoded `username:password` value. Central releases are immutable; uploads reject snapshot versions and require explicit `--upload`.
 
-## Tagged release workflow
+## Release workflow
 
-The [release workflow](.github/workflows/release.yml) runs on `v*` tags. It verifies the tag/version match, runs the release gates, waits for Central to reach `PUBLISHED`, then creates the GitHub release.
+Create an annotated release tag signed by the [pinned release key](.github/release-signing-key.asc), then manually run the [release workflow](.github/workflows/release.yml) from `main` with that tag. Configure the GitHub `release` environment and its secrets before use.
+
+The workflow verifies the signature, exact version, and ancestry on `main` before executing the tagged commit. The signed tag binds its commit; individual commits may be unsigned. It runs the release gates, checks that the remote tag is unchanged before each publication, waits for Central to reach `PUBLISHED`, then creates the GitHub release.
+
+To exercise tag verification locally with disposable keys and repositories:
+
+```sh
+PYTHONPATH=scripts python3 -m verify_tools.provenance_canary
+```
 
 | GitHub Actions secret | Purpose |
 | --- | --- |
