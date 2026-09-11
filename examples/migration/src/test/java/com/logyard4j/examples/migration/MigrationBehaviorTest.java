@@ -92,7 +92,39 @@ final class MigrationBehaviorTest {
         }
     }
 
-    private Conversion convert(String provider, String xml, boolean strict) throws Exception {
+    @Test
+    void repeatedLogbackLoggersRetainAttachmentsInTheSourceAndRequireManualMigration() throws Exception {
+        for (boolean additionalAppender : List.of(false, true)) {
+            String xml = MigrationFixtures.repeatedLogbackLogger(additionalAppender);
+            var original = SourceLogging.source("logback", xml);
+            assertEquals(additionalAppender ? List.of("APPROVED INFO MIGRATION-EVENT info",
+                    "APPROVED WARN MIGRATION-EVENT warn") : List.of(), original.out());
+            assertEquals(additionalAppender ? original.out() : List.of("APPROVED WARN MIGRATION-EVENT warn"), original.err());
+            Conversion refused = convert("logback", xml, true);
+            assertEquals(3, refused.status(), refused.err());
+            assertEquals("", refused.toml());
+            assertTrue(refused.err().contains("UNSUPPORTED") && refused.err().contains("repeated"), refused.err());
+            Path output = directory.resolve("refused.toml");
+            assertEquals(3, convert("logback", xml, true, "--output", output.toString()).status());
+            assertFalse(Files.exists(output));
+        }
+    }
+
+    @Test
+    void log4jPatternAttributeWhitespaceMatchesTheRealLayout() throws Exception {
+        for (String padding : List.of("", "  ")) {
+            String xml = MigrationFixtures.single("log4j2", "  APPROVED %msg" + padding + "%n", "");
+            var original = SourceLogging.source("log4j2", xml);
+            assertEquals(List.of("  APPROVED MIGRATION-EVENT info" + padding,
+                    "  APPROVED MIGRATION-EVENT warn" + padding), original.out());
+            Conversion converted = convert("log4j2", xml, true);
+            assertEquals(0, converted.status(), converted.err());
+            assertTrue(converted.err().contains("MIGRATION: EXACT"), converted.err());
+            assertEquals(original, SourceLogging.migrated(converted.toml()));
+        }
+    }
+
+    private Conversion convert(String provider, String xml, boolean strict, String... options) throws Exception {
         Path input = directory.resolve(provider + ".xml");
         Files.writeString(input, xml);
         Path out = directory.resolve("stdout.txt");
@@ -100,6 +132,7 @@ final class MigrationBehaviorTest {
         var command = new ArrayList<>(List.of(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
                 "-cp", classpath(), LogyardConfigTool.class.getName(), "migrate-" + provider, input.toString()));
         if (strict) command.add("--strict");
+        command.addAll(List.of(options));
         Process process = new ProcessBuilder(command).redirectOutput(out.toFile()).redirectError(err.toFile()).start();
         try {
             assertTrue(process.waitFor(30, TimeUnit.SECONDS), "migration CLI timed out");

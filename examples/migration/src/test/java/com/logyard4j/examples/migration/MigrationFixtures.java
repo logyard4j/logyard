@@ -22,6 +22,20 @@ final class MigrationFixtures {
                 + reference(provider, "audit"));
     }
 
+    static String repeatedLogbackLogger(boolean attachAnotherAppender) {
+        String appenders = console("logback", "OUT", "APPROVED %level %msg%n", "", "")
+                + console("logback", "ERR", "APPROVED %level %msg%n", "stderr", "");
+        String declarations = """
+                <logger name="migration.fixture" level="INFO" additivity="false">
+                  <appender-ref ref="ERR"/>
+                </logger>
+                """ + (attachAnotherAppender ? """
+                <logger name="migration.fixture"><appender-ref ref="OUT"/></logger>
+                """ : "<logger name=\"migration.fixture\" level=\"WARN\"/>");
+        return configuration("logback", appenders, reference("logback", "OUT"))
+                .replace("</configuration>", declarations + "</configuration>");
+    }
+
     private static String console(String provider, String name, String pattern, String target, String threshold) {
         if (provider.equals("logback")) {
             return "<appender name=\"" + name + "\" class=\"ch.qos.logback.core.ConsoleAppender\">"

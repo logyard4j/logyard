@@ -95,9 +95,11 @@ final class Log4j2Appenders {
     private static void template(
             String name, Element appender, Map<String, Object> output, LogbackModel model, String context) {
         Element layout = Log4j2Xml.child(appender, "PatternLayout");
-        String pattern = layout == null
-                ? null
-                : Log4j2Lookups.resolve(Log4j2Xml.value(layout, "pattern"), model, context);
+        String pattern = layout == null ? null : Log4j2Xml.rawAttribute(layout, "pattern");
+        if (pattern == null && layout != null) {
+            pattern = Log4j2Xml.value(layout, "pattern");
+        }
+        pattern = Log4j2Lookups.resolve(pattern, model, context);
         if (pattern == null) {
             model.unsupported(context + ": a supported explicit pattern is required; review the draft formatter");
             return;

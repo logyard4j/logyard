@@ -94,7 +94,7 @@ Use the same command with these arguments:
 
 `explain` shows environment expressions as written. Migration reports `EXACT`, `LOSSY`, or `UNSUPPORTED` on stderr. `--strict` writes only exact conversions and never overwrites a file. Omit it to generate a draft with diagnostics for manual review.
 
-Exact conversion covers explicit console patterns, destinations, supported thresholds, and non-additive routes. Width/date options are lossy. MDC selection, custom plugins, file layouts, async wrappers, and other unhandled XML are unsupported in strict mode. MDC patterns never enable capture or expand into all fields. Synchronous source appenders stay synchronous; review delivery before switching to async. Logyard's event bounds, sanitization, and exception rendering still apply.
+Exact conversion covers explicit console patterns, destinations, supported thresholds, and non-additive routes. Width/date options are lossy. Repeated Logback logger declarations, MDC selection, custom plugins, file layouts, async wrappers, and other unhandled XML are unsupported in strict mode. MDC patterns never enable capture or expand into all fields. Synchronous source appenders stay synchronous; review delivery before switching to async. Logyard's event bounds, sanitization, and exception rendering still apply.
 
 Exit codes: 0 valid output (including a non-strict draft), 1 invalid configuration, 2 usage or I/O error, 3 strict refusal. Refusal writes no TOML to stdout or the requested file.
 

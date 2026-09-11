@@ -85,6 +85,26 @@ final class MigrationFidelityTest {
     }
 
     @Test
+    void log4jPatternAttributeSpacesSurviveXmlIngestionInStrictMode() throws Exception {
+        for (String padding : List.of("", "  ")) {
+            Run result = migrate("log4j2", "  APPROVED %msg" + padding + "%n", "--strict");
+            assertEquals(0, result.status(), result.err());
+            assertTrue(result.err().contains("MIGRATION: EXACT"), result.err());
+            var config = LogyardConfigLoader.parse(result.out(), "migrated.toml", directory, Map.of());
+            var template = (TemplateFormatterConfig) config.formatters().values().iterator().next();
+            assertEquals("  APPROVED {message}" + padding, template.template());
+        }
+    }
+
+    @Test
+    void log4jSpacesAfterTheRecordNewlineCannotDisappearIntoAnExactConversion() throws Exception {
+        Run result = migrate("log4j2", "APPROVED %msg%n  ", "--strict");
+        assertEquals(3, result.status(), result.err());
+        assertTrue(result.err().contains("MIGRATION: LOSSY"), result.err());
+        assertEquals("", result.out());
+    }
+
+    @Test
     void unexaminedXmlCannotBeReportedAsExact() throws Exception {
         for (String provider : List.of("logback", "log4j2")) {
             String xml = fixture(provider, "%msg%n").replace("name=\"C\"", "name=\"C\" follow=\"true\"");

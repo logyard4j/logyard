@@ -7,9 +7,11 @@ import org.w3c.dom.Element;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Converts one Logback XML configuration into Logyard TOML with an honest loss report. */
 final class LogbackMigration {
@@ -87,6 +89,7 @@ final class LogbackMigration {
     }
 
     private void loggers(Element container, Map<String, Object> target, String context, boolean profile) {
+        Set<String> declared = new HashSet<>();
         Element rootLogger = LogbackXml.child(container, "root");
         if (rootLogger != null) {
             target.put("root", rule(rootLogger, "root logger" + context, true, profile));
@@ -96,6 +99,10 @@ final class LogbackMigration {
             if (name == null) {
                 model.note("a <logger> without a name attribute was ignored");
                 continue;
+            }
+            if (!declared.add(name)) {
+                model.unsupported("repeated Logback logger '" + name + "'" + context
+                        + ": merge its appenders, additivity, and levels before migrating");
             }
             Map<String, Object> rule = rule(logger, "logger '" + name + "'" + context, false, profile);
             if (!rule.isEmpty()) {

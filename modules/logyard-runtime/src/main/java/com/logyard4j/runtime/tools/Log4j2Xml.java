@@ -58,12 +58,21 @@ final class Log4j2Xml {
     }
 
     static String attribute(Element element, String name) {
+        String value = rawAttribute(element, name);
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /** Returns the XML-decoded attribute without trimming literal content. */
+    static String rawAttribute(Element element, String name) {
         NamedNodeMap attributes = element.getAttributes();
         for (int index = 0; index < attributes.getLength(); index++) {
             Node attribute = attributes.item(index);
             if (attribute.getNodeName().equalsIgnoreCase(name)) {
-                String value = attribute.getNodeValue().trim();
-                return value.isEmpty() ? null : value;
+                return attribute.getNodeValue();
             }
         }
         return null;
