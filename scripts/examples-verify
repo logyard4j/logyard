@@ -5,11 +5,20 @@ export PYTHONDONTWRITEBYTECODE=1
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/scripts/lib/logyard-release.sh"
 RELEASE_REPOSITORY="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
+export ZOLT="$(logyard_require_zolt)"
+command -v npx >/dev/null 2>&1 || {
+  printf 'example smoke tests require Node.js 22.18+ and npm (npx)\n' >&2
+  exit 2
+}
 
 if [[ "${LOGYARD_EXAMPLES_SKIP_RELEASE:-0}" != "1" ]]; then
   "$ROOT/scripts/release-bundle"
 fi
 "$ROOT/scripts/release-verify"
-version="$(logyard_release_version)"
-PYTHONPATH="$ROOT/scripts" python3 -m example_tools.verify "$ROOT" "$RELEASE_REPOSITORY" "$version"
-PYTHONPATH="$ROOT/scripts" python3 -m example_tools.quarkus_dev "$ROOT" "$RELEASE_REPOSITORY" "$version"
+export LOGYARD_EXAMPLE_VERSION="$(logyard_release_version)"
+export LOGYARD_RELEASE_TARGET="$RELEASE_REPOSITORY"
+cd "$ROOT"
+mkdir -p target/examples-verify
+rm -f target/examples-verify/smoque.json target/examples-verify/smoque.xml
+exec npx --yes smoque@0.1.2 run smoke/examples.smoke.mts \
+  --json target/examples-verify/smoque.json --junit target/examples-verify/smoque.xml --ci

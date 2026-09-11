@@ -1,0 +1,34 @@
+[project]
+name = "logyard-quarkus-example"
+version = "1.0.0-SNAPSHOT"
+group = "com.zsumz.logyard.examples"
+java = "21"
+
+[platforms]
+"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+"io.quarkus.platform:quarkus-bom" = "3.37.3"
+
+[dependencies]
+"io.quarkus:quarkus-rest" = {}
+"com.zsumz.logyard:logyard-quarkus" = {}
+
+[test.dependencies]
+"io.quarkus:quarkus-junit" = {}
+"io.rest-assured:rest-assured" = {}
+
+[framework.quarkus]
+enabled = true
+package = "fast-jar"
+
+[package]
+mode = "quarkus"
+
+[build]
+source = "src/main/java"
+test = "src/test/java"
+output = "target/classes"
+testOutput = "target/test-classes"
+
+[resources]
+main = ["src/main/resources"]
+test = ["src/test/resources"]

@@ -75,19 +75,19 @@ required_files=(
   modules/logyard-spring-boot-starter/zolt.toml
   modules/logyard-spring-boot/src/main/resources/META-INF/spring.factories
   modules/logyard-spring-boot/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
-  examples/slf4j/pom.xml
-  examples/vertx/pom.xml
-  examples/micronaut/pom.xml
-  examples/spring-boot/pom.xml
-  examples/quarkus/pom.xml
+  examples/slf4j/zolt.toml
+  examples/vertx/zolt.toml
+  examples/micronaut/zolt.toml
+  examples/spring-boot/zolt.toml
+  examples/quarkus/zolt.toml
   examples/quarkus/src/main/resources/application.properties
   extensions/logyard-quarkus/pom.xml
   extensions/logyard-quarkus/runtime/pom.xml
   extensions/logyard-quarkus/runtime/src/main/resources/META-INF/quarkus-extension.yaml
   extensions/logyard-quarkus/deployment/pom.xml
   extensions/logyard-quarkus/deployment/src/main/java/com/zsumz/logyard/quarkus/deployment/LogyardQuarkusProcessor.java
-  scripts/example_tools/quarkus_dev.py
-  scripts/examples-native-verify
+  scripts/example_tools/zolt.py
+  smoke/examples.smoke.mts
   scripts/verify
   scripts/architecture-check
   scripts/java-size-baseline.tsv
@@ -115,7 +115,6 @@ done < <(find scripts/architecture_tools scripts/benchmark_tools scripts/example
 
 if find . -path './.git' -prune -o -path './.zolt' -prune -o \
     -path './target' -prune -o \
-    -path './examples' -prune -o \
     -path './extensions/logyard-quarkus' -prune -o \
     \( -name pom.xml -o -name build.gradle -o -name build.gradle.kts \
        -o -name settings.gradle -o -name settings.gradle.kts \) -print | grep -q .; then

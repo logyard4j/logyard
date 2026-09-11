@@ -1,0 +1,32 @@
+[project]
+name = "logyard-spring-boot-example"
+version = "1.0.0-SNAPSHOT"
+group = "com.zsumz.logyard.examples"
+java = "21"
+main = "com.zsumz.logyard.examples.springboot.SpringBootExampleApplication"
+
+[platforms]
+"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+"org.springframework.boot:spring-boot-dependencies" = "4.1.0"
+
+[dependencies]
+"org.springframework.boot:spring-boot-starter-webmvc" = { exclusions = [
+  { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" }
+] }
+"org.springframework.boot:spring-boot-starter-actuator" = { exclusions = [
+  { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" }
+] }
+"com.zsumz.logyard:logyard-spring-boot-starter" = {}
+
+[package]
+mode = "spring-boot"
+
+[build]
+source = "src/main/java"
+test = "src/test/java"
+output = "target/classes"
+testOutput = "target/test-classes"
+
+[resources]
+main = ["src/main/resources"]
+test = ["src/test/resources"]

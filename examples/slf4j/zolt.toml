@@ -1,0 +1,22 @@
+[project]
+name = "logyard-slf4j-example"
+version = "1.0.0-SNAPSHOT"
+group = "com.zsumz.logyard.examples"
+java = "21"
+main = "com.zsumz.logyard.examples.slf4j.Slf4jExampleApplication"
+
+[platforms]
+"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+
+[dependencies]
+"com.zsumz.logyard:logyard-slf4j2" = {}
+
+[build]
+source = "src/main/java"
+test = "src/test/java"
+output = "target/classes"
+testOutput = "target/test-classes"
+
+[resources]
+main = ["src/main/resources"]
+test = ["src/test/resources"]

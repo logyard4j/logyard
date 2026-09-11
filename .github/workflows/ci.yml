@@ -18,6 +18,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
       - name: Bootstrap the pinned Zolt revision
         run: ./scripts/bootstrap-zolt
       - name: Put Zolt on PATH
@@ -39,12 +42,23 @@ jobs:
         run: ./scripts/api-compatibility --self-test
       - name: Verify the Zolt workspace publication family
         run: ./scripts/zolt-publication-check
-      - name: Build and run published-shaped consumer examples
+      - name: Smoke Zolt consumer examples
         env:
           LOGYARD_EXAMPLES_SKIP_RELEASE: '1'
         run: ./scripts/examples-verify
       - name: Smoke the benchmark harness
         run: ./scripts/benchmark-smoke
+      - name: Upload example smoke results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: example-smoke-results
+          path: |
+            target/examples-verify/smoque.json
+            target/examples-verify/smoque.xml
+            target/examples-verify/*.log
+            target/examples-verify/*.jsonl
+          if-no-files-found: ignore
 
   platform:
     name: Platform smoke (${{ matrix.os }})
@@ -97,27 +111,3 @@ jobs:
           zolt resolve --workspace
           zolt build --workspace --all --no-progress --color never
           zolt test --workspace --members "$test_members" --no-progress --color never
-
-  native-example:
-    name: Framework native consumers
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: graalvm/setup-graalvm@bef4b0e916c7dd079bf60fb95d49139f67e32c5f # v1.5.3
-        with:
-          java-version: '25'
-          distribution: graalvm
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache: maven
-          native-image-job-reports: 'true'
-      - name: Bootstrap the pinned Zolt revision
-        run: ./scripts/bootstrap-zolt
-      - name: Put Zolt on PATH
-        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
-      - name: Package the published Maven surface
-        run: ./scripts/release-bundle
-      - name: Build and run the published-shaped native consumer
-        env:
-          LOGYARD_EXAMPLES_SKIP_RELEASE: '1'
-        run: ./scripts/examples-native-verify

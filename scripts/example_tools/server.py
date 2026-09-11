@@ -8,7 +8,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from .maven import MavenExample, MavenExampleRunner
+from .zolt import ZoltExample, ZoltExampleRunner
 
 
 @dataclass(frozen=True)
@@ -23,7 +23,7 @@ class HttpRequestExpectation:
 
 @dataclass(frozen=True)
 class HttpExample:
-    maven: MavenExample
+    zolt: ZoltExample
     success_path: str = "/success"
     failure_path: str = "/failure"
     shutdown_path: str = "/shutdown"
@@ -46,19 +46,19 @@ class ExecutableHttpExample:
 
 
 class HttpExampleRunner:
-    def __init__(self, maven: MavenExampleRunner, target: Path) -> None:
-        self._maven = maven
-        self._target = target
+    def __init__(self, zolt: ZoltExampleRunner, target: Path) -> None:
+        self._zolt = zolt
+        self._target = target.resolve()
 
     def build_run_and_exercise(self, example: HttpExample) -> Path:
-        built = self._maven.build(example.maven)
+        built = self._zolt.build(example.zolt)
         return self.run_and_exercise(
             ExecutableHttpExample(
-                name=example.maven.name,
-                project_directory=example.maven.project_directory,
-                command=self._maven.java_command(built)
+                name=example.zolt.name,
+                project_directory=built.example.project_directory,
+                command=self._zolt.java_command(built)
                 if example.executable_jar_name is None
-                else self._maven.executable_jar_command(built, example.executable_jar_name),
+                else self._zolt.executable_jar_command(built, example.executable_jar_name),
                 success_path=example.success_path,
                 failure_path=example.failure_path,
                 shutdown_path=example.shutdown_path,
@@ -82,7 +82,7 @@ class HttpExampleRunner:
         }
         if example.random_port_environment is not None:
             additional_environment[example.random_port_environment] = str(self._available_port())
-        environment = self._maven.environment(
+        environment = self._zolt.environment(
             output,
             additional_environment,
         )

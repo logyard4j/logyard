@@ -33,23 +33,25 @@ Run commands from the repository root:
 ## Package and exercise consumers
 
 ```sh
-./scripts/release-bundle
 ./scripts/examples-verify
-./scripts/examples-native-verify
 ```
 
-The native examples require GraalVM 25. After building a bundle, set `LOGYARD_EXAMPLES_SKIP_RELEASE=1` to reuse it with either examples command. See [Examples](INTEGRATIONS.md#examples) for the applications.
+This builds the release bundle and tests the examples with Zolt and Smoque 0.1.2. Install Node.js 22.18+ with npm alongside the JDK.
+
+Bundle assembly also requires Maven 3.9+ for the official Quarkus extension reactor.
+
+Set `LOGYARD_EXAMPLES_SKIP_RELEASE=1` to reuse an existing bundle. JSON and JUnit reports go to `target/examples-verify/`. See [Examples](INTEGRATIONS.md#examples) for coverage.
 
 | Command | Produces or verifies |
 | --- | --- |
 | `./scripts/package` | Native Zolt packages and Maven-built Quarkus artifacts; runs extension tests |
 | `./scripts/package-verify` | Produced JARs, module names, sources, Javadocs, descriptors, service discovery, and logging canaries |
 | `./scripts/release-bundle` | Complete Maven-layout repository in `target/release-bundle` |
-| `./scripts/zolt-publication-check` | Native workspace Central preflight plus packaged-artifact verification |
+| `./scripts/zolt-publication-check` | Workspace artifacts and Central metadata; add `--signed` to verify signing |
 
 ## Repository conventions
 
-- Zolt owns the core build and publication model. Maven is isolated to consumer examples and the official Quarkus extension reactor.
+- Zolt owns the core build and publication model. The consumer examples also use Zolt. Maven is isolated to the official Quarkus extension reactor.
 - New production classes stay at or below 220 lines. Existing larger classes may not grow beyond their recorded ceiling.
 - Tests and examples stay at or below 300 lines.
 - Reload state stays free of I/O and extension callbacks.
@@ -59,4 +61,4 @@ The native examples require GraalVM 25. After building a bundle, set `LOGYARD_EX
 
 The [architecture checker](scripts/architecture-check) enforces source boundaries and size limits. [Framework versions](framework-versions.toml) and the [compatibility baseline](compatibility-baseline.toml) are checked inputs.
 
-[CI](.github/workflows/ci.yml) covers Java 21 on Linux, macOS, and Windows, forward compatibility on Java 25, and GraalVM 25 native consumers. For publication, run the [complete release matrix](RELEASING.md#qualify-the-release).
+[CI](.github/workflows/ci.yml) covers Java 21 on Linux, macOS, and Windows, forward compatibility on Java 25, and the JVM consumer smoke suite. For publication, run the [complete release matrix](RELEASING.md#qualify-the-release).

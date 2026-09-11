@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .maven import MavenExample
+from .zolt import ZoltExample
 from .server import HttpExample, HttpRequestExpectation
+from .versions import framework_versions
 
 
 def spring_boot_example(
@@ -12,11 +13,20 @@ def spring_boot_example(
     version: str,
     web_starter: str,
     actuator: bool = True,
-    build_profiles: tuple[str, ...] = (),
+    omit_config: bool = False,
     runtime_arguments: tuple[str, ...] | None = None,
 ) -> HttpExample:
     controller = "com.zsumz.logyard.examples.springboot.SpringBootExampleController"
-    profiles = (*build_profiles, *(("no-actuator",) if not actuator else ()))
+    current = framework_versions(root)["spring_boot_current"]
+    replacements = [
+        (f'"org.springframework.boot:spring-boot-dependencies" = "{current}"',
+         f'"org.springframework.boot:spring-boot-dependencies" = "{version}"'),
+        ("spring-boot-starter-webmvc", web_starter),
+    ]
+    if not actuator:
+        replacements.append(('"org.springframework.boot:spring-boot-starter-actuator" = { exclusions = [\n'
+                             '  { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" }\n'
+                             '] }\n', ""))
     actuator_requests = (
         HttpRequestExpectation("/actuator/health", 200, '"logyard"', body_contains=True),
         HttpRequestExpectation(
@@ -29,15 +39,12 @@ def spring_boot_example(
         HttpRequestExpectation("/debug", 200, "debug"),
     )
     return HttpExample(
-        MavenExample(
+        ZoltExample(
             name=f"spring-boot-{variant}",
             project_directory=root / "examples" / "spring-boot",
             main_class="com.zsumz.logyard.examples.springboot.SpringBootExampleApplication",
-            build_arguments=(
-                f"-Dspring-boot.version={version}",
-                f"-Dspring-boot.web-starter={web_starter}",
-                *((f"-P{','.join(profiles)}",) if profiles else ()),
-            ),
+            replacements=tuple(replacements),
+            omit_config=omit_config,
             runtime_arguments=runtime_arguments
             if runtime_arguments is not None
             else ("-Dlogyard.config=classpath:logyard.toml",),

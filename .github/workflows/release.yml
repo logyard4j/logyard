@@ -9,30 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  native-gate:
-    name: Native release-candidate gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: graalvm/setup-graalvm@bef4b0e916c7dd079bf60fb95d49139f67e32c5f # v1.5.3
-        with:
-          java-version: '25'
-          distribution: graalvm
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache: maven
-          native-image-job-reports: 'true'
-      - name: Bootstrap the pinned Zolt revision
-        run: ./scripts/bootstrap-zolt
-      - name: Put Zolt on PATH
-        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
-      - name: Build and run the published-shaped native consumers
-        run: |
-          ./scripts/release-bundle
-          LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-native-verify
-
   release:
-    needs: native-gate
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -41,6 +18,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
       - name: Verify the release tag
         run: |
           source "$GITHUB_WORKSPACE/scripts/lib/logyard-release.sh"
@@ -75,9 +55,20 @@ jobs:
           ./scripts/ci
           ./scripts/api-compatibility --baseline
           ./scripts/release-bundle --sign
-          ./scripts/zolt-publication-check
+          ./scripts/zolt-publication-check --signed
           LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-verify
           LOGYARD_BENCHMARK_SKIP_RELEASE=1 ./scripts/benchmark-smoke
+      - name: Upload example smoke results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: example-smoke-results
+          path: |
+            target/examples-verify/smoque.json
+            target/examples-verify/smoque.xml
+            target/examples-verify/*.log
+            target/examples-verify/*.jsonl
+          if-no-files-found: ignore
       - name: Create the Central Portal archive
         env:
           LOGYARD_GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}

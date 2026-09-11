@@ -22,13 +22,12 @@ Run from the repository root before tagging:
 ./scripts/api-compatibility --baseline
 ./scripts/examples-verify
 ./scripts/benchmark-smoke
-./scripts/examples-native-verify
 ./scripts/release-bundle --sign
-./scripts/zolt-publication-check
+./scripts/zolt-publication-check --signed
 ./scripts/central-publish
 ```
 
-These gates cover runtime failures, packaged consumers, API compatibility, allocation budgets, native images, and the signed Central bundle. Linux, macOS, and Windows [CI](.github/workflows/ci.yml) must also pass.
+These gates cover runtime failures, packaged JVM consumers through Smoque, API compatibility, allocation budgets, and the signed Central bundle. Linux, macOS, and Windows [CI](.github/workflows/ci.yml) must also pass.
 
 The final command creates a signed, deterministic ZIP locally. It does not upload.
 
@@ -44,7 +43,7 @@ The BOM includes Quarkus through its `[bom.versions]` table. Quarkus POMs are fl
 
 The bundle includes applicable JARs, sources, Javadocs, CycloneDX SBOMs, detached PGP signatures, and MD5, SHA-1, and SHA-256 checksums.
 
-`scripts/zolt-publication-check` validates the complete native workspace family and packaged artifacts. A snapshot may have only the release-version blocker; a release candidate must have none. Metadata, POM, signing, routing, family, SBOM, and artifact failures are fatal.
+`scripts/zolt-publication-check` validates workspace artifacts and Central metadata without release credentials. `--signed` also checks signing and assembles the signed Zolt family locally. Only unsigned checks defer signing; snapshot versions remain blocked from Central.
 
 `scripts/release-verify --require-signatures` validates the complete hybrid bundle. Do not upload with live `zolt publish --workspace --central`: that family excludes the two Maven-built Quarkus artifacts.
 
@@ -70,7 +69,7 @@ This uploads for validation and manual release in Central Portal.
 
 ## Tagged release workflow
 
-The [release workflow](.github/workflows/release.yml) runs on `v*` tags. It verifies the tag/version match, runs the native and release gates, waits for Central to reach `PUBLISHED`, then creates the GitHub release.
+The [release workflow](.github/workflows/release.yml) runs on `v*` tags. It verifies the tag/version match, runs the release gates, waits for Central to reach `PUBLISHED`, then creates the GitHub release.
 
 | GitHub Actions secret | Purpose |
 | --- | --- |

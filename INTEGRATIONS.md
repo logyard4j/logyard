@@ -181,7 +181,7 @@ quarkus.logyard.config=classpath:logyard.toml
 | `quarkus.logyard.required=true` | Fail if configuration is missing |
 | `quarkus.logyard.enabled=false` | Disable handler installation |
 
-With `quarkus-smallrye-health`, Logyard adds a `logyard` readiness check without taking another runtime lease.
+With `quarkus-smallrye-health`, Logyard adds a `logyard` readiness check without taking another runtime lease. This requires extension capability handling, which the pinned Zolt does not yet provide.
 
 Quarkus build-time minimum levels apply before Logyard sees an event. Preserve any level you want to enable later:
 
@@ -429,16 +429,28 @@ The BOM manages the complete fourteen-artifact family, including both Quarkus ar
 
 ## Examples
 
-Each example includes a Maven build and TOML configuration:
+Each example includes a `zolt.toml` build and a Logyard configuration:
 
 | Application | Shows |
 | --- | --- |
 | [SLF4J](examples/slf4j) | Fluent structured logging |
 | [Vert.x](examples/vertx) | Logging from a Vert.x application |
-| [Micronaut](examples/micronaut) | Startup, structured events, and native images |
+| [Micronaut](examples/micronaut) | Startup, structured events, and shutdown flush |
 | [Spring Boot](examples/spring-boot) | MVC, WebFlux, Actuator, dynamic levels, JUL, and shutdown flush |
-| [Quarkus](examples/quarkus) | JVM/test/dev modes, readiness, hot reload, and native images |
+| [Quarkus](examples/quarkus) | JVM packaging, tests, redaction, and shutdown flush |
 
-Use the [consumer commands](CONTRIBUTING.md#package-and-exercise-consumers) to build and run them. Their POMs resolve Logyard from `target/release-bundle` by default; `logyard.repository` selects another Maven repository.
+Run every example against freshly packaged Logyard artifacts:
+
+```sh
+./scripts/examples-verify
+```
+
+This builds `target/release-bundle`, then runs the Zolt examples through Smoque. Checks cover HTTP responses, structured fields, redaction, framework logging, and shutdown flushes.
+
+Spring Boot covers both supported versions, MVC and WebFlux, Actuator present and absent, and external and default configuration. Quarkus covers tests and packaged JVM applications with Logyard enabled and disabled.
+
+Verification covers JVM applications. Framework native images, Spring AOT, Quarkus dev mode, test profiles, and Logyard readiness integration are outside the pinned Zolt's supported coverage.
+
+See [consumer setup](CONTRIBUTING.md#package-and-exercise-consumers) for prerequisites and reports.
 
 Example configurations use `LOGYARD_EXAMPLE_OUTPUT` for temporary JSON files and may set `append = false`. Choose your own output path and retention settings when adapting them.

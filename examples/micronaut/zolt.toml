@@ -1,0 +1,30 @@
+[project]
+name = "logyard-micronaut-example"
+version = "1.0.0-SNAPSHOT"
+group = "com.zsumz.logyard.examples"
+java = "21"
+main = "com.zsumz.logyard.examples.micronaut.MicronautExampleApplication"
+
+[platforms]
+"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+"io.micronaut.platform:micronaut-platform" = "4.10.9"
+
+[dependencies]
+"io.micronaut:micronaut-http-server-netty" = {}
+"io.micronaut.serde:micronaut-serde-jackson" = {}
+"com.zsumz.logyard:logyard-slf4j2" = {}
+
+[annotationProcessors]
+"io.micronaut:micronaut-inject-java" = {}
+"io.micronaut:micronaut-http-validation" = {}
+"io.micronaut.serde:micronaut-serde-processor" = {}
+
+[build]
+source = "src/main/java"
+test = "src/test/java"
+output = "target/classes"
+testOutput = "target/test-classes"
+
+[resources]
+main = ["src/main/resources"]
+test = ["src/test/resources"]

@@ -1,0 +1,24 @@
+[project]
+name = "logyard-vertx-example"
+version = "1.0.0-SNAPSHOT"
+group = "com.zsumz.logyard.examples"
+java = "21"
+main = "com.zsumz.logyard.examples.vertx.VertxExampleApplication"
+
+[platforms]
+"com.zsumz.logyard:logyard-bom" = "0.1.0-rc.1"
+"io.vertx:vertx-stack-depchain" = "5.1.5"
+
+[dependencies]
+"io.vertx:vertx-web" = {}
+"com.zsumz.logyard:logyard-slf4j2" = {}
+
+[build]
+source = "src/main/java"
+test = "src/test/java"
+output = "target/classes"
+testOutput = "target/test-classes"
+
+[resources]
+main = ["src/main/resources"]
+test = ["src/test/resources"]
