@@ -1,6 +1,6 @@
 package com.zsumz.logyard.api.event;
 
-import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -32,8 +32,8 @@ final class CaptureContextScopeTest {
             assertSame(outer, CaptureContext.currentOrCreate());
             return null;
         });
-        assertNotSame(outer, CaptureContext.currentOrCreate());
-        assertNotSame(inner, CaptureContext.currentOrCreate());
+        assertFalse(outer == CaptureContext.currentOrCreate());
+        assertFalse(inner == CaptureContext.currentOrCreate());
     }
 
     @Test
@@ -61,7 +61,7 @@ final class CaptureContextScopeTest {
                             assertSame(local, CaptureContext.currentOrCreate());
                             return null;
                         });
-                        assertNotSame(local, CaptureContext.currentOrCreate());
+                        assertFalse(local == CaptureContext.currentOrCreate());
                     }));
                 }
                 for (Future<?> task : completed) task.get(15, TimeUnit.SECONDS);

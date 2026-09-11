@@ -28,7 +28,7 @@ final class ConsoleIdentityTest {
                     String identity = "test" + control + "FORGED";
                     String output = render(identity, identity, identity, template, colors);
                     String plain = output.replaceAll("\u001b\\[[0-9;]*m", "");
-                    assertEquals(1, plain.lines().count());
+                    assertEquals(1L, plain.lines().count());
                     assertFalse(plain.substring(0, plain.length() - 1).contains(Character.toString(control)));
                     assertTrue(plain.contains("real event"));
                     if (!colors) {
@@ -50,7 +50,7 @@ final class ConsoleIdentityTest {
             String column = output.substring("00:00:00.000 INFO  ".length(), output.indexOf(" real event"));
             assertEquals(34, column.codePointCount(0, column.length()));
             requireWholeSurrogates(output);
-            assertEquals(1, output.lines().count());
+            assertEquals(1L, output.lines().count());
         }
     }
 
@@ -65,7 +65,7 @@ final class ConsoleIdentityTest {
         String identity = "𐐀.\u2028".repeat(1_024);
         String output = render(identity, identity, identity, true, false);
         assertTrue(output.length() < 32_768);
-        assertEquals(1, output.lines().count());
+        assertEquals(1L, output.lines().count());
         assertFalse(output.contains("\u2028"));
         requireWholeSurrogates(output);
     }
