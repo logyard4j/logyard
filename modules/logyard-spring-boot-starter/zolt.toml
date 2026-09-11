@@ -15,6 +15,9 @@ central = "https://repo.maven.apache.org/maven2"
     { group = "org.springframework.boot", artifact = "spring-boot-starter-logging" },
 ] }
 
+[resources]
+main = ["src/main/resources"]
+
 [build]
 source = "src/main/java"
 output = "target/classes"

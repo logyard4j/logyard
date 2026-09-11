@@ -15,6 +15,9 @@ central = "https://repo.maven.apache.org/maven2"
 "com.zsumz.logyard:logyard-core" = { workspace = "modules/logyard-core" }
 "org.junit.platform:junit-platform-console-standalone" = "1.11.4"
 
+[resources]
+main = ["src/main/resources"]
+
 [build]
 source = "src/main/java"
 test = "src/test/java"

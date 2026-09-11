@@ -7,7 +7,11 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.Objects;
 
-/** Resolves the portable location syntax shared by framework configuration handoffs. */
+/**
+ * Resolves the portable location syntax shared by framework configuration handoffs.
+ *
+ * @hidden
+ */
 @InternalApi
 public final class ConfigurationLocationResolver {
     private static final String CLASSPATH_PREFIX = "classpath:";

@@ -46,6 +46,7 @@ public final class LogEvent {
      * @param threadId source thread identifier
      * @param threadName source thread name
      * @return detached bounded event
+     * @hidden
      */
     @InternalApi
     public static LogEvent captureDeferred(
@@ -122,6 +123,7 @@ public final class LogEvent {
     public String threadName() { return state.threadName(); }
     /** Returns the capture budget left for trusted processors.
      * @return capture budget left for trusted structured-value processors
+     * @hidden
      */
     @InternalApi
     public int remainingTraversalEntries() { return state.remainingTraversalEntries(); }

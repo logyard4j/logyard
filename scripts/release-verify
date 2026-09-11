@@ -46,6 +46,7 @@ append_native_publication() {
     printf '%s\n' "$destination/$file" >> "$EXPECTED_PRIMARY"
   done
   if [[ -f "$source/$artifact-$VERSION.jar" ]]; then
+    PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.legal_notices "$ROOT" "$destination/$artifact-$VERSION.jar"
     for file in "$artifact-$VERSION.jar" "$artifact-$VERSION-sources.jar" "$artifact-$VERSION-javadoc.jar"; do
       logyard_require_file "$destination/$file"
       cmp -s "$source/$file" "$destination/$file" || logyard_release_fail "$file does not match Zolt's packaged artifact"
@@ -76,6 +77,7 @@ while IFS=$'\t' read -r module artifact module_name record_version artifact_coun
     printf '%s\n' "$destination/$file" >> "$EXPECTED_PRIMARY"
   done
   grep -Fq '<licenses>' "$destination/$artifact-$VERSION.pom" || logyard_release_fail "$artifact POM lacks license metadata"
+  PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.legal_notices "$ROOT" "$destination/$artifact-$VERSION.jar"
   grep -Fq '<developers>' "$destination/$artifact-$VERSION.pom" || logyard_release_fail "$artifact POM lacks developer metadata"
   grep -Fq '<scm>' "$destination/$artifact-$VERSION.pom" || logyard_release_fail "$artifact POM lacks SCM metadata"
   ! grep -Fq '<repositories>' "$destination/$artifact-$VERSION.pom" || logyard_release_fail "$artifact POM leaks a build repository"

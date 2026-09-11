@@ -1,5 +1,10 @@
 package com.zsumz.logyard.spring.boot.nativeimage;
 
+import com.zsumz.logyard.api.spi.context.ContextProvider;
+import com.zsumz.logyard.api.spi.encoding.EventEncoderProvider;
+import com.zsumz.logyard.api.spi.formatting.TextFormatterProvider;
+import com.zsumz.logyard.api.spi.output.OutputProvider;
+import com.zsumz.logyard.api.spi.processing.EventProcessorProvider;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
@@ -14,18 +19,22 @@ public final class LogyardRuntimeHints implements RuntimeHintsRegistrar {
         hints.resources().registerPattern("**/logyard.toml");
         hints.resources().registerPattern("**/logyard-*.toml");
         hints.resources().registerPattern("META-INF/services/org.slf4j.spi.SLF4JServiceProvider");
-        hints.resources().registerPattern("META-INF/services/java.lang.System$LoggerFinder");
-        hints.resources().registerPattern("META-INF/services/com.zsumz.logyard.api.spi.context.CallerContextProvider");
-        hints.resources().registerPattern("META-INF/services/com.zsumz.logyard.api.spi.encoding.EventEncoderProvider");
-        hints.resources().registerPattern("META-INF/services/com.zsumz.logyard.api.spi.formatting.TextFormatterProvider");
-        hints.resources().registerPattern("META-INF/services/com.zsumz.logyard.api.spi.output.OutputProvider");
-        hints.resources().registerPattern("META-INF/services/com.zsumz.logyard.api.spi.processing.EventProcessorProvider");
+        registerServiceResource(hints, System.LoggerFinder.class);
+        registerServiceResource(hints, ContextProvider.class);
+        registerServiceResource(hints, EventEncoderProvider.class);
+        registerServiceResource(hints, TextFormatterProvider.class);
+        registerServiceResource(hints, OutputProvider.class);
+        registerServiceResource(hints, EventProcessorProvider.class);
         hints.proxies().registerJdkProxy(TypeReference.of(
                 "org.springframework.boot.actuate.health.HealthIndicator"));
         hints.proxies().registerJdkProxy(TypeReference.of(
                 "org.springframework.boot.health.contributor.HealthIndicator"));
         registerHealthReflection(hints, "org.springframework.boot.actuate.health");
         registerHealthReflection(hints, "org.springframework.boot.health.contributor");
+    }
+
+    private static void registerServiceResource(RuntimeHints hints, Class<?> serviceType) {
+        hints.resources().registerPattern("META-INF/services/" + serviceType.getName());
     }
 
     private static void registerHealthReflection(RuntimeHints hints, String packageName) {

@@ -4,7 +4,11 @@ import com.zsumz.logyard.api.annotation.InternalApi;
 
 import java.util.Objects;
 
-/** Applies bounded validation and storage normalization to an attribute key. */
+/**
+ * Applies bounded validation and storage normalization to an attribute key.
+ *
+ * @hidden
+ */
 @InternalApi
 public final class AttributeKey {
     private AttributeKey() {

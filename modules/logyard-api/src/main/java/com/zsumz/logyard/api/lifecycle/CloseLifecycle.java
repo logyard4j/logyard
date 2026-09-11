@@ -2,7 +2,10 @@ package com.zsumz.logyard.api.lifecycle;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-/** One-way {@code OPEN -> CLOSED} lifecycle for resources whose close operation is idempotent. */
+/** One-way {@code OPEN -> CLOSED} lifecycle for resources whose close operation is idempotent.
+ * @hidden
+ */
+@com.zsumz.logyard.api.annotation.InternalApi
 public final class CloseLifecycle {
     private final AtomicReference<Phase> phase = new AtomicReference<>(Phase.OPEN);
 

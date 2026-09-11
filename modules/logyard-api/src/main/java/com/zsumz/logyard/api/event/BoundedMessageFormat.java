@@ -18,6 +18,8 @@ import java.util.IllegalFormatException;
  * formatting path consults the process-default {@link java.util.TimeZone}. Date/time elements accept
  * only the localized {@code short}, {@code medium}, {@code long}, and {@code full} styles; custom
  * temporal patterns take the bounded format-failure path.</p>
+ *
+ * @hidden
  */
 @InternalApi
 public final class BoundedMessageFormat {
@@ -169,7 +171,9 @@ public final class BoundedMessageFormat {
      * @param message bounded rendered message
      * @param formatFailed whether the formatter rejected the captured input
      * @param truncated whether any template, field width, parameter, or output was truncated
+     * @hidden
      */
+    @InternalApi
     public record Result(String template, String message, boolean formatFailed, boolean truncated) {
     }
 }

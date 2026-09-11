@@ -103,12 +103,14 @@ public final class AttributeSet {
     public static Builder builder(int expectedSize) { return new Builder(expectedSize, false); }
     /** Creates a builder permitted to write Logyard-owned diagnostic attributes.
      * @return trusted bounded builder
+     * @hidden
      */
     @InternalApi
     public static Builder systemBuilder() { return new Builder(8, true); }
     /** Creates a trusted builder sized for an expected attribute count.
      * @param expectedSize expected attribute count
      * @return trusted bounded builder
+     * @hidden
      */
     @InternalApi
     public static Builder systemBuilder(int expectedSize) { return new Builder(expectedSize, true); }
@@ -169,6 +171,7 @@ public final class AttributeSet {
         }
         /** Preserves event-level capture shortening.
          * @return this builder
+         * @hidden
          */
         @InternalApi
         public Builder markCaptureTruncated() {
@@ -199,6 +202,7 @@ public final class AttributeSet {
          * @param key key that passed Logyard's bounded normalization policy
          * @param value attribute value
          * @return this builder
+         * @hidden
          */
         @InternalApi
         public Builder putNormalized(NormalizedAttributeKey key, Object value) {

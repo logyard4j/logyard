@@ -9,7 +9,8 @@ import com.zsumz.logyard.api.event.LogEvent;
  * records larger than the runtime encoder bound. A shared encoder may be invoked
  * concurrently and must be thread-safe. Implementations should also avoid assumptions
  * that prohibit reentrant logging callbacks. An encoder belongs to one output in one
- * immutable runtime plan and should not retain application objects beyond an invocation.</p>
+ * immutable runtime plan and has no managed close callback, so it must not own resources
+ * that require lifecycle cleanup or retain application objects beyond an invocation.</p>
  */
 @FunctionalInterface
 public interface EventEncoder {

@@ -135,6 +135,7 @@ for package in scripts/benchmark_tools scripts/comparison_tools scripts/example_
 done
 
 ./scripts/framework-versions-check
+PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.legal_notices "$ROOT"
 ./scripts/architecture-check
 
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then

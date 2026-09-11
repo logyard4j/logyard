@@ -28,6 +28,7 @@ public final class Logyard {
      *
      * @param runtime runtime to install
      * @param managedShutdown callback that atomically retires the owning lifecycle
+     * @hidden
      */
     @InternalApi
     public static void initializeManaged(LogyardRuntime runtime, BooleanSupplier managedShutdown) {
@@ -125,6 +126,7 @@ public final class Logyard {
      *
      * @param expected managed runtime expected to occupy the global slot
      * @return {@code true} when the expected runtime was removed and closed
+     * @hidden
      */
     @InternalApi
     public static boolean releaseManagedIfCurrent(LogyardRuntime expected) {
@@ -147,6 +149,7 @@ public final class Logyard {
      *
      * @param expected managed runtime expected to occupy the global slot
      * @return {@code true} when the expected runtime was detached
+     * @hidden
      */
     @InternalApi
     public static boolean detachManagedIfCurrent(LogyardRuntime expected) {

@@ -12,6 +12,7 @@ documented_roots=(
   "$ROOT/modules/logyard-test/src/main/java"
   "$ROOT/modules/logyard-api/src/main/java"
   "$ROOT/modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/bootstrap"
+  "$ROOT/modules/logyard-runtime/src/main/java/com/zsumz/logyard/runtime/management"
 )
 source_roots=(
   "$ROOT/modules/logyard-test/src/main/java"
@@ -21,6 +22,7 @@ source_roots=(
   "$ROOT/modules/logyard-output-console/src/main/java"
   "$ROOT/modules/logyard-output-json/src/main/java"
   "$ROOT/modules/logyard-runtime/src/main/java"
+  "$ROOT/modules/logyard-opentelemetry/src/main/java"
 )
 
 sources=()
@@ -29,8 +31,13 @@ for source_root in "${documented_roots[@]}"; do
     sources+=("$source")
   done < <(find "$source_root" -type f -name '*.java' -print | LC_ALL=C sort)
 done
+sources+=(
+  "$ROOT/modules/logyard-opentelemetry/src/main/java/com/zsumz/logyard/opentelemetry/LogyardOpenTelemetry.java"
+  "$ROOT/modules/logyard-opentelemetry/src/main/java/com/zsumz/logyard/opentelemetry/package-info.java"
+)
 
 mkdir -p "$TARGET"
+CLASSPATH="$(PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.javadoc_classpath "$ROOT")"
 SOURCE_PATH="$(IFS=:; printf '%s' "${source_roots[*]}")"
 "$JAVADOC" \
   --release 21 \
@@ -41,6 +48,7 @@ SOURCE_PATH="$(IFS=:; printf '%s' "${source_roots[*]}")"
   -quiet \
   -Werror \
   -Xdoclint:all \
+  -classpath "$CLASSPATH" \
   -sourcepath "$SOURCE_PATH" \
   -d "$TARGET" \
   "${sources[@]}"

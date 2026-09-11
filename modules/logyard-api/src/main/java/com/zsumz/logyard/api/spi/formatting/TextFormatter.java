@@ -8,8 +8,10 @@ import com.zsumz.logyard.api.event.LogEvent;
  * <p>Logyard wraps provider-created formatters with runtime guardrails: {@code null}
  * results fail the owning output, text is bounded to the event capture limit, and
  * control characters are escaped so the result remains one physical line. A
- * formatter instance belongs to one immutable runtime plan and should not retain
- * application objects beyond an invocation.</p>
+ * formatter instance belongs to one immutable runtime plan, may be invoked concurrently,
+ * and must be thread-safe. Implementations should also avoid assumptions that prohibit
+ * reentrant logging callbacks. A formatter has no managed close callback, so it must not
+ * own resources that require lifecycle cleanup or retain application objects beyond an invocation.</p>
  */
 @FunctionalInterface
 public interface TextFormatter {

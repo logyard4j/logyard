@@ -10,6 +10,7 @@ import java.util.Objects;
  * @param original original caller key retained only while assembling attributes
  * @param storageKey bounded key written to the immutable attribute set
  * @param truncated whether normalization omitted source characters
+ * @hidden
  */
 @InternalApi
 public record NormalizedAttributeKey(String original, String storageKey, boolean truncated) {

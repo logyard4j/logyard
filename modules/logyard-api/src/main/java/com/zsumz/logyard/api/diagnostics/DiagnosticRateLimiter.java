@@ -6,7 +6,9 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** Non-blocking report permit that counts diagnostics suppressed during its interval. */
+/** Non-blocking report permit that counts diagnostics suppressed during its interval.
+ * @hidden
+ */
 @InternalApi
 public final class DiagnosticRateLimiter {
     private final long intervalNanos;

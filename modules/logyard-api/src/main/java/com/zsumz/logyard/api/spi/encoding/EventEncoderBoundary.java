@@ -9,6 +9,8 @@ import java.util.Objects;
  * Applies Logyard's bounded, one-record framing contract to an event encoder.
  *
  * <p>This is shared implementation policy, not a supported extension point.</p>
+ *
+ * @hidden
  */
 @InternalApi
 public final class EventEncoderBoundary {

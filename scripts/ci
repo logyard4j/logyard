@@ -9,9 +9,9 @@ test_members="$(logyard_test_members | paste -sd, -)"
 cd "$ROOT"
 
 ./scripts/repository-check
-./scripts/javadoc
 
 "$ZOLT" resolve --directory "$ROOT" --workspace --locked
+./scripts/javadoc
 "$ZOLT" build --directory "$ROOT" --workspace --all
 while IFS= read -r member; do
   rm -rf "$ROOT/$member/target/ci-test-reports"
