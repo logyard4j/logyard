@@ -94,11 +94,11 @@ public final class ConfigSchema {
         tables.put("outputs.*.color", Set.of("mode", "capability", "theme"));
         tables.put("outputs.*.exception", Set.of("style", "common_frames"));
         tables.put("outputs.*.delivery", Set.of("mode", "capacity"));
-        tables.put("outputs.*.rotate", Set.of("size", "keep", "compression"));
+        tables.put("outputs.*.rotate", Set.of("size", "keep", "compression", "interval"));
         tables.put("outputs.*.config", Set.of());
         tables.put("outputs.*", union(PROVIDER_KEYS, Set.of(
                 "type", "min_level", "stream", "formatter", "encoder", "color", "exception",
-                "delivery", "path", "buffer", "flush", "append", "rotate")));
+                "delivery", "path", "buffer", "flush", "append", "fsync", "rotate")));
         tables.put("outputs", Set.of());
         tables.put("formatters.*.config", Set.of());
         tables.put("formatters.*", union(PROVIDER_KEYS, Set.of("type", "template")));

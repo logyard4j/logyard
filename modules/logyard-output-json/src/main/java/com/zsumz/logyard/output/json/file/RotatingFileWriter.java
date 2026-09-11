@@ -9,6 +9,7 @@ import com.zsumz.logyard.output.json.file.rotation.RotationPolicy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.function.LongSupplier;
 
 /** Single-owner record writer that rotates only between complete JSON Lines records. */
 final class RotatingFileWriter implements AutoCloseable {
@@ -20,6 +21,7 @@ final class RotatingFileWriter implements AutoCloseable {
     private final DataFileOpener dataFiles;
     private final WriterLifecycle lifecycle = new WriterLifecycle();
     private final ActiveFileSession active = new ActiveFileSession(lifecycle);
+    private final ActiveFileAge age;
     private final FileRotationTransition rotation;
     private FileLease lease;
     private ArchiveMaintenance maintenance;
@@ -29,6 +31,12 @@ final class RotatingFileWriter implements AutoCloseable {
     }
 
     RotatingFileWriter(Path path, int bufferBytes, boolean append, RotationPolicy policy, DataFileOpener dataFiles) {
+        this(path, bufferBytes, append, policy, dataFiles, System::nanoTime);
+    }
+
+    RotatingFileWriter(Path path, int bufferBytes, boolean append, RotationPolicy policy,
+            DataFileOpener dataFiles, LongSupplier clock) {
+        age = new ActiveFileAge(Objects.requireNonNull(clock, "clock"));
         this.path = Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
         this.bufferBytes = bufferBytes;
         this.append = append;
@@ -61,10 +69,9 @@ final class RotatingFileWriter implements AutoCloseable {
             maintenance.throwIfFailed();
         }
         long recordBytes = (long) record.length + 1L;
-        if (policy != null
-                && active.logicalBytes() > 0
-                && wouldExceed(active.logicalBytes(), recordBytes, policy.maximumBytes())) {
+        if (policy != null && active.logicalBytes() > 0 && rotationDue(recordBytes)) {
             rotation.rotate(active, maintenance);
+            age.opened(0L);
         }
         active.write(record, terminator);
     }
@@ -138,6 +145,7 @@ final class RotatingFileWriter implements AutoCloseable {
             }
         }
         if (failure != null) {
+            lifecycle.closeFailed(failure);
             throw failure;
         }
     }
@@ -148,8 +156,10 @@ final class RotatingFileWriter implements AutoCloseable {
         }
         lifecycle.requireUsable(path);
         if (lifecycle.state() == WriterLifecycle.State.OPEN) {
+            boolean resuming = Files.exists(path);
             try {
-                active.attach(dataFiles.open(path, bufferBytes, Files.exists(path)));
+                active.attach(dataFiles.open(path, bufferBytes, resuming));
+                age.opened(ActiveFileAge.inheritedNanos(path, resuming));
                 return;
             } catch (RuntimeException | Error failure) {
                 lifecycle.recoverableOperationFailed(failure);
@@ -161,6 +171,7 @@ final class RotatingFileWriter implements AutoCloseable {
                     path, bufferBytes, append, policy, naming, lease, dataFiles);
             initialization.initialize();
             active.attach(initialization.active());
+            age.opened(ActiveFileAge.inheritedNanos(path, append));
             maintenance = initialization.maintenance();
             if (maintenance != null) {
                 lease = null;
@@ -171,6 +182,12 @@ final class RotatingFileWriter implements AutoCloseable {
             lifecycle.failed(failure);
             throw failure;
         }
+    }
+
+    /** Applies the size and age limits at one record boundary; whichever is reached first rotates. */
+    private boolean rotationDue(long recordBytes) {
+        return wouldExceed(active.logicalBytes(), recordBytes, policy.maximumBytes())
+                || age.exceeds(policy.maximumAge());
     }
 
     private static boolean wouldExceed(long current, long recordBytes, long maximum) {

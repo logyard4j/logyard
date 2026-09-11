@@ -22,6 +22,8 @@ import java.util.Set;
 /** Decodes output transports and their per-output delivery and formatting options. */
 final class OutputSectionDecoder {
     static final int MAXIMUM_OUTPUTS = 128;
+    private static final Duration MINIMUM_ROTATION_INTERVAL = Duration.ofSeconds(1);
+    private static final Duration MAXIMUM_ROTATION_INTERVAL = Duration.ofDays(365);
 
     private OutputSectionDecoder() {
     }
@@ -94,10 +96,11 @@ final class OutputSectionDecoder {
         String encoder = output.nullableString("encoder");
         Duration flush = output.duration("flush", Duration.ofSeconds(1));
         boolean append = output.bool("append", true);
+        boolean fsync = output.bool("fsync", false);
         RotationConfig rotation = rotation(output.object("rotate"));
         DeliveryOverrideConfig delivery = deliveryOverride(output.object("delivery"));
         output.finish();
-        return new JsonFileOutputConfig(name, minimum, path, buffer, flush, append, rotation, encoder, delivery);
+        return new JsonFileOutputConfig(name, minimum, path, buffer, flush, append, fsync, rotation, encoder, delivery);
     }
 
     private static CustomOutputConfig custom(String name, ConfigReader output) {
@@ -159,6 +162,7 @@ final class OutputSectionDecoder {
         long size = reader.size("size", 1L << 30);
         int keep = reader.integer("keep", 10);
         String compress = reader.string("compression", "none").toLowerCase(Locale.ROOT);
+        Duration interval = reader.duration("interval", null);
         if (size < 1_024 || size > (1L << 50)) {
             throw reader.failure("size", "must be between 1KiB and 1PiB");
         }
@@ -168,8 +172,13 @@ final class OutputSectionDecoder {
         if (!Set.of("none", "gzip").contains(compress)) {
             throw reader.failure("compression", "must be none or gzip");
         }
+        if (interval != null
+                && (interval.compareTo(MINIMUM_ROTATION_INTERVAL) < 0
+                        || interval.compareTo(MAXIMUM_ROTATION_INTERVAL) > 0)) {
+            throw reader.failure("interval", "must be between 1s and 365d");
+        }
         reader.finish();
-        return new RotationConfig(size, keep, compress);
+        return new RotationConfig(size, keep, compress, interval);
     }
 
 }

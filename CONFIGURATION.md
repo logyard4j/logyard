@@ -195,15 +195,19 @@ Add `"json"` to your root logger's `outputs` list.
 | `append` | `true` | Preserve existing content when opening the file |
 | `buffer` | `"256KiB"` | Process buffer; accepts `1KiB`–`16MiB` |
 | `flush` | `"1s"` | Flush interval; `"0s"` flushes every record |
-| `rotate` | Disabled | Add a table to enable size rotation |
+| `fsync` | `false` | Force file contents after each flush and on close |
+| `rotate` | Disabled | Add a table to enable rotation |
 | `rotate.size` | `"1GiB"` when enabled | Rotation threshold |
+| `rotate.interval` | Disabled | Elapsed-time rotation, `"1s"`–`"365d"` |
 | `rotate.keep` | `10` when enabled | Archive retention count |
 | `rotate.compression` | `none` | `none` or `gzip` |
 | `encoder` | Built-in Logyard JSON | A named encoder |
 
 JSON streams default to stdout and `flush = "0s"`; they also accept `encoder` and `flush`.
 
-A positive flush interval starts with the first unflushed record, so sparse traffic also flushes on time. Flushing drains Logyard's buffer; it does not promise `fsync` or durable storage. See [file behavior](RUNTIME.md#file-output) for failure and ownership rules.
+A positive flush interval starts with the first unflushed record, so sparse traffic also flushes on time. Add `fsync = true` to force file contents at each flush; this adds storage latency. Flush timing still determines how long records remain buffered.
+
+Size and interval rotation happen between complete records, whichever limit is reached first. Intervals run from file open, without calendar alignment. See [file behavior](RUNTIME.md#file-output) for restart, durability, and ownership rules.
 
 ### JSON profiles
 

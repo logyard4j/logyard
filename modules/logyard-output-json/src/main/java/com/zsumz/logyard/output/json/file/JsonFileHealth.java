@@ -22,9 +22,11 @@ final class JsonFileHealth {
         String writerFailure = snapshot.writerFailureType();
         String maintenanceFailure = snapshot.maintenanceFailureType();
         HealthStatus status;
-        if (sinkClosed || snapshot.writerState().equals("CLOSED")) {
+        if (writerFailure != null || maintenanceFailure != null) {
+            status = HealthStatus.FAILED;
+        } else if (sinkClosed || snapshot.writerState().equals("CLOSED")) {
             status = HealthStatus.STOPPED;
-        } else if (writerFailure != null || maintenanceFailure != null || !snapshot.maintenanceWorkerAlive()) {
+        } else if (!snapshot.maintenanceWorkerAlive()) {
             status = HealthStatus.FAILED;
         } else if (snapshot.maintenanceClosing()) {
             status = HealthStatus.STOPPING;

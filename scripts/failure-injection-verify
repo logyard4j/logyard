@@ -29,6 +29,8 @@ run_suite() {
 
 run_suite modules/logyard-output-json \
   --test com.zsumz.logyard.output.json.encoding.JsonEncoderConcurrencyTest \
+  --test com.zsumz.logyard.output.json.file.FileDurabilityTest \
+  --test com.zsumz.logyard.output.json.file.TimedDurabilityTest \
   --test com.zsumz.logyard.output.json.file.ActiveDataFileFailureTest \
   --test com.zsumz.logyard.output.json.file.JsonFileSinkInitializationTest \
   --test com.zsumz.logyard.output.json.file.JsonFileSinkIdentityTest \
@@ -52,6 +54,7 @@ run_suite modules/logyard-output-json \
   --color never
 
 run_suite modules/logyard-runtime \
+  --test com.zsumz.logyard.runtime.assembly.output.FileOutputReloadIdentityTest \
   --test com.zsumz.logyard.runtime.assembly.output.DeliveryAssemblerOwnershipTest \
   --test com.zsumz.logyard.runtime.assembly.OutputAssemblerTest \
   --test com.zsumz.logyard.runtime.assembly.RuntimeJsonConcurrencyTest \

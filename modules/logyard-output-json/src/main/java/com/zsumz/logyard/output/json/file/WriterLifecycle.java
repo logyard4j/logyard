@@ -44,6 +44,11 @@ final class WriterLifecycle {
         state = State.CLOSED;
     }
 
+    void closeFailed(Throwable cause) {
+        failure = cause;
+        state = State.CLOSED;
+    }
+
     void requireUsable(Path path) {
         if (state == State.FAILED) {
             throw new IllegalStateException("Logyard JSON output failed: " + path, failure);

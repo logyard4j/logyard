@@ -112,7 +112,9 @@ A zero shutdown timeout starts no-wait daemon cleanup. Rollback of an output tha
 | Active write, flush, or rotation-close failure leaves the final record boundary uncertain | Discard buffered bytes, close without retrying them, mark health failed, reject later records |
 | Archive move or replacement open fails after the old file closed cleanly | Recovery remains possible |
 
-Timed flushing bounds process buffering. It does not promise an OS `fsync` or durable-storage barrier.
+`fsync = true` calls [`FileChannel.force(false)`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/channels/FileChannel.html#force(boolean)) after explicit and scheduled flushes, rotation close, and shutdown close. Force failures make the output fail like flush failures and remain visible after close. The default leaves persistence to the OS; neither mode makes queued events durable or synchronizes archive directory metadata.
+
+`rotate.interval` uses elapsed time since open and checks at record boundaries. On append, it inherits time since the file's last modification. That approximates age across restarts: frequent restarts of a busy file can extend its lifetime. The size limit continues to apply, and idle files rotate on their next record.
 
 ## Event capture
 

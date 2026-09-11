@@ -15,17 +15,39 @@ final class BufferedFileWriter implements ActiveDataFile {
     private final Path path;
     private final WritableByteChannel channel;
     private final ByteBuffer buffer;
+    private final DurabilityBarrier durability;
     private long logicalBytes;
     private Phase phase = Phase.OPEN;
 
     BufferedFileWriter(Path path, WritableByteChannel channel, ByteBuffer buffer, long logicalBytes) {
+        this(path, channel, buffer, logicalBytes, DurabilityBarrier.OPERATING_SYSTEM);
+    }
+
+    BufferedFileWriter(
+            Path path,
+            WritableByteChannel channel,
+            ByteBuffer buffer,
+            long logicalBytes,
+            DurabilityBarrier durability) {
         this.path = path;
         this.channel = channel;
         this.buffer = buffer;
+        this.durability = durability;
         this.logicalBytes = logicalBytes;
     }
 
     static BufferedFileWriter open(Path path, int bufferBytes, boolean append) {
+        return open(path, bufferBytes, append, false);
+    }
+
+    /**
+     * Opens the data file, optionally forcing it to storage at the end of every completed flush.
+     *
+     * <p>{@code fsync} calls {@code FileChannel.force(false)} after an explicit or scheduled
+     * flush and on close. It requests file-content persistence; directory metadata and remote
+     * filesystem guarantees remain outside this boundary.</p>
+     */
+    static BufferedFileWriter open(Path path, int bufferBytes, boolean append, boolean fsync) {
         FileChannel channel = null;
         try {
             ByteBuffer buffer = ByteBuffer.allocate(bufferBytes);
@@ -35,7 +57,13 @@ final class BufferedFileWriter implements ActiveDataFile {
                     : Set.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE,
                             StandardOpenOption.TRUNCATE_EXISTING, LinkOption.NOFOLLOW_LINKS);
             channel = FileChannel.open(path, options);
-            return new BufferedFileWriter(path, channel, buffer, append ? channel.size() : 0L);
+            FileChannel opened = channel;
+            return new BufferedFileWriter(
+                    path,
+                    opened,
+                    buffer,
+                    append ? opened.size() : 0L,
+                    fsync ? () -> opened.force(false) : DurabilityBarrier.OPERATING_SYSTEM);
         } catch (IOException failure) {
             closeAfterOpenFailure(channel, failure);
             throw new UncheckedIOException("failed to open Logyard JSON output " + path, failure);
@@ -77,6 +105,7 @@ final class BufferedFileWriter implements ActiveDataFile {
         ensureOpen();
         try {
             flushBuffer();
+            durability.sync();
         } catch (IOException failure) {
             discardAndClose(failure);
             throw new UncheckedIOException("failed to flush Logyard JSON output " + path, failure);
@@ -92,6 +121,7 @@ final class BufferedFileWriter implements ActiveDataFile {
         Phase nextPhase = Phase.CLOSED;
         try {
             flushBuffer();
+            durability.sync();
         } catch (IOException flushFailure) {
             nextPhase = Phase.FAILED;
             buffer.clear();

@@ -111,14 +111,16 @@ public final class OutputFactory {
                         output.rotation().sizeBytes(),
                         output.rotation().keep(),
                         RotationPolicy.Compression.parse(output.rotation().compress()),
-                        config.runtime().shutdownTimeout());
+                        config.runtime().shutdownTimeout(),
+                        output.rotation().interval());
         return JsonFileSink.prepare(
                 output.path(),
                 EncoderResolver.resolve(config, output.encoder(), resource, extensions),
                 output.bufferBytes(),
                 output.flushInterval(),
                 output.append(),
-                rotation);
+                rotation,
+                output.fsync());
     }
 
     private static EventSink custom(

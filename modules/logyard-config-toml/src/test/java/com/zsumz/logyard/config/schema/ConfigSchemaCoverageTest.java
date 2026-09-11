@@ -61,8 +61,9 @@ public final class ConfigSchemaCoverageTest {
             buffer = "64KiB"
             flush = "1s"
             append = true
+            fsync = true
             encoder = "wire"
-            rotate = { size = "32MiB", keep = 5, compression = "gzip" }
+            rotate = { size = "32MiB", keep = 5, compression = "gzip", interval = "1h" }
             [outputs.forwarder]
             type = "custom"
             provider = "forwarder"
@@ -163,7 +164,7 @@ public final class ConfigSchemaCoverageTest {
     @Test
     void schemaLookupResolvesDottedDynamicNames() {
         expectKeys("loggers.com.example.checkout", "level", "outputs");
-        expectKeys("outputs.my.output.rotate", "size", "keep", "compression");
+        expectKeys("outputs.my.output.rotate", "size", "keep", "compression", "interval");
         expectKeys("themes.my.theme.level.warn", "fg", "bold");
         expectKeys("delivery.overflow.warn", "action", "timeout");
         if (!ConfigSchema.keysFor("enrichers.tenant.config").isEmpty()) {

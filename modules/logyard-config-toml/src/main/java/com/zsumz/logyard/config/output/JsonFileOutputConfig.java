@@ -7,7 +7,13 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
 
-/** Framed encoded file-output configuration. */
+/**
+ * Framed encoded file-output configuration.
+ *
+ * <p>{@code fsync} opts the output into durable flushing: when it is set every completed flush also
+ * forces the file channel before it is considered complete. It is off by default because forcing
+ * costs a device round trip per flush.</p>
+ */
 public record JsonFileOutputConfig(
         String name,
         Level minimumLevel,
@@ -15,6 +21,7 @@ public record JsonFileOutputConfig(
         int bufferBytes,
         Duration flushInterval,
         boolean append,
+        boolean fsync,
         RotationConfig rotation,
         String encoder,
         DeliveryOverrideConfig delivery) implements OutputConfig {
@@ -41,7 +48,20 @@ public record JsonFileOutputConfig(
             Duration flushInterval,
             boolean append,
             RotationConfig rotation,
+            String encoder,
             DeliveryOverrideConfig delivery) {
-        this(name, minimumLevel, path, bufferBytes, flushInterval, append, rotation, null, delivery);
+        this(name, minimumLevel, path, bufferBytes, flushInterval, append, false, rotation, encoder, delivery);
+    }
+
+    public JsonFileOutputConfig(
+            String name,
+            Level minimumLevel,
+            Path path,
+            int bufferBytes,
+            Duration flushInterval,
+            boolean append,
+            RotationConfig rotation,
+            DeliveryOverrideConfig delivery) {
+        this(name, minimumLevel, path, bufferBytes, flushInterval, append, false, rotation, null, delivery);
     }
 }

@@ -45,7 +45,25 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             Duration flushInterval,
             boolean append,
             RotationPolicy rotationPolicy) {
-        this(path, encoder, bufferBytes, flushInterval, append, rotationPolicy, true, FlushScheduler.shared(), BufferedFileWriter::open);
+        this(path, encoder, bufferBytes, flushInterval, append, rotationPolicy, false);
+    }
+
+    /**
+     * Creates an active output whose flushes optionally force the data file to storage.
+     *
+     * <p>When {@code fsync} is set, every flush this output completes — record-driven, timed, the one
+     * that closes a file for rotation, and the one taken at shutdown — forces the channel before the
+     * flush is considered complete.</p>
+     */
+    public JsonFileSink(
+            Path path,
+            EventEncoder encoder,
+            int bufferBytes,
+            Duration flushInterval,
+            boolean append,
+            RotationPolicy rotationPolicy,
+            boolean fsync) {
+        this(path, encoder, bufferBytes, flushInterval, append, rotationPolicy, true, FlushScheduler.shared(), dataFiles(fsync));
     }
 
     JsonFileSink(
@@ -71,8 +89,24 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             Duration flushInterval,
             boolean append,
             RotationPolicy rotationPolicy) {
+        return prepare(path, encoder, bufferBytes, flushInterval, append, rotationPolicy, false);
+    }
+
+    /** Reserves a JSON output, optionally forcing its data file at the end of every flush. */
+    public static JsonFileSink prepare(
+            Path path,
+            EventEncoder encoder,
+            int bufferBytes,
+            Duration flushInterval,
+            boolean append,
+            RotationPolicy rotationPolicy,
+            boolean fsync) {
         return new JsonFileSink(
-                path, encoder, bufferBytes, flushInterval, append, rotationPolicy, false, FlushScheduler.shared(), BufferedFileWriter::open);
+                path, encoder, bufferBytes, flushInterval, append, rotationPolicy, false, FlushScheduler.shared(), dataFiles(fsync));
+    }
+
+    private static DataFileOpener dataFiles(boolean fsync) {
+        return (path, bufferBytes, append) -> BufferedFileWriter.open(path, bufferBytes, append, fsync);
     }
 
     /** Makes a successfully assembled output eligible for delivery. */
