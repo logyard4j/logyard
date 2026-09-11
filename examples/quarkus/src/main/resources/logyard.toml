@@ -21,7 +21,7 @@ error = "drop"
 
 [context]
 mdc = ["request.id", "authorization", "session.token"]
-redact = ["authorization", "mdc.*token"]
+redact = ["authorization", "*.token"]
 
 [loggers]
 root = { level = "info", outputs = ["json"] }

@@ -117,9 +117,9 @@ def require_quarkus_events(events: EventLog) -> None:
             resource_logger,
             "INFO",
             (
-                ("mdc.request.id", "request-success"),
-                ("mdc.authorization", "[REDACTED]"),
-                ("mdc.session.token", "[REDACTED]"),
+                ("request.id", "request-success"),
+                ("authorization", "[REDACTED]"),
+                ("session.token", "[REDACTED]"),
             ),
         )
     )
@@ -129,13 +129,13 @@ def require_quarkus_events(events: EventLog) -> None:
             resource_logger,
             "ERROR",
             (
-                ("mdc.request.id", "request-failure"),
-                ("mdc.authorization", "[REDACTED]"),
-                ("mdc.session.token", "[REDACTED]"),
+                ("request.id", "request-failure"),
+                ("authorization", "[REDACTED]"),
+                ("session.token", "[REDACTED]"),
             ),
             "expected Quarkus example failure",
         )
     )
-    events.require_no_attribute_value("mdc.authorization", "Bearer quarkus-example-secret")
-    events.require_no_attribute_value("mdc.session.token", "quarkus-example-token")
+    events.require_no_attribute_value("authorization", "Bearer quarkus-example-secret")
+    events.require_no_attribute_value("session.token", "quarkus-example-token")
     events.require(EventExpectation("Quarkus shutdown flush", resource_logger, "INFO"))

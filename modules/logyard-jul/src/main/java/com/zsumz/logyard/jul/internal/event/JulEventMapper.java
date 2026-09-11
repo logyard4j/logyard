@@ -16,7 +16,9 @@ public final class JulEventMapper {
         Objects.requireNonNull(runtime, "runtime");
         Objects.requireNonNull(record, "record");
         java.util.logging.Level sourceLevel = Objects.requireNonNull(record.getLevel(), "record level");
-        if (sourceLevel == java.util.logging.Level.OFF) {
+        // JUL gates entirely on the numeric level space, so a custom OFF-valued Level must be
+        // suppressed just like the java.util.logging.Level.OFF singleton.
+        if (sourceLevel.intValue() == java.util.logging.Level.OFF.intValue()) {
             return;
         }
         Level level = JulLevelMapper.toLogyard(sourceLevel);

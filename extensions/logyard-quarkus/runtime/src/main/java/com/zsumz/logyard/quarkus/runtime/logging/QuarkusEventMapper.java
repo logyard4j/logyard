@@ -4,6 +4,7 @@ import com.zsumz.logyard.api.Level;
 import com.zsumz.logyard.api.LogyardRuntime;
 import com.zsumz.logyard.api.event.AttributeSet;
 import com.zsumz.logyard.api.event.BoundedMessageFormat;
+import com.zsumz.logyard.api.event.CaptureLimits;
 import com.zsumz.logyard.api.ingress.IngressMetadata;
 import com.zsumz.logyard.api.ingress.LogEventIngress;
 import com.zsumz.logyard.runtime.context.ContextPolicySnapshot;
@@ -27,22 +28,39 @@ final class QuarkusEventMapper {
         this.contextPolicySource = Objects.requireNonNull(contextPolicySource, "contextPolicySource");
     }
 
-    void publish(LogyardRuntime runtime, LogRecord sourceRecord) {
+    /** Applies the level mask before wrapping a record; the handler holds its recursion guard. */
+    LogEventIngress admit(LogyardRuntime runtime, LogRecord sourceRecord) {
         Objects.requireNonNull(runtime, "runtime");
         Objects.requireNonNull(sourceRecord, "record");
+        java.util.logging.Level sourceLevel = Objects.requireNonNull(sourceRecord.getLevel(), "record level");
+        // JUL gates entirely on the numeric level space, so a custom OFF-valued Level must be
+        // suppressed just like the java.util.logging.Level.OFF singleton.
+        if (sourceLevel.intValue() == java.util.logging.Level.OFF.intValue()) {
+            return null;
+        }
+        LogEventIngress logger = runtime.logger(loggerName(sourceRecord.getLoggerName()));
+        return logger.isEnabled(QuarkusLevelMapper.toLogyard(sourceLevel)) ? logger : null;
+    }
+
+    void publish(LogyardRuntime runtime, LogRecord sourceRecord) {
+        LogEventIngress logger = admit(runtime, sourceRecord);
+        if (logger != null) {
+            capture(logger, sourceRecord);
+        }
+    }
+
+    /**
+     * Converts one already admitted record into an event.
+     *
+     * @param logger       logger returned by {@link #admit(LogyardRuntime, LogRecord)}
+     * @param sourceRecord admitted record
+     */
+    void capture(LogEventIngress logger, LogRecord sourceRecord) {
         ExtLogRecord record = sourceRecord instanceof ExtLogRecord extension
                 ? extension
                 : ExtLogRecord.wrap(sourceRecord);
-        java.util.logging.Level sourceLevel = Objects.requireNonNull(record.getLevel(), "record level");
-        if (sourceLevel == java.util.logging.Level.OFF) {
-            return;
-        }
-
+        java.util.logging.Level sourceLevel = record.getLevel();
         Level level = QuarkusLevelMapper.toLogyard(sourceLevel);
-        LogEventIngress logger = runtime.logger(loggerName(record));
-        if (!logger.isEnabled(level)) {
-            return;
-        }
 
         BoundedMessageFormat.Result rendered = QuarkusMessageRenderer.render(record);
         AttributeSet.Builder attributes = AttributeSet.builder(18)
@@ -129,12 +147,15 @@ final class QuarkusEventMapper {
     }
 
     private static void addAllMdc(AttributeSet.Builder attributes, Map<String, String> mdc) {
-        for (Map.Entry<String, String> entry : mdc.entrySet()) {
-            if (attributes.isFull()) {
+        var entries = mdc.entrySet().iterator();
+        int inspected = 0;
+        while (entries.hasNext()) {
+            if (inspected++ >= CaptureLimits.MAX_ATTRIBUTES || attributes.isFull()) {
                 attributes.markTruncated();
                 break;
             }
-            attributes.put("mdc." + entry.getKey(), entry.getValue());
+            Map.Entry<String, String> entry = entries.next();
+            addMdcEntry(attributes, entry.getKey(), entry.getValue());
         }
     }
 
@@ -151,12 +172,21 @@ final class QuarkusEventMapper {
                 attributes.markTruncated();
                 break;
             }
-            attributes.put("mdc." + key, value);
+            addMdcEntry(attributes, key, value);
         }
     }
 
-    private static String loggerName(ExtLogRecord record) {
-        String name = record.getLoggerName();
+    /** MDC keys merge into the application attribute namespace, matching the SLF4J bridge. */
+    private static void addMdcEntry(AttributeSet.Builder attributes, String key, String value) {
+        if (key == null || key.isBlank() || key.length() > CaptureLimits.MAX_ATTRIBUTE_KEY_CHARS
+                || AttributeSet.isReservedKey(key)) {
+            attributes.markCaptureTruncated();
+            return;
+        }
+        attributes.put(key, value);
+    }
+
+    private static String loggerName(String name) {
         return name == null || name.isBlank() ? "quarkus" : name;
     }
 }

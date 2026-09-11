@@ -43,7 +43,7 @@ public final class LogyardHandler extends Handler {
 
     @Override
     public void publish(LogRecord record) {
-        if (record == null || lifecycle.closed() || !isLoggable(record) || !reentry.enter()) {
+        if (record == null || lifecycle.closed() || !reentry.enter()) {
             return;
         }
         if (!publications.tryEnter()) {
@@ -51,6 +51,7 @@ public final class LogyardHandler extends Handler {
             return;
         }
         try {
+            if (!isLoggable(record)) return;
             mapper.publish(runtime.runtime(), record);
         } catch (Throwable failure) {
             AdapterDiagnostics.rethrowIfFatal(failure);

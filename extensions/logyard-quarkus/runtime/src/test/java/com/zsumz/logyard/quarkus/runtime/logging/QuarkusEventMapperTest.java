@@ -56,7 +56,7 @@ final class QuarkusEventMapperTest {
         LogEvent event = events.getFirst();
         assertFalse(record.fullCopyRequested());
         assertEquals(2, record.keyedLookups());
-        assertTrue(indexOf(event, "mdc.context.9999") < indexOf(event, "mdc.context.1"));
+        assertTrue(indexOf(event, "context.9999") < indexOf(event, "context.1"));
     }
 
     @Test

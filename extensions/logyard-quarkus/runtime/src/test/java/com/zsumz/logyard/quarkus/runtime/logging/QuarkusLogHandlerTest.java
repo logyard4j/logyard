@@ -46,9 +46,9 @@ final class QuarkusLogHandlerTest {
         assertTrue(events.contains("\"logger\":\"example.quarkus\""));
         assertTrue(events.contains("\"severity_text\":\"WARN\""));
         assertTrue(events.contains("\"quarkus.message_template\":\"Quarkus mapped event %s\""));
-        assertTrue(events.contains("\"mdc.request.id\":\"request-7\""), events);
-        assertTrue(events.contains("\"mdc.authorization\":\"[REDACTED]\""), events);
-        assertTrue(events.contains("\"mdc.session.token\":\"[REDACTED]\""), events);
+        assertTrue(events.contains("\"request.id\":\"request-7\""), events);
+        assertTrue(events.contains("\"authorization\":\"[REDACTED]\""), events);
+        assertTrue(events.contains("\"session.token\":\"[REDACTED]\""), events);
         assertFalse(events.contains("\"quarkus.mdc\""));
         assertFalse(events.contains("Bearer private-token"));
         assertFalse(events.contains("session-secret"));
@@ -102,7 +102,7 @@ final class QuarkusLogHandlerTest {
 
                 [context]
                 mdc = ["request.id", "authorization", "session.token"]
-                redact = ["authorization", "mdc.*token"]
+                redact = ["authorization", "*.token"]
 
                 [loggers]
                 root = { level = "trace", outputs = ["json"] }

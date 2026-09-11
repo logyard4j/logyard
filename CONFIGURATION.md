@@ -325,6 +325,8 @@ redact = ["authorization", "cookie", "password", "*.secret", "*.token"]
 
 The optional [OpenTelemetry integration](INTEGRATIONS.md#opentelemetry) supplies active trace identity and allowlisted baggage before asynchronous delivery. Context propagation remains application-owned.
 
+SLF4J and Quarkus preserve original MDC key names, so the same allowlist and redaction keys work for both.
+
 Use a finite MDC allowlist. With Quarkus/JBoss Log Manager, `mdc = ["*"]` copies the entire source MDC for each accepted event.
 
 Redaction matches a map-key leaf or its full path, such as `request.users[0].token`. The `logyard.*` attribute namespace is reserved for system diagnostics.
