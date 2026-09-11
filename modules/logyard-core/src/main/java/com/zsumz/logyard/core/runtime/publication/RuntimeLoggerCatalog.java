@@ -28,7 +28,8 @@ final class RuntimeLoggerCatalog {
     }
 
     LogyardLogger logger(String name) {
-        return loggers.computeIfAbsent(name, this::createLogger);
+        DefaultLogyardLogger cached = loggers.get(name);
+        return cached == null ? loggers.computeIfAbsent(name, this::createLogger) : cached;
     }
 
     int size() {

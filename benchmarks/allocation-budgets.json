@@ -1,6 +1,10 @@
 {
   "budgets": [
     {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.AdapterGuardBenchmark.enterAndExit",
+      "maxBytesPerOperation": 1
+    },
+    {
       "benchmark": "com.zsumz.logyard.benchmarks.delivery.AsyncDeliveryBenchmark.oneProducer",
       "maxBytesPerOperation": 96
     },
@@ -105,7 +109,19 @@
     },
     {
       "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderBenchmark.disabled",
-      "maxBytesPerOperation": 64
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderBenchmark.disabledClassic",
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderBenchmark.disabledFluentSupplier",
+      "maxBytesPerOperation": 1
+    },
+    {
+      "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jIngressBenchmark.disabled",
+      "maxBytesPerOperation": 1
     },
     {
       "benchmark": "com.zsumz.logyard.benchmarks.ingress.Slf4jProviderBenchmark.enabledOneProducer",

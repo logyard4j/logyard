@@ -23,6 +23,8 @@ import org.slf4j.spi.MDCAdapter;
 
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 /** Actual SLF4J provider path, including lazy managed access and ServiceLoader output delivery. */
 @State(Scope.Benchmark)
@@ -35,6 +37,11 @@ public class Slf4jProviderBenchmark {
     private RuntimeBundle application;
     private LogyardServiceProvider provider;
     private Logger logger;
+    private final AtomicInteger supplierCalls = new AtomicInteger();
+    private final Supplier<String> disabledArgument = () -> {
+        supplierCalls.incrementAndGet();
+        return "unexpected evaluation";
+    };
 
     @Setup
     public void setUp() {
@@ -49,11 +56,24 @@ public class Slf4jProviderBenchmark {
     public void tearDown() {
         provider.close();
         application.close();
+        if (supplierCalls.get() != 0) {
+            throw new IllegalStateException("disabled logging evaluated an argument supplier");
+        }
     }
 
     @Benchmark
     public boolean disabled() {
         return logger.isDebugEnabled();
+    }
+
+    @Benchmark
+    public void disabledClassic() {
+        logger.debug("ignored {}", 42L);
+    }
+
+    @Benchmark
+    public void disabledFluentSupplier() {
+        logger.atDebug().addArgument(disabledArgument).log("ignored {}");
     }
 
     @Benchmark
