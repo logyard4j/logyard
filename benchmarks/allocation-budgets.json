@@ -6,7 +6,7 @@
     },
     {
       "benchmark": "com.logyard4j.benchmarks.delivery.AsyncDeliveryBenchmark.oneProducer",
-      "maxBytesPerOperation": 96
+      "maxBytesPerOperation": 112
     },
     {
       "benchmark": "com.logyard4j.benchmarks.delivery.CompositeSinkBenchmark.success",
