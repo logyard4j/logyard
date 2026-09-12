@@ -97,7 +97,7 @@
     },
     {
       "benchmark": "com.logyard4j.benchmarks.ingress.NativeIngressBenchmark.enabledOneArgument",
-      "maxBytesPerOperation": 400
+      "maxBytesPerOperation": 432
     },
     {
       "benchmark": "com.logyard4j.benchmarks.ingress.NativeIngressBenchmark.twoOutputFanout",
@@ -105,7 +105,7 @@
     },
     {
       "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jIngressBenchmark.enabledEmptyMdc",
-      "maxBytesPerOperation": 576
+      "maxBytesPerOperation": 640
     },
     {
       "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jProviderBenchmark.disabled",
@@ -198,7 +198,7 @@
     {
       "benchmark": "com.logyard4j.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
       "params": {"mdcEntries": "0"},
-      "maxBytesPerOperation": 5120
+      "maxBytesPerOperation": 5376
     },
     {
       "benchmark": "com.logyard4j.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",

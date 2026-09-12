@@ -46,4 +46,4 @@ Allocation budgets reject missing, non-finite, and over-budget results. Warmed d
 
 Enabled-call budgets include modest headroom for JIT decisions and profiler overhead. The smoke gate warms each case for three 1 s iterations before measuring (five for management scaling); exception fixtures use fixed application frames so harness setup does not change the workload.
 
-Budgets are calibrated on JDK 21. The copied Quarkus record with four MDC fields has a 3,328 B/op ceiling: three independent JVMs measured about 3,000–3,200 B/op after eight seconds of warmup. The allowance includes those observed JIT differences; disabled-path ceilings remain 1 B/op.
+Budgets are calibrated on JDK 21. Three independent hosted Temurin runs measured the enabled one-argument native path at 360–416 B/op, the empty-MDC SLF4J path at 496–608 B/op, and fresh zero-MDC Quarkus mapping at 5,105–5,201 B/op. Their ceilings retain modest alignment headroom at 432, 640, and 5,376 B/op. The copied Quarkus record with four MDC fields has a 3,328 B/op ceiling after three independent JVMs measured about 3,000–3,200 B/op. Disabled-path ceilings remain 1 B/op.
