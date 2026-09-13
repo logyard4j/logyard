@@ -18,6 +18,8 @@ The [eager fluent-argument experiment](evidence/fluent-values.md) removes direct
 
 The [empty fluent-attribute experiment](evidence/empty-attributes.md) skips unused attribute assembly while preserving truncation provenance.
 
+The [capture-scope experiment](evidence/capture-scope.md) records a rejected closure optimization and retained nested-capture regressions.
+
 The [UTF-8 file experiment](evidence/utf8-file-output.md) measures reusable record storage and direct integer formatting through real file output.
 
 The [provider comparison](comparison/README.md) adds isolated Logyard, Logback, and Log4j asynchronous delivery experiments with shared or native JSON encoding, matched fields, actual file writes, scheduled arrivals, and drain reconciliation.
