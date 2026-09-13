@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Renders bounded runtime and output health snapshots from an acquired plan epoch. */
+/** Renders bounded snapshots of active plans and runtime lifecycle state. */
 public final class RuntimeHealthReporter {
     private RuntimeHealthReporter() {
     }
@@ -43,6 +43,19 @@ public final class RuntimeHealthReporter {
 
         plan.outputs().forEach((name, sink) -> components.add(output(name, sink)));
         return RuntimeHealth.from(components);
+    }
+
+    public static RuntimeHealth stopping(int loggerCount, int pendingRetirements) {
+        return new RuntimeHealth(
+                Instant.now(),
+                HealthStatus.STOPPING,
+                false,
+                List.of(new ComponentHealth(
+                        "runtime",
+                        "runtime",
+                        HealthStatus.STOPPING,
+                        Map.of("closed", "true"),
+                        Map.of("logger_count", (long) loggerCount, "pending_retirements", (long) pendingRetirements))));
     }
 
     public static RuntimeHealth stopped(int loggerCount) {

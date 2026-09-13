@@ -34,7 +34,9 @@ public final class RuntimeLifecycle {
     public RuntimeHealth health(Supplier<RuntimeGeneration> currentGeneration, IntSupplier loggerCount) {
         RuntimeGenerationLease lease = acquire(currentGeneration);
         if (lease == null) {
-            return RuntimeHealthReporter.stopped(loggerCount.getAsInt());
+            return phase.get() == Phase.CLOSING
+                    ? RuntimeHealthReporter.stopping(loggerCount.getAsInt(), retirements.pendingCount())
+                    : RuntimeHealthReporter.stopped(loggerCount.getAsInt());
         }
         try (lease) {
             RuntimeGeneration snapshot = lease.generation();

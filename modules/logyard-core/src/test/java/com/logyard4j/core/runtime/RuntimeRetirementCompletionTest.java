@@ -1,6 +1,7 @@
 package com.logyard4j.core.runtime;
 
 import com.logyard4j.api.Level;
+import com.logyard4j.api.diagnostics.HealthStatus;
 import com.logyard4j.api.event.LogEvent;
 import com.logyard4j.api.spi.output.EventSink;
 import com.logyard4j.core.routing.RouteDefinition;
@@ -50,6 +51,7 @@ final class RuntimeRetirementCompletionTest {
             sink.release.countDown();
             assertTrue(pending.removed.await(2, TimeUnit.SECONDS));
             assertFalse(runtime.retirementCompletion().toCompletableFuture().isDone());
+            assertEquals(HealthStatus.STOPPING, runtime.health().status());
             if (deadline) {
                 closing.get(2, TimeUnit.SECONDS);
                 assertFalse(runtime.retirementCompletion().toCompletableFuture().isDone());
