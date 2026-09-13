@@ -39,6 +39,17 @@ class BenchmarkDeliveryTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "output is empty"):
             reconcile(record | {"bytes": 0})
 
+    def test_reconciles_completed_batches_and_rejects_loss_or_invalid_sizes(self) -> None:
+        record = admission() | {"kind": "batch-admission", "params": {"maximumBatchSize": "4"},
+                                "benchmark_calls": 6, "attempted": 6, "dropped": 0,
+                                "batches": 3, "singleton_batches": 1, "largest_batch": 3}
+        reconcile(record)
+        for changed in ({"dropped": 1, "attempted": 7, "benchmark_calls": 7},
+                        {"largest_batch": 5}, {"batches": 8}, {"singleton_batches": 4},
+                        {"batches": 1, "singleton_batches": 0}):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                reconcile(record | changed)
+
 
 def admission() -> dict[str, object]:
     return {"kind": "admission", "benchmark_calls": 10, "primed": 0, "attempted": 10,

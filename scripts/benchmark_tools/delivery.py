@@ -15,6 +15,9 @@ def required_scenarios(suite: str) -> list[tuple[str, dict[str, str], str]]:
     producers = ("oneProducer",) if suite == "smoke" else ("oneProducer", "fourProducers", "sixteenProducers", "sixtyFourProducers")
     return (
         [(PREFIX + "delivery.AsyncDeliveryBenchmark." + method, {}, "thrpt") for method in producers]
+        + [(PREFIX + "delivery.AsyncBatchDeliveryBenchmark." + method, {"maximumBatchSize": size}, "thrpt")
+           for method in (("oneProducer",) if suite == "smoke" else ("oneProducer", "sixteenProducers"))
+           for size in ("1", "32", "256")]
         + [(PREFIX + "delivery.OverflowPolicyBenchmark.overflow", {"action": action}, "thrpt") for action in ("DROP", "WAIT_DROP", "BLOCK", "STDERR")]
         + [(PREFIX + "delivery.SynchronousOverflowBenchmark.synchronousFallback", {}, "ss")]
         + [(PREFIX + "output.JsonSinkBenchmark." + method, {}, "thrpt") for method in JSON_METHODS]
@@ -84,6 +87,15 @@ def reconcile(record: dict[str, Any]) -> None:
         outcome = {"DROP": "dropped", "WAIT_DROP": "dropped", "BLOCK": "emergency_fallbacks", "STDERR": "emergency_fallbacks", "SYNC": "synchronous_fallbacks"}[action]
         if count("enqueued") != count("primed") or count(outcome) != calls:
             raise ValueError("the intended overflow branch was not maintained")
+    elif record["kind"] == "batch-admission":
+        batches, singletons, largest = count("batches"), count("singleton_batches"), count("largest_batch")
+        maximum = int(record["params"]["maximumBatchSize"])
+        if accepted != attempted or count("synchronous_fallbacks") != 0:
+            raise ValueError("batch fixture must queue and deliver every attempt")
+        if not 0 <= singletons <= batches or not 1 <= largest <= maximum:
+            raise ValueError("invalid batch sizes")
+        if not singletons + 2 * (batches - singletons) <= accepted <= singletons + largest * (batches - singletons):
+            raise ValueError("batch counts do not reconcile")
     elif record["kind"] != "admission":
         raise ValueError("unknown evidence kind")
 

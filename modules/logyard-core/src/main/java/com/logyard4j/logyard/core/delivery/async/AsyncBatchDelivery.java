@@ -6,11 +6,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** Forms one bounded batch and completes every queue claim after delegate delivery. */
+/** Worker-confined batch assembly; completes every queue claim and releases event references after delivery. */
 final class AsyncBatchDelivery {
     private final AsyncEventQueue eventQueue;
     private final AsyncBatchPolicy policy;
     private final AsyncDelegateDelivery delivery;
+    private final List<LogEvent> events;
 
     AsyncBatchDelivery(
             AsyncEventQueue eventQueue,
@@ -19,6 +20,7 @@ final class AsyncBatchDelivery {
         this.eventQueue = Objects.requireNonNull(eventQueue, "eventQueue");
         this.policy = Objects.requireNonNull(policy, "policy");
         this.delivery = Objects.requireNonNull(delivery, "delivery");
+        events = new ArrayList<>(policy.maximumSize());
     }
 
     /**
@@ -31,7 +33,6 @@ final class AsyncBatchDelivery {
     boolean deliver(LogEvent first, TimedEventClaimer timedClaimer) {
         Objects.requireNonNull(first, "first");
         Objects.requireNonNull(timedClaimer, "timedClaimer");
-        List<LogEvent> events = new ArrayList<>(policy.maximumSize());
         events.add(first);
         boolean interrupted = false;
         try {
@@ -56,6 +57,7 @@ final class AsyncBatchDelivery {
             delivery.deliverBatch(events);
         } finally {
             eventQueue.completeClaims(events.size());
+            events.clear();
         }
         return interrupted;
     }

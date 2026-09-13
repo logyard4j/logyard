@@ -34,7 +34,7 @@ final class AsyncDeliveryLoop {
         this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
         dropReporter = new AsyncDropReporter(metrics);
         batching = AsyncBatchPolicy.from(name, delivery);
-        batchDelivery = new AsyncBatchDelivery(eventQueue, batching, delivery);
+        batchDelivery = batching.enabled() ? new AsyncBatchDelivery(eventQueue, batching, delivery) : null;
     }
 
     void run() {

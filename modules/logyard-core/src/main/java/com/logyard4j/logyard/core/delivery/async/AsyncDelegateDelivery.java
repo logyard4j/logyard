@@ -79,22 +79,24 @@ final class AsyncDelegateDelivery {
                 rejectClosed(events);
                 return;
             }
-            if (ComponentInvocationBoundary.invoke(
-                    "async output batch delegate accept",
-                    () -> batchDelegate.acceptBatch(List.copyOf(events)),
-                    (component, failure) -> {
+            try {
+                batchDelegate.acceptBatch(List.copyOf(events));
+            } catch (Throwable failure) {
+                ComponentInvocationBoundary.report("async output batch delegate accept", failure,
+                    (component, current) -> {
                         metrics.recordEmergencyFallbacks(events.size());
                         int reported = Math.min(events.size(), MAX_EMERGENCY_BATCH_EVENTS);
                         for (int index = 0; index < reported; index++) {
-                            diagnostics.emergency(events.get(index), componentFailure(component, failure));
+                            diagnostics.emergency(events.get(index), componentFailure(component, current));
                         }
                         if (events.size() > reported) {
                             diagnostics.status((events.size() - reported) + " additional event(s) omitted from emergency output");
                         }
-                        diagnostics.failure(component, failure);
-                    })) {
-                metrics.recordDelivered(events.size());
+                        diagnostics.failure(component, current);
+                    });
+                return;
             }
+            metrics.recordDelivered(events.size());
         } finally {
             lock.unlock();
         }

@@ -19,6 +19,12 @@ public final class DeliveryEvidence {
 
     public static void async(BenchmarkParams benchmark, IterationParams iteration, int sequence,
             String kind, long calls, long primed, AsyncSink sink, long observed) throws IOException {
+        async(benchmark, iteration, sequence, kind, calls, primed, sink, observed, Map.of());
+    }
+
+    public static void async(BenchmarkParams benchmark, IterationParams iteration, int sequence,
+            String kind, long calls, long primed, AsyncSink sink, long observed,
+            Map<String, Long> measurements) throws IOException {
         long accepted = sink.queuedEvents() + sink.synchronousFallbacks();
         long dropped = 0;
         for (Level level : Level.values()) {
@@ -38,6 +44,8 @@ public final class DeliveryEvidence {
         counts.put("emergency_fallbacks", sink.emergencyFallbacks());
         counts.put("delegate_accepted", sink.deliveredEvents());
         counts.put("delegate_observed", observed);
+        measurements.forEach((key, value) -> require(counts.putIfAbsent(key, value) == null,
+                "duplicate delivery measurement"));
         write(benchmark, iteration, sequence, kind, counts);
     }
 

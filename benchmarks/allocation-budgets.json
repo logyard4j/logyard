@@ -9,6 +9,21 @@
       "maxBytesPerOperation": 112
     },
     {
+      "benchmark": "com.logyard4j.logyard.benchmarks.delivery.AsyncBatchDeliveryBenchmark.oneProducer",
+      "params": {"maximumBatchSize": "1"},
+      "maxBytesPerOperation": 96
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.delivery.AsyncBatchDeliveryBenchmark.oneProducer",
+      "params": {"maximumBatchSize": "32"},
+      "maxBytesPerOperation": 64
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.delivery.AsyncBatchDeliveryBenchmark.oneProducer",
+      "params": {"maximumBatchSize": "256"},
+      "maxBytesPerOperation": 64
+    },
+    {
       "benchmark": "com.logyard4j.logyard.benchmarks.delivery.CompositeSinkBenchmark.success",
       "params": {"sinkCount": "1"},
       "maxBytesPerOperation": 1

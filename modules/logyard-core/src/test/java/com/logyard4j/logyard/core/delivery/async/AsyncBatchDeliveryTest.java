@@ -3,6 +3,7 @@ package com.logyard4j.logyard.core.delivery.async;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.logyard4j.logyard.api.Level;
 import com.logyard4j.logyard.api.event.AttributeSet;
@@ -50,6 +51,36 @@ final class AsyncBatchDeliveryTest {
         assertEquals(0, queue.outstanding());
     }
 
+    @Test
+    void retainedSnapshotsStayImmutableAndDetachedAcrossSuccessAndFailure() {
+        AsyncEventQueue queue = new AsyncEventQueue(16);
+        RecordingBatchSink delegate = new RecordingBatchSink();
+        AsyncBatchDelivery delivery = delivery(queue, delegate, 4, 0L);
+        LogEvent first = event(1);
+        LogEvent second = event(2);
+        queue.offerImmediately(first, () -> true);
+        queue.offerImmediately(second, () -> true);
+        delivery.deliver(queue.claimNow(), ignored -> null);
+        List<LogEvent> retained = delegate.batch();
+        assertThrows(UnsupportedOperationException.class, () -> retained.set(0, second));
+
+        delegate.fail = true;
+        LogEvent third = event(3);
+        queue.offerImmediately(third, () -> true);
+        delivery.deliver(queue.claimNow(), ignored -> null);
+        List<LogEvent> failed = delegate.batch();
+        assertEquals(0, queue.outstanding());
+
+        delegate.fail = false;
+        LogEvent fourth = event(4);
+        queue.offerImmediately(fourth, () -> true);
+        delivery.deliver(queue.claimNow(), ignored -> null);
+        assertEquals(List.of(first, second), retained);
+        assertEquals(List.of(third), failed);
+        assertEquals(List.of(fourth), delegate.batch());
+        assertEquals(0, queue.outstanding());
+    }
+
     private static AsyncBatchDelivery delivery(
             AsyncEventQueue queue,
             RecordingBatchSink delegate,
@@ -77,6 +108,7 @@ final class AsyncBatchDeliveryTest {
 
     private static final class RecordingBatchSink implements BatchEventSink {
         private List<LogEvent> batch = List.of();
+        private boolean fail;
 
         @Override
         public int maximumBatchSize() {
@@ -90,7 +122,8 @@ final class AsyncBatchDeliveryTest {
 
         @Override
         public void acceptBatch(List<LogEvent> events) {
-            batch = List.copyOf(events);
+            batch = events;
+            if (fail) throw new AssertionError("expected batch failure");
         }
 
         private List<LogEvent> batch() {

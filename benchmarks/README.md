@@ -20,6 +20,7 @@ The smoke gate also exercises the official Quarkus extension benchmark. Its pack
 | --- | --- |
 | Native and SLF4J ingress | Disabled calls or capture and admission to the configured fixture |
 | `AsyncDeliveryBenchmark` | Attempts to admit one reused captured event, with 1/4/16/64 producers and DROP overflow |
+| `AsyncBatchDeliveryBenchmark` | Reused-event admission with 1/16 producers, batch limits of 1/32/256, and bounded BLOCK overflow; every attempt must reach the delegate |
 | `OverflowPolicyBenchmark` | DROP, WAIT_DROP, BLOCK, and STDERR while a latched worker keeps the queue full; waits use a 1 ns timeout |
 | `SynchronousOverflowBenchmark` | One synchronous fallback after a controlled 1 ms delegate stall |
 | `JsonSinkBenchmark.directFileMechanics` | Buffered file writes of pre-encoded `{}` records |
@@ -39,6 +40,8 @@ Historical evidence retains the package names and source hashes used for each me
 JMH JSON and a companion `*.delivery.jsonl` file are written under `target/benchmarks/` (`target/benchmark-smoke/` for the gate). Set `LOGYARD_BENCHMARK_RESULT` to change the full-suite result path.
 
 Each async iteration reconciles attempted, accepted, dropped, emergency, and delegate-observed records after draining. Each file iteration closes the sink, counts JSONL records and bytes, and removes its temporary file. Missing results, incomplete drains, unexpected overflow branches, and changed measurement modes fail the gate.
+
+Batch iterations also record the number of batches, singleton batches, and largest batch. Their delegate does no I/O; the configured limit is not the observed average batch size. Batch collection does not wait for followers, and admission fails the fixture if a five-second BLOCK wait times out.
 
 These counts include JMH transition calls and identified fixture priming. They validate the workload; they are not the timed-loop operation count. Counter overhead is included in the measured call. Final close, drain, and file scans are outside the JMH score.
 
@@ -79,6 +82,7 @@ Each report links its raw measurements, source identity, and limitations. Result
 | Process-stream baseline | [Profile production UTF-8 conversion and reconcile completed records](evidence/process-stream-baseline.md) |
 | UTF-8 process streams | [Reuse bounded record storage beneath configured stdout/stderr](evidence/utf8-process-stream.md) |
 | Async delivery | [Remove temporary callbacks and healthy-path diagnostic formatting](evidence/async-delivery-temporaries.md) |
+| Async batches | [Reuse private assembly storage while preserving immutable delegate snapshots](evidence/async-batch-delivery.md) |
 | Virtual-thread delivery | [Measure completed work, latency, drops, and CPU](evidence/virtual-delivery.md) |
 | Provider comparison | [Match semantics and effective buffered capacity](comparison/README.md) |
 | Rejected argument experiments | [Lazy storage attempts and added coverage](evidence/fluent-arguments.md) |
