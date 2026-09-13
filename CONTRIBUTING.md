@@ -13,6 +13,8 @@ zolt resolve --workspace
 ./scripts/ci
 ```
 
+A clean bootstrap needs network access and curl 7.71+. Artifact downloads allow two retries, with 15 s connection and 60 s transfer limits; pinned SHA-256 checks remain mandatory.
+
 `scripts/ci` runs repository and architecture checks, strict Javadocs, the locked Zolt build, resolved JUnit tests, executable integrations, constrained-heap canaries, provider discovery, and failure injection. Zolt is required; missing dependencies fail the gate.
 
 ## Choose a check

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-bootstrap.sh"
 readonly ZOLT_COMMIT="${ZOLT_BOOTSTRAP_COMMIT:-49c0a48bddd9968a8f0ac82088a92242a01b4112}"
 readonly ZOLT_VERSION="${ZOLT_BOOTSTRAP_VERSION:-0.1.0-alpha.1}"
 readonly ZOLT_REPOSITORY="${ZOLT_BOOTSTRAP_REPOSITORY:-https://github.com/zoltsh/zolt.git}"
@@ -85,7 +86,7 @@ if [[ "$installed_commit" != "$ZOLT_COMMIT" \
 
   (
     cd "$work_root"
-    ZOLT_VERSION_OVERRIDE="$ZOLT_VERSION" ./scripts/bootstrap-zolt-jvm --version
+    ZOLT_VERSION_OVERRIDE="$ZOLT_VERSION" logyard_bootstrap_run "$BASH" ./scripts/bootstrap-zolt-jvm --version
   )
 
   rm -rf "$SOURCE_ROOT.previous"
