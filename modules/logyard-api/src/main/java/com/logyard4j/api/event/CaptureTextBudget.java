@@ -24,21 +24,21 @@ final class CaptureTextBudget {
         remainingTemplateCharacters = templateCharacters;
     }
 
-    CapturedText capturePayload(String source, int fieldLimit) {
-        CapturedText captured = capture(source, fieldLimit, remainingPayloadCharacters);
-        remainingPayloadCharacters -= length(captured.value());
+    String capturePayload(String source, int fieldLimit) {
+        String captured = CaptureLimits.truncate(source, Math.min(fieldLimit, remainingPayloadCharacters));
+        remainingPayloadCharacters -= length(captured);
         return captured;
     }
 
-    CapturedText captureIdentity(String source, int fieldLimit) {
-        CapturedText captured = capture(source, fieldLimit, remainingIdentityCharacters);
-        remainingIdentityCharacters -= length(captured.value());
+    String captureIdentity(String source, int fieldLimit) {
+        String captured = CaptureLimits.truncate(source, Math.min(fieldLimit, remainingIdentityCharacters));
+        remainingIdentityCharacters -= length(captured);
         return captured;
     }
 
-    CapturedText captureTemplate(String source, int fieldLimit) {
-        CapturedText captured = capture(source, fieldLimit, remainingTemplateCharacters);
-        remainingTemplateCharacters -= length(captured.value());
+    String captureTemplate(String source, int fieldLimit) {
+        String captured = CaptureLimits.truncate(source, Math.min(fieldLimit, remainingTemplateCharacters));
+        remainingTemplateCharacters -= length(captured);
         return captured;
     }
 

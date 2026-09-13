@@ -41,15 +41,15 @@ final class CaptureContext {
     }
 
     String capturePayloadText(String source, int fieldLimit) {
-        return capturedValue(text.capturePayload(source, fieldLimit));
+        return capturedValue(source, text.capturePayload(source, fieldLimit));
     }
 
     String captureIdentityText(String source, int fieldLimit) {
-        return capturedValue(text.captureIdentity(source, fieldLimit));
+        return capturedValue(source, text.captureIdentity(source, fieldLimit));
     }
 
     String captureTemplateText(String source, int fieldLimit) {
-        return capturedValue(text.captureTemplate(source, fieldLimit));
+        return capturedValue(source, text.captureTemplate(source, fieldLimit));
     }
 
     CapturedText captureExceptionTypeText(String source, int fieldLimit) {
@@ -135,8 +135,11 @@ final class CaptureContext {
         return accepted;
     }
 
-    private String capturedValue(CapturedText captured) {
-        return observe(captured).value();
+    private String capturedValue(String source, String captured) {
+        if (source != null && captured.length() < source.length()) {
+            truncated = true;
+        }
+        return captured;
     }
 
     private CapturedText observe(CapturedText captured) {
