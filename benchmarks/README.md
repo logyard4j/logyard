@@ -4,30 +4,6 @@
 
 Logyard does not currently claim to outperform Logback or Log4j 2. These benchmarks isolate costs; an admission score is not a delivery rate.
 
-The [capture text experiment](evidence/capture-text.md) and [attribute snapshot experiment](evidence/attribute-snapshots.md) record measured allocation changes with unchanged capture semantics. The [fluent argument experiments](evidence/fluent-arguments.md) document two rejected optimizations and the added allocation coverage.
-
-The [capture handoff simplification](evidence/capture-handoff.md) removes an intermediate event type; its main allocation fixtures were unchanged.
-
-The [structured-field declaration experiment](evidence/attribute-declarations.md) removes per-field wrappers and records its allocation benefit and MDC follow-up checks.
-
-The [literal rendering experiment](evidence/literal-rendering.md) removes unnecessary capture and rendering wrappers, with file-delivery reconciliation and a fanout allocation investigation.
-
-The [capture-allowance experiment](evidence/capture-allowance.md) reuses an immutable full-budget snapshot and records its small-event saving and MDC variation.
-
-The [eager fluent-argument experiment](evidence/fluent-values.md) removes direct-value wrappers, with longer-warmup confirmation and shared-capture regressions.
-
-The [empty fluent-attribute experiment](evidence/empty-attributes.md) skips unused attribute assembly while preserving truncation provenance.
-
-The [capture-scope experiment](evidence/capture-scope.md) records a rejected closure optimization and retained nested-capture regressions.
-
-The [formatter-plan experiment](evidence/formatter-plan.md) removes duplicate parse-plan storage and measures ordinary formatting and rejected expansion.
-
-The [UTF-8 file experiment](evidence/utf8-file-output.md) measures reusable record storage and direct integer formatting through real file output.
-
-The [provider comparison](comparison/README.md) adds isolated Logyard, Logback, and Log4j asynchronous delivery experiments with shared or native JSON encoding, matched fields, actual file writes, scheduled arrivals, and drain reconciliation.
-
-The [virtual-thread experiment](evidence/virtual-delivery.md) records completed work, severity drops, CPU, and latency across six longer forks using the default delivery policies.
-
 ## Run
 
 Use JDK 21+ and the repository's pinned Zolt:
@@ -69,4 +45,35 @@ Allocation budgets reject missing, non-finite, and over-budget results. Warmed d
 
 Enabled-call budgets include modest headroom for JIT decisions and profiler overhead. The smoke gate warms each case for three 1 s iterations before measuring (five for management scaling); exception fixtures use fixed application frames so harness setup does not change the workload.
 
-Budgets are calibrated on JDK 21. Four independent hosted Temurin runs measured one-producer async delivery at 48–99 B/op, the enabled one-argument native path at 360–416 B/op, the empty-MDC SLF4J path at 496–608 B/op, and fresh zero-MDC Quarkus mapping at 5,105–5,201 B/op. Their ceilings retain modest alignment headroom at 112, 432, 640, and 5,376 B/op. The copied Quarkus record with four MDC fields has a 3,328 B/op ceiling after three independent JVMs measured about 3,000–3,200 B/op. Disabled-path ceilings remain 1 B/op.
+The ceilings below retain headroom over earlier JDK 21 measurements. They are regression limits, not optimization targets; the experiments below record subsequent changes.
+
+| Calibration fixture | Historical B/op | Ceiling B/op |
+| --- | ---: | ---: |
+| One-producer async delivery | 48–99 | 112 |
+| Native enabled, one argument | 360–416 | 432 |
+| Empty-MDC SLF4J ingress | 496–608 | 640 |
+| Fresh Quarkus record, empty MDC | 5105–5201 | 5376 |
+| Copied Quarkus record, four MDC fields | About 3000–3200 | 3328 |
+
+The first four ranges came from four hosted Temurin runs; the copied-record range came from three independent JVMs. Disabled-path ceilings remain 1 B/op.
+
+## Recorded experiments
+
+Each report links its raw measurements, source identity, and limitations. Results from different fixtures should not be added together.
+
+| Area | Report and finding |
+| --- | --- |
+| Capture text | [Remove temporary text results](evidence/capture-text.md) |
+| Attribute snapshots | [Reuse privately owned storage](evidence/attribute-snapshots.md) |
+| Capture handoff | [Simpler state transfer; no established allocation saving](evidence/capture-handoff.md) |
+| Structured declarations | [Remove field wrappers; record MDC variation](evidence/attribute-declarations.md) |
+| Literal rendering | [Reduce literal work; investigate fanout allocation](evidence/literal-rendering.md) |
+| Capture allowance | [Reuse the immutable full-budget snapshot](evidence/capture-allowance.md) |
+| Fluent arguments | [Store eager values directly](evidence/fluent-values.md) |
+| Empty fluent attributes | [Skip unused assembly; retain truncation provenance](evidence/empty-attributes.md) |
+| Formatter plans | [Reduce ordinary and rejected-format allocation](evidence/formatter-plan.md) |
+| UTF-8 file output | [Measure bounded reusable record storage](evidence/utf8-file-output.md) |
+| Virtual-thread delivery | [Measure completed work, latency, drops, and CPU](evidence/virtual-delivery.md) |
+| Provider comparison | [Match semantics and effective buffered capacity](comparison/README.md) |
+| Rejected argument experiments | [Lazy storage attempts and added coverage](evidence/fluent-arguments.md) |
+| Rejected capture-scope experiment | [Native speedup with weaker MDC results](evidence/capture-scope.md) |
