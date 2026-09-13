@@ -21,6 +21,7 @@ email = "shawn@zsumz.com"
 "com.logyard4j:logyard-api" = { workspace = true }
 
 [dependencies.test]
+"com.logyard4j:logyard-core" = { workspace = true }
 "org.junit.platform:junit-platform-console-standalone" = "1.11.4"
 
 [resources]

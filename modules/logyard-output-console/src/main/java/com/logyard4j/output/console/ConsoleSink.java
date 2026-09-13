@@ -15,6 +15,7 @@ import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,6 +33,7 @@ public final class ConsoleSink implements EventSink, HealthContributor {
     private final boolean closeStream;
     private final ConsoleEventRenderer renderer;
     private volatile StreamPhase phase = StreamPhase.OPEN;
+    private volatile String ioOperation = "idle";
 
     public ConsoleSink(PrintStream stream, boolean colors, ConsoleTheme theme) {
         this(stream, colors, theme, ColorCapability.TRUECOLOR, ZoneId.systemDefault(), true, true, false, null);
@@ -89,8 +91,13 @@ public final class ConsoleSink implements EventSink, HealthContributor {
         renderer.render(Objects.requireNonNull(event, "event"), lines::add);
         synchronized (streamState) {
             ensureOpen();
-            lines.forEach(stream::println);
-            verifyStream();
+            ioOperation = "write";
+            try {
+                lines.forEach(stream::println);
+                verifyStream();
+            } finally {
+                ioOperation = "idle";
+            }
         }
     }
 
@@ -98,26 +105,37 @@ public final class ConsoleSink implements EventSink, HealthContributor {
     public void flush() {
         synchronized (streamState) {
             ensureOpen();
-            stream.flush();
-            verifyStream();
+            ioOperation = "flush";
+            try {
+                stream.flush();
+                verifyStream();
+            } finally {
+                ioOperation = "idle";
+            }
         }
     }
 
     @Override
     public void close() {
         synchronized (streamState) {
-            if (phase.closed()) {
+            if (phase.closed() || phase.closing()) {
                 return;
             }
             boolean alreadyFailed = phase.failed();
-            phase = alreadyFailed ? StreamPhase.FAILED_CLOSED : StreamPhase.CLOSED;
-            if (closeStream) {
-                stream.close();
-            } else {
-                stream.flush();
-            }
-            if (!alreadyFailed) {
-                verifyStream();
+            phase = alreadyFailed ? StreamPhase.FAILED_CLOSING : StreamPhase.CLOSING;
+            ioOperation = "close";
+            try {
+                if (closeStream) {
+                    stream.close();
+                } else {
+                    stream.flush();
+                }
+                if (!alreadyFailed) {
+                    verifyStream();
+                }
+            } finally {
+                phase = phase.failed() ? StreamPhase.FAILED_CLOSED : StreamPhase.CLOSED;
+                ioOperation = "idle";
             }
         }
     }
@@ -125,11 +143,14 @@ public final class ConsoleSink implements EventSink, HealthContributor {
     @Override
     public ComponentHealth health(String componentName) {
         StreamPhase snapshot = phase;
+        Map<String, String> details = new LinkedHashMap<>(renderer.healthDetails());
+        details.put("io_operation", ioOperation);
         return new ComponentHealth(
                 componentName,
                 "console-output",
-                snapshot.failed() ? HealthStatus.FAILED : snapshot.closed() ? HealthStatus.STOPPED : HealthStatus.HEALTHY,
-                renderer.healthDetails(),
+                snapshot.failed() ? HealthStatus.FAILED : snapshot.closing() ? HealthStatus.STOPPING
+                        : snapshot.closed() ? HealthStatus.STOPPED : HealthStatus.HEALTHY,
+                details,
                 Map.of());
     }
 
@@ -137,14 +158,15 @@ public final class ConsoleSink implements EventSink, HealthContributor {
         if (phase.failed()) {
             throw streamFailure();
         }
-        if (phase.closed()) {
+        if (phase.closed() || phase.closing()) {
             throw new IllegalStateException("Logyard console output is closed");
         }
     }
 
     private void verifyStream() {
         if (stream.checkError()) {
-            phase = phase.closed() ? StreamPhase.FAILED_CLOSED : StreamPhase.FAILED;
+            phase = phase.closing() ? StreamPhase.FAILED_CLOSING
+                    : phase.closed() ? StreamPhase.FAILED_CLOSED : StreamPhase.FAILED;
             throw streamFailure();
         }
     }
@@ -156,6 +178,8 @@ public final class ConsoleSink implements EventSink, HealthContributor {
     private enum StreamPhase {
         OPEN,
         FAILED,
+        CLOSING,
+        FAILED_CLOSING,
         CLOSED,
         FAILED_CLOSED;
 
@@ -164,7 +188,11 @@ public final class ConsoleSink implements EventSink, HealthContributor {
         }
 
         boolean failed() {
-            return this == FAILED || this == FAILED_CLOSED;
+            return this == FAILED || this == FAILED_CLOSING || this == FAILED_CLOSED;
+        }
+
+        boolean closing() {
+            return this == CLOSING || this == FAILED_CLOSING;
         }
     }
 }

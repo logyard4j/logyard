@@ -2,12 +2,16 @@ package com.logyard4j.spring.boot.autoconfigure;
 
 import com.logyard4j.api.Level;
 import com.logyard4j.api.Logyard;
+import com.logyard4j.api.diagnostics.HealthStatus;
 import com.logyard4j.api.spi.output.EventSink;
 import com.logyard4j.core.delivery.async.AsyncSink;
 import com.logyard4j.core.delivery.async.OverflowPolicy;
 import com.logyard4j.core.routing.RouteDefinition;
 import com.logyard4j.core.runtime.DefaultLogyardRuntime;
 import com.logyard4j.core.runtime.RuntimePlan;
+import com.logyard4j.output.console.ConsoleSink;
+import com.logyard4j.output.console.style.BuiltInThemes;
+import com.logyard4j.output.console.terminal.ColorCapability;
 import com.logyard4j.output.json.stream.JsonLinesSink;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -15,8 +19,11 @@ import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.Writer;
 import java.time.Duration;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -34,18 +41,30 @@ final class LogyardBlockedOutputHealthTest {
     @ParameterizedTest
     @EnumSource(Operation.class)
     void actuatorHealthReturnsWhileDirectOutputIsBlocked(Operation operation) throws Exception {
-        verify(operation, false);
+        verify(operation, false, false);
     }
 
     @ParameterizedTest
     @EnumSource(Operation.class)
     void actuatorHealthReturnsWhileAsyncOutputIsBlocked(Operation operation) throws Exception {
-        verify(operation, true);
+        verify(operation, true, false);
     }
 
-    private static void verify(Operation operation, boolean async) throws Exception {
+    @ParameterizedTest
+    @EnumSource(value = Operation.class, names = {"WRITE", "FLUSH", "CLOSE"})
+    void actuatorHealthReturnsWhileDirectConsoleIsBlocked(Operation operation) throws Exception {
+        verify(operation, false, true);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Operation.class, names = {"WRITE", "FLUSH", "CLOSE"})
+    void actuatorHealthReturnsWhileAsyncConsoleIsBlocked(Operation operation) throws Exception {
+        verify(operation, true, true);
+    }
+
+    private static void verify(Operation operation, boolean async, boolean console) throws Exception {
         GateWriter writer = new GateWriter(operation);
-        JsonLinesSink sink = new JsonLinesSink(writer, event -> "{}", Duration.ofMillis(1), true);
+        EventSink sink = console ? console(writer) : new JsonLinesSink(writer, event -> "{}", Duration.ofMillis(1), true);
         EventSink output = async
                 ? new AsyncSink("blocked", sink, 16, new OverflowPolicy(null), Duration.ofSeconds(2))
                 : sink;
@@ -71,7 +90,10 @@ final class LogyardBlockedOutputHealthTest {
             var health = executor.submit(indicator::health).get(1, TimeUnit.SECONDS);
             assertEquals(operation == Operation.CLOSE ? Status.DOWN : Status.UP, health.getStatus());
             var view = new LogyardRuntimeHealth(runtime);
-            executor.submit(view::snapshot).get(1, TimeUnit.SECONDS);
+            var snapshot = executor.submit(view::snapshot).get(1, TimeUnit.SECONDS);
+            var component = snapshot.components().stream()
+                    .filter(value -> value.name().equals("blocked")).findFirst().orElseThrow();
+            assertEquals(operation == Operation.CLOSE ? HealthStatus.STOPPING : HealthStatus.HEALTHY, component.status());
             assertEquals(1L, writer.release.getCount());
             writer.release.countDown();
             io.get(3, TimeUnit.SECONDS);
@@ -82,6 +104,27 @@ final class LogyardBlockedOutputHealthTest {
             Logyard.shutdownIfCurrent(runtime);
             runtime.close();
         }
+    }
+
+    private static ConsoleSink console(GateWriter gate) {
+        OutputStream transport = new OutputStream() {
+            @Override
+            public void write(int value) {
+                gate.block(Operation.WRITE);
+            }
+
+            @Override
+            public void flush() {
+                gate.block(Operation.FLUSH);
+            }
+
+            @Override
+            public void close() {
+                gate.block(Operation.CLOSE);
+            }
+        };
+        return new ConsoleSink(new PrintStream(transport), false, BuiltInThemes.ember(),
+                ColorCapability.TRUECOLOR, ZoneOffset.UTC, true, true);
     }
 
     private static final class GateWriter extends Writer {

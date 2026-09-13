@@ -34,6 +34,7 @@ final class ConsoleSinkFailureTest {
 
         assertThrows(UncheckedIOException.class, () -> sink.accept(event));
         assertEquals(HealthStatus.FAILED, sink.health("console").status());
+        assertEquals("idle", sink.health("console").details().get("io_operation"));
         int attempted = writes.get();
         assertThrows(UncheckedIOException.class, () -> sink.accept(event));
         assertEquals(attempted, writes.get());
@@ -75,6 +76,7 @@ final class ConsoleSinkFailureTest {
         assertThrows(UncheckedIOException.class, sink::close);
         sink.close();
         assertEquals(HealthStatus.FAILED, sink.health("console").status());
+        assertEquals("idle", sink.health("console").details().get("io_operation"));
     }
 
     private static ConsoleSink sink(OutputStream output, boolean closeStream) {
