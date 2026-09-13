@@ -26,9 +26,9 @@ public final class LogEvent {
     public LogEvent(
             long timestampMillis, long observedTimestampUnixNanos, Level level, String loggerName, String eventName, String messageTemplate,
             Object[] arguments, AttributeSet attributes, Throwable throwable, long threadId, String threadName) {
-        this(LogEventState.from(LogEventCapture.capture(
+        this(LogEventCapture.capture(
                 timestampMillis, observedTimestampUnixNanos, level, loggerName, eventName, messageTemplate,
-                () -> arguments, () -> attributes, arguments == null ? 0 : arguments.length, false, throwable, threadId, threadName)));
+                () -> arguments, () -> attributes, arguments == null ? 0 : arguments.length, false, throwable, threadId, threadName));
     }
 
     /**
@@ -53,10 +53,10 @@ public final class LogEvent {
             long timestampMillis, long observedTimestampUnixNanos, Level level, String loggerName, String eventName, String messageTemplate,
             Supplier<Object[]> arguments, Supplier<AttributeSet> attributes, int suppliedArgumentCount,
             Throwable throwable, long threadId, String threadName) {
-        return new LogEvent(LogEventState.from(LogEventCapture.capture(
+        return new LogEvent(LogEventCapture.capture(
                 timestampMillis, observedTimestampUnixNanos, level, loggerName, eventName, messageTemplate,
                 Objects.requireNonNull(arguments, "arguments"), Objects.requireNonNull(attributes, "attributes"),
-                suppliedArgumentCount, true, throwable, threadId, threadName)));
+                suppliedArgumentCount, true, throwable, threadId, threadName));
     }
 
     private LogEvent(LogEventState state) { this.state = state; }

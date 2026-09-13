@@ -10,7 +10,7 @@ final class LogEventCapture {
     private LogEventCapture() {
     }
 
-    static CapturedLogEvent capture(
+    static LogEventState capture(
             long timestampMillis,
             long observedTimestampUnixNanos,
             Level level,
@@ -53,7 +53,7 @@ final class LogEventCapture {
             if (context.truncated()) {
                 capturedAttributes = capturedAttributes.withSystemAttribute(SystemAttributes.CAPTURE_TRUNCATED, true);
             }
-            return new CapturedLogEvent(
+            return new LogEventState(
                     timestampMillis,
                     observedTimestampUnixNanos,
                     capturedLevel,
@@ -65,10 +65,10 @@ final class LogEventCapture {
                     capturedException,
                     threadId,
                     capturedThreadName,
-                    CaptureLimits.MAX_RENDERED_MESSAGE_CHARS,
                     context.remainingEntries(),
                     attributeAllowance,
-                    context.truncated());
+                    context.truncated(),
+                    new LazyRenderedMessage(capturedTemplate, capturedArguments, CaptureLimits.MAX_RENDERED_MESSAGE_CHARS));
         });
     }
 }

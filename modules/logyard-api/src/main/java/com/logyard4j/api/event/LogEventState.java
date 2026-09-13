@@ -19,23 +19,4 @@ record LogEventState(
         CaptureAllowance attributeAllowance,
         boolean captureTruncated,
         LazyRenderedMessage renderedMessage) {
-
-    static LogEventState from(CapturedLogEvent captured) {
-        return new LogEventState(
-                captured.timestampMillis(),
-                captured.observedTimestampUnixNanos(),
-                captured.level(),
-                captured.loggerName(),
-                captured.eventName(),
-                captured.messageTemplate(),
-                captured.arguments(),
-                captured.attributes(),
-                captured.exception(),
-                captured.threadId(),
-                captured.threadName(),
-                captured.remainingTraversalEntries(),
-                captured.attributeAllowance(),
-                captured.captureTruncated(),
-                new LazyRenderedMessage(captured.messageTemplate(), captured.arguments(), captured.renderedMessageLimit()));
-    }
 }
