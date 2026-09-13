@@ -16,6 +16,8 @@ The [capture-allowance experiment](evidence/capture-allowance.md) reuses an immu
 
 The [eager fluent-argument experiment](evidence/fluent-values.md) removes direct-value wrappers, with longer-warmup confirmation and shared-capture regressions.
 
+The [empty fluent-attribute experiment](evidence/empty-attributes.md) skips unused attribute assembly while preserving truncation provenance.
+
 The [UTF-8 file experiment](evidence/utf8-file-output.md) measures reusable record storage and direct integer formatting through real file output.
 
 The [provider comparison](comparison/README.md) adds isolated Logyard, Logback, and Log4j asynchronous delivery experiments with shared or native JSON encoding, matched fields, actual file writes, scheduled arrivals, and drain reconciliation.

@@ -35,6 +35,10 @@ final class PendingAttributes {
     }
 
     AttributeSet capture(AttributeSet scopedContext) {
+        if (values.isEmpty() && scopedContext.isEmpty() && !truncated && !captureTruncated
+                && !CapturedAttributeAccess.truncated(scopedContext)) {
+            return AttributeSet.EMPTY;
+        }
         AttributeSet.Builder captured = AttributeSet.builder(scopedContext.size() + values.size());
         captured.putAll(scopedContext);
         for (Entry entry : values) {
