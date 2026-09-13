@@ -123,6 +123,14 @@ public class JsonSinkBenchmark {
 
     @Benchmark
     @Threads(1)
+    public long synchronousRuntimeFileLiteral() {
+        calls++;
+        logger.info("accepted order");
+        return calls;
+    }
+
+    @Benchmark
+    @Threads(1)
     public long synchronousRuntimeJson() {
         calls++;
         logger.info("accepted order {} for {}", 42L, "customer-7");

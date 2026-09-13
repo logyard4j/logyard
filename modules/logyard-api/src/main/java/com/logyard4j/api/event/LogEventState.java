@@ -2,6 +2,8 @@ package com.logyard4j.api.event;
 
 import com.logyard4j.api.Level;
 
+import java.util.Objects;
+
 /** Immutable implementation state behind the public {@link LogEvent} facade. */
 record LogEventState(
         long timestampMillis,
@@ -18,5 +20,14 @@ record LogEventState(
         int remainingTraversalEntries,
         CaptureAllowance attributeAllowance,
         boolean captureTruncated,
-        LazyRenderedMessage renderedMessage) {
+        LazyRenderedMessage messageRenderer) {
+
+    String renderedMessage() {
+        // A missing renderer means the captured template is already a bounded literal.
+        return messageRenderer == null ? Objects.requireNonNullElse(messageTemplate, "null") : messageRenderer.value();
+    }
+
+    boolean renderedMessageTruncated() {
+        return messageRenderer != null && messageRenderer.truncated();
+    }
 }

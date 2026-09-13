@@ -18,9 +18,11 @@ final class LogEventTransformation {
                 || shortened(replacementEventName, eventName)
                 || shortened(replacementTemplate, messageTemplate);
         EventAttributeCapture.Result attributes = attributes(source, replacementAttributes, inheritedTruncation);
-        LazyRenderedMessage renderedMessage = Objects.equals(source.messageTemplate(), messageTemplate)
-                ? source.renderedMessage()
-                : source.renderedMessage().rerender(messageTemplate, source.arguments());
+        boolean sameTemplate = Objects.equals(source.messageTemplate(), messageTemplate);
+        if (sameTemplate) messageTemplate = source.messageTemplate();
+        LazyRenderedMessage messageRenderer = sameTemplate
+                ? source.messageRenderer()
+                : LazyRenderedMessage.forEvent(messageTemplate, source.arguments());
         return new LogEventState(
                 source.timestampMillis(),
                 source.observedTimestampUnixNanos(),
@@ -36,7 +38,7 @@ final class LogEventTransformation {
                 attributes.remainingTraversalEntries(),
                 source.attributeAllowance(),
                 attributes.truncated(),
-                renderedMessage);
+                messageRenderer);
     }
 
     private static EventAttributeCapture.Result attributes(

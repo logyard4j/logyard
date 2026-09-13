@@ -4,13 +4,20 @@ package com.logyard4j.api.event;
 final class LazyRenderedMessage {
     private final String template;
     private final Object[] arguments;
-    private final int maximumCharacters;
     private volatile MessageFormatter.RenderResult result;
 
-    LazyRenderedMessage(String template, Object[] arguments, int maximumCharacters) {
+    private LazyRenderedMessage(String template, Object[] arguments) {
         this.template = template;
         this.arguments = arguments;
-        this.maximumCharacters = maximumCharacters;
+    }
+
+    /** No renderer is needed when the captured template is already the complete bounded result. */
+    static LazyRenderedMessage forEvent(String template, Object[] arguments) {
+        int literalLength = template == null ? 4 : template.length();
+        if ((template == null || arguments.length == 0) && literalLength <= CaptureLimits.MAX_RENDERED_MESSAGE_CHARS) {
+            return null;
+        }
+        return new LazyRenderedMessage(template, arguments);
     }
 
     String value() {
@@ -21,17 +28,13 @@ final class LazyRenderedMessage {
         return result().truncated();
     }
 
-    LazyRenderedMessage rerender(String replacementTemplate, Object[] capturedArguments) {
-        return new LazyRenderedMessage(replacementTemplate, capturedArguments, maximumCharacters);
-    }
-
     private MessageFormatter.RenderResult result() {
         MessageFormatter.RenderResult current = result;
         if (current == null) {
             synchronized (this) {
                 current = result;
                 if (current == null) {
-                    current = MessageFormatter.formatResult(template, arguments, maximumCharacters);
+                    current = MessageFormatter.formatResult(template, arguments, CaptureLimits.MAX_RENDERED_MESSAGE_CHARS);
                     result = current;
                 }
             }

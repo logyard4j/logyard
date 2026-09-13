@@ -5,7 +5,7 @@ import com.logyard4j.api.Level;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-/** Establishes and applies one event-wide capture boundary. */
+/** Establishes one event-wide boundary; optional suppliers run inside it, and direct values need no wrappers. */
 final class LogEventCapture {
     private LogEventCapture() {
     }
@@ -17,6 +17,8 @@ final class LogEventCapture {
             String loggerName,
             String eventName,
             String messageTemplate,
+            Object[] arguments,
+            AttributeSet attributes,
             Supplier<Object[]> argumentSupplier,
             Supplier<AttributeSet> attributeSupplier,
             int suppliedArgumentCount,
@@ -37,9 +39,11 @@ final class LogEventCapture {
                     CaptureLimits.MAX_NAME_CHARS);
 
             ExceptionSnapshot capturedException = ExceptionSnapshot.capture(throwable, context);
-            Object[] capturedArguments = ValueCapture.arguments(argumentSupplier.get(), context);
+            Object[] capturedArguments = ValueCapture.arguments(
+                    argumentSupplier == null ? arguments : argumentSupplier.get(), context);
             CaptureAllowance attributeAllowance = context.payloadAllowance();
-            AttributeSet suppliedAttributes = Objects.requireNonNullElse(attributeSupplier.get(), AttributeSet.EMPTY);
+            AttributeSet suppliedAttributes = Objects.requireNonNullElse(
+                    attributeSupplier == null ? attributes : attributeSupplier.get(), AttributeSet.EMPTY);
             AttributeSet capturedAttributes = attributesCapturedInContext ? suppliedAttributes : suppliedAttributes.recapture(context);
             if (capturedAttributes.captureTruncated()) {
                 context.markTruncated();
@@ -68,7 +72,7 @@ final class LogEventCapture {
                     context.remainingEntries(),
                     attributeAllowance,
                     context.truncated(),
-                    new LazyRenderedMessage(capturedTemplate, capturedArguments, CaptureLimits.MAX_RENDERED_MESSAGE_CHARS));
+                    LazyRenderedMessage.forEvent(capturedTemplate, capturedArguments));
         });
     }
 }

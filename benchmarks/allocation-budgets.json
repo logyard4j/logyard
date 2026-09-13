@@ -196,6 +196,10 @@
       "maxBytesPerOperation": 3072
     },
     {
+      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFileLiteral",
+      "maxBytesPerOperation": 1536
+    },
+    {
       "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeJson",
       "maxBytesPerOperation": 3072
     },

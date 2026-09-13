@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any
 
 PREFIX = "com.logyard4j.benchmarks."
-JSON_METHODS = ("directFile", "directFileMechanics", "directStream", "synchronousRuntimeJson", "synchronousRuntimeFile")
+JSON_METHODS = ("directFile", "directFileMechanics", "directStream", "synchronousRuntimeJson",
+                "synchronousRuntimeFile", "synchronousRuntimeFileLiteral")
 
 
 def required_scenarios(suite: str) -> list[tuple[str, dict[str, str], str]]:

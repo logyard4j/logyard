@@ -28,7 +28,7 @@ public final class LogEvent {
             Object[] arguments, AttributeSet attributes, Throwable throwable, long threadId, String threadName) {
         this(LogEventCapture.capture(
                 timestampMillis, observedTimestampUnixNanos, level, loggerName, eventName, messageTemplate,
-                () -> arguments, () -> attributes, arguments == null ? 0 : arguments.length, false, throwable, threadId, threadName));
+                arguments, attributes, null, null, arguments == null ? 0 : arguments.length, false, throwable, threadId, threadName));
     }
 
     /**
@@ -55,6 +55,7 @@ public final class LogEvent {
             Throwable throwable, long threadId, String threadName) {
         return new LogEvent(LogEventCapture.capture(
                 timestampMillis, observedTimestampUnixNanos, level, loggerName, eventName, messageTemplate,
+                null, null,
                 Objects.requireNonNull(arguments, "arguments"), Objects.requireNonNull(attributes, "attributes"),
                 suppliedArgumentCount, true, throwable, threadId, threadName));
     }
@@ -130,11 +131,11 @@ public final class LogEvent {
     /** Renders the message template.
      * @return rendered message
      */
-    public String renderedMessage() { return state.renderedMessage().value(); }
+    public String renderedMessage() { return state.renderedMessage(); }
     /** Reports whether rendering exceeded its character allowance.
      * @return whether rendered message exceeded its character allowance
      */
-    public boolean renderedMessageTruncated() { return state.renderedMessage().truncated(); }
+    public boolean renderedMessageTruncated() { return state.renderedMessageTruncated(); }
     /** Replaces the message template.
      * @param replacement replacement message template
      * @return copied event
