@@ -4,11 +4,14 @@ import com.logyard4j.logyard.api.Level;
 import com.logyard4j.logyard.api.event.AttributeSet;
 import com.logyard4j.logyard.api.event.LogEvent;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -108,6 +111,56 @@ final class AsyncEventQueueTest {
         assertEquals(0, queue.queued());
         assertEquals(0, queue.outstanding());
         assertTrue(queue.awaitQuiescence(Duration.ZERO));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void aClaimedOfferCannotRetractAnotherAdmissionOfTheSameEvent(boolean timed) throws Exception {
+        AsyncEventQueue queue = new AsyncEventQueue(2);
+        LogEvent shared = event();
+        BooleanSupplier closeAfterClaim = () -> {
+            // Force the worker claim and another publication before the first publisher checks closure.
+            assertSame(shared, queue.claimNow());
+            assertEquals(AsyncEventQueue.OfferResult.ENQUEUED, queue.offerImmediately(shared, () -> true));
+            return false;
+        };
+
+        assertEquals(AsyncEventQueue.OfferResult.ENQUEUED, offer(queue, shared, timed, closeAfterClaim));
+        assertEquals(1, queue.queued());
+        assertEquals(2, queue.outstanding());
+        queue.completeClaims(1);
+        assertFalse(queue.awaitQuiescence(Duration.ZERO));
+        assertSame(shared, queue.claimNow());
+        queue.completeClaims(1);
+        assertEquals(0, queue.queued());
+        assertTrue(queue.awaitQuiescence(Duration.ZERO));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void retractsOnlyItsOwnUnclaimedEntryAndPreservesFollowerOrder(boolean timed) throws Exception {
+        AsyncEventQueue queue = new AsyncEventQueue(3);
+        LogEvent shared = event();
+        LogEvent marker = event();
+        BooleanSupplier closeWithFollowers = () -> {
+            assertEquals(AsyncEventQueue.OfferResult.ENQUEUED, queue.offerImmediately(marker, () -> true));
+            assertEquals(AsyncEventQueue.OfferResult.ENQUEUED, queue.offerImmediately(shared, () -> true));
+            return false;
+        };
+
+        assertEquals(AsyncEventQueue.OfferResult.CLOSED, offer(queue, shared, timed, closeWithFollowers));
+        assertEquals(2, queue.queued());
+        assertEquals(2, queue.outstanding());
+        assertSame(marker, queue.claimNow());
+        assertSame(shared, queue.claimNow());
+        queue.completeClaims(2);
+        assertTrue(queue.awaitQuiescence(Duration.ZERO));
+    }
+
+    private static AsyncEventQueue.OfferResult offer(AsyncEventQueue queue, LogEvent event,
+            boolean timed, BooleanSupplier accepting) throws InterruptedException {
+        return timed ? queue.offerWithin(event, Duration.ofSeconds(1), accepting)
+                : queue.offerImmediately(event, accepting);
     }
 
     private static LogEvent event() {

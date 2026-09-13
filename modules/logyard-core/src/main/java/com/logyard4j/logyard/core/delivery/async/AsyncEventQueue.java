@@ -141,7 +141,17 @@ final class AsyncEventQueue {
     interface QueueEntry {
     }
 
-    record QueuedEvent(LogEvent event) implements QueueEntry {
+    /** Each admission has its own identity, even when publishers reuse the same detached event. */
+    static final class QueuedEvent implements QueueEntry {
+        private final LogEvent event;
+
+        QueuedEvent(LogEvent event) {
+            this.event = event;
+        }
+
+        LogEvent event() {
+            return event;
+        }
     }
 
     enum WakeUp implements QueueEntry {
