@@ -22,7 +22,10 @@ jobs:
         with:
           node-version: '24'
       - name: Bootstrap the pinned Zolt revision
-        run: ./scripts/bootstrap-zolt
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
+            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
+            bash ./scripts/bootstrap-zolt
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Resolve the locked workspace
@@ -45,7 +48,10 @@ jobs:
       - name: Smoke the benchmark harness
         env:
           LOGYARD_BENCHMARK_SKIP_RELEASE: '1'
-        run: ./scripts/benchmark-smoke
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
+            --log target/benchmark-smoke/gate.log --title "Benchmark smoke failed" -- \
+            bash ./scripts/benchmark-smoke
       - name: Upload benchmark results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -54,6 +60,7 @@ jobs:
           path: |
             target/benchmark-smoke/*.json
             target/benchmark-smoke/*.jsonl
+            target/benchmark-smoke/*.log
           if-no-files-found: ignore
       - name: Verify the provider comparison harness
         env:
@@ -102,7 +109,10 @@ jobs:
         with:
           node-version: '24'
       - name: Bootstrap the pinned Zolt revision
-        run: ./scripts/bootstrap-zolt
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
+            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
+            bash ./scripts/bootstrap-zolt
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Verify ECS ingestion and standard queries
@@ -133,7 +143,10 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Bootstrap the pinned Zolt revision
-        run: ./scripts/bootstrap-zolt
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
+            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
+            bash ./scripts/bootstrap-zolt
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Exercise file locking, reload, rotation, and packaged services
@@ -159,7 +172,10 @@ jobs:
         with:
           node-version: '24'
       - name: Bootstrap the pinned Zolt revision
-        run: ./scripts/bootstrap-zolt
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
+            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
+            bash ./scripts/bootstrap-zolt
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Build and test the Java 21 surface on JDK 25
