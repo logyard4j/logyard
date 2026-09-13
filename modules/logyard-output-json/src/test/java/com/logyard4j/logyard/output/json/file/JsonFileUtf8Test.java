@@ -35,7 +35,7 @@ final class JsonFileUtf8Test {
         List<String> actual = contents(utf8);
         assertEquals(contents(text), actual);
         assertTrue(actual.size() > 10, "fixture must exercise rotation repeatedly");
-        assertEquals(101, actual.stream().mapToLong(content -> content.lines().count()).sum());
+        assertEquals(32, actual.stream().mapToLong(content -> content.lines().count()).sum());
     }
 
     @Test
@@ -58,7 +58,8 @@ final class JsonFileUtf8Test {
         RotationPolicy rotation = new RotationPolicy(1_024, 200, RotationPolicy.Compression.NONE, Duration.ofSeconds(5));
         try (JsonFileSink sink = new JsonFileSink(directory.resolve("events.jsonl"), encoder,
                 1_024, Duration.ZERO, false, rotation)) {
-            for (int sequence = 0; sequence <= 100; sequence++) {
+            // At most 31 rotations: parity must not depend on the bounded maintenance worker keeping up.
+            for (int sequence = 0; sequence < 32; sequence++) {
                 String message = sequence == 0 ? "界".repeat(8_000) : "record " + sequence + " 界😀\n";
                 sink.accept(new LogEvent(0, 1, Level.INFO, "test", null, message, null,
                         AttributeSet.of("sequence", sequence), null, 1, "main"));

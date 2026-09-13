@@ -58,6 +58,10 @@ public final class BlockedOutputProbe {
     }
 
     public void verify(EventSink sink, ManualFlushScheduler scheduler, boolean async) throws Exception {
+        verify(sink, scheduler, async, "record");
+    }
+
+    public void verify(EventSink sink, ManualFlushScheduler scheduler, boolean async, String message) throws Exception {
         HealthContributor health = (HealthContributor) sink;
         EventSink output = async
                 ? new AsyncSink("blocked", sink, 16, new OverflowPolicy(null), Duration.ofSeconds(2))
@@ -69,11 +73,11 @@ public final class BlockedOutputProbe {
         try {
             Future<?> io = executor.submit(() -> {
                 switch (operation) {
-                    case WRITE -> runtime.logger("probe").info("record");
+                    case WRITE -> runtime.logger("probe").info(message);
                     case FLUSH -> output.flush();
                     case CLOSE -> output.close();
                     case SCHEDULED_FLUSH -> {
-                        sink.accept(event());
+                        sink.accept(event(message));
                         scheduler.runNext();
                     }
                 }
@@ -100,7 +104,7 @@ public final class BlockedOutputProbe {
         assertEquals("idle", health.health("blocked").details().get("io_operation"));
     }
 
-    private static LogEvent event() {
-        return new LogEvent(0L, 0L, Level.INFO, "probe", "test", "record", null, AttributeSet.EMPTY, null, 1L, "test");
+    private static LogEvent event(String message) {
+        return new LogEvent(0L, 0L, Level.INFO, "probe", "test", message, null, AttributeSet.EMPTY, null, 1L, "test");
     }
 }

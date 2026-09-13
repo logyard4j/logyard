@@ -36,7 +36,7 @@ final class CheckedPrintStream extends OutputStream {
     }
 
     private void check() throws IOException {
-        // checkError itself flushes. The enclosing OutputStreamWriter retains small records
+        // checkError itself flushes. The enclosing UTF-8 output retains small records
         // until its byte buffer fills or an explicit or timed flush drains that buffer.
         if (stream.checkError()) {
             throw new IOException("Logyard process stream reported an I/O error");

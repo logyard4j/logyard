@@ -1,195 +1,112 @@
 package com.logyard4j.logyard.output.json.stream;
 
+import com.logyard4j.logyard.api.annotation.InternalApi;
 import com.logyard4j.logyard.api.diagnostics.ComponentHealth;
+import com.logyard4j.logyard.api.event.LogEvent;
+import com.logyard4j.logyard.api.spi.diagnostics.HealthContributor;
 import com.logyard4j.logyard.api.spi.encoding.EventEncoder;
 import com.logyard4j.logyard.api.spi.encoding.EventEncoderBoundary;
 import com.logyard4j.logyard.api.spi.output.EventSink;
-import com.logyard4j.logyard.api.spi.diagnostics.HealthContributor;
-import com.logyard4j.logyard.api.event.LogEvent;
-import com.logyard4j.logyard.api.failure.FailureIsolation;
+import com.logyard4j.logyard.output.json.encoding.JsonEncoder;
 import com.logyard4j.logyard.output.json.flush.FlushScheduler;
-import com.logyard4j.logyard.output.json.flush.TimedFlushController;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+
+import java.io.BufferedOutputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Thread-safe JSONL sink with bounded, time-based flushing.
  *
- * <p>Encoding happens outside the writer-state monitor. Concurrent records are written atomically
+ * <p>Encoding happens outside the transport monitor. Concurrent records are written atomically
  * with unspecified relative order, which keeps extension callbacks free to invoke other sink methods.</p>
  *
- * <p>A caller-supplied {@link Writer} must not recursively invoke lifecycle methods such as
- * {@link #flush()} or {@link #close()} on this same sink. Reentrant Writer lifecycle callbacks are unsupported.</p>
+ * <p>Caller-supplied writers and streams must not recursively invoke lifecycle methods such as
+ * {@link #flush()} or {@link #close()} on this same sink. Reentrant transport callbacks are unsupported.</p>
  */
 public final class JsonLinesSink implements EventSink, HealthContributor {
-    private final Object writerState = new Object();
-    private final Writer writer;
-    private final EventEncoder encoder;
-    private final boolean closeWriter;
-    private final JsonStreamState state = new JsonStreamState();
-    private final TimedFlushController timedFlush;
-    private volatile String ioOperation = "idle";
+    private final JsonStreamLifecycle<?> lifecycle;
+    private final Consumer<LogEvent> delivery;
 
-    public JsonLinesSink(
-            Writer writer,
-            EventEncoder encoder,
-            Duration flushInterval,
-            boolean closeWriter) {
+    public JsonLinesSink(Writer writer, EventEncoder encoder, Duration flushInterval, boolean closeWriter) {
         this(writer, encoder, flushInterval, closeWriter, FlushScheduler.shared());
     }
 
-    JsonLinesSink(
-            Writer writer,
-            EventEncoder encoder,
-            Duration flushInterval,
-            boolean closeWriter,
-            FlushScheduler scheduler) {
-        this.writer = Objects.requireNonNull(writer, "writer");
-        this.encoder = EventEncoderBoundary.guard(encoder);
-        this.closeWriter = closeWriter;
-        timedFlush = new TimedFlushController(flushInterval, Objects.requireNonNull(scheduler, "scheduler"), this::flushOnDeadline);
+    JsonLinesSink(Writer writer, EventEncoder encoder, Duration flushInterval,
+            boolean closeWriter, FlushScheduler scheduler) {
+        Objects.requireNonNull(writer, "writer");
+        EventEncoder guarded = EventEncoderBoundary.guard(encoder);
+        JsonStreamLifecycle<String> target = new JsonStreamLifecycle<>(
+                writer, flushInterval, closeWriter, scheduler, (record, length) -> {
+                    writer.write(record);
+                    writer.write('\n');
+                });
+        lifecycle = target;
+        delivery = event -> {
+            String record = guarded.encode(event);
+            target.write(record, record.length());
+        };
+    }
+
+    private JsonLinesSink(JsonStreamLifecycle<?> target, Consumer<LogEvent> delivery) {
+        lifecycle = target;
+        this.delivery = delivery;
+    }
+
+    /**
+     * Creates a buffered UTF-8 output, using reusable record storage for the built-in JSON encoder.
+     *
+     * @param output destination byte stream
+     * @param encoder built-in JSON or public text encoder SPI
+     * @param flushInterval maximum buffering interval
+     * @param closeOutput whether closing this sink closes the supplied stream
+     * @return serialized JSONL output
+     * @hidden
+     */
+    @InternalApi
+    public static JsonLinesSink bytes(OutputStream output, EventEncoder encoder,
+            Duration flushInterval, boolean closeOutput) {
+        return bytes(output, encoder, flushInterval, closeOutput, FlushScheduler.shared());
+    }
+
+    static JsonLinesSink bytes(OutputStream output, EventEncoder encoder,
+            Duration flushInterval, boolean closeOutput, FlushScheduler scheduler) {
+        Objects.requireNonNull(output, "output");
+        if (!(encoder instanceof JsonEncoder json)) {
+            return new JsonLinesSink(new OutputStreamWriter(output, StandardCharsets.UTF_8),
+                    encoder, flushInterval, closeOutput, scheduler);
+        }
+        BufferedOutputStream buffered = new BufferedOutputStream(output, 8 * 1_024);
+        JsonStreamLifecycle<byte[]> target = new JsonStreamLifecycle<>(
+                buffered, flushInterval, closeOutput, scheduler, (record, length) -> {
+                    buffered.write(record, 0, length);
+                    buffered.write('\n');
+                });
+        return new JsonLinesSink(target, json.utf8Records(target::write));
     }
 
     @Override
     public void accept(LogEvent event) {
-        requireOpen();
-        String encoded = encoder.encode(Objects.requireNonNull(event, "event"));
-        synchronized (writerState) {
-            requireOpen();
-            ioOperation = "write";
-            try {
-                writer.write(encoded);
-                writer.write('\n');
-                timedFlush.recordWritten();
-            } catch (Throwable failure) {
-                throw fail("failed to write Logyard JSON event", failure);
-            } finally {
-                ioOperation = "idle";
-            }
-        }
+        lifecycle.requireOpen();
+        delivery.accept(Objects.requireNonNull(event, "event"));
     }
 
     @Override
     public void flush() {
-        synchronized (writerState) {
-            requireOpen();
-            ioOperation = "flush";
-            try {
-                writer.flush();
-            } catch (Throwable failure) {
-                throw fail("failed to flush Logyard JSON output", failure);
-            } finally {
-                ioOperation = "idle";
-                timedFlush.flushed();
-            }
-        }
+        lifecycle.flush();
     }
 
     @Override
     public void close() {
-        synchronized (writerState) {
-            if (!state.startClose()) {
-                return;
-            }
-        }
-        timedFlush.close();
-        synchronized (writerState) {
-            ioOperation = "close";
-            try {
-                Throwable primaryFailure = state.failure();
-                if (primaryFailure != null) {
-                    closeAfterFailure(primaryFailure);
-                    return;
-                }
-                if (closeWriter) {
-                    writer.close();
-                } else {
-                    writer.flush();
-                }
-            } catch (Throwable failure) {
-                throw fail("failed to close Logyard JSON output", failure);
-            } finally {
-                ioOperation = "idle";
-            }
-            state.completeClose();
-        }
+        lifecycle.close();
     }
 
     @Override
     public ComponentHealth health(String componentName) {
-        JsonStreamState.Snapshot snapshot = state.snapshot();
-        Map<String, String> details = new LinkedHashMap<>();
-        details.put("format", "jsonl");
-        details.put("writer", writer.getClass().getName());
-        details.put("io_operation", ioOperation);
-        if (snapshot.failureType() != null) {
-            details.put("writer_failure", snapshot.failureType());
-        }
-        return new ComponentHealth(componentName, "json-stream-output", snapshot.status(), details, Map.of());
-    }
-
-    private void flushOnDeadline() {
-        synchronized (writerState) {
-            if (!timedFlush.flushIsCurrent() || state.failed()) {
-                return;
-            }
-            ioOperation = "scheduled_flush";
-            try {
-                writer.flush();
-            } catch (Throwable failure) {
-                throw fail("failed to flush Logyard JSON output on schedule", failure);
-            } finally {
-                ioOperation = "idle";
-                timedFlush.flushCompleted();
-            }
-        }
-    }
-
-    private RuntimeException fail(String message, Throwable failure) {
-        state.failed(failure);
-        timedFlush.cancelPending();
-        FailureIsolation.prepareForRecovery(failure);
-        return unchecked(message, failure);
-    }
-
-    private void closeAfterFailure(Throwable primaryFailure) {
-        if (!closeWriter) {
-            state.completeClose();
-            return;
-        }
-        try {
-            writer.close();
-            state.completeClose();
-        } catch (Throwable cleanupFailure) {
-            FailureIsolation.prepareForRecovery(cleanupFailure);
-            if (cleanupFailure != primaryFailure) {
-                primaryFailure.addSuppressed(cleanupFailure);
-            }
-            throw unchecked("failed to close failed Logyard JSON output", primaryFailure);
-        }
-    }
-
-    private static RuntimeException unchecked(String message, Throwable failure) {
-        if (failure instanceof IOException checked) {
-            return new UncheckedIOException(message, checked);
-        }
-        if (failure instanceof RuntimeException unchecked) {
-            return unchecked;
-        }
-        if (failure instanceof Error error) {
-            throw error;
-        }
-        return new IllegalStateException(message, failure);
-    }
-
-    private void requireOpen() {
-        synchronized (writerState) {
-            state.requireOpen();
-        }
+        return lifecycle.health(componentName);
     }
 }

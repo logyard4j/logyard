@@ -25,9 +25,7 @@ import com.logyard4j.logyard.runtime.assembly.output.FormatterResolver;
 import com.logyard4j.logyard.runtime.extension.ExtensionRegistry;
 import com.logyard4j.logyard.runtime.extension.ProviderResolver;
 
-import java.io.OutputStreamWriter;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.Objects;
 
@@ -93,8 +91,8 @@ public final class OutputFactory {
             ResourceAttributes resource,
             ExtensionRegistry extensions) {
         PrintStream stream = "stdout".equals(output.stream()) ? System.out : System.err;
-        return new JsonLinesSink(
-                new OutputStreamWriter(new CheckedPrintStream(stream), StandardCharsets.UTF_8),
+        return JsonLinesSink.bytes(
+                new CheckedPrintStream(stream),
                 EncoderResolver.resolve(config, output.encoder(), resource, extensions),
                 output.flushInterval(),
                 false);

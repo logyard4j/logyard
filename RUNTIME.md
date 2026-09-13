@@ -99,6 +99,8 @@ Pretty, template, and emergency output escape control characters, Unicode line s
 
 JSON stdout/stderr checks the stream when each buffered byte batch is written and on explicit, timed, or shutdown flush. Small records stay buffered until the configured deadline or a flush. Stream failures remain visible after close; neither output closes the process-owned stdout/stderr.
 
+Built-in JSON process streams encode complete records into reusable UTF-8 storage before delivery. Each output retains at most 4 KiB of record storage, with a 768 KiB record ceiling and a separate 8 KiB transport buffer. An encoding rejection leaves the stream healthy and writes no partial record. Custom encoders continue through the public text encoder boundary.
+
 Default asynchronous delivery drops and counts events that arrive after closure or remain queued at the shutdown deadline. See [overflow policies](CONFIGURATION.md#delivery-and-overflow) for caller-thread waiting and fallback behavior.
 
 Delegate delivery and closure share one admission boundary. A synchronous fallback still waiting to enter delivery when close wins is counted as a drop for `drop`/`wait_drop` policies or routed to emergency output for other policies; it is never counted as delivered. Managed publication holds an epoch lease through fallback, so runtime retirement waits for that publisher before closing its output. The shutdown deadline still bounds the caller's wait.

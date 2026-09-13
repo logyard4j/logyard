@@ -4,9 +4,12 @@ import com.logyard4j.logyard.api.Level;
 import com.logyard4j.logyard.api.event.AttributeSet;
 import com.logyard4j.logyard.api.event.LogEvent;
 import com.logyard4j.logyard.api.spi.encoding.EventEncoder;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -16,15 +19,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class JsonLinesSinkTest {
-    @Test
-    void customEncoderCanInvokeAcceptFlushAndCloseAcrossThreadsWithoutDeadlock() {
-        StringWriter writer = new StringWriter();
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void customEncoderCanInvokeAcceptFlushAndCloseAcrossThreadsWithoutDeadlock(boolean bytes) {
         ExecutorService callbacks = Executors.newSingleThreadExecutor();
         AtomicReference<JsonLinesSink> sinkReference = new AtomicReference<>();
         AtomicBoolean outer = new AtomicBoolean(true);
@@ -36,26 +40,28 @@ final class JsonLinesSinkTest {
             }
             return event.messageTemplate();
         };
-        JsonLinesSink sink = new JsonLinesSink(writer, encoder, Duration.ZERO, false);
+        Harness harness = harness(bytes, encoder, Duration.ZERO);
+        JsonLinesSink sink = harness.sink();
         sinkReference.set(sink);
         try {
             assertThrows(IllegalStateException.class, () -> sink.accept(event("outer")));
         } finally {
             callbacks.shutdownNow();
         }
-        assertEquals("nested\n", writer.toString());
+        assertEquals("nested\n", harness.text().get());
     }
 
-    @Test
-    void flushCoversTransportBytesButDoesNotWaitForAnAcceptStillEncoding() throws Exception {
-        TrackingWriter writer = new TrackingWriter();
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void flushCoversTransportBytesButDoesNotWaitForAnAcceptStillEncoding(boolean bytes) throws Exception {
         CountDownLatch encodingStarted = new CountDownLatch(1);
         CountDownLatch allowEncoding = new CountDownLatch(1);
-        JsonLinesSink sink = new JsonLinesSink(writer, event -> {
+        Harness harness = harness(bytes, event -> {
             encodingStarted.countDown();
             await(allowEncoding);
             return event.messageTemplate();
-        }, Duration.ofMinutes(1L), false);
+        }, Duration.ofMinutes(1L));
+        JsonLinesSink sink = harness.sink();
         ExecutorService publisher = Executors.newSingleThreadExecutor();
         try {
             Future<?> accepted = publisher.submit(() -> sink.accept(event("pending")));
@@ -63,12 +69,12 @@ final class JsonLinesSinkTest {
 
             sink.flush();
 
-            assertEquals(1, writer.flushes.get());
-            assertEquals("", writer.toString());
+            assertEquals(1, harness.flushes().get());
+            assertEquals("", harness.text().get());
             allowEncoding.countDown();
             accepted.get(2L, TimeUnit.SECONDS);
             sink.flush();
-            assertEquals("pending\n", writer.toString());
+            assertEquals("pending\n", harness.text().get());
         } finally {
             allowEncoding.countDown();
             sink.close();
@@ -97,12 +103,26 @@ final class JsonLinesSinkTest {
         }
     }
 
-    private static final class TrackingWriter extends StringWriter {
-        private final AtomicInteger flushes = new AtomicInteger();
-
-        @Override
-        public void flush() {
-            flushes.incrementAndGet();
+    private static Harness harness(boolean bytes, EventEncoder encoder, Duration interval) {
+        AtomicInteger flushes = new AtomicInteger();
+        if (bytes) {
+            ByteArrayOutputStream output = new ByteArrayOutputStream() {
+                @Override
+                public void flush() {
+                    flushes.incrementAndGet();
+                }
+            };
+            return new Harness(JsonLinesSink.bytes(output, encoder, interval, false),
+                    () -> output.toString(StandardCharsets.UTF_8), flushes);
         }
+        StringWriter output = new StringWriter() {
+            @Override
+            public void flush() {
+                flushes.incrementAndGet();
+            }
+        };
+        return new Harness(new JsonLinesSink(output, encoder, interval, false), output::toString, flushes);
     }
+
+    private record Harness(JsonLinesSink sink, Supplier<String> text, AtomicInteger flushes) { }
 }

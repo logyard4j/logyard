@@ -12,6 +12,8 @@ import com.logyard4j.logyard.core.runtime.RuntimePlan;
 import com.logyard4j.logyard.output.console.ConsoleSink;
 import com.logyard4j.logyard.output.console.style.BuiltInThemes;
 import com.logyard4j.logyard.output.console.terminal.ColorCapability;
+import com.logyard4j.logyard.output.json.encoding.JsonEncoder;
+import com.logyard4j.logyard.output.json.encoding.ResourceAttributes;
 import com.logyard4j.logyard.output.json.stream.JsonLinesSink;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -38,33 +40,56 @@ final class LogyardBlockedOutputHealthTest {
         WRITE, FLUSH, SCHEDULED_FLUSH, CLOSE
     }
 
+    private enum Kind {
+        TEXT, BYTES, CONSOLE
+    }
+
     @ParameterizedTest
     @EnumSource(Operation.class)
     void actuatorHealthReturnsWhileDirectOutputIsBlocked(Operation operation) throws Exception {
-        verify(operation, false, false);
+        verify(operation, false, Kind.TEXT);
     }
 
     @ParameterizedTest
     @EnumSource(Operation.class)
     void actuatorHealthReturnsWhileAsyncOutputIsBlocked(Operation operation) throws Exception {
-        verify(operation, true, false);
+        verify(operation, true, Kind.TEXT);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Operation.class)
+    void actuatorHealthReturnsWhileDirectByteOutputIsBlocked(Operation operation) throws Exception {
+        verify(operation, false, Kind.BYTES);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Operation.class)
+    void actuatorHealthReturnsWhileAsyncByteOutputIsBlocked(Operation operation) throws Exception {
+        verify(operation, true, Kind.BYTES);
     }
 
     @ParameterizedTest
     @EnumSource(value = Operation.class, names = {"WRITE", "FLUSH", "CLOSE"})
     void actuatorHealthReturnsWhileDirectConsoleIsBlocked(Operation operation) throws Exception {
-        verify(operation, false, true);
+        verify(operation, false, Kind.CONSOLE);
     }
 
     @ParameterizedTest
     @EnumSource(value = Operation.class, names = {"WRITE", "FLUSH", "CLOSE"})
     void actuatorHealthReturnsWhileAsyncConsoleIsBlocked(Operation operation) throws Exception {
-        verify(operation, true, true);
+        verify(operation, true, Kind.CONSOLE);
     }
 
-    private static void verify(Operation operation, boolean async, boolean console) throws Exception {
+    private static void verify(Operation operation, boolean async, Kind kind) throws Exception {
         GateWriter writer = new GateWriter(operation);
-        EventSink sink = console ? console(writer) : new JsonLinesSink(writer, event -> "{}", Duration.ofMillis(1), true);
+        EventSink sink = switch (kind) {
+            case TEXT -> new JsonLinesSink(writer, event -> "{}", Duration.ofMillis(1), true);
+            case BYTES -> JsonLinesSink.bytes(transport(writer),
+                    new JsonEncoder(ResourceAttributes.service("test", "test", "1")), Duration.ofMillis(1), true);
+            case CONSOLE -> new ConsoleSink(new PrintStream(transport(writer)), false, BuiltInThemes.ember(),
+                    ColorCapability.TRUECOLOR, ZoneOffset.UTC, true, true);
+        };
+        String message = kind == Kind.BYTES ? "界".repeat(8_000) : "record";
         EventSink output = async
                 ? new AsyncSink("blocked", sink, 16, new OverflowPolicy(null), Duration.ofSeconds(2))
                 : sink;
@@ -81,7 +106,7 @@ final class LogyardBlockedOutputHealthTest {
             HealthIndicator indicator = context.getBean("logyard", HealthIndicator.class);
             var io = executor.submit(() -> {
                 switch (operation) {
-                    case WRITE, SCHEDULED_FLUSH -> runtime.logger("probe").info("record");
+                    case WRITE, SCHEDULED_FLUSH -> runtime.logger("probe").info(message);
                     case FLUSH -> output.flush();
                     case CLOSE -> output.close();
                 }
@@ -106,16 +131,21 @@ final class LogyardBlockedOutputHealthTest {
         }
     }
 
-    private static ConsoleSink console(GateWriter gate) {
-        OutputStream transport = new OutputStream() {
+    private static OutputStream transport(GateWriter gate) {
+        return new OutputStream() {
             @Override
             public void write(int value) {
                 gate.block(Operation.WRITE);
             }
 
             @Override
+            public void write(byte[] value, int offset, int length) {
+                gate.block(Operation.WRITE);
+            }
+
+            @Override
             public void flush() {
-                gate.block(Operation.FLUSH);
+                gate.flush();
             }
 
             @Override
@@ -123,8 +153,6 @@ final class LogyardBlockedOutputHealthTest {
                 gate.block(Operation.CLOSE);
             }
         };
-        return new ConsoleSink(new PrintStream(transport), false, BuiltInThemes.ember(),
-                ColorCapability.TRUECOLOR, ZoneOffset.UTC, true, true);
     }
 
     private static final class GateWriter extends Writer {

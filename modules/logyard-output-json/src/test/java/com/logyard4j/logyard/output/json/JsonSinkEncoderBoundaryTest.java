@@ -10,7 +10,9 @@ import com.logyard4j.logyard.output.json.file.JsonFileSink;
 import com.logyard4j.logyard.output.json.stream.JsonLinesSink;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -34,6 +36,11 @@ final class JsonSinkEncoderBoundaryTest {
     }
 
     @Test
+    void byteStreamSinkPreservesOnePhysicalRecordPerEvent() throws Exception {
+        assertRecordContract(JsonSinkEncoderBoundaryTest::byteHarness);
+    }
+
+    @Test
     void directSinkConstructionRejectsInvalidMediaTypes() throws Exception {
         for (String mediaType : new String[] {
                 "",
@@ -46,6 +53,8 @@ final class JsonSinkEncoderBoundaryTest {
                     output, encoder, 1_024, Duration.ZERO, false, null));
             assertThrows(IllegalArgumentException.class, () -> new JsonLinesSink(
                     new StringWriter(), encoder, Duration.ZERO, false));
+            assertThrows(IllegalArgumentException.class, () -> JsonLinesSink.bytes(
+                    new ByteArrayOutputStream(), encoder, Duration.ZERO, false));
         }
     }
 
@@ -93,6 +102,12 @@ final class JsonSinkEncoderBoundaryTest {
         StringWriter writer = new StringWriter();
         EventSink sink = new JsonLinesSink(writer, encoder, Duration.ZERO, false);
         return new Harness(sink, writer::toString);
+    }
+
+    private static Harness byteHarness(EventEncoder encoder) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        EventSink sink = JsonLinesSink.bytes(bytes, encoder, Duration.ZERO, false);
+        return new Harness(sink, () -> bytes.toString(StandardCharsets.UTF_8));
     }
 
     private record Harness(EventSink sink, Content content) implements AutoCloseable {
