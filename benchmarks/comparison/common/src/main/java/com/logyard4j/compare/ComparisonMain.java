@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-/** One warmed, bounded experiment in a JVM containing exactly one SLF4J provider. */
+/** One bounded experiment after provider warmup in a JVM containing exactly one SLF4J provider. */
 public final class ComparisonMain {
     private ComparisonMain() {
     }
@@ -101,6 +101,7 @@ public final class ComparisonMain {
                 .append(",\"jdk\":").append(JsonText.quote(System.getProperty("java.runtime.version")))
                 .append(",\"queue_capacity\":").append(backend.capacity())
                 .append(",\"worker_batch_capacity_outside_queue\":").append(backend.extraBatchCapacity())
+                .append(",\"thread_model\":").append(JsonText.quote(options.threadModel().name()))
                 .append(",\"policy\":").append(JsonText.quote(options.policy()));
         counts.forEach((key, value) -> json.append(',').append(JsonText.quote(key)).append(':').append(value));
         System.out.println("COMPARISON_RESULT " + json.append('}'));

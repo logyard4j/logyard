@@ -6,12 +6,12 @@ import java.util.List;
 
 /** Explicit, bounded inputs for one isolated delivery experiment. */
 public record RunOptions(Path output, int events, int producers, int arguments, int fields, String format,
-        long rate, long stallMillis, long delayMicros, boolean virtualThreads, String policy, String disabled) {
+        long rate, long stallMillis, long delayMicros, ThreadModel threadModel, String policy, String disabled) {
     public static RunOptions parse(String[] args) {
         if (args.length != 12) throw new IllegalArgumentException("expected 12 comparison arguments");
         RunOptions options = new RunOptions(Path.of(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2]),
                 Integer.parseInt(args[3]), Integer.parseInt(args[4]), args[5], Long.parseLong(args[6]),
-                Long.parseLong(args[7]), Long.parseLong(args[8]), Boolean.parseBoolean(args[9]), args[10], args[11]);
+                Long.parseLong(args[7]), Long.parseLong(args[8]), ThreadModel.parse(args[9]), args[10], args[11]);
         if (options.events < 1 || options.events > 200_000 || !List.of(1, 4, 16, 64).contains(options.producers)
                 || !List.of(0, 1, 2, 4).contains(options.arguments) || !List.of(0, 4, 16).contains(options.fields)
                 || !List.of("text", "json", "native-json").contains(options.format) || options.rate < 0 || options.rate > 10_000_000
@@ -41,5 +41,13 @@ public record RunOptions(Path output, int events, int producers, int arguments, 
 
     public boolean nativeJson() {
         return format.equals("native-json");
+    }
+
+    public boolean virtualThreads() {
+        return threadModel != ThreadModel.PLATFORM;
+    }
+
+    public boolean virtualPerRequest() {
+        return threadModel == ThreadModel.VIRTUAL_PER_REQUEST;
     }
 }

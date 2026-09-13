@@ -45,6 +45,15 @@ class ComparisonResultsTest(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "different work"):
             equal_work({"a": {0: "first"}, "b": {0: "second"}})
 
+    def test_rejects_a_different_thread_model_before_accepting_results(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "events.log"
+            output.write_text("ERROR 00000000 event\nINFO 00000001 event\n")
+            result = summary(output)
+            result.update(case={"virtual_per_request": True}, thread_model="VIRTUAL")
+            with self.assertRaisesRegex(AssertionError, "thread models differ"):
+                validate(result, output, "text", 0)
+
 
 def summary(path: Path) -> dict[str, object]:
     return {"attempted": 2, "filtered": 0, "sink_written": 2, "unwritten_info": 0, "unwritten_error": 0,

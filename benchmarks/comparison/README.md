@@ -7,11 +7,12 @@ Compare real SLF4J providers with matched file output. Logyard, Logback 1.6.3, a
 ## Run
 
 ```sh
-./scripts/comparison-verify  # 45 smoke cells through Smoque
+./scripts/comparison-verify  # 51 smoke cells through Smoque
 
 ./scripts/benchmark-compare --events 100000 --producers 16 --arguments 2 --repeat 3
 ./scripts/benchmark-compare --format json --fields 16 --virtual --producers 64
 ./scripts/benchmark-compare --format native-json --fields 16 --arguments 4 --repeat 3
+./scripts/benchmark-compare --format native-json --fields 4 --virtual-per-request --producers 16 --repeat 3
 ./scripts/benchmark-compare --rate 100000 --stall-ms 100 --delay-us 50 --repeat 3
 ```
 
@@ -23,7 +24,7 @@ Set `LOGYARD_COMPARISON_SKIP_RELEASE=1` to reuse a verified current bundle. Use 
 | Message arguments | 0, 1, 2, 4 |
 | JSON MDC fields | 0, 4, 16; includes escaping and Unicode |
 | Encoding | `text` or `json` through the shared encoder; `native-json` through each provider's configured encoder |
-| Threads | Warmed platform or virtual threads |
+| Threads | Warmed platform or virtual producers; fresh virtual threads with `--virtual-per-request` |
 | Disabled calls | `--disabled classic`, `fluent`, or `supplier` |
 | Destination | Real UTF-8 file, one unbuffered stream write per record; optional delay or initial stall |
 
@@ -46,6 +47,8 @@ The default comparison policy uses 4,096 queue slots and drops every severity wh
 
 Each experiment warms its producers, schedules the requested arrivals, then records every attempted call. Overload latency includes lateness before a logging call starts. A queue-capacity check and an ordered marker establish the drain barrier after producers finish.
 
+The per-request lane warms provider code using separate requests, then creates a new virtual thread and MDC for every measured call. It keeps at most `--producers` requests alive. Arrival-to-write latency starts before thread creation; caller latency measures the logging call. Thread startup and MDC preparation remain included in process CPU and elapsed time. The reported thread model must match the requested mode.
+
 ## Evidence
 
 Results are under `target/benchmark-compare/`; `latest.txt` identifies the last successful run. Each run retains JSON results, actual output files, logs, resolved dependency locks, artifact checksums, source hashes, JVM options, and host constraints.
@@ -63,4 +66,4 @@ Results are under `target/benchmark-compare/`; `latest.txt` identifies the last 
 
 Logback exposes no exact dropped-record counter here, so its absent records remain labelled **unwritten**. Virtual-thread caller allocation and CPU are reported as unavailable (`-1`); carrier activity remains in other platform-thread counters. Missing threads and unavailable RSS are explicit.
 
-The smoke suite checks functionality and accounting, including native JSON with 0/4/16 MDC fields, virtual threads, and overload. Zolt tests also verify that encoder failures, malformed framing, and duplicate writes fail the destination check. Short smoke timings are not evidence of a competitive win. Repeat experiments on the deployment's JDK, CPU constraints, and filesystem before drawing performance conclusions. Successful writes and drain do not establish durable storage.
+The smoke suite checks functionality and accounting, including native JSON with 0/4/16 MDC fields, warmed and fresh virtual threads, and overload. Zolt tests also verify that encoder failures, malformed framing, and duplicate writes fail the destination check. Short smoke timings are not evidence of a competitive win. Repeat experiments on the deployment's JDK, CPU constraints, and filesystem before drawing performance conclusions. Successful writes and drain do not establish durable storage.

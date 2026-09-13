@@ -30,6 +30,7 @@ class Case:
     virtual: bool = False
     policy: str = "matched-drop"
     disabled: str = "none"
+    virtual_per_request: bool = False
 
 
 def smoke_cases() -> list[Case]:
@@ -49,6 +50,8 @@ def smoke_cases() -> list[Case]:
         Case("native-json-virtual", producers=16, arguments=1, fields=16, format="native-json", virtual=True),
         Case("native-json-overload", events=20_000, arguments=2, fields=16, format="native-json",
              rate=100_000, stall_ms=100, delay_us=50),
+        Case("virtual-request-json", producers=16, fields=16, format="json", virtual_per_request=True),
+        Case("virtual-request-native-json", producers=16, fields=4, format="native-json", virtual_per_request=True),
     ]
 
 
@@ -64,7 +67,8 @@ def execute(built: BuiltProvider, case: Case, run: Path, java: str, cpus: int) -
         command.extend([f"-XX:ActiveProcessorCount={cpus}"])
     command.extend(["-cp", built.classpath, "com.logyard4j.compare.ComparisonMain", str(output), str(case.events),
                     str(case.producers), str(case.arguments), str(case.fields), case.format, str(case.rate),
-                    str(case.stall_ms), str(case.delay_us), str(case.virtual).lower(), case.policy, case.disabled])
+                    str(case.stall_ms), str(case.delay_us), "per-request" if case.virtual_per_request else str(case.virtual).lower(),
+                    case.policy, case.disabled])
     peak_rss = None
     started = time.monotonic()
     with log.open("w", encoding="utf-8") as stdout:
@@ -108,7 +112,9 @@ def main() -> None:
     parser.add_argument("--rate", type=int, default=0)
     parser.add_argument("--stall-ms", type=int, default=0)
     parser.add_argument("--delay-us", type=int, default=0)
-    parser.add_argument("--virtual", action="store_true")
+    threads = parser.add_mutually_exclusive_group()
+    threads.add_argument("--virtual", action="store_true")
+    threads.add_argument("--virtual-per-request", action="store_true")
     parser.add_argument("--policy", choices=("matched-drop", "default"), default="matched-drop")
     parser.add_argument("--disabled", choices=("none", "classic", "fluent", "supplier"), default="none")
     parser.add_argument("--repeat", type=int, default=1)
@@ -122,7 +128,8 @@ def main() -> None:
     run = target / (time.strftime("%Y%m%d-%H%M%S", time.gmtime()) + "-" + uuid.uuid4().hex[:8])
     run.mkdir(parents=True)
     cases = smoke_cases() if args.smoke else [Case("delivery", args.events, args.producers, args.arguments, args.fields, args.format,
-                                                 args.rate, args.stall_ms, args.delay_us, args.virtual, args.policy, args.disabled)]
+                                                 args.rate, args.stall_ms, args.delay_us, args.virtual, args.policy, args.disabled,
+                                                 args.virtual_per_request)]
     versions: dict[str, object] = {}
     sources = {}
     for directory in (root / "benchmarks/comparison", root / "scripts/comparison_tools"):

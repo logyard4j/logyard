@@ -8,6 +8,11 @@ from .records import decode, validate_message
 
 
 def validate(result: dict[str, Any], output: Path, format: str, fields: int) -> dict[int, str]:
+    if "case" in result:
+        case = result["case"]
+        model = "VIRTUAL_PER_REQUEST" if case.get("virtual_per_request") else "VIRTUAL" if case.get("virtual") else "PLATFORM"
+        if result.get("thread_model") != model:
+            raise AssertionError("requested and reported thread models differ")
     expected = result["attempted"]
     records: dict[int, str] = {}
     written_bytes = 0
