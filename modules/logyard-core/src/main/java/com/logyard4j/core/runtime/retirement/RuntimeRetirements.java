@@ -7,6 +7,7 @@ import com.logyard4j.core.routing.PlanEpoch;
 import com.logyard4j.core.runtime.RuntimePlan;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -61,14 +62,19 @@ public final class RuntimeRetirements {
     }
 
     public void await(Duration timeout) {
+        await(pending, timeout);
+    }
+
+    /** Waits for lifecycle completion, including observers that publish final runtime state. */
+    public void await(CompletableFuture<Void> completion, Duration timeout) {
+        await(List.of(Objects.requireNonNull(completion, "completion")), timeout);
+    }
+
+    private void await(Iterable<CompletableFuture<Void>> completions, Duration timeout) {
         long timeoutNanos = saturatedNanos(Objects.requireNonNull(timeout, "timeout"));
         long startedAt = System.nanoTime();
-        for (CompletableFuture<Void> retirement : pending) {
+        for (CompletableFuture<Void> retirement : completions) {
             long remaining = timeoutNanos - (System.nanoTime() - startedAt);
-            if (remaining <= 0) {
-                diagnostics.shutdownDeadlineElapsed();
-                return;
-            }
             try {
                 retirement.get(remaining, TimeUnit.NANOSECONDS);
             } catch (TimeoutException timeoutFailure) {

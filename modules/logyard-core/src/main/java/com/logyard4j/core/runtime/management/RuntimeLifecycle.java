@@ -62,19 +62,19 @@ public final class RuntimeLifecycle {
     public void finishClose(RuntimeGeneration current) {
         try {
             retirements.finishPlan(current.plan(), current.epoch()).whenComplete((ignored, failure) -> {
+                phase.set(Phase.CLOSED);
                 if (failure == null) {
                     retirementCompletion.complete(null);
                 } else {
                     retirementCompletion.completeExceptionally(failure);
                 }
-                phase.set(Phase.CLOSED);
             });
         } catch (RuntimeException | Error failure) {
-            retirementCompletion.completeExceptionally(failure);
             phase.set(Phase.CLOSED);
+            retirementCompletion.completeExceptionally(failure);
             throw failure;
         }
-        retirements.await(current.plan().shutdownTimeout());
+        retirements.await(retirementCompletion, current.plan().shutdownTimeout());
     }
 
     public CompletionStage<Void> retirementCompletion() {

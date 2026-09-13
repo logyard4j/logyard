@@ -43,11 +43,11 @@ final class RuntimeInstallationRetirementCoordinator {
         }
 
         CompletionStage<Void> finalRetirement = retirements.close(transaction.installation(), globalRuntime);
-        transaction.completeShutdownBoundary();
         retirements.observe(finalRetirement, failure -> {
             state.completeRetirement(transaction);
             transaction.completeFinalRetirement(failure);
         });
-        return finalRetirement;
+        transaction.completeShutdownBoundary();
+        return transaction.finalRetirement();
     }
 }
