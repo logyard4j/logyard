@@ -61,7 +61,7 @@ final class JsonValueWriter {
         } else if (value instanceof Boolean booleanValue) {
             json.literal(booleanValue);
         } else if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) {
-            json.literal(String.valueOf(value));
+            json.literal(((Number) value).longValue());
         } else if (value instanceof Float floatValue) {
             finiteNumber(floatValue.doubleValue(), floatValue.toString());
         } else if (value instanceof Double doubleValue) {

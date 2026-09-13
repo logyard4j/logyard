@@ -237,8 +237,8 @@ final class JsonFileTimedFlushTest {
         }
 
         @Override
-        public void write(byte[] record, byte terminator) {
-            bytes += record.length + 1L;
+        public void write(byte[] record, int length, byte terminator) {
+            bytes += length + 1L;
         }
 
         @Override

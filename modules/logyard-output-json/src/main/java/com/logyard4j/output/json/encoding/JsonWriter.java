@@ -2,11 +2,11 @@ package com.logyard4j.output.json.encoding;
 
 /** Direct JSON token writer with a hard character bound and bounded-value rendering support. */
 final class JsonWriter {
-    private final JsonBuffer buffer;
+    private final JsonTokenBuffer buffer;
     private final JsonValueWriter values;
 
-    JsonWriter(int initialCapacity) {
-        buffer = new JsonBuffer(initialCapacity, JsonOutputLimits.MAX_RECORD_CHARACTERS);
+    JsonWriter(JsonTokenBuffer buffer) {
+        this.buffer = buffer;
         values = new JsonValueWriter(this);
         reset();
     }
@@ -16,16 +16,8 @@ final class JsonWriter {
         values.reset();
     }
 
-    String result() {
-        return buffer.result();
-    }
-
     boolean traversalTruncated() {
         return values.traversalTruncated();
-    }
-
-    int retainedCapacity() {
-        return buffer.capacity();
     }
 
     boolean claimEntry() {

@@ -6,6 +6,8 @@ Logyard does not currently claim to outperform Logback or Log4j 2. These benchma
 
 The [capture text experiment](evidence/capture-text.md) and [attribute snapshot experiment](evidence/attribute-snapshots.md) record measured allocation changes with unchanged capture semantics.
 
+The [UTF-8 file experiment](evidence/utf8-file-output.md) measures reusable record storage and direct integer formatting through real file output.
+
 The [provider comparison](comparison/README.md) adds isolated Logyard, Logback, and Log4j asynchronous delivery experiments with shared or native JSON encoding, matched fields, actual file writes, scheduled arrivals, and drain reconciliation.
 
 ## Run

@@ -62,8 +62,9 @@ final class EcsProjection {
         if (value instanceof String text) {
             return text;
         }
-        JsonWriter writer = new JsonWriter(128);
+        JsonBuffer buffer = new JsonBuffer(128, JsonOutputLimits.MAX_RECORD_CHARACTERS);
+        JsonWriter writer = new JsonWriter(buffer);
         writer.value(value);
-        return writer.result();
+        return buffer.result();
     }
 }

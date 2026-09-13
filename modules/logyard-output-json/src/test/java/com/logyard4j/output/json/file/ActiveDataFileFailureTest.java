@@ -144,11 +144,11 @@ final class ActiveDataFileFailureTest {
         }
 
         @Override
-        public void write(byte[] record, byte terminator) {
+        public void write(byte[] record, int length, byte terminator) {
             if (failWrite) {
                 throw ioFailure("write failed");
             }
-            logicalBytes += record.length + 1L;
+            logicalBytes += length + 1L;
         }
 
         @Override

@@ -1,0 +1,686 @@
+{
+  "baseline_revision": "7f728b1f94ea86a97b3ad0cabe4fc41adf02cd37",
+  "candidate_source_sha256": {
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/EcsProjection.java": "5f485e5cc104d11c4aece0b7d8be81e8bcba0f9dad90a9ac9a7f8788981aa4ef",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonAttributesWriter.java": "09ee606dc4bcc8250c72ce65450982259d3eff0bedd6c02dbf692745467ec8f0",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonBuffer.java": "7e83de10d524241dd15bd02b3edda02bfa9a02aab5ba46382539100fb9c43952",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonDecimal.java": "93a44fbe688b75d8c43e7aa8259aac0a046ef5f4cca16f201d070080399e2ee1",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonEncoder.java": "b8a36c1aa8d6494e3d16caece9d017cecb973f101f0a7f7e7d3817f09517ce5a",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonEventWriter.java": "ae722d1c91cc4e7ac1c86b6e769593610c73f6c85afc240373ebe1921e8d149c",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonFallback.java": "aab90d7290ad80a233a2bd46effa39b39766423c62d35162666b25b27956e06e",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonTokenBuffer.java": "d32e0f4f047f1452c67255f525a10772823f3ad2327d12f7d23a6f401093de23",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonUtf8Buffer.java": "bf70ae5ee61ed6cf8ace123b7b0d1397f4cebf273d7804c1d16842caac53962c",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonUtf8Output.java": "1bbb86119c338654de868b83a48205744ca03558c11b2ef7ac153a5bd2b9801a",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonValueWriter.java": "dbd6c340f1ccb3c4a6205105319ee20765654c5b5dc2c9561ec2554d5424906a",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/encoding/JsonWriter.java": "b2949fb20aa3b6a6a9f64e81fe62a35ed01557304c7939a8077f1d8af461f1a3",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/file/ActiveDataFile.java": "bdfbae54a310c9c1d89113c4581f63dea45afc1a9fe2900a6449cf762e31f133",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/file/ActiveFileSession.java": "2b3c48f2d7fad6dd1949cee6143dab3110e2be7351a0ba4182e6b331841f2ec4",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/file/BufferedFileWriter.java": "d9b61dacac732b846aeaa2eec2617e903a5ae160496dbd1aeebf44f3ea84b055",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/file/JsonFileLifecycle.java": "a32608fee87d1e695d03cca65b9ff25b82f75ab9603d3bba2e139d9dc00e82bb",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/file/JsonFileSink.java": "a9d4c362d9189e3b1d0ec46c7dac39dba44eefd57d9c59c46e98f0ecfe177ab9",
+    "modules/logyard-output-json/src/main/java/com/logyard4j/output/json/file/RotatingFileWriter.java": "4d7a1fb74f1a97efb6fac2e49de84d104c069ca9e80c63aed180a084382f5b09",
+    "modules/logyard-runtime/src/main/java/com/logyard4j/runtime/assembly/output/EncoderResolver.java": "acc546e07beba8f5c35e623862994f1754619d88ccab654c944b994ca173bd9e"
+  },
+  "environment": {
+    "platform": "Linux-5.15.0-187-generic-x86_64-with-glibc2.35",
+    "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           40 bits physical, 48 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  8\nOn-line CPU(s) list:                     0-7\nVendor ID:                               AuthenticAMD\nModel name:                              AMD EPYC 9555P 64-Core Processor\nCPU family:                              25\nModel:                                   1\nThread(s) per core:                      1\nCore(s) per socket:                      8\nSocket(s):                               1\nStepping:                                1\nBogoMIPS:                                6390.40\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm rep_good nopl cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext perfctr_core invpcid_single ssbd ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves clzero xsaveerptr wbnoinvd arat npt nrip_save umip pku ospke vaes vpclmulqdq rdpid fsrm\nVirtualization:                          AMD-V\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               256 KiB (8 instances)\nL1i cache:                               256 KiB (8 instances)\nL2 cache:                                4 MiB (8 instances)\nL3 cache:                                32 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-7\nVulnerability Gather data sampling:      Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Mitigation; safe RET\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; IBRS_FW; STIBP disabled; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Vulnerable: Clear CPU buffers attempted, no microcode\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+    "java": "openjdk version \"21.0.12.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS, mixed mode, sharing)\n"
+  },
+  "measurement": {
+    "forks": 3,
+    "warmup": "3 x 1s",
+    "measurement": "5 x 1s",
+    "threads": 1,
+    "heap": [
+      "-Xms256m",
+      "-Xmx256m"
+    ],
+    "profiler": "gc"
+  },
+  "measurements": [
+    {
+      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.jsonEncoding",
+      "before": {
+        "throughput": {
+          "score": 0.43245939521744176,
+          "error_99_9_percent": 0.004248475381420638,
+          "unit": "ops/us",
+          "fork_samples": [
+            [
+              0.4301307140639903,
+              0.42915479819137675,
+              0.4303212974232811,
+              0.4328093712944883,
+              0.4245223322872449
+            ],
+            [
+              0.4335394556165012,
+              0.4361524084298108,
+              0.4348239469400779,
+              0.43683811853311905,
+              0.4412156045590873
+            ],
+            [
+              0.4290067911308795,
+              0.4325922197296948,
+              0.4331757864109418,
+              0.43299297113159585,
+              0.42961511251953716
+            ]
+          ]
+        },
+        "allocation": {
+          "score": 1200.0159962764894,
+          "error_99_9_percent": 25.03915298382898,
+          "unit": "B/op",
+          "fork_samples": [
+            [
+              1184.0161421926323,
+              1184.0161788244723,
+              1184.0160603004801,
+              1184.0160423607035,
+              1184.0162795791616
+            ],
+            [
+              1184.0159411064678,
+              1184.0156831568677,
+              1184.0158940762833,
+              1184.015821097085,
+              1184.01566398575
+            ],
+            [
+              1232.0161095974697,
+              1232.0160501845633,
+              1232.0159549052332,
+              1232.015961389694,
+              1232.0161613904754
+            ]
+          ]
+        }
+      },
+      "after": {
+        "throughput": {
+          "score": 0.4261844524312902,
+          "error_99_9_percent": 0.01879290620297279,
+          "unit": "ops/us",
+          "fork_samples": [
+            [
+              0.46878595586051724,
+              0.4332721442409065,
+              0.42510270221539315,
+              0.4288602593780509,
+              0.4318966828542957
+            ],
+            [
+              0.42030779554557146,
+              0.42040702285393716,
+              0.41352768150138425,
+              0.41949840035694214,
+              0.42068434328237975
+            ],
+            [
+              0.46043244825991825,
+              0.4006350061656067,
+              0.4186479662755979,
+              0.4152714987805714,
+              0.415436878898281
+            ]
+          ]
+        },
+        "allocation": {
+          "score": 1034.6828788243854,
+          "error_99_9_percent": 16.69244175876076,
+          "unit": "B/op",
+          "fork_samples": [
+            [
+              1056.0147426436085,
+              1056.016025034501,
+              1056.0162574854526,
+              1056.0161153816562,
+              1056.0160020372964
+            ],
+            [
+              1024.016443479109,
+              1024.0164392553816,
+              1024.0167128898647,
+              1024.0165514216728,
+              1024.0165049605203
+            ],
+            [
+              1024.0150103587112,
+              1024.016513242222,
+              1024.0165083580728,
+              1024.0167196378695,
+              1024.0166361798401
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directFile",
+      "before": {
+        "throughput": {
+          "score": 0.2877638242085237,
+          "error_99_9_percent": 0.004224368441858031,
+          "unit": "ops/us",
+          "fork_samples": [
+            [
+              0.28197485312343723,
+              0.28257854098697693,
+              0.28252002434561047,
+              0.28501296571779,
+              0.28457894151947544
+            ],
+            [
+              0.28600148109813045,
+              0.2916115476245305,
+              0.2901522655038798,
+              0.291154821276252,
+              0.29387452312028095
+            ],
+            [
+              0.2899279317642021,
+              0.2899127788147997,
+              0.2855854568304429,
+              0.2928137680148845,
+              0.28875746338716224
+            ]
+          ]
+        },
+        "allocation": {
+          "score": 1721.2895741546915,
+          "error_99_9_percent": 0.043132479892670356,
+          "unit": "B/op",
+          "fork_samples": [
+            [
+              1721.306796302403,
+              1721.3138488858701,
+              1721.2981129938705,
+              1721.286123730508,
+              1721.2881174899867
+            ],
+            [
+              1721.2880419773544,
+              1721.2575193963228,
+              1721.263371181447,
+              1721.258908211764,
+              1721.2474389899533
+            ],
+            [
+              1721.4113444117618,
+              1721.2714789667336,
+              1721.2835581572028,
+              1721.2517594031176,
+              1721.31719222208
+            ]
+          ]
+        }
+      },
+      "after": {
+        "throughput": {
+          "score": 0.3671477907975501,
+          "error_99_9_percent": 0.0106838184287754,
+          "unit": "ops/us",
+          "fork_samples": [
+            [
+              0.3719835862538767,
+              0.37361217638342303,
+              0.37361611827425634,
+              0.3741967926657109,
+              0.37200509301335655
+            ],
+            [
+              0.3542943382252381,
+              0.3551936474622492,
+              0.3553616137315023,
+              0.3532203351015627,
+              0.3562556745818616
+            ],
+            [
+              0.3764674875701697,
+              0.3593567771240087,
+              0.37928056911543756,
+              0.37592342793060224,
+              0.3764492245299952
+            ]
+          ]
+        },
+        "allocation": {
+          "score": 513.014461474915,
+          "error_99_9_percent": 0.04973568826013944,
+          "unit": "B/op",
+          "fork_samples": [
+            [
+              512.9967396417101,
+              512.9893961164581,
+              513.0233670741791,
+              512.9847801457856,
+              512.9930521398603
+            ],
+            [
+              513.042071635793,
+              513.1546572836031,
+              513.043497833549,
+              513.0437795453902,
+              513.0347423163603
+            ],
+            [
+              512.9855181773034,
+              512.9909017072197,
+              512.9719758218641,
+              512.9803787014355,
+              512.9820639832141
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directStream",
+      "before": {
+        "throughput": {
+          "score": 0.3583655622844846,
+          "error_99_9_percent": 0.008637257357873978,
+          "unit": "ops/us",
+          "fork_samples": [
+            [
+              0.367576282822554,
+              0.36665908085117654,
+              0.3677011263428797,
+              0.3660855490893837,
+              0.36890343881520854
+            ],
+            [
+              0.3476461969782542,
+              0.35217869723238915,
+              0.3458625051573135,
+              0.3572532678648709,
+              0.3452245547565278
+            ],
+            [
+              0.358538801452507,
+              0.35526081863957304,
+              0.3608896504221875,
+              0.3567489227604781,
+              0.35895454108196523
+            ]
+          ]
+        },
+        "allocation": {
+          "score": 1216.0994298700814,
+          "error_99_9_percent": 25.03497831227555,
+          "unit": "B/op",
+          "fork_samples": [
+            [
+              1184.0838921153925,
+              1184.081702331898,
+              1184.1790578849045,
+              1184.097516476253,
+              1184.0815744608187
+            ],
+            [
+              1232.0887027652022,
+              1232.0866513730211,
+              1232.087100066204,
+              1232.0844118042185,
+              1232.0873529394728
+            ],
+            [
+              1232.086094672906,
+              1232.189631297495,
+              1232.0892144693678,
+              1232.0844425385453,
+              1232.0841028555192
+            ]
+          ]
+        }
+      },
+      "after": {
+        "throughput": {
+          "score": 0.36012375250598594,
+          "error_99_9_percent": 0.018034382566470115,
+          "unit": "ops/us",
+          "fork_samples": [
+            [
+              0.3587082492294557,
+              0.33901190057167285,
+              0.3578832840507612,
+              0.3570839983517779,
+              0.39360121222878336
+            ],
+            [
+              0.34877242716161405,
+              0.34367968435101814,
+              0.34747716541416723,
+              0.34431081339922043,
+              0.34569193681114035
+            ],
+            [
+              0.3663837100715917,
+              0.3789394896835134,
+              0.39086924328226447,
+              0.36348883694352047,
+              0.3659543360392884
+            ]
+          ]
+        },
+        "allocation": {
+          "score": 1024.0938355363035,
+          "error_99_9_percent": 0.02774125927477443,
+          "unit": "B/op",
+          "fork_samples": [
+            [
+              1024.0860766550522,
+              1024.0884827856742,
+              1024.1839938534608,
+              1024.1001103252074,
+              1024.0765529819998
+            ],
+            [
+              1024.0890084025905,
+              1024.0887916538172,
+              1024.0863279541427,
+              1024.0887474299254,
+              1024.0872585912168
+            ],
+            [
+              1024.0858013033937,
+              1024.1039939056452,
+              1024.0772556342893,
+              1024.0831630112757,
+              1024.0819685568615
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
+      "before": {
+        "throughput": {
+          "score": 0.24517776762977722,
+          "error_99_9_percent": 0.0020409266579201274,
+          "unit": "ops/us",
+          "fork_samples": [
+            [
+              0.24419077039216,
+              0.2469833444272897,
+              0.24383707421635306,
+              0.24620243369405967,
+              0.24361277146158541
+            ],
+            [
+              0.24237533091565652,
+              0.24440838627022787,
+              0.24613970688073109,
+              0.24609986000031472,
+              0.24605319921971516
+            ],
+            [
+              0.24316115014396136,
+              0.2498123440390702,
+              0.24317257031724077,
+              0.2455416224685115,
+              0.24607594999978133
+            ]
+          ]
+        },
+        "allocation": {
+          "score": 2401.513773313179,
+          "error_99_9_percent": 43.368993975595856,
+          "unit": "B/op",
+          "fork_samples": [
+            [
+              2353.5335241394278,
+              2353.511558049341,
+              2353.5325151412017,
+              2353.5170565302146,
+              2353.532616993507
+            ],
+            [
+              2449.545025143456,
+              2449.528771651353,
+              2449.516859820373,
+              2449.5188984727647,
+              2449.517408406749
+            ],
+            [
+              2401.509366930377,
+              2401.464675087652,
+              2401.5059968997857,
+              2401.4886470509205,
+              2401.483679380568
+            ]
+          ]
+        }
+      },
+      "after": {
+        "throughput": {
+          "score": 0.306511622673349,
+          "error_99_9_percent": 0.010349115281987472,
+          "unit": "ops/us",
+          "fork_samples": [
+            [
+              0.3082715613225143,
+              0.3397568267404666,
+              0.3079575083948131,
+              0.3096933236419053,
+              0.3028792623290133
+            ],
+            [
+              0.3065459723590369,
+              0.3011057821798596,
+              0.3006966162434426,
+              0.30181338634837435,
+              0.30291671234980105
+            ],
+            [
+              0.30496709138358,
+              0.30438544426923775,
+              0.30123832104592496,
+              0.29982616825300534,
+              0.3056203632392593
+            ]
+          ]
+        },
+        "allocation": {
+          "score": 1198.6319242284053,
+          "error_99_9_percent": 49.7680961817808,
+          "unit": "B/op",
+          "fork_samples": [
+            [
+              1161.2206837723268,
+              1161.1045571989382,
+              1161.2193528697494,
+              1161.2123677524125,
+              1161.239663146497
+            ],
+            [
+              1265.2275917856118,
+              1265.248017638699,
+              1265.2491630735067,
+              1226.564154205948,
+              1268.3493340814946
+            ],
+            [
+              1161.2339429388273,
+              1161.2335487092228,
+              1161.2470177441733,
+              1189.900676297571,
+              1209.2287922111063
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "delivery_by_fork": {
+    "before": [
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directFile",
+        "fork_pid": 3745552,
+        "iterations": 5,
+        "calls": 1416947,
+        "written": 1416947,
+        "bytes_or_characters": 660297302,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directFile",
+        "fork_pid": 3745589,
+        "iterations": 5,
+        "calls": 1453052,
+        "written": 1453052,
+        "bytes_or_characters": 677122232,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directFile",
+        "fork_pid": 3745623,
+        "iterations": 5,
+        "calls": 1447341,
+        "written": 1447341,
+        "bytes_or_characters": 674460906,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directStream",
+        "fork_pid": 3745667,
+        "iterations": 5,
+        "calls": 1837131,
+        "written": 1837131,
+        "bytes_or_characters": 856103046,
+        "unit": "characters"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directStream",
+        "fork_pid": 3745703,
+        "iterations": 5,
+        "calls": 1748357,
+        "written": 1748357,
+        "bytes_or_characters": 814734362,
+        "unit": "characters"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directStream",
+        "fork_pid": 3745739,
+        "iterations": 5,
+        "calls": 1790586,
+        "written": 1790586,
+        "bytes_or_characters": 834413076,
+        "unit": "characters"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
+        "fork_pid": 3745778,
+        "iterations": 5,
+        "calls": 1224998,
+        "written": 1224998,
+        "bytes_or_characters": 592899032,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
+        "fork_pid": 3745821,
+        "iterations": 5,
+        "calls": 1225247,
+        "written": 1225247,
+        "bytes_or_characters": 593019548,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
+        "fork_pid": 3745866,
+        "iterations": 5,
+        "calls": 1228037,
+        "written": 1228037,
+        "bytes_or_characters": 594360164,
+        "unit": "bytes"
+      }
+    ],
+    "after": [
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directFile",
+        "fork_pid": 3752157,
+        "iterations": 5,
+        "calls": 1865812,
+        "written": 1865812,
+        "bytes_or_characters": 869468392,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directFile",
+        "fork_pid": 3752193,
+        "iterations": 5,
+        "calls": 1774597,
+        "written": 1774597,
+        "bytes_or_characters": 826962202,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directFile",
+        "fork_pid": 3752228,
+        "iterations": 5,
+        "calls": 1886349,
+        "written": 1886349,
+        "bytes_or_characters": 879038634,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directStream",
+        "fork_pid": 3752268,
+        "iterations": 5,
+        "calls": 1806512,
+        "written": 1806512,
+        "bytes_or_characters": 841834592,
+        "unit": "characters"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directStream",
+        "fork_pid": 3752318,
+        "iterations": 5,
+        "calls": 1730138,
+        "written": 1730138,
+        "bytes_or_characters": 806244308,
+        "unit": "characters"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directStream",
+        "fork_pid": 3752384,
+        "iterations": 5,
+        "calls": 1876728,
+        "written": 1876728,
+        "bytes_or_characters": 874555248,
+        "unit": "characters"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
+        "fork_pid": 3752421,
+        "iterations": 5,
+        "calls": 1568801,
+        "written": 1568801,
+        "bytes_or_characters": 759299684,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
+        "fork_pid": 3752464,
+        "iterations": 5,
+        "calls": 1513390,
+        "written": 1513390,
+        "bytes_or_characters": 732470740,
+        "unit": "bytes"
+      },
+      {
+        "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
+        "fork_pid": 3752509,
+        "iterations": 5,
+        "calls": 1516251,
+        "written": 1516251,
+        "bytes_or_characters": 733865484,
+        "unit": "bytes"
+      }
+    ]
+  }
+}

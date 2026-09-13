@@ -62,18 +62,22 @@ final class RotatingFileWriter implements AutoCloseable {
     }
 
     void writeRecord(byte[] record, byte terminator) {
-        Objects.requireNonNull(record, "record");
+        writeRecord(record, record.length, terminator);
+    }
+
+    void writeRecord(byte[] record, int length, byte terminator) {
+        Objects.checkFromIndexSize(0, length, record.length);
         ensureOpen();
         initialize();
         if (maintenance != null) {
             maintenance.throwIfFailed();
         }
-        long recordBytes = (long) record.length + 1L;
+        long recordBytes = (long) length + 1L;
         if (policy != null && active.logicalBytes() > 0 && rotationDue(recordBytes)) {
             rotation.rotate(active, maintenance);
             age.opened(0L);
         }
-        active.write(record, terminator);
+        active.write(record, length, terminator);
     }
 
     void flush() {

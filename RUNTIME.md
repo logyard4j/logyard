@@ -101,6 +101,8 @@ A zero shutdown timeout starts no-wait daemon cleanup. Rollback of an output tha
 
 ## File output
 
+Built-in JSON file output owns a reusable UTF-8 record buffer, capped at 768 KiB and reduced to at most 4 KiB after delivery. This record storage is separate from the configured file buffer. Encoding completes before any record bytes reach the file, and rotation uses the complete record's byte length.
+
 ### Opening and ownership
 
 - A candidate reserves exclusive path ownership during assembly. It opens the data file only after commit, when the first record arrives.

@@ -8,6 +8,7 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Objects;
 import java.util.Set;
 
 /** Single-owner byte buffer around a no-follow file channel. */
@@ -79,19 +80,20 @@ final class BufferedFileWriter implements ActiveDataFile {
     }
 
     @Override
-    public void write(byte[] record, byte terminator) {
+    public void write(byte[] record, int length, byte terminator) {
+        Objects.checkFromIndexSize(0, length, record.length);
         ensureOpen();
         try {
-            int recordBytes = Math.addExact(record.length, 1);
+            int recordBytes = Math.addExact(length, 1);
             if (recordBytes > buffer.capacity()) {
                 flushBuffer();
-                writeFully(ByteBuffer.wrap(record));
+                writeFully(ByteBuffer.wrap(record, 0, length));
                 buffer.put(terminator);
             } else {
                 if (buffer.remaining() < recordBytes) {
                     flushBuffer();
                 }
-                buffer.put(record).put(terminator);
+                buffer.put(record, 0, length).put(terminator);
             }
             logicalBytes = Math.addExact(logicalBytes, recordBytes);
         } catch (IOException failure) {

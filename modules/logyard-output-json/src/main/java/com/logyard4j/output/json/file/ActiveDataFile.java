@@ -4,7 +4,12 @@ package com.logyard4j.output.json.file;
 interface ActiveDataFile extends AutoCloseable {
     long logicalBytes();
 
-    void write(byte[] record, byte terminator);
+    default void write(byte[] record, byte terminator) {
+        write(record, record.length, terminator);
+    }
+
+    /** Consumes the record prefix before returning, without retaining or changing its storage. */
+    void write(byte[] record, int length, byte terminator);
 
     void flush();
 

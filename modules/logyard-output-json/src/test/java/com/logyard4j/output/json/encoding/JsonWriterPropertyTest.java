@@ -13,13 +13,14 @@ final class JsonWriterPropertyTest {
     @Test
     void randomizedUtf16StringsRoundTripThroughJsonEscaping() {
         SplittableRandom random = new SplittableRandom(SEED);
-        JsonWriter writer = new JsonWriter(256);
+        JsonBuffer buffer = new JsonBuffer(256, JsonOutputLimits.MAX_RECORD_CHARACTERS);
+        JsonWriter writer = new JsonWriter(buffer);
         for (int sample = 0; sample < 2_000; sample++) {
             String source = randomString(random, random.nextInt(0, 257));
 
             writer.reset();
             writer.string(source);
-            String encoded = writer.result();
+            String encoded = buffer.result();
 
             assertEquals(source, decodeJsonString(encoded));
             assertContainsNoRawControlCharacters(encoded);

@@ -11,12 +11,22 @@ final class JsonAttributesWriter {
     private final JsonProfile profile;
     private final JsonAttributeTransform transform;
     private final JsonWriter labelJson;
+    private final JsonBuffer labelBuffer;
 
     JsonAttributesWriter(JsonWriter json, JsonProfile profile) {
         this.json = json;
         this.profile = profile;
         transform = profile.attributes();
-        labelJson = profile.ecs() ? new JsonWriter(128) : null;
+        labelBuffer = profile.ecs() ? new JsonBuffer(128, JsonOutputLimits.MAX_RECORD_CHARACTERS) : null;
+        labelJson = labelBuffer == null ? null : new JsonWriter(labelBuffer);
+    }
+
+    void reset() {
+        if (labelJson != null) labelJson.reset();
+    }
+
+    int retainedLabelCapacity() {
+        return labelBuffer == null ? 0 : labelBuffer.capacity();
     }
 
     boolean write(boolean first, AttributeSet attributes) {
@@ -78,7 +88,7 @@ final class JsonAttributesWriter {
         } else {
             labelJson.reset();
             labelJson.value(value);
-            json.string(labelJson.result());
+            json.string(labelBuffer.result());
             if (labelJson.traversalTruncated()) {
                 json.markTraversalTruncated();
             }

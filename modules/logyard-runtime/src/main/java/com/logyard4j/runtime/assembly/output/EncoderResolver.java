@@ -31,7 +31,7 @@ public final class EncoderResolver {
      * @param name encoder name, or {@code null} for Logyard's default JSON encoder
      * @param resource immutable service/resource attributes
      * @param extensions discovered extension registry
-     * @return guarded encoder
+     * @return bounded built-in JSON encoder or guarded extension encoder
      */
     public static EventEncoder resolve(
             LogyardConfig config,
@@ -67,7 +67,8 @@ public final class EncoderResolver {
         EventEncoder resolved = created;
         return ComponentInvocationBoundary.call(
                 "encoder '" + Objects.requireNonNullElse(name, "logyard") + "' initialization",
-                () -> ExtensionGuardrails.encoder(resolved));
+                // Built-in JSON enforces its own bounds; keep its identity for output-owned UTF-8 encoding.
+                () -> resolved instanceof JsonEncoder ? resolved : ExtensionGuardrails.encoder(resolved));
     }
 
     /**

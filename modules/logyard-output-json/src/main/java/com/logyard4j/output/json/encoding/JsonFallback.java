@@ -22,7 +22,7 @@ final class JsonFallback {
         ecs = profile.ecs();
     }
 
-    String encode(JsonWriter json, LogEvent event) {
+    void write(JsonWriter json, LogEvent event) {
         // Captured identity is at most 2 * 1,024 chars and the body at most 16,384.
         // Even sixfold JSON escaping plus five 128-char keys fits well below 262,144.
         json.reset();
@@ -43,7 +43,6 @@ final class JsonFallback {
         json.comma();
         json.field(JsonProfile.TRUNCATED, true);
         json.endObject();
-        return json.result();
     }
 
     private static void field(JsonWriter json, String name, String value) {

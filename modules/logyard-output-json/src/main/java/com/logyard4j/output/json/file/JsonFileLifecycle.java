@@ -60,13 +60,13 @@ final class JsonFileLifecycle implements AutoCloseable {
         ensureActive();
     }
 
-    void writeRecord(byte[] json) {
+    void writeRecord(byte[] json, int length) {
         requireActive();
         synchronized (writerState) {
             requireActive();
             ioOperation = "write";
             try {
-                writer.writeRecord(json, (byte) '\n');
+                writer.writeRecord(json, length, (byte) '\n');
                 timedFlush.recordWritten();
             } catch (RuntimeException | Error failure) {
                 if (writer.terminallyFailed()) {

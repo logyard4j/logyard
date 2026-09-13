@@ -32,9 +32,9 @@ final class ActiveFileSession {
         return detached;
     }
 
-    void write(byte[] record, byte terminator) {
+    void write(byte[] record, int length, byte terminator) {
         try {
-            requireFile().write(record, terminator);
+            requireFile().write(record, length, terminator);
             lifecycle.operationSucceeded();
         } catch (RuntimeException failure) {
             fail(failure);

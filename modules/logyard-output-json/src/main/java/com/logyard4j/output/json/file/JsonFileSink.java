@@ -15,13 +15,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /** Exclusive UTF-8 JSONL output that encodes events separately from durable file lifecycle work. */
 public final class JsonFileSink implements EventSink, HealthContributor {
     public static final int MIN_BUFFER_BYTES = 1_024;
     public static final int MAX_BUFFER_BYTES = 16 * 1_024 * 1_024;
 
-    private final EventEncoder encoder;
+    private final Consumer<LogEvent> writeEvent;
     private final JsonFileLifecycle lifecycle;
 
     public JsonFileSink(Path path, ResourceAttributes resource, int bufferBytes, Duration flushInterval, boolean append) {
@@ -76,7 +77,13 @@ public final class JsonFileSink implements EventSink, HealthContributor {
             boolean active,
             FlushScheduler scheduler,
             DataFileOpener dataFiles) {
-        this.encoder = EventEncoderBoundary.guard(encoder);
+        EventEncoder guarded = EventEncoderBoundary.guard(encoder);
+        writeEvent = encoder instanceof JsonEncoder json
+                ? json.utf8Records(this::writeRecord)
+                : event -> {
+                    byte[] record = guarded.encode(event).getBytes(StandardCharsets.UTF_8);
+                    writeRecord(record, record.length);
+                };
         lifecycle = new JsonFileLifecycle(
                 path, bufferBytes, flushInterval, append, rotationPolicy, active, scheduler, dataFiles);
     }
@@ -125,8 +132,11 @@ public final class JsonFileSink implements EventSink, HealthContributor {
     @Override
     public void accept(LogEvent event) {
         lifecycle.requireActive();
-        byte[] json = encoder.encode(Objects.requireNonNull(event, "event")).getBytes(StandardCharsets.UTF_8);
-        lifecycle.writeRecord(json);
+        writeEvent.accept(Objects.requireNonNull(event, "event"));
+    }
+
+    private void writeRecord(byte[] record, int length) {
+        lifecycle.writeRecord(record, length);
     }
 
     @Override
