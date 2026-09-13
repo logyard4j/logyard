@@ -26,6 +26,7 @@ The smoke gate also exercises the official Quarkus extension benchmark. Its pack
 | `JsonSinkBenchmark.directFile` | Captured event → JSON encoding → buffered UTF-8 file |
 | `JsonSinkBenchmark.synchronousRuntimeFile` | Native logger call → capture → JSON encoding → buffered UTF-8 file |
 | JSON stream cases | Encoding into a counting writer, without operating-system I/O |
+| `JsonProcessStreamBenchmark` | Native runtime → configured JSON process stream → UTF-8 byte counter, including buffering and error checks |
 | First-call and recovery cases | Provider binding or managed-runtime recovery in an already running JVM |
 | `CapturedEventAllocationBenchmark.exceptionEvent` | One exception with eight fixed application frames, without causes or suppression |
 
@@ -75,6 +76,7 @@ Each report links its raw measurements, source identity, and limitations. Result
 | Empty fluent attributes | [Skip unused assembly; retain truncation provenance](evidence/empty-attributes.md) |
 | Formatter plans | [Reduce ordinary and rejected-format allocation](evidence/formatter-plan.md) |
 | UTF-8 file output | [Measure bounded reusable record storage](evidence/utf8-file-output.md) |
+| Process-stream baseline | [Profile production UTF-8 conversion and reconcile completed records](evidence/process-stream-baseline.md) |
 | Virtual-thread delivery | [Measure completed work, latency, drops, and CPU](evidence/virtual-delivery.md) |
 | Provider comparison | [Match semantics and effective buffered capacity](comparison/README.md) |
 | Rejected argument experiments | [Lazy storage attempts and added coverage](evidence/fluent-arguments.md) |

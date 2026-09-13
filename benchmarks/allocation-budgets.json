@@ -204,6 +204,18 @@
       "maxBytesPerOperation": 3072
     },
     {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "maxBytesPerOperation": 3328
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "maxBytesPerOperation": 3840
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "maxBytesPerOperation": 4352
+    },
+    {
       "benchmark": "com.logyard4j.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
       "params": {"mdcEntries": "0"},
       "maxBytesPerOperation": 5376

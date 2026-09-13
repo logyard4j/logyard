@@ -1,0 +1,2215 @@
+{
+  "schema": 1,
+  "production_revision": "95209d5d15dcf55b2a72eac64ca1d49fc933e137",
+  "fixture": "benchmarks/logyard-benchmarks/src/main/java/com/logyard4j/logyard/benchmarks/output/JsonProcessStreamBenchmark.java",
+  "fixture_sha256": "a9c06b28b9a1c4c389331857957a3bca87099b6302078d06b367ac552fca2822",
+  "environment": {
+    "jdk": "21.0.12.1",
+    "vm_name": "OpenJDK 64-Bit Server VM",
+    "vm_version": "21.0.12.1+1-LTS",
+    "platform": "Linux-5.15.0-187-generic-x86_64-with-glibc2.35",
+    "cpu_model": "AMD EPYC 9555P 64-Core Processor",
+    "cpu_max": null
+  },
+  "results": [
+    {
+      "jmhVersion": "1.37",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "mode": "thrpt",
+      "threads": 1,
+      "forks": 3,
+      "jvm": "/tmp/logyard-tools/jdk/bin/java",
+      "jvmArgs": [
+        "-Xms256m",
+        "-Xmx256m"
+      ],
+      "jdkVersion": "21.0.12.1",
+      "vmName": "OpenJDK 64-Bit Server VM",
+      "vmVersion": "21.0.12.1+1-LTS",
+      "warmupIterations": 3,
+      "warmupTime": "1 s",
+      "warmupBatchSize": 1,
+      "measurementIterations": 5,
+      "measurementTime": "1 s",
+      "measurementBatchSize": 1,
+      "primaryMetric": {
+        "score": 0.24592727683729562,
+        "scoreError": 0.005851181194930217,
+        "scoreConfidence": [
+          0.2400760956423654,
+          0.2517784580322258
+        ],
+        "scorePercentiles": {
+          "0.0": 0.22954884934817515,
+          "50.0": 0.24669352600431738,
+          "90.0": 0.25231343710600124,
+          "95.0": 0.25285698360633924,
+          "99.0": 0.25285698360633924,
+          "99.9": 0.25285698360633924,
+          "99.99": 0.25285698360633924,
+          "99.999": 0.25285698360633924,
+          "99.9999": 0.25285698360633924,
+          "100.0": 0.25285698360633924
+        },
+        "scoreUnit": "ops/us",
+        "rawData": [
+          [
+            0.25285698360633924,
+            0.22954884934817515,
+            0.24653778848689714,
+            0.24793119163942684,
+            0.24780805902803965
+          ],
+          [
+            0.24669352600431738,
+            0.24306523255979734,
+            0.2485921367028781,
+            0.2519510727724426,
+            0.2500020562290425
+          ],
+          [
+            0.24414232224783447,
+            0.24183326584653408,
+            0.24744226388337276,
+            0.2465288541165963,
+            0.24397555008774038
+          ]
+        ]
+      },
+      "secondaryMetrics": {
+        "gc.alloc.rate": {
+          "score": 685.8921121854457,
+          "scoreError": 23.871315062607348,
+          "scoreConfidence": [
+            662.0207971228384,
+            709.7634272480531
+          ],
+          "scorePercentiles": {
+            "0.0": 627.1000231711766,
+            "50.0": 684.6842099856473,
+            "90.0": 714.3031285899084,
+            "95.0": 719.4322808059484,
+            "99.0": 719.4322808059484,
+            "99.9": 719.4322808059484,
+            "99.99": 719.4322808059484,
+            "99.999": 719.4322808059484,
+            "99.9999": 719.4322808059484,
+            "100.0": 719.4322808059484
+          },
+          "scoreUnit": "MB/sec",
+          "rawData": [
+            [
+              719.4322808059484,
+              627.1000231711766,
+              706.7897223586874,
+              710.8836937792152,
+              710.6019275222958
+            ],
+            [
+              679.0522860766182,
+              669.4345939620214,
+              684.4846434914941,
+              693.6513543027269,
+              688.068985399499
+            ],
+            [
+              677.8908886299623,
+              671.5549624339985,
+              687.2081298071023,
+              684.6842099856473,
+              677.5439810552901
+            ]
+          ]
+        },
+        "gc.alloc.rate.norm": {
+          "score": 2943.154233823009,
+          "scoreError": 55.245522013850454,
+          "scoreConfidence": [
+            2887.9087118091584,
+            2998.399755836859
+          ],
+          "scorePercentiles": {
+            "0.0": 2896.7451237176815,
+            "50.0": 2920.7694861213,
+            "90.0": 3016.755732380051,
+            "95.0": 3016.7973379095274,
+            "99.0": 3016.7973379095274,
+            "99.9": 3016.7973379095274,
+            "99.99": 3016.7973379095274,
+            "99.999": 3016.7973379095274,
+            "99.9999": 3016.7973379095274,
+            "100.0": 3016.7973379095274
+          },
+          "scoreUnit": "B/op",
+          "rawData": [
+            [
+              2992.713253088275,
+              3016.7973379095274,
+              3016.7279953604,
+              3016.7238353335915,
+              3016.7251775338927
+            ],
+            [
+              2896.764540421358,
+              2896.772238128147,
+              2896.755067893687,
+              2896.7451237176815,
+              2896.7508068870357
+            ],
+            [
+              2920.7724137931036,
+              2920.776271943243,
+              2920.758573593292,
+              2920.761385620597,
+              2920.7694861213
+            ]
+          ]
+        },
+        "gc.count": {
+          "score": 70.0,
+          "scoreError": "NaN",
+          "scoreConfidence": [
+            70.0,
+            70.0
+          ],
+          "scorePercentiles": {
+            "0.0": 4.0,
+            "50.0": 5.0,
+            "90.0": 5.0,
+            "95.0": 5.0,
+            "99.0": 5.0,
+            "99.9": 5.0,
+            "99.99": 5.0,
+            "99.999": 5.0,
+            "99.9999": 5.0,
+            "100.0": 5.0
+          },
+          "scoreUnit": "counts",
+          "rawData": [
+            [
+              5.0,
+              4.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            [
+              5.0,
+              4.0,
+              5.0,
+              4.0,
+              5.0
+            ],
+            [
+              5.0,
+              4.0,
+              5.0,
+              4.0,
+              5.0
+            ]
+          ]
+        },
+        "gc.time": {
+          "score": 80.0,
+          "scoreError": "NaN",
+          "scoreConfidence": [
+            80.0,
+            80.0
+          ],
+          "scorePercentiles": {
+            "0.0": 1.0,
+            "50.0": 2.0,
+            "90.0": 22.80000000000002,
+            "95.0": 51.0,
+            "99.0": 51.0,
+            "99.9": 51.0,
+            "99.99": 51.0,
+            "99.999": 51.0,
+            "99.9999": 51.0,
+            "100.0": 51.0
+          },
+          "scoreUnit": "ms",
+          "rawData": [
+            [
+              3.0,
+              2.0,
+              2.0,
+              51.0,
+              2.0
+            ],
+            [
+              4.0,
+              2.0,
+              2.0,
+              1.0,
+              2.0
+            ],
+            [
+              4.0,
+              1.0,
+              2.0,
+              1.0,
+              1.0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "jmhVersion": "1.37",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "mode": "thrpt",
+      "threads": 1,
+      "forks": 3,
+      "jvm": "/tmp/logyard-tools/jdk/bin/java",
+      "jvmArgs": [
+        "-Xms256m",
+        "-Xmx256m"
+      ],
+      "jdkVersion": "21.0.12.1",
+      "vmName": "OpenJDK 64-Bit Server VM",
+      "vmVersion": "21.0.12.1+1-LTS",
+      "warmupIterations": 3,
+      "warmupTime": "1 s",
+      "warmupBatchSize": 1,
+      "measurementIterations": 5,
+      "measurementTime": "1 s",
+      "measurementBatchSize": 1,
+      "primaryMetric": {
+        "score": 0.2722825338681249,
+        "scoreError": 0.009001183348054694,
+        "scoreConfidence": [
+          0.2632813505200702,
+          0.2812837172161796
+        ],
+        "scorePercentiles": {
+          "0.0": 0.255652426523512,
+          "50.0": 0.27153380952527123,
+          "90.0": 0.28363492378643723,
+          "95.0": 0.28472394445372784,
+          "99.0": 0.28472394445372784,
+          "99.9": 0.28472394445372784,
+          "99.99": 0.28472394445372784,
+          "99.999": 0.28472394445372784,
+          "99.9999": 0.28472394445372784,
+          "100.0": 0.28472394445372784
+        },
+        "scoreUnit": "ops/us",
+        "rawData": [
+          [
+            0.28290891000824353,
+            0.28472394445372784,
+            0.28228284157004224,
+            0.28189645133735963,
+            0.2776366451471379
+          ],
+          [
+            0.26970909991218045,
+            0.26388145857211226,
+            0.255652426523512,
+            0.2680884520074407,
+            0.26497070722885435
+          ],
+          [
+            0.2719750575756428,
+            0.26880542230216026,
+            0.2753999315131643,
+            0.27153380952527123,
+            0.2647728503450253
+          ]
+        ]
+      },
+      "secondaryMetrics": {
+        "gc.alloc.rate": {
+          "score": 627.3556750362758,
+          "scoreError": 22.6115442880001,
+          "scoreConfidence": [
+            604.7441307482757,
+            649.9672193242759
+          ],
+          "scorePercentiles": {
+            "0.0": 604.913218020904,
+            "50.0": 620.1741844581042,
+            "90.0": 658.1728440519935,
+            "95.0": 660.7239191262647,
+            "99.0": 660.7239191262647,
+            "99.9": 660.7239191262647,
+            "99.99": 660.7239191262647,
+            "99.999": 660.7239191262647,
+            "99.9999": 660.7239191262647,
+            "100.0": 660.7239191262647
+          },
+          "scoreUnit": "MB/sec",
+          "rawData": [
+            [
+              656.4721273358126,
+              660.7239191262647,
+              654.8208647321345,
+              654.1544877558671,
+              644.1803919714556
+            ],
+            [
+              631.9282481515244,
+              623.9644390827555,
+              604.913218020904,
+              613.2931613802307,
+              616.996703821509
+            ],
+            [
+              606.3009134642999,
+              605.3330975985552,
+              620.1741844581042,
+              611.467072131966,
+              605.6122965127549
+            ]
+          ]
+        },
+        "gc.alloc.rate.norm": {
+          "score": 2424.1038175674494,
+          "scoreError": 47.981237996677315,
+          "scoreConfidence": [
+            2376.122579570772,
+            2472.085055564127
+          ],
+          "scorePercentiles": {
+            "0.0": 2344.6930845216957,
+            "50.0": 2440.6646051834614,
+            "90.0": 2488.6712385062933,
+            "95.0": 2488.6779881934813,
+            "99.0": 2488.6779881934813,
+            "99.9": 2488.6779881934813,
+            "99.99": 2488.6779881934813,
+            "99.999": 2488.6779881934813,
+            "99.9999": 2488.6779881934813,
+            "100.0": 2488.6779881934813
+          },
+          "scoreUnit": "B/op",
+          "rawData": [
+            [
+              2440.666431045451,
+              2440.6589173965262,
+              2440.6646051834614,
+              2440.6659951194597,
+              2440.6757300853883
+            ],
+            [
+              2464.667032445578,
+              2488.6779881934813,
+              2488.6667387148345,
+              2407.7469529023883,
+              2451.3816686162786
+            ],
+            [
+              2344.6930845216957,
+              2368.697837391479,
+              2368.6812082486204,
+              2368.6909081536087,
+              2406.3221654934896
+            ]
+          ]
+        },
+        "gc.count": {
+          "score": 63.0,
+          "scoreError": "NaN",
+          "scoreConfidence": [
+            63.0,
+            63.0
+          ],
+          "scorePercentiles": {
+            "0.0": 4.0,
+            "50.0": 4.0,
+            "90.0": 5.0,
+            "95.0": 5.0,
+            "99.0": 5.0,
+            "99.9": 5.0,
+            "99.99": 5.0,
+            "99.999": 5.0,
+            "99.9999": 5.0,
+            "100.0": 5.0
+          },
+          "scoreUnit": "counts",
+          "rawData": [
+            [
+              5.0,
+              4.0,
+              4.0,
+              5.0,
+              4.0
+            ],
+            [
+              5.0,
+              4.0,
+              4.0,
+              4.0,
+              4.0
+            ],
+            [
+              4.0,
+              4.0,
+              4.0,
+              4.0,
+              4.0
+            ]
+          ]
+        },
+        "gc.time": {
+          "score": 175.0,
+          "scoreError": "NaN",
+          "scoreConfidence": [
+            175.0,
+            175.0
+          ],
+          "scorePercentiles": {
+            "0.0": 1.0,
+            "50.0": 2.0,
+            "90.0": 52.2,
+            "95.0": 54.0,
+            "99.0": 54.0,
+            "99.9": 54.0,
+            "99.99": 54.0,
+            "99.999": 54.0,
+            "99.9999": 54.0,
+            "100.0": 54.0
+          },
+          "scoreUnit": "ms",
+          "rawData": [
+            [
+              4.0,
+              1.0,
+              1.0,
+              2.0,
+              1.0
+            ],
+            [
+              54.0,
+              49.0,
+              1.0,
+              2.0,
+              1.0
+            ],
+            [
+              3.0,
+              2.0,
+              1.0,
+              2.0,
+              51.0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "jmhVersion": "1.37",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "mode": "thrpt",
+      "threads": 1,
+      "forks": 3,
+      "jvm": "/tmp/logyard-tools/jdk/bin/java",
+      "jvmArgs": [
+        "-Xms256m",
+        "-Xmx256m"
+      ],
+      "jdkVersion": "21.0.12.1",
+      "vmName": "OpenJDK 64-Bit Server VM",
+      "vmVersion": "21.0.12.1+1-LTS",
+      "warmupIterations": 3,
+      "warmupTime": "1 s",
+      "warmupBatchSize": 1,
+      "measurementIterations": 5,
+      "measurementTime": "1 s",
+      "measurementBatchSize": 1,
+      "primaryMetric": {
+        "score": 0.2332862696483979,
+        "scoreError": 0.007885869011800365,
+        "scoreConfidence": [
+          0.22540040063659755,
+          0.24117213866019827
+        ],
+        "scorePercentiles": {
+          "0.0": 0.2227515302636783,
+          "50.0": 0.23336906133006322,
+          "90.0": 0.2434235363731948,
+          "95.0": 0.2505108014397028,
+          "99.0": 0.2505108014397028,
+          "99.9": 0.2505108014397028,
+          "99.99": 0.2505108014397028,
+          "99.999": 0.2505108014397028,
+          "99.9999": 0.2505108014397028,
+          "100.0": 0.2505108014397028
+        },
+        "scoreUnit": "ops/us",
+        "rawData": [
+          [
+            0.2505108014397028,
+            0.2227515302636783,
+            0.22286970065767275,
+            0.2248474389429769,
+            0.2270863547217138
+          ],
+          [
+            0.23699542094611142,
+            0.23788107498448988,
+            0.2386986929955228,
+            0.23829325897812553,
+            0.23671999801272348
+          ],
+          [
+            0.23709108271260948,
+            0.23138642102953783,
+            0.23064817096399373,
+            0.23336906133006322,
+            0.23014503674704612
+          ]
+        ]
+      },
+      "secondaryMetrics": {
+        "gc.alloc.rate": {
+          "score": 730.2257772219384,
+          "scoreError": 30.14739523026874,
+          "scoreConfidence": [
+            700.0783819916696,
+            760.3731724522072
+          ],
+          "scorePercentiles": {
+            "0.0": 682.9837557214951,
+            "50.0": 740.2281192063368,
+            "90.0": 759.3204327093492,
+            "95.0": 767.9798290589789,
+            "99.0": 767.9798290589789,
+            "99.9": 767.9798290589789,
+            "99.99": 767.9798290589789,
+            "99.999": 767.9798290589789,
+            "99.9999": 767.9798290589789,
+            "100.0": 767.9798290589789
+          },
+          "scoreUnit": "MB/sec",
+          "rawData": [
+            [
+              767.9798290589789,
+              682.9837557214951,
+              683.3862860384676,
+              689.2101011404988,
+              696.2180621971472
+            ],
+            [
+              747.9194000927803,
+              751.0240159311169,
+              753.547501809596,
+              752.3016941343205,
+              747.2230915051242
+            ],
+            [
+              746.4506265882042,
+              733.767303521783,
+              731.4348806469867,
+              740.2281192063368,
+              729.7119907362412
+            ]
+          ]
+        },
+        "gc.alloc.rate.norm": {
+          "score": 3292.5351727441835,
+          "scoreError": 53.58957501048339,
+          "scoreConfidence": [
+            3238.9455977337,
+            3346.1247477546667
+          ],
+          "scorePercentiles": {
+            "0.0": 3224.753359649088,
+            "50.0": 3320.788204293315,
+            "90.0": 3336.8150403335903,
+            "95.0": 3336.816105936327,
+            "99.0": 3336.816105936327,
+            "99.9": 3336.816105936327,
+            "99.99": 3336.816105936327,
+            "99.999": 3336.816105936327,
+            "99.9999": 3336.816105936327,
+            "100.0": 3336.816105936327
+          },
+          "scoreUnit": "B/op",
+          "rawData": [
+            [
+              3224.753359649088,
+              3224.826853156898,
+              3224.8264191405074,
+              3224.819210245464,
+              3224.8113874616406
+            ],
+            [
+              3320.7963211407837,
+              3320.7895692524967,
+              3320.786863821053,
+              3320.788204293315,
+              3320.793447913191
+            ],
+            [
+              3312.7887940029887,
+              3336.811892312346,
+              3336.814329931766,
+              3336.8048329048843,
+              3336.816105936327
+            ]
+          ]
+        },
+        "gc.count": {
+          "score": 72.0,
+          "scoreError": "NaN",
+          "scoreConfidence": [
+            72.0,
+            72.0
+          ],
+          "scorePercentiles": {
+            "0.0": 4.0,
+            "50.0": 5.0,
+            "90.0": 5.0,
+            "95.0": 5.0,
+            "99.0": 5.0,
+            "99.9": 5.0,
+            "99.99": 5.0,
+            "99.999": 5.0,
+            "99.9999": 5.0,
+            "100.0": 5.0
+          },
+          "scoreUnit": "counts",
+          "rawData": [
+            [
+              5.0,
+              5.0,
+              4.0,
+              5.0,
+              4.0
+            ],
+            [
+              5.0,
+              5.0,
+              5.0,
+              5.0,
+              5.0
+            ],
+            [
+              5.0,
+              5.0,
+              5.0,
+              5.0,
+              4.0
+            ]
+          ]
+        },
+        "gc.time": {
+          "score": 128.0,
+          "scoreError": "NaN",
+          "scoreConfidence": [
+            128.0,
+            128.0
+          ],
+          "scorePercentiles": {
+            "0.0": 1.0,
+            "50.0": 2.0,
+            "90.0": 42.80000000000003,
+            "95.0": 101.0,
+            "99.0": 101.0,
+            "99.9": 101.0,
+            "99.99": 101.0,
+            "99.999": 101.0,
+            "99.9999": 101.0,
+            "100.0": 101.0
+          },
+          "scoreUnit": "ms",
+          "rawData": [
+            [
+              4.0,
+              2.0,
+              1.0,
+              2.0,
+              1.0
+            ],
+            [
+              3.0,
+              2.0,
+              2.0,
+              101.0,
+              1.0
+            ],
+            [
+              3.0,
+              2.0,
+              1.0,
+              2.0,
+              1.0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "jmhVersion": "1.37",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "mode": "thrpt",
+      "threads": 1,
+      "forks": 3,
+      "jvm": "/tmp/logyard-tools/jdk/bin/java",
+      "jvmArgs": [
+        "-Xms256m",
+        "-Xmx256m"
+      ],
+      "jdkVersion": "21.0.12.1",
+      "vmName": "OpenJDK 64-Bit Server VM",
+      "vmVersion": "21.0.12.1+1-LTS",
+      "warmupIterations": 3,
+      "warmupTime": "1 s",
+      "warmupBatchSize": 1,
+      "measurementIterations": 5,
+      "measurementTime": "1 s",
+      "measurementBatchSize": 1,
+      "primaryMetric": {
+        "score": 0.36345358881047807,
+        "scoreError": 0.004617693371411634,
+        "scoreConfidence": [
+          0.3588358954390664,
+          0.3680712821818897
+        ],
+        "scorePercentiles": {
+          "0.0": 0.3574421684198426,
+          "50.0": 0.36353788150626054,
+          "90.0": 0.36959817631482045,
+          "95.0": 0.3718946645775624,
+          "99.0": 0.3718946645775624,
+          "99.9": 0.3718946645775624,
+          "99.99": 0.3718946645775624,
+          "99.999": 0.3718946645775624,
+          "99.9999": 0.3718946645775624,
+          "100.0": 0.3718946645775624
+        },
+        "scoreUnit": "ops/us",
+        "rawData": [
+          [
+            0.36353788150626054,
+            0.3654936766562372,
+            0.36758383345677215,
+            0.3600191395340787,
+            0.36404073849075996
+          ],
+          [
+            0.3718946645775624,
+            0.36806718413965916,
+            0.365775952213749,
+            0.36794489967034244,
+            0.36256443293357554
+          ],
+          [
+            0.3574421684198426,
+            0.3613099561669506,
+            0.35851867196446774,
+            0.35823938368903624,
+            0.3593712487378781
+          ]
+        ]
+      },
+      "secondaryMetrics": {
+        "gc.alloc.rate": {
+          "score": 353.4518494456006,
+          "scoreError": 5.659805227902696,
+          "scoreConfidence": [
+            347.7920442176979,
+            359.1116546735033
+          ],
+          "scorePercentiles": {
+            "0.0": 341.22386750606086,
+            "50.0": 353.7984504061095,
+            "90.0": 360.60905653697705,
+            "95.0": 362.851080223681,
+            "99.0": 362.851080223681,
+            "99.9": 362.851080223681,
+            "99.99": 362.851080223681,
+            "99.999": 362.851080223681,
+            "99.9999": 362.851080223681,
+            "100.0": 362.851080223681
+          },
+          "scoreUnit": "MB/sec",
+          "rawData": [
+            [
+              354.7011985948839,
+              356.5796230920626,
+              341.22386750606086,
+              351.23417874004343,
+              355.17377535046023
+            ],
+            [
+              362.851080223681,
+              359.11437407917447,
+              356.901824044575,
+              359.0303016508408,
+              353.7984504061095
+            ],
+            [
+              348.7120728480984,
+              352.4854237520138,
+              349.7988387251237,
+              349.4952285727957,
+              350.6775040980854
+            ]
+          ]
+        },
+        "gc.alloc.rate.norm": {
+          "score": 1024.0851210941175,
+          "scoreError": 0.002335431437056779,
+          "scoreConfidence": [
+            1024.0827856626804,
+            1024.0874565255547
+          ],
+          "scorePercentiles": {
+            "0.0": 1024.0818424896568,
+            "50.0": 1024.084957493918,
+            "90.0": 1024.0887872769042,
+            "95.0": 1024.0895766233837,
+            "99.0": 1024.0895766233837,
+            "99.9": 1024.0895766233837,
+            "99.99": 1024.0895766233837,
+            "99.999": 1024.0895766233837,
+            "99.9999": 1024.0895766233837,
+            "100.0": 1024.0895766233837
+          },
+          "scoreUnit": "B/op",
+          "rawData": [
+            [
+              1024.0895766233837,
+              1024.0857457064228,
+              1024.0818424896568,
+              1024.0851196196168,
+              1024.0831017018052
+            ],
+            [
+              1024.0875627455039,
+              1024.0851479984353,
+              1024.084957493918,
+              1024.0822200723937,
+              1024.0833528680128
+            ],
+            [
+              1024.088261045918,
+              1024.0867409063737,
+              1024.0844679201505,
+              1024.0846263128662,
+              1024.0840929073042
+            ]
+          ]
+        },
+        "gc.count": {
+          "score": 35.0,
+          "scoreError": "NaN",
+          "scoreConfidence": [
+            35.0,
+            35.0
+          ],
+          "scorePercentiles": {
+            "0.0": 2.0,
+            "50.0": 2.0,
+            "90.0": 3.0,
+            "95.0": 3.0,
+            "99.0": 3.0,
+            "99.9": 3.0,
+            "99.99": 3.0,
+            "99.999": 3.0,
+            "99.9999": 3.0,
+            "100.0": 3.0
+          },
+          "scoreUnit": "counts",
+          "rawData": [
+            [
+              2.0,
+              2.0,
+              3.0,
+              2.0,
+              2.0
+            ],
+            [
+              2.0,
+              3.0,
+              2.0,
+              2.0,
+              3.0
+            ],
+            [
+              3.0,
+              2.0,
+              2.0,
+              3.0,
+              2.0
+            ]
+          ]
+        },
+        "gc.time": {
+          "score": 22.0,
+          "scoreError": "NaN",
+          "scoreConfidence": [
+            22.0,
+            22.0
+          ],
+          "scorePercentiles": {
+            "0.0": 0.0,
+            "50.0": 2.0,
+            "90.0": 2.0,
+            "95.0": 2.0,
+            "99.0": 2.0,
+            "99.9": 2.0,
+            "99.99": 2.0,
+            "99.999": 2.0,
+            "99.9999": 2.0,
+            "100.0": 2.0
+          },
+          "scoreUnit": "ms",
+          "rawData": [
+            [
+              2.0,
+              2.0,
+              2.0,
+              1.0,
+              1.0
+            ],
+            [
+              2.0,
+              2.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            [
+              2.0,
+              1.0,
+              2.0,
+              2.0,
+              0.0
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "delivery_evidence": [
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 1,
+      "fork_pid": 124376,
+      "threads": 1,
+      "params": {},
+      "bytes": 69345616,
+      "sink_written": 132592,
+      "benchmark_calls": 132592
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 2,
+      "fork_pid": 124376,
+      "threads": 1,
+      "params": {},
+      "bytes": 133386966,
+      "sink_written": 255042,
+      "benchmark_calls": 255042
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 3,
+      "fork_pid": 124376,
+      "threads": 1,
+      "params": {},
+      "bytes": 130897060,
+      "sink_written": 250284,
+      "benchmark_calls": 250284
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 4,
+      "fork_pid": 124376,
+      "threads": 1,
+      "params": {},
+      "bytes": 132260452,
+      "sink_written": 252892,
+      "benchmark_calls": 252892
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 5,
+      "fork_pid": 124376,
+      "threads": 1,
+      "params": {},
+      "bytes": 120076502,
+      "sink_written": 229594,
+      "benchmark_calls": 229594
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 6,
+      "fork_pid": 124376,
+      "threads": 1,
+      "params": {},
+      "bytes": 128955623,
+      "sink_written": 246573,
+      "benchmark_calls": 246573
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 7,
+      "fork_pid": 124376,
+      "threads": 1,
+      "params": {},
+      "bytes": 129685204,
+      "sink_written": 247968,
+      "benchmark_calls": 247968
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 8,
+      "fork_pid": 124376,
+      "threads": 1,
+      "params": {},
+      "bytes": 129618320,
+      "sink_written": 247840,
+      "benchmark_calls": 247840
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 1,
+      "fork_pid": 124428,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 142409,
+      "sink_written": 142409,
+      "bytes": 74479907
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 2,
+      "fork_pid": 124428,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 250303,
+      "sink_written": 250303,
+      "bytes": 130908469
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 3,
+      "fork_pid": 124428,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 241929,
+      "sink_written": 241929,
+      "bytes": 126528867
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 4,
+      "fork_pid": 124428,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 246726,
+      "sink_written": 246726,
+      "bytes": 129037698
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 5,
+      "fork_pid": 124428,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 243096,
+      "sink_written": 243096,
+      "bytes": 127139208
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 6,
+      "fork_pid": 124428,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 248624,
+      "sink_written": 248624,
+      "bytes": 130030352
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 7,
+      "fork_pid": 124428,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 251985,
+      "sink_written": 251985,
+      "bytes": 131788155
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 8,
+      "fork_pid": 124428,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 250035,
+      "sink_written": 250035,
+      "bytes": 130768305
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 1,
+      "fork_pid": 124472,
+      "threads": 1,
+      "params": {},
+      "sink_written": 142942,
+      "bytes": 74758178,
+      "benchmark_calls": 142942
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 2,
+      "fork_pid": 124472,
+      "threads": 1,
+      "params": {},
+      "sink_written": 259714,
+      "bytes": 135828418,
+      "benchmark_calls": 259714
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 3,
+      "fork_pid": 124472,
+      "threads": 1,
+      "params": {},
+      "sink_written": 243685,
+      "bytes": 127447255,
+      "benchmark_calls": 243685
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 4,
+      "fork_pid": 124472,
+      "threads": 1,
+      "params": {},
+      "sink_written": 244180,
+      "bytes": 127706140,
+      "benchmark_calls": 244180
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 5,
+      "fork_pid": 124472,
+      "threads": 1,
+      "params": {},
+      "sink_written": 241874,
+      "bytes": 126500102,
+      "benchmark_calls": 241874
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 6,
+      "fork_pid": 124472,
+      "threads": 1,
+      "params": {},
+      "sink_written": 247475,
+      "bytes": 129429425,
+      "benchmark_calls": 247475
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 7,
+      "fork_pid": 124472,
+      "threads": 1,
+      "params": {},
+      "sink_written": 246561,
+      "bytes": 128951403,
+      "benchmark_calls": 246561
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.arguments",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 8,
+      "fork_pid": 124472,
+      "threads": 1,
+      "params": {},
+      "sink_written": 244007,
+      "bytes": 127615661,
+      "benchmark_calls": 244007
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 1,
+      "fork_pid": 124518,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 180896,
+      "sink_written": 180896,
+      "bytes": 89181728
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 2,
+      "fork_pid": 124518,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 285617,
+      "sink_written": 285617,
+      "bytes": 140809181
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 3,
+      "fork_pid": 124518,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 311254,
+      "sink_written": 311254,
+      "bytes": 153446742
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 4,
+      "fork_pid": 124518,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 282940,
+      "sink_written": 282940,
+      "bytes": 139489420
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 5,
+      "fork_pid": 124518,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 284758,
+      "sink_written": 284758,
+      "bytes": 140385694
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 6,
+      "fork_pid": 124518,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 282321,
+      "sink_written": 282321,
+      "bytes": 139184253
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 7,
+      "fork_pid": 124518,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 281936,
+      "sink_written": 281936,
+      "bytes": 138994448
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 8,
+      "fork_pid": 124518,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 277673,
+      "sink_written": 277673,
+      "bytes": 136892789
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 1,
+      "fork_pid": 124565,
+      "threads": 1,
+      "params": {},
+      "sink_written": 167923,
+      "benchmark_calls": 167923,
+      "bytes": 82786039
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 2,
+      "fork_pid": 124565,
+      "threads": 1,
+      "params": {},
+      "sink_written": 270490,
+      "benchmark_calls": 270490,
+      "bytes": 133350442
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 3,
+      "fork_pid": 124565,
+      "threads": 1,
+      "params": {},
+      "sink_written": 271896,
+      "benchmark_calls": 271896,
+      "bytes": 134042504
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 4,
+      "fork_pid": 124565,
+      "threads": 1,
+      "params": {},
+      "sink_written": 269744,
+      "benchmark_calls": 269744,
+      "bytes": 132981604
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 5,
+      "fork_pid": 124565,
+      "threads": 1,
+      "params": {},
+      "sink_written": 263922,
+      "benchmark_calls": 263922,
+      "bytes": 130111378
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 6,
+      "fork_pid": 124565,
+      "threads": 1,
+      "params": {},
+      "sink_written": 268339,
+      "benchmark_calls": 268339,
+      "bytes": 132288939
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 7,
+      "fork_pid": 124565,
+      "threads": 1,
+      "params": {},
+      "sink_written": 268124,
+      "benchmark_calls": 268124,
+      "bytes": 132184172
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 8,
+      "fork_pid": 124565,
+      "threads": 1,
+      "params": {},
+      "sink_written": 265010,
+      "benchmark_calls": 265010,
+      "bytes": 130649002
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 1,
+      "fork_pid": 124609,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 168263,
+      "sink_written": 168263,
+      "bytes": 82953659
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 2,
+      "fork_pid": 124609,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 311419,
+      "sink_written": 311419,
+      "bytes": 153529567
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 3,
+      "fork_pid": 124609,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 269577,
+      "sink_written": 269577,
+      "bytes": 132901461
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 4,
+      "fork_pid": 124609,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 272013,
+      "sink_written": 272013,
+      "bytes": 134102409
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 5,
+      "fork_pid": 124609,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 268842,
+      "sink_written": 268842,
+      "bytes": 132539106
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 6,
+      "fork_pid": 124609,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 275440,
+      "sink_written": 275440,
+      "bytes": 135791920
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 7,
+      "fork_pid": 124609,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 271573,
+      "sink_written": 271573,
+      "bytes": 133885489
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 8,
+      "fork_pid": 124609,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 264808,
+      "sink_written": 264808,
+      "bytes": 130550344
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 1,
+      "fork_pid": 124660,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 95358,
+      "sink_written": 95358,
+      "bytes": 53494858
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 2,
+      "fork_pid": 124660,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 226817,
+      "sink_written": 226817,
+      "bytes": 127242533
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 3,
+      "fork_pid": 124660,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 239863,
+      "sink_written": 239863,
+      "bytes": 134561363
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 4,
+      "fork_pid": 124660,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 250547,
+      "sink_written": 250547,
+      "bytes": 140556867
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 5,
+      "fork_pid": 124660,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 222782,
+      "sink_written": 222782,
+      "bytes": 124978882
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 6,
+      "fork_pid": 124660,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 222899,
+      "sink_written": 222899,
+      "bytes": 125044519
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 7,
+      "fork_pid": 124660,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 224880,
+      "sink_written": 224880,
+      "bytes": 126155868
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 8,
+      "fork_pid": 124660,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 227127,
+      "sink_written": 227127,
+      "bytes": 127416451
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 1,
+      "fork_pid": 124704,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 147125,
+      "bytes": 82535913,
+      "sink_written": 147125
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 2,
+      "fork_pid": 124704,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 255983,
+      "bytes": 143606463,
+      "sink_written": 255983
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 3,
+      "fork_pid": 124704,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 234257,
+      "bytes": 131418177,
+      "sink_written": 234257
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 4,
+      "fork_pid": 124704,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 237030,
+      "bytes": 132973830,
+      "sink_written": 237030
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 5,
+      "fork_pid": 124704,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 237912,
+      "bytes": 133468632,
+      "sink_written": 237912
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 6,
+      "fork_pid": 124704,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 238730,
+      "bytes": 133927530,
+      "sink_written": 238730
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 7,
+      "fork_pid": 124704,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 238324,
+      "bytes": 133699764,
+      "sink_written": 238324
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 8,
+      "fork_pid": 124704,
+      "threads": 1,
+      "params": {},
+      "benchmark_calls": 236749,
+      "bytes": 132816189,
+      "sink_written": 236749
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 1,
+      "fork_pid": 124749,
+      "threads": 1,
+      "params": {},
+      "bytes": 76972463,
+      "sink_written": 137207,
+      "benchmark_calls": 137207
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 2,
+      "fork_pid": 124749,
+      "threads": 1,
+      "params": {},
+      "bytes": 129401943,
+      "sink_written": 230663,
+      "benchmark_calls": 230663
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "WARMUP",
+      "kind": "counting-stream",
+      "sequence": 3,
+      "fork_pid": 124749,
+      "threads": 1,
+      "params": {},
+      "bytes": 127832826,
+      "sink_written": 227866,
+      "benchmark_calls": 227866
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 4,
+      "fork_pid": 124749,
+      "threads": 1,
+      "params": {},
+      "bytes": 134407746,
+      "sink_written": 239586,
+      "benchmark_calls": 239586
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 5,
+      "fork_pid": 124749,
+      "threads": 1,
+      "params": {},
+      "bytes": 129821010,
+      "sink_written": 231410,
+      "benchmark_calls": 231410
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 6,
+      "fork_pid": 124749,
+      "threads": 1,
+      "params": {},
+      "bytes": 129410358,
+      "sink_written": 230678,
+      "benchmark_calls": 230678
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 7,
+      "fork_pid": 124749,
+      "threads": 1,
+      "params": {},
+      "bytes": 130937400,
+      "sink_written": 233400,
+      "benchmark_calls": 233400
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured",
+      "phase": "MEASUREMENT",
+      "kind": "counting-stream",
+      "sequence": 8,
+      "fork_pid": 124749,
+      "threads": 1,
+      "params": {},
+      "bytes": 129128736,
+      "sink_written": 230176,
+      "benchmark_calls": 230176
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "WARMUP",
+      "kind": "counting-writer",
+      "sequence": 1,
+      "fork_pid": 124801,
+      "threads": 1,
+      "params": {},
+      "sink_written": 232759,
+      "benchmark_calls": 232759,
+      "characters": 108465694
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "WARMUP",
+      "kind": "counting-writer",
+      "sequence": 2,
+      "fork_pid": 124801,
+      "threads": 1,
+      "params": {},
+      "sink_written": 367366,
+      "benchmark_calls": 367366,
+      "characters": 171192556
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "WARMUP",
+      "kind": "counting-writer",
+      "sequence": 3,
+      "fork_pid": 124801,
+      "threads": 1,
+      "params": {},
+      "sink_written": 396474,
+      "benchmark_calls": 396474,
+      "characters": 184756884
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 4,
+      "fork_pid": 124801,
+      "threads": 1,
+      "params": {},
+      "sink_written": 363577,
+      "benchmark_calls": 363577,
+      "characters": 169426882
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 5,
+      "fork_pid": 124801,
+      "threads": 1,
+      "params": {},
+      "sink_written": 365546,
+      "benchmark_calls": 365546,
+      "characters": 170344436
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 6,
+      "fork_pid": 124801,
+      "threads": 1,
+      "params": {},
+      "sink_written": 367633,
+      "benchmark_calls": 367633,
+      "characters": 171316978
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 7,
+      "fork_pid": 124801,
+      "threads": 1,
+      "params": {},
+      "sink_written": 360058,
+      "benchmark_calls": 360058,
+      "characters": 167787028
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 8,
+      "fork_pid": 124801,
+      "threads": 1,
+      "params": {},
+      "sink_written": 364084,
+      "benchmark_calls": 364084,
+      "characters": 169663144
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "WARMUP",
+      "kind": "counting-writer",
+      "sequence": 1,
+      "fork_pid": 124842,
+      "threads": 1,
+      "params": {},
+      "sink_written": 258952,
+      "characters": 120671632,
+      "benchmark_calls": 258952
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "WARMUP",
+      "kind": "counting-writer",
+      "sequence": 2,
+      "fork_pid": 124842,
+      "threads": 1,
+      "params": {},
+      "sink_written": 382884,
+      "characters": 178423944,
+      "benchmark_calls": 382884
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "WARMUP",
+      "kind": "counting-writer",
+      "sequence": 3,
+      "fork_pid": 124842,
+      "threads": 1,
+      "params": {},
+      "sink_written": 364783,
+      "characters": 169988878,
+      "benchmark_calls": 364783
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 4,
+      "fork_pid": 124842,
+      "threads": 1,
+      "params": {},
+      "sink_written": 371939,
+      "characters": 173323574,
+      "benchmark_calls": 371939
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 5,
+      "fork_pid": 124842,
+      "threads": 1,
+      "params": {},
+      "sink_written": 368112,
+      "characters": 171540192,
+      "benchmark_calls": 368112
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 6,
+      "fork_pid": 124842,
+      "threads": 1,
+      "params": {},
+      "sink_written": 365830,
+      "characters": 170476780,
+      "benchmark_calls": 365830
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 7,
+      "fork_pid": 124842,
+      "threads": 1,
+      "params": {},
+      "sink_written": 367988,
+      "characters": 171482408,
+      "benchmark_calls": 367988
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 8,
+      "fork_pid": 124842,
+      "threads": 1,
+      "params": {},
+      "sink_written": 362603,
+      "characters": 168972998,
+      "benchmark_calls": 362603
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "WARMUP",
+      "kind": "counting-writer",
+      "sequence": 1,
+      "fork_pid": 124879,
+      "threads": 1,
+      "params": {},
+      "sink_written": 222873,
+      "benchmark_calls": 222873,
+      "characters": 103858818
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "WARMUP",
+      "kind": "counting-writer",
+      "sequence": 2,
+      "fork_pid": 124879,
+      "threads": 1,
+      "params": {},
+      "sink_written": 351838,
+      "benchmark_calls": 351838,
+      "characters": 163956508
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "WARMUP",
+      "kind": "counting-writer",
+      "sequence": 3,
+      "fork_pid": 124879,
+      "threads": 1,
+      "params": {},
+      "sink_written": 354840,
+      "benchmark_calls": 354840,
+      "characters": 165355440
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 4,
+      "fork_pid": 124879,
+      "threads": 1,
+      "params": {},
+      "sink_written": 357485,
+      "benchmark_calls": 357485,
+      "characters": 166588010
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 5,
+      "fork_pid": 124879,
+      "threads": 1,
+      "params": {},
+      "sink_written": 361352,
+      "benchmark_calls": 361352,
+      "characters": 168390032
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 6,
+      "fork_pid": 124879,
+      "threads": 1,
+      "params": {},
+      "sink_written": 358574,
+      "benchmark_calls": 358574,
+      "characters": 167095484
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 7,
+      "fork_pid": 124879,
+      "threads": 1,
+      "params": {},
+      "sink_written": 358281,
+      "benchmark_calls": 358281,
+      "characters": 166958946
+    },
+    {
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
+      "phase": "MEASUREMENT",
+      "kind": "counting-writer",
+      "sequence": 8,
+      "fork_pid": 124879,
+      "threads": 1,
+      "params": {},
+      "sink_written": 359412,
+      "benchmark_calls": 359412,
+      "characters": 167485992
+    }
+  ],
+  "allocation_profiles": {
+    "literal": {
+      "events": 881,
+      "stream_samples": 181,
+      "classes": {
+        "[C": 2174751016,
+        "[B": 958587272,
+        "java/nio/HeapCharBuffer": 224619504,
+        "com/logyard4j/logyard/api/event/LogEventState": 194761736,
+        "java/time/Instant": 50275720,
+        "[Ljava/lang/Object;": 19895136,
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ExclusiveNode": 7660584,
+        "java/lang/StringBuilder": 523704,
+        "com/logyard4j/logyard/api/event/CaptureStructuralBudget": 523688,
+        "com/logyard4j/logyard/api/event/CaptureContext": 523688,
+        "com/logyard4j/logyard/api/event/CaptureTextBudget": 522696,
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionNode": 36768
+      },
+      "stream_sites": {
+        "sun/nio/cs/StreamEncoder.write <- java/io/OutputStreamWriter.write <- java/io/Writer.write <- com/logyard4j/logyard/output/json/stream/JsonLinesSink.accept <- com/logyard4j/logyard/core/delivery/FilteringSink.accept": 2174751016
+      },
+      "stream_encoder_samples_by_class": {
+        "[C": 181,
+        "java/nio/HeapCharBuffer": 87
+      }
+    },
+    "structured": {
+      "events": 960,
+      "stream_samples": 237,
+      "classes": {
+        "[C": 2274209464,
+        "java/nio/HeapCharBuffer": 973143240,
+        "[Ljava/lang/String;": 434946672,
+        "[B": 144359696,
+        "com/logyard4j/logyard/core/runtime/publication/EventDraft": 10474240,
+        "java/time/Instant": 9950528,
+        "java/util/Collections$UnmodifiableMap$UnmodifiableEntrySet$1": 9949216,
+        "com/logyard4j/logyard/api/event/CaptureTextBudget": 9426304,
+        "com/logyard4j/logyard/core/runtime/publication/CompiledRouteLease": 8903104,
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ExclusiveNode": 7619880,
+        "com.logyard4j.logyard.api.event.LogEventCapture$$Lambda/0x00007f62fc0b7cd0": 3665816,
+        "com/logyard4j/logyard/api/event/NormalizedAttributeKey": 2094808,
+        "com/logyard4j/logyard/api/event/AttributeAccumulator": 1571104,
+        "com/logyard4j/logyard/api/event/CaptureContext": 1047408,
+        "com/logyard4j/logyard/core/runtime/publication/PendingArguments": 1047408,
+        "com/logyard4j/logyard/core/runtime/publication/PendingAttributes$Entry": 1047392,
+        "[Ljava/lang/Object;": 1047376,
+        "com/logyard4j/logyard/api/event/AttributeSet": 1047376,
+        "com/logyard4j/logyard/api/event/AttributeSetBuilderState": 523704,
+        "java/util/ArrayList": 523696,
+        "com/logyard4j/logyard/api/event/LogEventState": 523688,
+        "java/util/concurrent/locks/AbstractQueuedSynchronizer$ConditionNode": 40880,
+        "java/util/concurrent/LinkedTransferQueue$DualNode": 13496,
+        "com.logyard4j.logyard.output.json.flush.TimedFlushController$$Lambda/0x00007f62fc105c70": 32
+      },
+      "stream_sites": {
+        "sun/nio/cs/StreamEncoder.write <- java/io/OutputStreamWriter.write <- java/io/Writer.write <- com/logyard4j/logyard/output/json/stream/JsonLinesSink.accept <- com/logyard4j/logyard/core/delivery/FilteringSink.accept": 2274209464
+      },
+      "stream_encoder_samples_by_class": {
+        "[C": 237,
+        "java/nio/HeapCharBuffer": 218
+      }
+    }
+  },
+  "profile_recording_sha256": {
+    "jfr-before/com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.literal-Throughput/profile.jfr": "65cd95bf268be73a1c2ad4b6ae04a50ec660ea9e3b89bb10bb08ed01ac5b7faa",
+    "jfr-before/com.logyard4j.logyard.benchmarks.output.JsonProcessStreamBenchmark.structured-Throughput/profile.jfr": "655e847a2d7e2a0bdf4edaf2ec999570f9bbb1752dbb98b455dff0edd80684f3"
+  },
+  "limitations": [
+    "Counting destination includes delimiter scanning and excludes operating-system I/O.",
+    "JFR allocation stacks were collected separately; profiler scores are excluded.",
+    "The direct Writer control measures a different boundary from the process-stream fixtures."
+  ]
+}

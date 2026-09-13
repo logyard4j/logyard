@@ -18,6 +18,8 @@ def required_scenarios(suite: str) -> list[tuple[str, dict[str, str], str]]:
         + [(PREFIX + "delivery.OverflowPolicyBenchmark.overflow", {"action": action}, "thrpt") for action in ("DROP", "WAIT_DROP", "BLOCK", "STDERR")]
         + [(PREFIX + "delivery.SynchronousOverflowBenchmark.synchronousFallback", {}, "ss")]
         + [(PREFIX + "output.JsonSinkBenchmark." + method, {}, "thrpt") for method in JSON_METHODS]
+        + [(PREFIX + "output.JsonProcessStreamBenchmark." + method, {}, "thrpt")
+           for method in ("literal", "arguments", "structured")]
         + [(PREFIX + "ingress.Slf4jProviderFirstCallBenchmark.firstCall", {}, "ss"),
            (PREFIX + "ingress.Slf4jProviderRecoveryBenchmark.recoverAfterManagedShutdown", {}, "ss")]
     )
@@ -63,10 +65,11 @@ def reconcile(record: dict[str, Any]) -> None:
     calls = count("benchmark_calls")
     if calls == 0:
         raise ValueError("measurement contains no benchmark calls")
-    if record["kind"] in ("file", "counting-writer"):
+    if record["kind"] in ("file", "counting-writer", "counting-stream"):
         if calls != count("sink_written"):
             raise ValueError("calls and completed records differ")
-        if count("file_bytes" if record["kind"] == "file" else "characters") == 0:
+        units = {"file": "file_bytes", "counting-writer": "characters", "counting-stream": "bytes"}
+        if count(units[record["kind"]]) == 0:
             raise ValueError("completed output is empty")
         return
     attempted, accepted = count("attempted"), count("accepted")

@@ -31,6 +31,14 @@ class BenchmarkDeliveryTest(unittest.TestCase):
                   "mode": "thrpt", "primaryMetric": {"score": 1}}
         self.assertTrue(any("finite ss" in failure for failure in check([result], [], "smoke")))
 
+    def test_byte_stream_evidence_requires_every_record_and_nonempty_output(self) -> None:
+        record = {"kind": "counting-stream", "benchmark_calls": 10, "sink_written": 10, "bytes": 100}
+        reconcile(record)
+        with self.assertRaisesRegex(ValueError, "completed records"):
+            reconcile(record | {"sink_written": 9})
+        with self.assertRaisesRegex(ValueError, "output is empty"):
+            reconcile(record | {"bytes": 0})
+
 
 def admission() -> dict[str, object]:
     return {"kind": "admission", "benchmark_calls": 10, "primed": 0, "attempted": 10,
