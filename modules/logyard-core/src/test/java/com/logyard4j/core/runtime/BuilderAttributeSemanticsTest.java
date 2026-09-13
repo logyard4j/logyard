@@ -14,12 +14,59 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class BuilderAttributeSemanticsTest {
+    @Test
+    void distinguishesDirectSupplierObjectsAndCapturesOnlyTheFinalLazyDeclaration() {
+        List<LogEvent> events = new ArrayList<>();
+        AtomicInteger evaluations = new AtomicInteger();
+        StringBuilder mutable = new StringBuilder("declared");
+        Thread caller = Thread.currentThread();
+        Supplier<Object> direct = new Supplier<>() {
+            @Override
+            public Object get() {
+                throw new AssertionError("direct supplier object evaluated");
+            }
+
+            @Override
+            public String toString() {
+                return "direct value";
+            }
+        };
+        try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
+            var builder = runtime.logger("test.Declarations").atInfo()
+                    .add("direct", direct)
+                    .add("missing", null)
+                    .addLazy("replaced", () -> { throw new AssertionError("replaced supplier evaluated"); })
+                    .add("replaced", 42L)
+                    .add("lazy", "old")
+                    .addLazy("lazy", () -> {
+                        assertSame(caller, Thread.currentThread());
+                        evaluations.incrementAndGet();
+                        return mutable;
+                    });
+            assertEquals(0, evaluations.get());
+            mutable.replace(0, mutable.length(), "captured");
+            builder.log("declarations");
+            mutable.replace(0, mutable.length(), "later");
+        }
+        assertEquals(1, evaluations.get());
+        assertEquals(1, events.size());
+        Map<String, Object> attributes = events.getFirst().attributes().toMap();
+        assertEquals("direct value", attributes.get("direct"));
+        assertTrue(attributes.containsKey("missing"));
+        assertNull(attributes.get("missing"));
+        assertEquals(42L, attributes.get("replaced"));
+        assertEquals("captured", attributes.get("lazy"));
+    }
+
     @Test
     void addAllMergesPrebuiltSetsAndNullValuesStayEager() {
         RecordingSink sink = new RecordingSink();

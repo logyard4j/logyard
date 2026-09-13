@@ -18,11 +18,11 @@ final class PendingAttributes {
     private boolean captureTruncated;
 
     void add(String key, Object value) {
-        add(new Entry(AttributeKey.normalize(key, false), PendingValue.direct(value), null, 0));
+        add(new Entry(AttributeKey.normalize(key, false), value, null, null, 0));
     }
 
     void add(String key, Supplier<?> supplier) {
-        add(new Entry(AttributeKey.normalize(key, false), PendingValue.supplied(supplier), null, 0));
+        add(new Entry(AttributeKey.normalize(key, false), null, Objects.requireNonNull(supplier, "valueSupplier"), null, 0));
     }
 
     void addAll(AttributeSet source) {
@@ -30,7 +30,7 @@ final class PendingAttributes {
         captureTruncated |= CapturedAttributeAccess.truncated(source);
         for (int index = 0; index < source.size(); index++) {
             String key = source.keyAt(index);
-            add(new Entry(new NormalizedAttributeKey(key, key, false), null, source, index));
+            add(new Entry(new NormalizedAttributeKey(key, key, false), null, null, source, index));
         }
     }
 
@@ -42,7 +42,7 @@ final class PendingAttributes {
                 CapturedAttributeAccess.copyEntry(captured, entry.source, entry.index);
             } else {
                 // The builder replaces existing keys even when full, without evaluating dropped suppliers.
-                captured.putSupplied(entry.key.original(), entry.value::resolve);
+                captured.putSupplied(entry.key.original(), entry);
             }
         }
         if (truncated) captured.markTruncated();
@@ -73,7 +73,13 @@ final class PendingAttributes {
         captureTruncated = false;
     }
 
-    private record Entry(NormalizedAttributeKey key, PendingValue value, AttributeSet source, int index) {
+    private record Entry(NormalizedAttributeKey key, Object value, Supplier<?> supplier, AttributeSet source, int index)
+            implements Supplier<Object> {
+        @Override
+        public Object get() {
+            return supplier == null ? value : supplier.get();
+        }
+
         boolean normalizedCapture() {
             return source != null && CapturedAttributeAccess.normalizedKey(source, index);
         }

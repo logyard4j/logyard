@@ -8,6 +8,8 @@ The [capture text experiment](evidence/capture-text.md) and [attribute snapshot 
 
 The [capture handoff simplification](evidence/capture-handoff.md) removes an intermediate event type; its main allocation fixtures were unchanged.
 
+The [structured-field declaration experiment](evidence/attribute-declarations.md) removes per-field wrappers and records its allocation benefit and MDC follow-up checks.
+
 The [UTF-8 file experiment](evidence/utf8-file-output.md) measures reusable record storage and direct integer formatting through real file output.
 
 The [provider comparison](comparison/README.md) adds isolated Logyard, Logback, and Log4j asynchronous delivery experiments with shared or native JSON encoding, matched fields, actual file writes, scheduled arrivals, and drain reconciliation.
