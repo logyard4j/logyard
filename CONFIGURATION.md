@@ -78,7 +78,7 @@ From a Zolt project that depends on Logyard, validate a file without starting th
 ```sh
 zolt build
 java -cp "$(zolt classpath runtime)" \
-  com.logyard4j.runtime.tools.LogyardConfigTool validate logyard.toml
+  com.logyard4j.logyard.runtime.tools.LogyardConfigTool validate logyard.toml
 ```
 
 Use the same command with these arguments:

@@ -1,0 +1,2 @@
+com.logyard4j.logyard.tests.extensions.TestEnricherProvider
+com.logyard4j.logyard.tests.extensions.TestFilterProvider

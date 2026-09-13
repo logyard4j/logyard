@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 
-PREFIX = "com.logyard4j."
+PREFIX = "com.logyard4j.logyard."
 MAX_NEW_PRODUCTION_LINES = 220
 MAX_GRANDFATHERED_PRODUCTION_LINES = 300
 MAX_TEST_OR_EXAMPLE_LINES = 300
@@ -91,28 +91,28 @@ EXPECTED_DEPENDENCIES = {
 }
 
 ARTIFACT_MODULES = {
-    "modules/logyard-test": "com.logyard4j.test",
-    "modules/logyard-api": "com.logyard4j.api",
-    "modules/logyard-core": "com.logyard4j.core",
-    "modules/logyard-config-toml": "com.logyard4j.config.toml",
-    "modules/logyard-output-console": "com.logyard4j.output.console",
-    "modules/logyard-output-json": "com.logyard4j.output.json",
-    "modules/logyard-runtime": "com.logyard4j.runtime",
-    "modules/logyard-slf4j2": "com.logyard4j.slf4j2",
-    "modules/logyard-opentelemetry": "com.logyard4j.opentelemetry",
-    "modules/logyard-spring-boot": "com.logyard4j.spring.boot",
-    "modules/logyard-spring-boot-starter": "com.logyard4j.spring.boot.starter",
-    "modules/logyard-jul": "com.logyard4j.jul",
-    "modules/logyard-system-logger": "com.logyard4j.system.logger",
+    "modules/logyard-test": "com.logyard4j.logyard.test",
+    "modules/logyard-api": "com.logyard4j.logyard.api",
+    "modules/logyard-core": "com.logyard4j.logyard.core",
+    "modules/logyard-config-toml": "com.logyard4j.logyard.config.toml",
+    "modules/logyard-output-console": "com.logyard4j.logyard.output.console",
+    "modules/logyard-output-json": "com.logyard4j.logyard.output.json",
+    "modules/logyard-runtime": "com.logyard4j.logyard.runtime",
+    "modules/logyard-slf4j2": "com.logyard4j.logyard.slf4j2",
+    "modules/logyard-opentelemetry": "com.logyard4j.logyard.opentelemetry",
+    "modules/logyard-spring-boot": "com.logyard4j.logyard.spring.boot",
+    "modules/logyard-spring-boot-starter": "com.logyard4j.logyard.spring.boot.starter",
+    "modules/logyard-jul": "com.logyard4j.logyard.jul",
+    "modules/logyard-system-logger": "com.logyard4j.logyard.system.logger",
 }
 
 SERVICE_CONTRACTS = {
-    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.logyard4j.api.spi.output.OutputProvider": ["com.logyard4j.opentelemetry.OtelOutputProvider"],
-    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.logyard4j.api.spi.context.ContextProvider": ["com.logyard4j.opentelemetry.OpenTelemetryContextProvider"],
-    "modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider": ["com.logyard4j.slf4j.LogyardServiceProvider"],
-    "modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder": ["com.logyard4j.systemlogger.LogyardLoggerFinder"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.formatting.TextFormatterProvider": ["com.logyard4j.tests.extensions.TestFormatterProvider"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.encoding.EventEncoderProvider": ["com.logyard4j.tests.extensions.TestEncoderProvider"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.processing.EventProcessorProvider": ["com.logyard4j.tests.extensions.TestEnricherProvider", "com.logyard4j.tests.extensions.TestFilterProvider"],
-    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.api.spi.output.OutputProvider": ["com.logyard4j.tests.extensions.TestOutputProvider"],
+    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.logyard4j.logyard.api.spi.output.OutputProvider": ["com.logyard4j.logyard.opentelemetry.OtelOutputProvider"],
+    "modules/logyard-opentelemetry/src/main/resources/META-INF/services/com.logyard4j.logyard.api.spi.context.ContextProvider": ["com.logyard4j.logyard.opentelemetry.OpenTelemetryContextProvider"],
+    "modules/logyard-slf4j2/src/main/resources/META-INF/services/org.slf4j.spi.SLF4JServiceProvider": ["com.logyard4j.logyard.slf4j.LogyardServiceProvider"],
+    "modules/logyard-system-logger/src/main/resources/META-INF/services/java.lang.System$LoggerFinder": ["com.logyard4j.logyard.systemlogger.LogyardLoggerFinder"],
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.logyard.api.spi.formatting.TextFormatterProvider": ["com.logyard4j.logyard.tests.extensions.TestFormatterProvider"],
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.logyard.api.spi.encoding.EventEncoderProvider": ["com.logyard4j.logyard.tests.extensions.TestEncoderProvider"],
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.logyard.api.spi.processing.EventProcessorProvider": ["com.logyard4j.logyard.tests.extensions.TestEnricherProvider", "com.logyard4j.logyard.tests.extensions.TestFilterProvider"],
+    "tests/logyard-integration-tests/src/main/resources/META-INF/services/com.logyard4j.logyard.api.spi.output.OutputProvider": ["com.logyard4j.logyard.tests.extensions.TestOutputProvider"],
 }

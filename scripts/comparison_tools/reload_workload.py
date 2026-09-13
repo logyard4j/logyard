@@ -143,7 +143,7 @@ def execute(built: BuiltProvider, run: Path, java: str, events: int = 50_000, ra
     arguments = ["-Xms256m", "-Xmx256m"]
     with log.open("w", encoding="utf-8") as output:
         completed = subprocess.run([java, *arguments, "-cp", built.classpath,
-                                    "com.logyard4j.compare.ReloadDeliveryMain", str(directory), str(events), str(rate)],
+                                    "com.logyard4j.logyard.compare.ReloadDeliveryMain", str(directory), str(events), str(rate)],
                                    cwd=built.directory, stdout=output, stderr=subprocess.STDOUT, timeout=120)
     if completed.returncode:
         raise RuntimeError(f"reload workload failed; see {log}\n{log.read_text()[-4000:]}")

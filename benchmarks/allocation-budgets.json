@@ -1,249 +1,249 @@
 {
   "budgets": [
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.AdapterGuardBenchmark.enterAndExit",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.AdapterGuardBenchmark.enterAndExit",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.delivery.AsyncDeliveryBenchmark.oneProducer",
+      "benchmark": "com.logyard4j.logyard.benchmarks.delivery.AsyncDeliveryBenchmark.oneProducer",
       "maxBytesPerOperation": 112
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.delivery.CompositeSinkBenchmark.success",
+      "benchmark": "com.logyard4j.logyard.benchmarks.delivery.CompositeSinkBenchmark.success",
       "params": {"sinkCount": "1"},
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.delivery.CompositeSinkBenchmark.success",
+      "benchmark": "com.logyard4j.logyard.benchmarks.delivery.CompositeSinkBenchmark.success",
       "params": {"sinkCount": "2"},
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.delivery.CompositeSinkBenchmark.success",
+      "benchmark": "com.logyard4j.logyard.benchmarks.delivery.CompositeSinkBenchmark.success",
       "params": {"sinkCount": "4"},
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.jsonEncoding",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.jsonEncoding",
       "maxBytesPerOperation": 2048
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.ConcurrentJsonEncoderBenchmark.encodeOnSharedInstance",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.ConcurrentJsonEncoderBenchmark.encodeOnSharedInstance",
       "maxBytesPerOperation": 2048
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.redactionWithoutMatch",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.redactionWithoutMatch",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.nestedRedactionWithoutMatch",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.nestedRedactionWithoutMatch",
       "maxBytesPerOperation": 512
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.rejectedRecursiveChoiceExpansion",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.rejectedRecursiveChoiceExpansion",
       "maxBytesPerOperation": 1048576
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.rejectedDefaultNumberExpansion",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.rejectedDefaultNumberExpansion",
       "maxBytesPerOperation": 1048576
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.literalMessage",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.literalMessage",
       "maxBytesPerOperation": 256
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.messageFormatOneString",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatOneString",
       "maxBytesPerOperation": 4096
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.messageFormatTwoStrings",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatTwoStrings",
       "maxBytesPerOperation": 4096
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.messageFormatNumber",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatNumber",
       "maxBytesPerOperation": 6144
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.messageFormatDate",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatDate",
       "maxBytesPerOperation": 16384
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.messageFormatChoice",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.messageFormatChoice",
       "maxBytesPerOperation": 8192
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.printfString",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.printfString",
       "maxBytesPerOperation": 4096
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.printfNumber",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.printfNumber",
       "maxBytesPerOperation": 4096
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.encoding.EncodingBenchmark.printfDate",
+      "benchmark": "com.logyard4j.logyard.benchmarks.encoding.EncodingBenchmark.printfDate",
       "maxBytesPerOperation": 8192
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.ContextPolicyBenchmark.fixedConfiguration",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.ContextPolicyBenchmark.fixedConfiguration",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.ContextPolicyBenchmark.reloadAwareConfiguration",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.ContextPolicyBenchmark.reloadAwareConfiguration",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.NativeIngressBenchmark.disabled",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.NativeIngressBenchmark.disabled",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.NativeIngressBenchmark.enabledOneArgument",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.NativeIngressBenchmark.enabledOneArgument",
       "maxBytesPerOperation": 432
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.NativeIngressBenchmark.twoOutputFanout",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.NativeIngressBenchmark.twoOutputFanout",
       "maxBytesPerOperation": 400
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jIngressBenchmark.enabledEmptyMdc",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.Slf4jIngressBenchmark.enabledEmptyMdc",
       "maxBytesPerOperation": 640
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jProviderBenchmark.disabled",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.Slf4jProviderBenchmark.disabled",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jProviderBenchmark.disabledClassic",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.Slf4jProviderBenchmark.disabledClassic",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jProviderBenchmark.disabledFluentSupplier",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.Slf4jProviderBenchmark.disabledFluentSupplier",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jIngressBenchmark.disabled",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.Slf4jIngressBenchmark.disabled",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jProviderBenchmark.enabledOneProducer",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.Slf4jProviderBenchmark.enabledOneProducer",
       "maxBytesPerOperation": 1536
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jProviderBenchmark.enabledFourProducers",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.Slf4jProviderBenchmark.enabledFourProducers",
       "maxBytesPerOperation": 1536
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jProviderBenchmark.enabledSixteenProducers",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.Slf4jProviderBenchmark.enabledSixteenProducers",
       "maxBytesPerOperation": 1536
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.Slf4jProviderBenchmark.enabledPopulatedMdc",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.Slf4jProviderBenchmark.enabledPopulatedMdc",
       "maxBytesPerOperation": 2048
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.CapturedEventAllocationBenchmark.smallEvent",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.CapturedEventAllocationBenchmark.smallEvent",
       "maxBytesPerOperation": 513
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.CapturedEventAllocationBenchmark.structuredEvent",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.CapturedEventAllocationBenchmark.structuredEvent",
       "maxBytesPerOperation": 1536
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.CapturedEventAllocationBenchmark.fluentArgument",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.CapturedEventAllocationBenchmark.fluentArgument",
       "maxBytesPerOperation": 896
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.ingress.CapturedEventAllocationBenchmark.exceptionEvent",
+      "benchmark": "com.logyard4j.logyard.benchmarks.ingress.CapturedEventAllocationBenchmark.exceptionEvent",
       "maxBytesPerOperation": 4096
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.management.LoggerManagementBenchmark.listAllLevels",
+      "benchmark": "com.logyard4j.logyard.benchmarks.management.LoggerManagementBenchmark.listAllLevels",
       "params": {"loggerCount": "1000"},
       "maxBytesPerOperation": 1572864
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.management.LoggerManagementBenchmark.listAllLevels",
+      "benchmark": "com.logyard4j.logyard.benchmarks.management.LoggerManagementBenchmark.listAllLevels",
       "params": {"loggerCount": "10000"},
       "maxBytesPerOperation": 15728640
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.management.LoggerManagementBenchmark.pointLevel",
+      "benchmark": "com.logyard4j.logyard.benchmarks.management.LoggerManagementBenchmark.pointLevel",
       "params": {"loggerCount": "1000"},
       "maxBytesPerOperation": 4096
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.management.LoggerManagementBenchmark.pointLevel",
+      "benchmark": "com.logyard4j.logyard.benchmarks.management.LoggerManagementBenchmark.pointLevel",
       "params": {"loggerCount": "10000"},
       "maxBytesPerOperation": 4096
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.output.TimedFlushBenchmark.recordWhileFlushPending",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.TimedFlushBenchmark.recordWhileFlushPending",
       "maxBytesPerOperation": 1
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directStream",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directStream",
       "maxBytesPerOperation": 2048
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directFileMechanics",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directFileMechanics",
       "maxBytesPerOperation": 256
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.directFile",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.directFile",
       "maxBytesPerOperation": 2048
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFile",
       "maxBytesPerOperation": 3072
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFileLiteral",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeFileLiteral",
       "maxBytesPerOperation": 1536
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeJson",
+      "benchmark": "com.logyard4j.logyard.benchmarks.output.JsonSinkBenchmark.synchronousRuntimeJson",
       "maxBytesPerOperation": 3072
     },
     {
-      "benchmark": "com.logyard4j.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
+      "benchmark": "com.logyard4j.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
       "params": {"mdcEntries": "0"},
       "maxBytesPerOperation": 5376
     },
     {
-      "benchmark": "com.logyard4j.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
+      "benchmark": "com.logyard4j.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
       "params": {"mdcEntries": "1"},
       "maxBytesPerOperation": 5632
     },
     {
-      "benchmark": "com.logyard4j.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
+      "benchmark": "com.logyard4j.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapFreshRecord",
       "params": {"mdcEntries": "4"},
       "maxBytesPerOperation": 6656
     },
     {
-      "benchmark": "com.logyard4j.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
+      "benchmark": "com.logyard4j.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "0"},
       "maxBytesPerOperation": 2816
     },
     {
-      "benchmark": "com.logyard4j.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
+      "benchmark": "com.logyard4j.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "1"},
       "maxBytesPerOperation": 2816
     },
     {
-      "benchmark": "com.logyard4j.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
+      "benchmark": "com.logyard4j.logyard.quarkus.runtime.logging.QuarkusEventMappingBenchmark.mapCopiedRecord",
       "params": {"mdcEntries": "4"},
       "maxBytesPerOperation": 3328
     }
   ],
   "scalingBudgets": [
     {
-      "benchmark": "com.logyard4j.benchmarks.management.LoggerManagementBenchmark.listAllLevels",
+      "benchmark": "com.logyard4j.logyard.benchmarks.management.LoggerManagementBenchmark.listAllLevels",
       "smallParams": {"loggerCount": "1000"},
       "largeParams": {"loggerCount": "10000"},
       "maxAllocationRatio": 12,
       "maxTimeRatio": 15
     },
     {
-      "benchmark": "com.logyard4j.benchmarks.management.LoggerManagementBenchmark.pointLevel",
+      "benchmark": "com.logyard4j.logyard.benchmarks.management.LoggerManagementBenchmark.pointLevel",
       "smallParams": {"loggerCount": "1000"},
       "largeParams": {"loggerCount": "10000"},
       "maxAllocationRatio": 2,

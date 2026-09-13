@@ -1,0 +1,28 @@
+package com.logyard4j.logyard.runtime.installation.process;
+
+/** Result of one atomic lifecycle-shutdown decision. */
+record RuntimeShutdownPlan(
+        boolean accepted,
+        RuntimeRetirementPlan retirement,
+        RuntimeStartTransaction cancelledStart) {
+
+    static RuntimeShutdownPlan rejected() {
+        return new RuntimeShutdownPlan(false, RuntimeRetirementPlan.none(), null);
+    }
+
+    static RuntimeShutdownPlan allow() {
+        return new RuntimeShutdownPlan(true, RuntimeRetirementPlan.none(), null);
+    }
+
+    static RuntimeShutdownPlan cancel(RuntimeStartTransaction start) {
+        return new RuntimeShutdownPlan(true, RuntimeRetirementPlan.none(), start);
+    }
+
+    static RuntimeShutdownPlan retire(RuntimeRetirementPlan retirement) {
+        return new RuntimeShutdownPlan(true, retirement, null);
+    }
+
+    static RuntimeShutdownPlan join(RuntimeRetirementTransaction retirement) {
+        return retire(RuntimeRetirementPlan.close(retirement));
+    }
+}

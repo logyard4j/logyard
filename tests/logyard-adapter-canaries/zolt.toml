@@ -3,7 +3,7 @@ name = "logyard-adapter-canaries"
 version = "0.1.0-rc.1"
 group = "com.logyard4j"
 java = 21
-main = "com.logyard4j.canaries.RuntimeCanaries"
+main = "com.logyard4j.logyard.canaries.RuntimeCanaries"
 
 [dependencies]
 "com.logyard4j:logyard-api" = { workspace = true }

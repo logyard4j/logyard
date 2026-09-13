@@ -1,7 +1,7 @@
 [project]
 name = "logyard-quarkus-example"
 version = "1.0.0-SNAPSHOT"
-group = "com.logyard4j.examples"
+group = "com.logyard4j.logyard.examples"
 java = 21
 
 [platforms]

@@ -39,7 +39,7 @@ sources = true
 javadoc = true
 
 [package.manifest]
-"Automatic-Module-Name" = "com.logyard4j.opentelemetry"
+"Automatic-Module-Name" = "com.logyard4j.logyard.opentelemetry"
 
 [publish.signing]
 method = "gpg"

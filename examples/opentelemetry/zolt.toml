@@ -1,9 +1,9 @@
 [project]
 name = "logyard-opentelemetry-example"
 version = "1.0.0-SNAPSHOT"
-group = "com.logyard4j.examples"
+group = "com.logyard4j.logyard.examples"
 java = 21
-main = "com.logyard4j.examples.opentelemetry.OpenTelemetryExampleApplication"
+main = "com.logyard4j.logyard.examples.opentelemetry.OpenTelemetryExampleApplication"
 
 [platforms]
 "com.logyard4j:logyard-bom" = "0.1.0-rc.1"

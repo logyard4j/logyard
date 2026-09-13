@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 from typing import Any
 
-PREFIX = "com.logyard4j.benchmarks."
+PREFIX = "com.logyard4j.logyard.benchmarks."
 JSON_METHODS = ("directFile", "directFileMechanics", "directStream", "synchronousRuntimeJson",
                 "synchronousRuntimeFile", "synchronousRuntimeFileLiteral")
 

@@ -40,6 +40,13 @@ require_entry() {
   "$JAR" tf "$archive" | grep -Fx "$entry" >/dev/null || fail "$(basename "$archive") is missing $entry"
 }
 
+require_namespace() {
+  local archive="$1"
+  if "$JAR" tf "$archive" | grep -E '\.(class|java)$' | grep -Ev '^com/logyard4j/logyard/' >/dev/null; then
+    fail "$(basename "$archive") contains classes or sources outside com.logyard4j.logyard"
+  fi
+}
+
 find_dependency() {
   local filename="$1"
   local candidate search_root user_home
@@ -84,6 +91,8 @@ for index in "${!members[@]}"; do
   "$JAR" tf "$main" | grep -E '\.class$' >/dev/null || fail "$member main jar has no classes"
   "$JAR" tf "$sources" | grep -E '\.java$' >/dev/null || fail "$member sources jar has no Java sources"
   require_entry "$javadoc" "index.html"
+  require_namespace "$main"
+  require_namespace "$sources"
   PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.legal_notices "$ROOT" "$main"
   if "$JAR" tf "$main" | grep -E '(^org/junit/|Test\.class$)' >/dev/null; then
     fail "$member main jar contains test classes or JUnit substitutes"
@@ -119,6 +128,8 @@ while IFS=$'\t' read -r module_path member module_name version artifact_count; d
   "$JAR" tf "$main" | grep -E '\.class$' >/dev/null || fail "$member main jar has no classes"
   "$JAR" tf "$sources" | grep -E '\.java$' >/dev/null || fail "$member sources jar has no Java sources"
   require_entry "$javadoc" "index.html"
+  require_namespace "$main"
+  require_namespace "$sources"
   PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.legal_notices "$ROOT" "$main"
   if "$JAR" tf "$main" | grep -E '(^org/junit/|Test\.class$)' >/dev/null; then
     fail "$member main jar contains test classes or JUnit substitutes"
@@ -149,7 +160,7 @@ require_entry "$ROOT/modules/logyard-slf4j2/target/logyard-slf4j2-$VERSION.jar" 
 require_entry "$ROOT/modules/logyard-system-logger/target/logyard-system-logger-$VERSION.jar" \
   'META-INF/services/java.lang.System$LoggerFinder'
 require_entry "$ROOT/modules/logyard-opentelemetry/target/logyard-opentelemetry-$VERSION.jar" \
-  'META-INF/services/com.logyard4j.api.spi.context.ContextProvider'
+  'META-INF/services/com.logyard4j.logyard.api.spi.context.ContextProvider'
 
 slf4j_api="$(find_dependency 'slf4j-api-2.0.18.jar')"
 [[ -n "$slf4j_api" ]] || fail "slf4j-api-2.0.18.jar is not available in the Zolt cache"
@@ -184,11 +195,11 @@ extension_classes="$(logyard_native_path "$TARGET/extensions")"
   "${extension_sources[@]}"
 cp -R "$ROOT/tests/logyard-integration-tests/src/main/resources/." "$TARGET/extensions/"
 "$JAVA" -cp "$packaged_classpath$classpath_separator$extension_classes" \
-  com.logyard4j.tests.CoreVerificationMain
+  com.logyard4j.logyard.tests.CoreVerificationMain
 
 cat > "$TARGET/PackagedFacadeCanary.java" <<'JAVA'
-import com.logyard4j.runtime.bootstrap.LogyardBootstrap;
-import com.logyard4j.runtime.bootstrap.RuntimeBundle;
+import com.logyard4j.logyard.runtime.bootstrap.LogyardBootstrap;
+import com.logyard4j.logyard.runtime.bootstrap.RuntimeBundle;
 import org.slf4j.LoggerFactory;
 import org.slf4j.spi.SLF4JServiceProvider;
 

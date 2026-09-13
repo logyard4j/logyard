@@ -16,7 +16,7 @@ def spring_boot_example(
     omit_config: bool = False,
     runtime_arguments: tuple[str, ...] | None = None,
 ) -> HttpExample:
-    controller = "com.logyard4j.examples.springboot.SpringBootExampleController"
+    controller = "com.logyard4j.logyard.examples.springboot.SpringBootExampleController"
     current = framework_versions(root)["spring_boot_current"]
     replacements = [
         (f'"org.springframework.boot:spring-boot-dependencies" = "{current}"',
@@ -41,7 +41,7 @@ def spring_boot_example(
         ZoltExample(
             name=f"spring-boot-{variant}",
             project_directory=root / "examples" / "spring-boot",
-            main_class="com.logyard4j.examples.springboot.SpringBootExampleApplication",
+            main_class="com.logyard4j.logyard.examples.springboot.SpringBootExampleApplication",
             replacements=tuple(replacements),
             omit_config=omit_config,
             runtime_arguments=runtime_arguments

@@ -4,6 +4,8 @@
 
 All integrations share one process-wide runtime and the same [TOML configuration](CONFIGURATION.md). Use Java 21+ and the same version for every Logyard dependency.
 
+Java packages use `com.logyard4j.logyard.*`. Applications upgrading from earlier RC checkouts should follow the [package migration note](EXTENDING.md#supported-api).
+
 Choose your build tool below and merge the snippet into your existing build file. Gradle examples use Kotlin DSL.
 
 ## SLF4J, Vert.x, and Micronaut
@@ -242,9 +244,9 @@ dependencies {
 Start the runtime for the lifetime of your application:
 
 ```java
-import com.logyard4j.api.LogyardLogger;
-import com.logyard4j.runtime.bootstrap.LogyardBootstrap;
-import com.logyard4j.runtime.bootstrap.RuntimeBundle;
+import com.logyard4j.logyard.api.LogyardLogger;
+import com.logyard4j.logyard.runtime.bootstrap.LogyardBootstrap;
+import com.logyard4j.logyard.runtime.bootstrap.RuntimeBundle;
 
 try (RuntimeBundle logyard = LogyardBootstrap.start()) {
     LogyardLogger log = logyard.runtime().logger("com.example.checkout");
@@ -271,7 +273,7 @@ Use `argumentLazy(supplier)` for lazy message arguments and `addAll(attributes)`
 Attach request context with a scope, and stable component context with `with`:
 
 ```java
-import com.logyard4j.api.context.LogContext;
+import com.logyard4j.logyard.api.context.LogContext;
 
 var orders = log.with("component", "orders");
 try (var scope = LogContext.push("request.id", "req-42")) {
@@ -284,8 +286,8 @@ Explicit event fields override `with` fields, which override scoped fields. Scop
 Applications can pass an explicit source to `LogyardBootstrap.start(source)`. Framework integrations acquire their own lease:
 
 ```java
-import com.logyard4j.runtime.bootstrap.LogyardConfigurationSource;
-import com.logyard4j.runtime.bootstrap.RuntimeOwner;
+import com.logyard4j.logyard.runtime.bootstrap.LogyardConfigurationSource;
+import com.logyard4j.logyard.runtime.bootstrap.RuntimeOwner;
 
 LogyardConfigurationSource source = LogyardConfigurationSource.classpath(
         applicationClassLoader, "logging/logyard.toml", applicationDirectory);
@@ -341,7 +343,7 @@ dependencies {
 Select the handler in `logging.properties`:
 
 ```properties
-handlers=com.logyard4j.jul.LogyardHandler
+handlers=com.logyard4j.logyard.jul.LogyardHandler
 .level=ALL
 ```
 
@@ -437,14 +439,14 @@ Logyard captures valid active trace IDs, span IDs, flags, and only the named bag
 
 Logyard and compact JSON keep `trace_id`, `span_id`, `trace_flags`, and `baggage.tenant.id` in their attribute object. ECS projects trace identity to `trace.id`, `span.id`, and `logyard.trace_flags`; baggage becomes a label.
 
-Your application or instrumentation must propagate context across executors and framework callbacks. Logyard does not create spans or propagate context automatically. See the [executor example](examples/opentelemetry) and the Spring Boot example's [`/trace` endpoint](examples/spring-boot/src/main/java/com/logyard4j/examples/springboot/TraceExampleController.java).
+Your application or instrumentation must propagate context across executors and framework callbacks. Logyard does not create spans or propagate context automatically. See the [executor example](examples/opentelemetry) and the Spring Boot example's [`/trace` endpoint](examples/spring-boot/src/main/java/com/logyard4j/logyard/examples/springboot/TraceExampleController.java).
 
 ### Forward to an OpenTelemetry SDK
 
 Install your **configured, application-owned SDK** before starting Logyard:
 
 ```java
-import com.logyard4j.opentelemetry.LogyardOpenTelemetry;
+import com.logyard4j.logyard.opentelemetry.LogyardOpenTelemetry;
 
 LogyardOpenTelemetry.install(applicationSdk);
 ```
@@ -582,8 +584,8 @@ dependencies {
 Inject a kit logger or runtime into the code under test:
 
 ```java
-import com.logyard4j.api.Level;
-import com.logyard4j.test.LogyardTestKit;
+import com.logyard4j.logyard.api.Level;
+import com.logyard4j.logyard.test.LogyardTestKit;
 
 try (LogyardTestKit kit = LogyardTestKit.isolated()) {
     kit.logger("checkout").atInfo().add("order.id", 7L).log("order accepted");

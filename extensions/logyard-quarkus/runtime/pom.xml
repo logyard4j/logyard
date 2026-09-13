@@ -101,7 +101,7 @@
                 <configuration>
                     <archive>
                         <manifestEntries>
-                            <Automatic-Module-Name>com.logyard4j.quarkus</Automatic-Module-Name>
+                            <Automatic-Module-Name>com.logyard4j.logyard.quarkus</Automatic-Module-Name>
                         </manifestEntries>
                     </archive>
                 </configuration>

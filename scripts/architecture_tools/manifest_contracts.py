@@ -71,7 +71,7 @@ def _check_workspace_version(root: Path, manifest_versions: dict[str, str], stat
         state.add_error("workspace versions must move together: " + ", ".join(f"{path}={version}" for path, version in sorted(manifest_versions.items())))
         return
     version = next(iter(versions))
-    version_source = root / "modules/logyard-api/src/main/java/com/logyard4j/api/LogyardVersion.java"
+    version_source = root / "modules/logyard-api/src/main/java/com/logyard4j/logyard/api/LogyardVersion.java"
     if f'public static final String CURRENT = "{version}";' not in version_source.read_text():
         state.add_error("LogyardVersion does not match the workspace version")
     if f"LOGYARD_SERVICE_VERSION:-{version}" not in (root / "logyard.toml").read_text():
@@ -111,7 +111,7 @@ def _check_internal_packages(root: Path, project_path: str, supported_packages: 
         package_match = PACKAGE.search(package_info.read_text(encoding="utf-8"))
         if package_match is None or package_match.group(1) in supported_packages:
             continue
-        if "@com.logyard4j.api.annotation.InternalApi" not in package_info.read_text(encoding="utf-8"):
+        if "@com.logyard4j.logyard.api.annotation.InternalApi" not in package_info.read_text(encoding="utf-8"):
             state.add_error(f"{package_info.relative_to(root)}: unsupported packages must declare @InternalApi")
 
 

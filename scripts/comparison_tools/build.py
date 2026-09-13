@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 PROVIDERS = {
-    "logyard": "com.logyard4j.slf4j.LogyardServiceProvider",
+    "logyard": "com.logyard4j.logyard.slf4j.LogyardServiceProvider",
     "logback": "ch.qos.logback.classic.spi.LogbackServiceProvider",
     "log4j2": "org.apache.logging.slf4j.SLF4JServiceProvider",
 }

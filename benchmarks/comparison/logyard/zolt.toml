@@ -1,9 +1,9 @@
 [project]
 name = "comparison-logyard"
 version = "0.1.0"
-group = "com.logyard4j.benchmarks"
+group = "com.logyard4j.logyard.benchmarks"
 java = 21
-main = "com.logyard4j.compare.ComparisonMain"
+main = "com.logyard4j.logyard.compare.ComparisonMain"
 
 [dependencies]
 "com.logyard4j:logyard-slf4j2" = "0.1.0-rc.1"

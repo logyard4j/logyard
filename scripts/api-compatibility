@@ -235,8 +235,8 @@ if [[ "$mode" == "tool wiring and breaking-change self-test" ]]; then
   current="$CURRENT_DIR/logyard-api-current.jar"
   internal="$CURRENT_DIR/logyard-api-internal-change.jar"
   java --class-path "$JAPICMP_JAR" "$ROOT/scripts/compatibility/RemoveApiMember.java" \
-    "$current" "$internal" com.logyard4j.api.Logyard initializeManaged
-  compare "$current" "$internal" com.logyard4j.api
+    "$current" "$internal" com.logyard4j.logyard.api.Logyard initializeManaged
+  compare "$current" "$internal" com.logyard4j.logyard.api
   printf 'Internal-method exclusion canary passed.\n'
 fi
 printf 'API compatibility %s passed for %d supported artifact surfaces.\n' "$mode" "${#surfaces[@]}"

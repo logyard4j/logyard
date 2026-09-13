@@ -35,7 +35,7 @@ sources = true
 javadoc = true
 
 [package.manifest]
-"Automatic-Module-Name" = "com.logyard4j.spring.boot.starter"
+"Automatic-Module-Name" = "com.logyard4j.logyard.spring.boot.starter"
 
 [publish.signing]
 method = "gpg"

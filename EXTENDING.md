@@ -58,12 +58,12 @@ This provider adds a configured tenant to every event on its route:
 ```java
 package com.example.logging;
 
-import com.logyard4j.api.event.AttributeSet;
-import com.logyard4j.api.spi.config.ProviderConfiguration;
-import com.logyard4j.api.spi.config.ProviderConfigurationSpec;
-import com.logyard4j.api.spi.processing.EventProcessor;
-import com.logyard4j.api.spi.processing.EventProcessorKind;
-import com.logyard4j.api.spi.processing.EventProcessorProvider;
+import com.logyard4j.logyard.api.event.AttributeSet;
+import com.logyard4j.logyard.api.spi.config.ProviderConfiguration;
+import com.logyard4j.logyard.api.spi.config.ProviderConfigurationSpec;
+import com.logyard4j.logyard.api.spi.processing.EventProcessor;
+import com.logyard4j.logyard.api.spi.processing.EventProcessorKind;
+import com.logyard4j.logyard.api.spi.processing.EventProcessorProvider;
 import java.util.Set;
 
 public final class TenantEnricherProvider implements EventProcessorProvider {
@@ -93,7 +93,7 @@ public final class TenantEnricherProvider implements EventProcessorProvider {
 Create this file under `src/main/resources`:
 
 ```text
-META-INF/services/com.logyard4j.api.spi.processing.EventProcessorProvider
+META-INF/services/com.logyard4j.logyard.api.spi.processing.EventProcessorProvider
 ```
 
 Its content is the provider's fully qualified class name:
@@ -133,6 +133,10 @@ Other provider failures are isolated and retried with bounded watcher backoff. S
 
 ## Supported API
 
-The supported public surface includes all `logyard-api` packages, runtime `bootstrap` and `management`, the public JUL and Spring Boot integration packages, and `com.logyard4j.quarkus.runtime.*`.
+Logyard's Java packages use `com.logyard4j.logyard.*`. Maven coordinates use the `com.logyard4j` group, for example `com.logyard4j:logyard-api`.
 
-Other packages are implementation details marked `@InternalApi`. Use the public SPI when building extensions. Published JARs include stable `Automatic-Module-Name` values, source JARs, and Javadoc JARs.
+Earlier RC checkouts used `com.logyard4j.*`. Update imports, fully qualified class names, `META-INF/services` filenames and contents, and module references to the new prefix, then rebuild applications and extensions together. This pre-stable rename changes source and binary names.
+
+The [supported API manifest](supported-api.toml) lists the supported packages and types across the native API, runtime bootstrap and management, JUL, Spring Boot, Quarkus, OpenTelemetry, and the test kit.
+
+Declarations outside that manifest and declarations marked `@InternalApi` are implementation details. Use the public SPI when building extensions. Published JARs include stable `Automatic-Module-Name` values, source JARs, and Javadoc JARs.

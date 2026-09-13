@@ -1,2 +1,2 @@
-com.logyard4j.spring.boot.autoconfigure.LogyardAutoConfiguration
-com.logyard4j.spring.boot.autoconfigure.LogyardActuatorAutoConfiguration
+com.logyard4j.logyard.spring.boot.autoconfigure.LogyardAutoConfiguration
+com.logyard4j.logyard.spring.boot.autoconfigure.LogyardActuatorAutoConfiguration

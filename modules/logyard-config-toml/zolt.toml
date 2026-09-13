@@ -35,7 +35,7 @@ sources = true
 javadoc = true
 
 [package.manifest]
-"Automatic-Module-Name" = "com.logyard4j.config.toml"
+"Automatic-Module-Name" = "com.logyard4j.logyard.config.toml"
 
 [publish.signing]
 method = "gpg"

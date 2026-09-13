@@ -1,2 +1,2 @@
 org.springframework.boot.logging.LoggingSystemFactory=\
-com.logyard4j.spring.boot.logging.LogyardLoggingSystemFactory
+com.logyard4j.logyard.spring.boot.logging.LogyardLoggingSystemFactory

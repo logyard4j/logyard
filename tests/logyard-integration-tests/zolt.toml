@@ -3,7 +3,7 @@ name = "logyard-integration-tests"
 version = "0.1.0-rc.1"
 group = "com.logyard4j"
 java = 21
-main = "com.logyard4j.tests.CoreVerificationMain"
+main = "com.logyard4j.logyard.tests.CoreVerificationMain"
 
 [dependencies]
 "com.logyard4j:logyard-api" = { workspace = true }

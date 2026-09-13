@@ -33,6 +33,8 @@ Class-specific JMH modes are preserved. First-call, recovery, and synchronous-ov
 
 ## Read the evidence
 
+Historical evidence retains the package names and source hashes used for each measurement. Current Java packages use `com.logyard4j.logyard.*`.
+
 JMH JSON and a companion `*.delivery.jsonl` file are written under `target/benchmarks/` (`target/benchmark-smoke/` for the gate). Set `LOGYARD_BENCHMARK_RESULT` to change the full-suite result path.
 
 Each async iteration reconciles attempted, accepted, dropped, emergency, and delegate-observed records after draining. Each file iteration closes the sink, counts JSONL records and bytes, and removes its temporary file. Missing results, incomplete drains, unexpected overflow branches, and changed measurement modes fail the gate.

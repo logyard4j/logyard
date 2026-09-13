@@ -10,6 +10,7 @@ from .constants import (
     MAX_NEW_PRODUCTION_LINES,
     MAX_TEST_OR_EXAMPLE_LINES,
     PACKAGE,
+    PREFIX,
     UNBOUNDED,
 )
 from .state import CheckState
@@ -97,6 +98,8 @@ def _check_production_source(
         state.add_error(f"{source.relative_to(root)}: missing package declaration")
         return
     actual_package = package_match.group(1)
+    if not actual_package.startswith(PREFIX):
+        state.add_error(f"{source.relative_to(root)}: Logyard packages must use the {PREFIX} namespace")
     if actual_package != expected_package:
         state.add_error(f"{source.relative_to(root)}: package {actual_package!r} does not match source path {expected_package!r}")
     state.package_names.add(actual_package)
@@ -130,8 +133,8 @@ def _check_source_safety(root: Path, source: Path, text: str, member: str, state
         if pattern.search(text):
             state.add_error(f"{relative}: {description} are forbidden")
     for marker in (
-        "com.logyard4j.output.otlp", "org.apache.kafka.",
-        "com.logyard4j.kafka.", "com.logyard4j.slf4j17.", "org.slf4j.impl.",
+        "com.logyard4j.logyard.output.otlp", "org.apache.kafka.",
+        "com.logyard4j.logyard.kafka.", "com.logyard4j.logyard.slf4j17.", "org.slf4j.impl.",
     ):
         if marker in text:
             state.add_error(f"{relative}: removed integration marker {marker!r} remains")
@@ -160,8 +163,8 @@ def _check_package_cycles(state: CheckState) -> None:
     dependencies = _package_dependencies(state, production_types)
     components = _package_components(state.package_names, dependencies)
     allowed = (
-        {"com.logyard4j.api", "com.logyard4j.api.diagnostics", "com.logyard4j.api.event", "com.logyard4j.api.ingress"},
-        {"com.logyard4j.core.runtime", "com.logyard4j.core.runtime.management", "com.logyard4j.core.runtime.publication", "com.logyard4j.core.runtime.retirement"},
+        {"com.logyard4j.logyard.api", "com.logyard4j.logyard.api.diagnostics", "com.logyard4j.logyard.api.event", "com.logyard4j.logyard.api.ingress"},
+        {"com.logyard4j.logyard.core.runtime", "com.logyard4j.logyard.core.runtime.management", "com.logyard4j.logyard.core.runtime.publication", "com.logyard4j.logyard.core.runtime.retirement"},
     )
     for component in components:
         if component not in allowed:
