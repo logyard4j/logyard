@@ -91,11 +91,12 @@ final class AttributeSetOperations {
             recapturedValues[retained] = ValueCapture.capture(source.values[index], context);
             retained++;
         }
-        return new AttributeSet(
-                Arrays.copyOf(recapturedKeys, retained),
-                recapturedIdentities == null ? null : Arrays.copyOf(recapturedIdentities, retained),
-                Arrays.copyOf(recapturedValues, retained),
-                source.captureTruncated || context.truncated());
+        if (retained != source.keys.length) {
+            recapturedKeys = Arrays.copyOf(recapturedKeys, retained);
+            recapturedIdentities = recapturedIdentities == null ? null : Arrays.copyOf(recapturedIdentities, retained);
+            recapturedValues = Arrays.copyOf(recapturedValues, retained);
+        }
+        return new AttributeSet(recapturedKeys, recapturedIdentities, recapturedValues, source.captureTruncated || context.truncated());
     }
 
     private static String[] cloneIdentities(AttributeSet source) {

@@ -33,10 +33,11 @@ final class AttributeSnapshotCapture {
             snapshotValues[retained] = ValueCapture.capture(values[index], context);
             retained++;
         }
-        return new AttributeSet(
-                Arrays.copyOf(snapshotKeys, retained),
-                snapshotIdentities == null ? null : Arrays.copyOf(snapshotIdentities, retained),
-                Arrays.copyOf(snapshotValues, retained),
-                assemblyTruncated || context.truncated());
+        if (retained != size) {
+            snapshotKeys = Arrays.copyOf(snapshotKeys, retained);
+            snapshotIdentities = snapshotIdentities == null ? null : Arrays.copyOf(snapshotIdentities, retained);
+            snapshotValues = Arrays.copyOf(snapshotValues, retained);
+        }
+        return new AttributeSet(snapshotKeys, snapshotIdentities, snapshotValues, assemblyTruncated || context.truncated());
     }
 }

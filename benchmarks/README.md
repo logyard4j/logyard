@@ -4,7 +4,7 @@
 
 Logyard does not currently claim to outperform Logback or Log4j 2. These benchmarks isolate costs; an admission score is not a delivery rate.
 
-The [capture text experiment](evidence/capture-text.md) records a measured allocation reduction with unchanged capture semantics.
+The [capture text experiment](evidence/capture-text.md) and [attribute snapshot experiment](evidence/attribute-snapshots.md) record measured allocation changes with unchanged capture semantics.
 
 The [provider comparison](comparison/README.md) adds isolated Logyard, Logback, and Log4j asynchronous delivery experiments with shared or native JSON encoding, matched fields, actual file writes, scheduled arrivals, and drain reconciliation.
 
