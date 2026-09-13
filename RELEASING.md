@@ -11,7 +11,11 @@ Logyard publishes one sixteen-artifact family to Maven Central. Use `scripts/cen
 - Keep all artifact versions aligned. A release tag must be `v` followed by that exact version.
 - Review [compatibility-baseline.toml](compatibility-baseline.toml).
 
-The baseline identifies the previous immutable release and the SHA-256 of its API, runtime, JUL, Spring, and Quarkus JARs. Use `version = "none"` only when no previous public release exists. `scripts/api-compatibility --baseline` verifies that policy; `--self-test` checks tooling only.
+[supported-api.toml](supported-api.toml) defines the supported packages and types for API, runtime, JUL, Spring, Quarkus, OpenTelemetry, and test-kit artifacts. Compatibility, strict Javadoc selection, and package-boundary checks consume it. `@InternalApi` declarations remain outside the compatibility promise.
+
+The baseline identifies the previous immutable release and the SHA-256 of all seven JARs. Use `version = "none"` only before the first public release. After publication, set `version` to that release and add an `[artifacts]` entry for every manifest surface name, each with its `artifact` and the `sha256` of the JAR retrieved from Maven Central. The gate downloads and verifies those exact artifacts; current build outputs cannot substitute for them.
+
+`scripts/api-compatibility --baseline` enforces that policy. `--self-test` compares packaged artifacts against themselves, then removes a real supported declaration from a disposable copy of each JAR and requires rejection. It also checks that removing an internal method passes. These canaries validate the gate, not compatibility with a previous release.
 
 ## Qualify the release
 

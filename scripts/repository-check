@@ -52,6 +52,7 @@ required_files=(
   README.md
   RELEASING.md
   compatibility-baseline.toml
+  supported-api.toml
   framework-versions.toml
   LICENSE
   NOTICE

@@ -1,0 +1,108 @@
+# Supported Java contracts. Package selections are exact, not recursive.
+# Framework Javadocs are checked by their packaging gates; strict_javadoc selects scripts/javadoc.
+schema = 1
+internal_annotation = "com.logyard4j.api.annotation.InternalApi"
+
+[[surface]]
+name = "api"
+member = "modules/logyard-api"
+artifact = "logyard-api"
+strict_javadoc = true
+packages = [
+    "com.logyard4j.api",
+    "com.logyard4j.api.annotation",
+    "com.logyard4j.api.context",
+    "com.logyard4j.api.delivery",
+    "com.logyard4j.api.diagnostics",
+    "com.logyard4j.api.event",
+    "com.logyard4j.api.failure",
+    "com.logyard4j.api.format",
+    "com.logyard4j.api.ingress",
+    "com.logyard4j.api.reload",
+    "com.logyard4j.api.spi",
+    "com.logyard4j.api.spi.config",
+    "com.logyard4j.api.spi.context",
+    "com.logyard4j.api.spi.diagnostics",
+    "com.logyard4j.api.spi.encoding",
+    "com.logyard4j.api.spi.formatting",
+    "com.logyard4j.api.spi.output",
+    "com.logyard4j.api.spi.processing",
+]
+types = []
+canary_class = "com.logyard4j.api.Logyard"
+canary_member = "logger"
+
+[[surface]]
+name = "runtime"
+member = "modules/logyard-runtime"
+artifact = "logyard-runtime"
+strict_javadoc = true
+packages = [
+    "com.logyard4j.runtime.bootstrap",
+    "com.logyard4j.runtime.management",
+]
+types = []
+canary_class = "com.logyard4j.runtime.bootstrap.LogyardBootstrap"
+canary_member = "start"
+
+[[surface]]
+name = "jul"
+member = "modules/logyard-jul"
+artifact = "logyard-jul"
+strict_javadoc = false
+packages = [
+    "com.logyard4j.jul",
+]
+types = []
+canary_class = "com.logyard4j.jul.LogyardHandler"
+canary_member = "<init>"
+
+[[surface]]
+name = "spring"
+member = "modules/logyard-spring-boot"
+artifact = "logyard-spring-boot"
+strict_javadoc = false
+packages = [
+    "com.logyard4j.spring.boot.autoconfigure",
+    "com.logyard4j.spring.boot.logging",
+    "com.logyard4j.spring.boot.nativeimage",
+]
+types = []
+canary_class = "com.logyard4j.spring.boot.autoconfigure.LogyardRuntimeHealth"
+canary_member = "snapshot"
+
+[[surface]]
+name = "quarkus"
+member = "extensions/logyard-quarkus/runtime"
+artifact = "logyard-quarkus"
+strict_javadoc = false
+packages = [
+    "com.logyard4j.quarkus.runtime",
+    "com.logyard4j.quarkus.runtime.configuration",
+    "com.logyard4j.quarkus.runtime.health",
+    "com.logyard4j.quarkus.runtime.lifecycle",
+    "com.logyard4j.quarkus.runtime.logging",
+]
+types = []
+canary_class = "com.logyard4j.quarkus.runtime.LogyardQuarkusRecorder"
+canary_member = "initialize"
+
+[[surface]]
+name = "opentelemetry"
+member = "modules/logyard-opentelemetry"
+artifact = "logyard-opentelemetry"
+strict_javadoc = true
+packages = []
+types = ["com.logyard4j.opentelemetry.LogyardOpenTelemetry"]
+canary_class = "com.logyard4j.opentelemetry.LogyardOpenTelemetry"
+canary_member = "install"
+
+[[surface]]
+name = "test"
+member = "modules/logyard-test"
+artifact = "logyard-test"
+strict_javadoc = true
+packages = []
+types = ["com.logyard4j.test.LogyardTestKit", "com.logyard4j.test.RecordedEvents", "com.logyard4j.test.EventExpectation"]
+canary_class = "com.logyard4j.test.LogyardTestKit"
+canary_member = "isolated"

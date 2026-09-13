@@ -90,28 +90,20 @@ EXPECTED_DEPENDENCIES = {
     },
 }
 
-ARTIFACT_CONTRACTS = {
-    "modules/logyard-test": ("com.logyard4j.test", {"com.logyard4j.test"}),
-    "modules/logyard-api": (
-        "com.logyard4j.api",
-        {
-            "com.logyard4j.api", "com.logyard4j.api.annotation", "com.logyard4j.api.context", "com.logyard4j.api.delivery", "com.logyard4j.api.diagnostics", "com.logyard4j.api.event", "com.logyard4j.api.failure", "com.logyard4j.api.format", "com.logyard4j.api.ingress", "com.logyard4j.api.reload", "com.logyard4j.api.spi", "com.logyard4j.api.spi.config", "com.logyard4j.api.spi.context", "com.logyard4j.api.spi.diagnostics", "com.logyard4j.api.spi.encoding", "com.logyard4j.api.spi.formatting", "com.logyard4j.api.spi.output", "com.logyard4j.api.spi.processing",
-        },
-    ),
-    "modules/logyard-core": ("com.logyard4j.core", set()),
-    "modules/logyard-config-toml": ("com.logyard4j.config.toml", set()),
-    "modules/logyard-output-console": ("com.logyard4j.output.console", set()),
-    "modules/logyard-output-json": ("com.logyard4j.output.json", set()),
-    "modules/logyard-runtime": ("com.logyard4j.runtime", {"com.logyard4j.runtime.bootstrap", "com.logyard4j.runtime.management"}),
-    "modules/logyard-slf4j2": ("com.logyard4j.slf4j2", set()),
-    "modules/logyard-opentelemetry": ("com.logyard4j.opentelemetry", {"com.logyard4j.opentelemetry"}),
-    "modules/logyard-spring-boot": (
-        "com.logyard4j.spring.boot",
-        {"com.logyard4j.spring.boot.autoconfigure", "com.logyard4j.spring.boot.logging", "com.logyard4j.spring.boot.nativeimage"},
-    ),
-    "modules/logyard-spring-boot-starter": ("com.logyard4j.spring.boot.starter", set()),
-    "modules/logyard-jul": ("com.logyard4j.jul", {"com.logyard4j.jul"}),
-    "modules/logyard-system-logger": ("com.logyard4j.system.logger", set()),
+ARTIFACT_MODULES = {
+    "modules/logyard-test": "com.logyard4j.test",
+    "modules/logyard-api": "com.logyard4j.api",
+    "modules/logyard-core": "com.logyard4j.core",
+    "modules/logyard-config-toml": "com.logyard4j.config.toml",
+    "modules/logyard-output-console": "com.logyard4j.output.console",
+    "modules/logyard-output-json": "com.logyard4j.output.json",
+    "modules/logyard-runtime": "com.logyard4j.runtime",
+    "modules/logyard-slf4j2": "com.logyard4j.slf4j2",
+    "modules/logyard-opentelemetry": "com.logyard4j.opentelemetry",
+    "modules/logyard-spring-boot": "com.logyard4j.spring.boot",
+    "modules/logyard-spring-boot-starter": "com.logyard4j.spring.boot.starter",
+    "modules/logyard-jul": "com.logyard4j.jul",
+    "modules/logyard-system-logger": "com.logyard4j.system.logger",
 }
 
 SERVICE_CONTRACTS = {

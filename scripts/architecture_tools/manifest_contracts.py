@@ -4,8 +4,9 @@ import re
 import tomllib
 from pathlib import Path
 
-from .constants import ARTIFACT_CONTRACTS, EXPECTED_DEPENDENCIES, PACKAGE, SERVICE_CONTRACTS
+from .constants import ARTIFACT_MODULES, EXPECTED_DEPENDENCIES, PACKAGE, SERVICE_CONTRACTS
 from .state import CheckState
+from verify_tools.supported_api import load as supported_api
 
 
 def check_manifest_contracts(root: Path, state: CheckState) -> None:
@@ -86,7 +87,10 @@ def _check_artifact_contracts(root: Path, state: CheckState) -> None:
         'issues = "https://github.com/logyard4j/logyard/issues"', '[publish.signing]', 'method = "gpg"',
         'keyId = "EC8E4D26598A0373"', '[publish.central]', 'tokenEnv = "ZOLT_CENTRAL_TOKEN"', 'mode = "manual"',
     )
-    for project_path, (expected_module, supported_packages) in ARTIFACT_CONTRACTS.items():
+    _, surfaces = supported_api(root)
+    supported = {surface.member: surface.supported_packages for surface in surfaces}
+    for project_path, expected_module in ARTIFACT_MODULES.items():
+        supported_packages = supported.get(project_path, set())
         descriptor = root / project_path / "src/main/java/module-info.java"
         if descriptor.exists():
             state.add_error(f"{descriptor.relative_to(root)}: JPMS descriptors are deferred until Zolt packages modular Javadocs; use the stable Automatic-Module-Name and InternalApi boundary")

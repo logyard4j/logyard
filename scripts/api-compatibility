@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export PYTHONDONTWRITEBYTECODE=1
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/scripts/lib/logyard-release.sh"
 ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
@@ -11,17 +13,31 @@ JAPICMP_JAR="$TOOL_DIR/japicmp-$JAPICMP_VERSION.jar"
 CURRENT_DIR="$ROOT/target/api-compatibility"
 BASELINE_MANIFEST="$ROOT/compatibility-baseline.toml"
 BASELINE_DIR="$CURRENT_DIR/baseline"
+export PYTHONPATH="$ROOT/scripts"
+api_records="$(python3 -m verify_tools.supported_api "$ROOT" records)"
+internal_annotation="$(python3 -m verify_tools.supported_api "$ROOT" annotation)"
+surfaces=() artifacts=() members=() includes=() canary_classes=() canary_members=()
+while IFS=$'\t' read -r surface artifact member include canary_class canary_member; do
+  surfaces+=("$surface")
+  artifacts+=("$artifact")
+  members+=("$member")
+  includes+=("$include")
+  canary_classes+=("$canary_class")
+  canary_members+=("$canary_member")
+done <<< "$api_records"
 
 usage() {
   cat <<'USAGE'
 Usage:
   scripts/api-compatibility --baseline
-  scripts/api-compatibility OLD_API_JAR OLD_RUNTIME_JAR OLD_JUL_JAR OLD_SPRING_JAR OLD_QUARKUS_JAR
+  scripts/api-compatibility OLD_JAR...
   scripts/api-compatibility --self-test
 
 --baseline enforces compatibility against the checksummed release declared in
 compatibility-baseline.toml, or confirms an explicit "none" policy before the
-first public release. --self-test checks only japicmp wiring and include filters.
+first public release. Supply one OLD_JAR per supported-api.toml surface in manifest
+order. --self-test verifies identical artifacts, rejects a removed supported declaration
+on every surface, and confirms that internal declarations remain excluded.
 USAGE
 }
 
@@ -57,10 +73,11 @@ baseline_artifact_value() {
 
 fetch_baseline_artifact() {
   local surface="$1"
+  local expected_artifact="$2"
   local artifact checksum group repository source temporary destination actual
   artifact="$(baseline_artifact_value "$surface" artifact)"
   checksum="$(baseline_artifact_value "$surface" sha256)"
-  [[ -n "$artifact" && "$checksum" =~ ^[0-9a-f]{64}$ ]] || {
+  [[ "$artifact" == "$expected_artifact" && "$checksum" =~ ^[0-9a-f]{64}$ ]] || {
     printf 'error: compatibility baseline artifact %s is incomplete\n' "$surface" >&2
     exit 2
   }
@@ -106,20 +123,15 @@ install_japicmp() {
 }
 
 build_current_jars() {
-  "$ZOLT" build --directory "$ROOT" --workspace \
-    --members modules/logyard-api,modules/logyard-runtime,modules/logyard-jul,modules/logyard-spring-boot \
-    --no-progress --color never
   "$ROOT/scripts/package"
   mkdir -p "$CURRENT_DIR"
-  jar --create --file "$CURRENT_DIR/logyard-api-current.jar" -C "$ROOT/modules/logyard-api/target/classes" .
-  jar --create --file "$CURRENT_DIR/logyard-runtime-current.jar" -C "$ROOT/modules/logyard-runtime/target/classes" .
-  jar --create --file "$CURRENT_DIR/logyard-jul-current.jar" -C "$ROOT/modules/logyard-jul/target/classes" .
-  jar --create --file "$CURRENT_DIR/logyard-spring-boot-current.jar" -C "$ROOT/modules/logyard-spring-boot/target/classes" .
-  local quarkus_jar
-  quarkus_jar="$(find "$ROOT/extensions/logyard-quarkus/runtime/target" -maxdepth 1 -type f \
-    -name 'logyard-quarkus-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' -print -quit)"
-  require_file "$quarkus_jar"
-  cp "$quarkus_jar" "$CURRENT_DIR/logyard-quarkus-current.jar"
+  local version index source
+  version="$(logyard_release_version)"
+  for index in "${!surfaces[@]}"; do
+    source="$ROOT/${members[index]}/target/${artifacts[index]}-$version.jar"
+    require_file "$source"
+    cp "$source" "$CURRENT_DIR/${artifacts[index]}-current.jar"
+  done
 }
 
 compare() {
@@ -130,6 +142,8 @@ compare() {
     --old "$old_jar" \
     --new "$new_jar" \
     --include "$include" \
+    --include-exclusively \
+    --exclude "@$internal_annotation" \
     --only-modified \
     --ignore-missing-classes \
     --error-on-binary-incompatibility \
@@ -169,36 +183,22 @@ if [[ "$#" -eq 1 && "$1" == "--baseline" ]]; then
     printf 'error: compatibility baseline must identify an immutable release\n' >&2
     exit 2
   }
-  baseline_jars=()
-  for surface in api runtime jul spring quarkus; do
-    baseline_jars+=("$(fetch_baseline_artifact "$surface")")
+  old_jars=()
+  for index in "${!surfaces[@]}"; do
+    old_jars+=("$(fetch_baseline_artifact "${surfaces[index]}" "${artifacts[index]}")")
   done
-  [[ "${#baseline_jars[@]}" -eq 5 ]] || {
-    printf 'error: compatibility baseline resolved %d jars instead of 5\n' "${#baseline_jars[@]}" >&2
-    exit 2
-  }
-  old_api="${baseline_jars[0]}"
-  old_runtime="${baseline_jars[1]}"
-  old_jul="${baseline_jars[2]}"
-  old_spring="${baseline_jars[3]}"
-  old_quarkus="${baseline_jars[4]}"
   mode="release $baseline_version baseline"
   build_current_jars
 elif [[ "$#" -eq 1 && "$1" == "--self-test" ]]; then
   build_current_jars
-  old_api="$CURRENT_DIR/logyard-api-current.jar"
-  old_runtime="$CURRENT_DIR/logyard-runtime-current.jar"
-  old_jul="$CURRENT_DIR/logyard-jul-current.jar"
-  old_spring="$CURRENT_DIR/logyard-spring-boot-current.jar"
-  old_quarkus="$CURRENT_DIR/logyard-quarkus-current.jar"
-  mode="tool wiring self-test"
-elif [[ "$#" -eq 5 ]]; then
-  old_api="$1"
-  old_runtime="$2"
-  old_jul="$3"
-  old_spring="$4"
-  old_quarkus="$5"
-  for old_jar in "$old_api" "$old_runtime" "$old_jul" "$old_spring" "$old_quarkus"; do
+  old_jars=()
+  for artifact in "${artifacts[@]}"; do
+    old_jars+=("$CURRENT_DIR/$artifact-current.jar")
+  done
+  mode="tool wiring and breaking-change self-test"
+elif [[ "$#" -eq "${#surfaces[@]}" ]]; then
+  old_jars=("$@")
+  for old_jar in "${old_jars[@]}"; do
     require_file "$old_jar"
   done
   build_current_jars
@@ -209,12 +209,34 @@ else
 fi
 
 install_japicmp
-compare "$old_api" "$CURRENT_DIR/logyard-api-current.jar" "com.logyard4j.api.*"
-compare "$old_runtime" "$CURRENT_DIR/logyard-runtime-current.jar" "com.logyard4j.runtime.bootstrap.*"
-compare "$old_runtime" "$CURRENT_DIR/logyard-runtime-current.jar" "com.logyard4j.runtime.management.*"
-compare "$old_jul" "$CURRENT_DIR/logyard-jul-current.jar" "com.logyard4j.jul.*"
-compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.logyard4j.spring.boot.autoconfigure.*"
-compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.logyard4j.spring.boot.logging.*"
-compare "$old_spring" "$CURRENT_DIR/logyard-spring-boot-current.jar" "com.logyard4j.spring.boot.nativeimage.*"
-compare "$old_quarkus" "$CURRENT_DIR/logyard-quarkus-current.jar" "com.logyard4j.quarkus.runtime.*"
-printf 'API compatibility %s passed for Logyard API, bootstrap, management, JUL, Spring Boot, and Quarkus surfaces.\n' "$mode"
+for index in "${!surfaces[@]}"; do
+  current="$CURRENT_DIR/${artifacts[index]}-current.jar"
+  compare "${old_jars[index]}" "$current" "${includes[index]}"
+  if [[ "$mode" == "tool wiring and breaking-change self-test" ]]; then
+    broken="$CURRENT_DIR/${artifacts[index]}-breaking.jar"
+    report="$CURRENT_DIR/${artifacts[index]}-breaking.txt"
+    java --class-path "$JAPICMP_JAR" "$ROOT/scripts/compatibility/RemoveApiMember.java" \
+      "$current" "$broken" "${canary_classes[index]}" "${canary_members[index]}"
+    if compare "$current" "$broken" "${includes[index]}" > "$report" 2>&1; then
+      printf 'error: compatibility gate accepted removal of %s#%s\n' \
+        "${canary_classes[index]}" "${canary_members[index]}" >&2
+      exit 1
+    fi
+    if ! grep -Eq 'REMOVED (METHOD|CONSTRUCTOR)' "$report"; then
+      cat "$report" >&2
+      printf 'error: compatibility canary failed without detecting the removed declaration\n' >&2
+      exit 1
+    fi
+    printf 'Breaking-API canary rejected for %s.\n' "${surfaces[index]}"
+  fi
+done
+
+if [[ "$mode" == "tool wiring and breaking-change self-test" ]]; then
+  current="$CURRENT_DIR/logyard-api-current.jar"
+  internal="$CURRENT_DIR/logyard-api-internal-change.jar"
+  java --class-path "$JAPICMP_JAR" "$ROOT/scripts/compatibility/RemoveApiMember.java" \
+    "$current" "$internal" com.logyard4j.api.Logyard initializeManaged
+  compare "$current" "$internal" com.logyard4j.api
+  printf 'Internal-method exclusion canary passed.\n'
+fi
+printf 'API compatibility %s passed for %d supported artifact surfaces.\n' "$mode" "${#surfaces[@]}"

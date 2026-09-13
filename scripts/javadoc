@@ -5,36 +5,18 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET="${LOGYARD_JAVADOC_TARGET:-$ROOT/target/javadoc}"
 JAVADOC="${JAVADOC:-javadoc}"
 
-# This allowlist is the supported Java contract. Implementation packages stay
-# out of generated documentation even when cross-package assembly requires a
-# public Java declaration.
-documented_roots=(
-  "$ROOT/modules/logyard-test/src/main/java"
-  "$ROOT/modules/logyard-api/src/main/java"
-  "$ROOT/modules/logyard-runtime/src/main/java/com/logyard4j/runtime/bootstrap"
-  "$ROOT/modules/logyard-runtime/src/main/java/com/logyard4j/runtime/management"
-)
-source_roots=(
-  "$ROOT/modules/logyard-test/src/main/java"
-  "$ROOT/modules/logyard-api/src/main/java"
-  "$ROOT/modules/logyard-core/src/main/java"
-  "$ROOT/modules/logyard-config-toml/src/main/java"
-  "$ROOT/modules/logyard-output-console/src/main/java"
-  "$ROOT/modules/logyard-output-json/src/main/java"
-  "$ROOT/modules/logyard-runtime/src/main/java"
-  "$ROOT/modules/logyard-opentelemetry/src/main/java"
-)
-
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONPATH="$ROOT/scripts"
+source_list="$(python3 -m verify_tools.supported_api "$ROOT" javadoc-sources)"
+root_list="$(python3 -m verify_tools.supported_api "$ROOT" javadoc-roots)"
 sources=()
-for source_root in "${documented_roots[@]}"; do
-  while IFS= read -r source; do
-    sources+=("$source")
-  done < <(find "$source_root" -type f -name '*.java' -print | LC_ALL=C sort)
-done
-sources+=(
-  "$ROOT/modules/logyard-opentelemetry/src/main/java/com/logyard4j/opentelemetry/LogyardOpenTelemetry.java"
-  "$ROOT/modules/logyard-opentelemetry/src/main/java/com/logyard4j/opentelemetry/package-info.java"
-)
+while IFS= read -r source; do
+  sources+=("$source")
+done <<< "$source_list"
+source_roots=()
+while IFS= read -r source_root; do
+  source_roots+=("$source_root")
+done <<< "$root_list"
 
 mkdir -p "$TARGET"
 CLASSPATH="$(PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.javadoc_classpath "$ROOT")"
