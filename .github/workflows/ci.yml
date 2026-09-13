@@ -81,6 +81,8 @@ jobs:
             target/benchmark-compare/*/*-build.log
             target/benchmark-compare/*/iteration-*/*.log
             target/benchmark-compare/*/iteration-*/*.jsonl
+            target/benchmark-compare/*/iteration-*/reload.json
+            target/benchmark-compare/*/iteration-*/reload/*.jsonl
             target/benchmark-compare/*/projects/*/zolt.lock
           if-no-files-found: ignore
       - name: Upload example smoke results
@@ -205,4 +207,7 @@ jobs:
             target/benchmark-compare/*/environment.json
             target/benchmark-compare/*/*-build.log
             target/benchmark-compare/*/artifacts.json
+            target/benchmark-compare/*/iteration-*/reload.log
+            target/benchmark-compare/*/iteration-*/reload.json
+            target/benchmark-compare/*/iteration-*/reload/*.jsonl
           if-no-files-found: ignore

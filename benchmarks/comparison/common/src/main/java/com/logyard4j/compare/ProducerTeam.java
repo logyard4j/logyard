@@ -29,7 +29,7 @@ public final class ProducerTeam implements AutoCloseable {
     private final long[] callerTimes;
     private final long[] lateness;
 
-    public ProducerTeam(RunOptions options, Workload workload, Logger logger) {
+    public ProducerTeam(RunOptions options, ProducerWorkload workload, Logger logger) {
         this.options = options;
         warmed = new CountDownLatch(options.producers());
         done = new CountDownLatch(options.producers());
@@ -64,6 +64,13 @@ public final class ProducerTeam implements AutoCloseable {
         requireHealthy();
     }
 
+    public boolean awaitCalls(long timeout, TimeUnit unit) throws InterruptedException {
+        boolean completed = done.await(timeout, unit);
+        require(phase == Phase.MEASUREMENT, "producer measurement was canceled");
+        requireHealthy();
+        return completed;
+    }
+
     public Set<Long> threadIds() {
         // Fresh virtual callers have already terminated at the metrics boundary; dispatchers are overhead.
         if (options.virtualPerRequest()) return Set.of();
@@ -82,7 +89,7 @@ public final class ProducerTeam implements AutoCloseable {
         return lateness;
     }
 
-    private void run(int producer, Workload workload, Logger logger) {
+    private void run(int producer, ProducerWorkload workload, Logger logger) {
         try {
             if (!options.virtualPerRequest()) workload.prepareThread();
             for (int cycle = 0; cycle < Math.max(200, 10_000 / options.producers()); cycle++) {
@@ -114,7 +121,7 @@ public final class ProducerTeam implements AutoCloseable {
         }
     }
 
-    private void call(int index, Workload workload, Logger logger, boolean measured) throws InterruptedException {
+    private void call(int index, ProducerWorkload workload, Logger logger, boolean measured) throws InterruptedException {
         requireRunning();
         if (!options.virtualPerRequest()) {
             invoke(index, workload, logger, measured);
@@ -139,7 +146,7 @@ public final class ProducerTeam implements AutoCloseable {
         }
     }
 
-    private void invoke(int index, Workload workload, Logger logger, boolean measured) {
+    private void invoke(int index, ProducerWorkload workload, Logger logger, boolean measured) {
         long calledAt = measured ? System.nanoTime() : 0;
         if (measured && options.rate() != 0) lateness[index] = calledAt - arrivals[index];
         workload.log(logger, index);

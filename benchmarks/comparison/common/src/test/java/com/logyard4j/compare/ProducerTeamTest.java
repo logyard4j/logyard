@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -48,6 +49,7 @@ final class ProducerTeamTest {
             identities.clear();
             long started = producers.begin();
             producers.awaitCalls();
+            assertTrue(producers.awaitCalls(1, TimeUnit.SECONDS));
             assertEquals(options.events(), callers.size());
             assertEquals(options.events(), identities.size());
             assertEquals(options.producers(), peak.get());
@@ -68,10 +70,12 @@ final class ProducerTeamTest {
         try (ProducerTeam producers = new ProducerTeam(options, new Workload(options), logger)) {
             producers.awaitWarmup();
             producers.begin();
+            assertFalse(producers.awaitCalls(1, TimeUnit.MILLISECONDS));
             long started = System.nanoTime();
             producers.close();
             assertTrue(System.nanoTime() - started < TimeUnit.SECONDS.toNanos(2));
             assertThrows(IllegalStateException.class, producers::awaitCalls);
+            assertThrows(IllegalStateException.class, () -> producers.awaitCalls(1, TimeUnit.MILLISECONDS));
             assertThrows(IllegalStateException.class, producers::begin);
         }
     }

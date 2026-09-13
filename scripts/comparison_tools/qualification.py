@@ -15,6 +15,7 @@ from pathlib import Path
 
 from .build import ProviderBuilds
 from .results import validate
+from .reload_workload import execute as execute_reload
 from .run import Case, execute
 
 
@@ -58,6 +59,9 @@ def environment(root: Path, java: str, identity: dict[str, str]) -> dict[str, ob
         "forks_per_experiment": 3,
         "experiments": [{"case": asdict(case), "cpus": cpus} for case, cpus in experiments()],
         "warmup_calls_per_producer": "max(200, 10000 / producers)",
+        "reload_workload": {"forks": 3, "events": 50_000, "rate": 5_000, "producers": 16,
+                            "outputs": 2, "buffer_bytes": 4096, "flush_millis": 10,
+                            "reload_interval_millis": 250, "exception_every": 8},
     }
     cpu = Path("/proc/cpuinfo")
     value["cpu_model"] = next((line.split(":", 1)[1].strip() for line in cpu.read_text().splitlines()
@@ -77,6 +81,7 @@ def qualify(root: Path, java: str) -> Path:
     run.mkdir(parents=True)
     receipt: dict[str, object] = {**identity, "status": "running", "scope": "Logyard native JSON delivery workloads"}
     results = []
+    reload_results = []
     save(run / "qualification.json", receipt)
     try:
         save(run / "environment.json", environment(root, java, identity))
@@ -107,14 +112,28 @@ def qualify(root: Path, java: str) -> Path:
                 save(run / "results.json", results)
                 print(f"PASS fork {repetition + 1} {case.name}: {len(records)}/{case.events} written; "
                       f"unwritten INFO={result['unwritten_info']}, ERROR={result['unwritten_error']}", flush=True)
+            reloaded = execute_reload(provider, iteration, java)
+            reloaded["iteration"] = repetition + 1
+            reload_results.append(reloaded)
+            save(run / "reload-results.json", reload_results)
+            print(f"PASS fork {repetition + 1} buffered reload: {reloaded['reloads']} applied; "
+                  f"written first={reloaded['outputs']['first']['written']}, "
+                  f"second={reloaded['outputs']['second']['written']}", flush=True)
         require_candidate(root, identity)
         receipt.update(status="passed", forks=len(results),
                        attempted=sum(result["attempted"] for result in results),
                        written=sum(result["sink_written"] for result in results),
                        unwritten_info=sum(result["unwritten_info"] for result in results),
-                       unwritten_error=sum(result["unwritten_error"] for result in results))
+                       unwritten_error=sum(result["unwritten_error"] for result in results),
+                       total_forks=len(results) + len(reload_results),
+                       reload={"forks": len(reload_results),
+                               "attempted": sum(result["attempted"] for result in reload_results),
+                               "applied": sum(result["reloads"] for result in reload_results),
+                               "outputs": {name: {key: sum(result["outputs"][name][key] for result in reload_results)
+                                                  for key in ("written", "unwritten_info", "unwritten_error")}
+                                           for name in ("first", "second")}})
     except Exception as failure:
-        receipt.update(status="failed", completed_forks=len(results), failure=str(failure))
+        receipt.update(status="failed", completed_forks=len(results) + len(reload_results), failure=str(failure))
         raise
     finally:
         save(run / "qualification.json", receipt)

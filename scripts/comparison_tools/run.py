@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .build import BuiltProvider, ProviderBuilds
 from .results import equal_work, validate
+from .reload_workload import execute as execute_reload
 
 
 @dataclass(frozen=True)
@@ -180,6 +181,9 @@ def main() -> None:
             results.extend(case_results)
             (run / "results.json").write_text(json.dumps(results, indent=2) + "\n")
             print(f"PASS {case.name}: equal output and reconciled completion for three isolated providers", flush=True)
+        if args.smoke:
+            reload = execute_reload(providers[0], iteration, args.java, events=2000, rate=2000)
+            print(f"PASS buffered reload: {reload['reloads']} reloads, independently reconciled files and drop diagnostics", flush=True)
     (target / "latest.txt").write_text(str(run) + "\n")
     print(f"Comparison results: {run}", flush=True)
 

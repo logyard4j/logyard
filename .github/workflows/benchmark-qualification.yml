@@ -36,5 +36,7 @@ jobs:
             target/benchmark-delivery-qualification/*/*.log
             target/benchmark-delivery-qualification/*/iteration-*/*.log
             target/benchmark-delivery-qualification/*/iteration-*/*.jsonl
+            target/benchmark-delivery-qualification/*/iteration-*/reload.json
+            target/benchmark-delivery-qualification/*/iteration-*/reload/*.jsonl
             target/benchmark-delivery-qualification/*/projects/logyard/zolt.lock
           if-no-files-found: ignore

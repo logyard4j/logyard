@@ -23,7 +23,7 @@ Use JDK 21+ and the repository's pinned Zolt:
 ```sh
 ./scripts/benchmark-smoke  # short harness, delivery-accounting, and allocation gate
 ./scripts/benchmark        # complete Logyard JMH suite
-./scripts/benchmark-delivery-qualify  # 24 longer packaged delivery forks on Linux
+./scripts/benchmark-delivery-qualify  # 27 longer packaged delivery/reload forks on Linux
 ```
 
 The smoke gate also exercises the official Quarkus extension benchmark. Its packaging requires Maven and resolves the extension from the verified release bundle. The Logyard benchmarks run through Zolt.

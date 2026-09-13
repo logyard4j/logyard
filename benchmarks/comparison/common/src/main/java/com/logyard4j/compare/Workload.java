@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Supplier;
 
 /** Prepares identities before timing; each recorded call still uses the real SLF4J provider. */
-public final class Workload {
+public final class Workload implements ProducerWorkload {
     public static final String BARRIER = "comparison-drain-barrier";
     private static final Object[] VALUES = {42L, "customer-7", true, 9.5d};
     private final RunOptions options;
@@ -35,10 +35,12 @@ public final class Workload {
         }
     }
 
+    @Override
     public void prepareThread() {
         for (String key : options.fieldNames()) MDC.put(key, key + "-value\"\\\tλ");
     }
 
+    @Override
     public void log(Logger logger, int index) {
         if (!options.enabled()) {
             switch (options.disabled()) {
