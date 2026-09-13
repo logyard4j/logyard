@@ -28,6 +28,7 @@ Run from the repository root before tagging:
 ./scripts/ecs-verify
 ./scripts/benchmark-smoke
 ./scripts/comparison-verify
+./scripts/benchmark-delivery-qualify
 ./scripts/release-bundle --sign
 ./scripts/zolt-publication-check --signed
 ./scripts/central-publish

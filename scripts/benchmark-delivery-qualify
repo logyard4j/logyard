@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-release.sh"
+export ZOLT="$(logyard_require_zolt)"
+cd "$ROOT"
+PYTHONPATH="$ROOT/scripts" exec python3 -m comparison_tools.qualification "$ROOT" "$@"

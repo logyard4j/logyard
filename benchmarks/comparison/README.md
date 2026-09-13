@@ -8,6 +8,7 @@ Compare real SLF4J providers with matched file output. Logyard, Logback 1.6.3, a
 
 ```sh
 ./scripts/comparison-verify  # 51 smoke cells through Smoque
+./scripts/benchmark-delivery-qualify  # longer Logyard candidate workloads, Linux
 
 ./scripts/benchmark-compare --events 100000 --producers 16 --arguments 2 --repeat 3
 ./scripts/benchmark-compare --format json --fields 16 --virtual --producers 64
@@ -67,3 +68,13 @@ Results are under `target/benchmark-compare/`; `latest.txt` identifies the last 
 Logback exposes no exact dropped-record counter here, so its absent records remain labelled **unwritten**. Virtual-thread caller allocation and CPU are reported as unavailable (`-1`); carrier activity remains in other platform-thread counters. Missing threads and unavailable RSS are explicit.
 
 The smoke suite checks functionality and accounting, including native JSON with 0/4/16 MDC fields, warmed and fresh virtual threads, and overload. Zolt tests also verify that encoder failures, malformed framing, and duplicate writes fail the destination check. Short smoke timings are not evidence of a competitive win. Repeat experiments on the deployment's JDK, CPU constraints, and filesystem before drawing performance conclusions. Successful writes and drain do not establish durable storage.
+
+## Longer candidate workloads
+
+`benchmark-delivery-qualify` requires a clean committed checkout and rebuilds the complete release bundle. It runs Logyard alone in three fresh JVMs per workload, with a fixed 256 MiB heap, at least 10,000 warmup calls, and 50,000 scheduled arrivals over 10 seconds. Each call has two arguments and four MDC fields, with the default queue capacity and severity policies.
+
+The eight workloads cover 1/4/16/64 platform producers, 64 warmed virtual producers, 64 fresh virtual requests, a slow output, and producers sharing one CPU with the worker. The slow output stalls for 100 ms, then delays each write by 250 µs; it must exercise both completed and dropped records. Healthy-output workloads also report any loss rather than assuming the offered rate is sustainable.
+
+Results under `target/benchmark-delivery-qualification/` retain every file record, source and artifact hashes, JDK and CPU details, heap settings, latency distributions, process CPU, peak RSS, and loss by severity. Changed sources or a different commit invalidate the run. `qualification.json` records success or failure; `latest.txt` advances only after all 24 forks pass reconciliation. The manual [Delivery qualification workflow](../../.github/workflows/benchmark-qualification.yml) runs the same command.
+
+This qualifies delivery accounting for these workloads, without a throughput ranking or latency threshold. Peak RSS includes startup and is not retained-heap measurement. Exceptions, multiple outputs, reload, and buffered-file behavior have separate tests and fixtures; they are outside this lane.

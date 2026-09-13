@@ -10,6 +10,8 @@ The [UTF-8 file experiment](evidence/utf8-file-output.md) measures reusable reco
 
 The [provider comparison](comparison/README.md) adds isolated Logyard, Logback, and Log4j asynchronous delivery experiments with shared or native JSON encoding, matched fields, actual file writes, scheduled arrivals, and drain reconciliation.
 
+The [virtual-thread experiment](evidence/virtual-delivery.md) records completed work, severity drops, CPU, and latency across six longer forks using the default delivery policies.
+
 ## Run
 
 Use JDK 21+ and the repository's pinned Zolt:
@@ -17,6 +19,7 @@ Use JDK 21+ and the repository's pinned Zolt:
 ```sh
 ./scripts/benchmark-smoke  # short harness, delivery-accounting, and allocation gate
 ./scripts/benchmark        # complete Logyard JMH suite
+./scripts/benchmark-delivery-qualify  # 24 longer packaged delivery forks on Linux
 ```
 
 The smoke gate also exercises the official Quarkus extension benchmark. Its packaging requires Maven and resolves the extension from the verified release bundle. The Logyard benchmarks run through Zolt.

@@ -1,0 +1,37 @@
+name: Delivery qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Bootstrap the pinned Zolt revision
+        run: ./scripts/bootstrap-zolt
+      - name: Put Zolt on PATH
+        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+      - name: Qualify packaged delivery in three fresh JVMs per workload
+        run: ./scripts/benchmark-delivery-qualify
+      - name: Retain results and independently checked records
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: delivery-qualification
+          path: |
+            target/benchmark-delivery-qualification/latest.txt
+            target/benchmark-delivery-qualification/*/*.json
+            target/benchmark-delivery-qualification/*/*.log
+            target/benchmark-delivery-qualification/*/iteration-*/*.log
+            target/benchmark-delivery-qualification/*/iteration-*/*.jsonl
+            target/benchmark-delivery-qualification/*/projects/logyard/zolt.lock
+          if-no-files-found: ignore
