@@ -35,12 +35,15 @@ def require_candidate(root: Path, expected: dict[str, str]) -> None:
 
 def experiments() -> list[tuple[Case, int]]:
     common = dict(events=50_000, arguments=2, fields=4, format="native-json", rate=5_000, policy="default")
+    literal = dict(common, arguments=0, fields=0)
     return [
         *((Case(f"platform-{producers}", producers=producers, **common), 0) for producers in (1, 4, 16, 64)),
         (Case("warmed-virtual-64", producers=64, virtual=True, **common), 0),
         (Case("fresh-virtual-64", producers=64, virtual_per_request=True, **common), 0),
         (Case("slow-output", producers=16, stall_ms=100, delay_us=250, **common), 0),
         (Case("one-cpu", producers=16, **common), 1),
+        (Case("literal-platform-16", producers=16, **literal), 0),
+        (Case("literal-fresh-virtual-64", producers=64, virtual_per_request=True, **literal), 0),
     ]
 
 
