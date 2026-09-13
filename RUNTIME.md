@@ -95,6 +95,8 @@ JSON stdout/stderr checks the stream when each buffered byte batch is written an
 
 Default asynchronous delivery drops and counts events that arrive after closure or remain queued at the shutdown deadline. See [overflow policies](CONFIGURATION.md#delivery-and-overflow) for caller-thread waiting and fallback behavior.
 
+Delegate delivery and closure share one admission boundary. A synchronous fallback still waiting to enter delivery when close wins is counted as a drop for `drop`/`wait_drop` policies or routed to emergency output for other policies; it is never counted as delivered. Managed publication holds an epoch lease through fallback, so runtime retirement waits for that publisher before closing its output. The shutdown deadline still bounds the caller's wait.
+
 A zero shutdown timeout starts no-wait daemon cleanup. Rollback of an output that never completed initialization still waits for its worker and lease to be released.
 
 ## File output

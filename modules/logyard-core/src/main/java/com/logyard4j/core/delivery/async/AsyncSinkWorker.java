@@ -28,7 +28,7 @@ final class AsyncSinkWorker {
         this.eventQueue = eventQueue;
         this.diagnostics = diagnostics;
         this.overflowPolicy = overflowPolicy;
-        delivery = new AsyncDelegateDelivery(delegate, metrics, diagnostics);
+        delivery = new AsyncDelegateDelivery(delegate, metrics, diagnostics, overflowPolicy);
         lifecycle = new AsyncWorkerLifecycle();
         deliveryLoop = new AsyncDeliveryLoop(name, eventQueue, metrics, diagnostics, delivery, lifecycle);
         worker = new AsyncWorkerThread(name, this::drainLoop);
