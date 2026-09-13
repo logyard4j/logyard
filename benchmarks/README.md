@@ -4,7 +4,7 @@
 
 Logyard does not currently claim to outperform Logback or Log4j 2. These benchmarks isolate costs; an admission score is not a delivery rate.
 
-The [capture text experiment](evidence/capture-text.md) and [attribute snapshot experiment](evidence/attribute-snapshots.md) record measured allocation changes with unchanged capture semantics.
+The [capture text experiment](evidence/capture-text.md) and [attribute snapshot experiment](evidence/attribute-snapshots.md) record measured allocation changes with unchanged capture semantics. The [fluent argument experiments](evidence/fluent-arguments.md) document two rejected optimizations and the added allocation coverage.
 
 The [UTF-8 file experiment](evidence/utf8-file-output.md) measures reusable record storage and direct integer formatting through real file output.
 

@@ -80,6 +80,17 @@ public class CapturedEventAllocationBenchmark {
     }
 
     /**
+     * Captures a positional argument through the fluent builder.
+     *
+     * @return escaped captured event
+     */
+    @Benchmark
+    public LogEvent fluentArgument() {
+        logger.atInfo().argument(42L).log("accepted {}");
+        return sink.last();
+    }
+
+    /**
      * Captures a fixed eight-frame exception without JMH's own setup stack.
      *
      * @return escaped captured event

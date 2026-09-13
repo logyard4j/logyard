@@ -14,11 +14,34 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ActiveLogBuilderTest {
+    @Test
+    void distinguishesAbsentArgumentsFromAnExplicitNullAndPreservesDeclaredArguments() {
+        List<LogEvent> events = new ArrayList<>();
+        AtomicInteger evaluations = new AtomicInteger();
+        try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(events::add)) {
+            LogyardLogger logger = runtime.logger("test.Arguments");
+            logger.atInfo().log("empty");
+            logger.atInfo().log("empty", (Object[]) null);
+            logger.atInfo().log("empty", new Object[0]);
+            logger.atInfo().argument(null).log("null {}");
+            logger.atInfo().argumentLazy(evaluations::incrementAndGet).log("declared {}", (Object[]) null);
+            logger.atInfo().log("varargs {}", new Object[] {42L});
+        }
+        assertEquals(6, events.size());
+        for (int index = 0; index < 3; index++) assertEquals(0, events.get(index).argumentCount());
+        assertEquals(1, events.get(3).argumentCount());
+        assertNull(events.get(3).argumentAt(0));
+        assertEquals(1, evaluations.get());
+        assertEquals("declared 1", events.get(4).renderedMessage());
+        assertEquals("varargs 42", events.get(5).renderedMessage());
+    }
+
     @Test
     void defersFluentSuppliersUntilPublicationCapture() {
         List<LogEvent> events = new ArrayList<>();

@@ -148,6 +148,10 @@
       "maxBytesPerOperation": 1536
     },
     {
+      "benchmark": "com.logyard4j.benchmarks.ingress.CapturedEventAllocationBenchmark.fluentArgument",
+      "maxBytesPerOperation": 896
+    },
+    {
       "benchmark": "com.logyard4j.benchmarks.ingress.CapturedEventAllocationBenchmark.exceptionEvent",
       "maxBytesPerOperation": 4096
     },
