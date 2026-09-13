@@ -10,6 +10,7 @@ Logyard publishes one sixteen-artifact family to Maven Central. Use `scripts/cen
 - Install the [pinned Zolt revision](CONTRIBUTING.md#build-and-test) and configure the release signing key.
 - Keep all artifact versions aligned. A release tag must be `v` followed by that exact version.
 - Review [compatibility-baseline.toml](compatibility-baseline.toml).
+- Finalize the version and [namespace migration notes](RELEASE_NOTES.md#java-namespace-migration), commit every candidate change, and freeze the SHA before qualification. Land that exact commit on `main`; any later candidate change requires fresh qualification.
 
 [supported-api.toml](supported-api.toml) defines the supported packages and types for API, runtime, JUL, Spring, Quarkus, OpenTelemetry, and test-kit artifacts. Compatibility, strict Javadoc selection, and package-boundary checks consume it. `@InternalApi` declarations remain outside the compatibility promise.
 
@@ -35,6 +36,8 @@ Run from the repository root before tagging:
 ```
 
 These gates cover runtime failures, packaged JVM consumers and ECS ingestion through Smoque, API compatibility, allocation budgets, and the signed Central bundle. The ECS gate needs Docker or `LOGYARD_ECS_URL` pointing to a disposable Elasticsearch instance. Linux, macOS, and Windows [CI](.github/workflows/ci.yml) must also pass.
+
+`benchmark-delivery-qualify` runs 33 standalone delivery/reload JVM forks and writes candidate, artifact, environment, and accounting evidence under `target/benchmark-delivery-qualification/`. Keep that evidence and the successful CI run tied to the frozen SHA. This gate is separate from the JMH allocation smoke suite.
 
 The final command creates a signed, deterministic ZIP locally. It does not upload.
 
@@ -79,6 +82,8 @@ This uploads for validation and manual release in Central Portal.
 Create an annotated release tag signed by the [pinned release key](.github/release-signing-key.asc), then manually run the [release workflow](.github/workflows/release.yml) from `main` with that tag. Configure the GitHub `release` environment and its secrets before use.
 
 The workflow verifies the signature, exact version, and ancestry on `main` before executing the tagged commit. The signed tag binds its commit; individual commits may be unsigned. It runs the release gates, checks that the remote tag is unchanged before each publication, waits for Central to reach `PUBLISHED`, then creates the GitHub release.
+
+After publication, verify all sixteen coordinates and their expected artifacts, metadata, checksums, and signatures from Maven Central. Then run consumer resolution with fresh dependency caches against that remote repository, without a local candidate repository. The seventeen consumer fixtures and the sixteen-publication inventory are separate checks. Finally, pin the seven supported compatibility surfaces to the published JAR hashes in `compatibility-baseline.toml`.
 
 To exercise tag verification locally with disposable keys and repositories:
 

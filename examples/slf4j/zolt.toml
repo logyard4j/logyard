@@ -6,7 +6,7 @@ java = 21
 main = "com.logyard4j.logyard.examples.slf4j.Slf4jExampleApplication"
 
 [platforms]
-"com.logyard4j:logyard-bom" = "0.1.0-rc.1"
+"com.logyard4j:logyard-bom" = "0.1.0-rc.2"
 
 [dependencies]
 "com.logyard4j:logyard-slf4j2" = { managed = true }

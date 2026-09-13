@@ -1,47 +1,47 @@
 version = 7
 projectResolutionFingerprint = "sha256:fda2f768c30050cfcd8e3ba70861fdfb2f712b3254503b4d5b7ade1be86c9f2b"
 projectResolutionInputFingerprints = ["dependencies.api.workspace=sha256:7847305a184dcb8ea19150919597a3ec04f445d5ca2118eaca379052c75af999", "dependencies.api=sha256:39f5fd06a42367ae0ef58cd55d9f0250316ab47dd4da3fea440edd035cf07ea5", "dependencies.compile.workspace=sha256:f3ad551f39a1b093e0caf159baed26309d897adba0ec2e181c106103e53afbe9", "dependencies.compile=sha256:e3683fb26ffacb3e650d81a4505c7cf5aacf216b1f404f1193a0dbe430f98f45", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:0e71594363b6543ac01e90c2303079fd5b6e3e2cc79a67f3f471ba264bbd7032", "dependencies.test=sha256:c2cd5ca6411e5499ec02883b6978eacf8bf85b6607936df8d7d6002658f64a63", "dependencyMetadata=sha256:680ffc4d1437d12e7cc9f38abec225f231c5492525d2d876a4b91fb75483502c", "framework.quarkus=sha256:48e8e093ab172fce36712e57dcae3a106f954ab20aa835860ad0ee4a7013e0ad", "framework.springBoot.native=sha256:207684aba27b63fc0dc5bba4c50d6f7ac96393193639e7cb74cd99fff5585414", "java=sha256:d2e95bf9f835e0684207d92af1405999be608edb7ce13e71a5f133f4f30b6deb", "package=sha256:38a46871a2485b18f067fca61c6586945244020a94813750d8238e16812c960a", "repositories=sha256:8d83fcace96a7c99979aa18f9632de48e161a2f8f311ea685c4d17730a00b848", "schema=sha256:4080635e231be413ba40f3532f116fdf339d085e15a235fe8ba786955f78456c"]
-workspaceResolutionInputFingerprint = "sha256:7f96663861f44a5650c6ba9bae053529f6ebc6e43120b6e21e29f7a19aea49ef"
+workspaceResolutionInputFingerprint = "sha256:79fd445bdc1dfae07c6c0802f828f44dc7aa093e52cb6dc940d0b6e081f80957"
 
 [[dependencyRoot]]
 member = "benchmarks/logyard-benchmarks"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "benchmarks/logyard-benchmarks"
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "benchmarks/logyard-benchmarks"
 id = "com.logyard4j:logyard-output-console"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "benchmarks/logyard-benchmarks"
 id = "com.logyard4j:logyard-output-json"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "benchmarks/logyard-benchmarks"
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "benchmarks/logyard-benchmarks"
 id = "com.logyard4j:logyard-slf4j2"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
@@ -76,7 +76,7 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-config-toml"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
@@ -90,7 +90,7 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-core"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
@@ -104,21 +104,21 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-jul"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-jul"
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-jul"
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "test"
 resolvedScope = "test"
 
@@ -132,7 +132,7 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-opentelemetry"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
@@ -146,7 +146,7 @@ resolvedScope = "compile"
 [[dependencyRoot]]
 member = "modules/logyard-opentelemetry"
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "test"
 resolvedScope = "test"
 
@@ -174,14 +174,14 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-output-console"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-output-console"
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "test"
 resolvedScope = "test"
 
@@ -195,14 +195,14 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-output-json"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-output-json"
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "test"
 resolvedScope = "test"
 
@@ -216,35 +216,35 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-runtime"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-runtime"
 id = "com.logyard4j:logyard-config-toml"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-runtime"
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-runtime"
 id = "com.logyard4j:logyard-output-console"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-runtime"
 id = "com.logyard4j:logyard-output-json"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
@@ -258,14 +258,14 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-slf4j2"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-slf4j2"
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
@@ -286,21 +286,21 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-spring-boot"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-spring-boot"
 id = "com.logyard4j:logyard-jul"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-spring-boot"
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
@@ -321,7 +321,7 @@ resolvedScope = "compile"
 [[dependencyRoot]]
 member = "modules/logyard-spring-boot"
 id = "com.logyard4j:logyard-slf4j2"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "test"
 resolvedScope = "test"
 
@@ -356,21 +356,21 @@ resolvedScope = "processor"
 [[dependencyRoot]]
 member = "modules/logyard-spring-boot-starter"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-spring-boot-starter"
 id = "com.logyard4j:logyard-slf4j2"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-spring-boot-starter"
 id = "com.logyard4j:logyard-spring-boot"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
@@ -384,21 +384,21 @@ resolvedScope = "compile"
 [[dependencyRoot]]
 member = "modules/logyard-system-logger"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-system-logger"
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-system-logger"
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "test"
 resolvedScope = "test"
 
@@ -412,14 +412,14 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "modules/logyard-test"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "modules/logyard-test"
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "api"
 resolvedScope = "compile"
 
@@ -433,111 +433,111 @@ resolvedScope = "test"
 [[dependencyRoot]]
 member = "tests/logyard-adapter-canaries"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-adapter-canaries"
 id = "com.logyard4j:logyard-config-toml"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-adapter-canaries"
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-adapter-canaries"
 id = "com.logyard4j:logyard-jul"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-adapter-canaries"
 id = "com.logyard4j:logyard-output-console"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-adapter-canaries"
 id = "com.logyard4j:logyard-output-json"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-adapter-canaries"
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-adapter-canaries"
 id = "com.logyard4j:logyard-slf4j2"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-adapter-canaries"
 id = "com.logyard4j:logyard-system-logger"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-integration-tests"
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-integration-tests"
 id = "com.logyard4j:logyard-config-toml"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-integration-tests"
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-integration-tests"
 id = "com.logyard4j:logyard-output-console"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-integration-tests"
 id = "com.logyard4j:logyard-output-json"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[dependencyRoot]]
 member = "tests/logyard-integration-tests"
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 lane = "implementation"
 resolvedScope = "compile"
 
 [[package]]
 id = "com.logyard4j:logyard-api"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -549,7 +549,7 @@ dependencies = []
 
 [[package]]
 id = "com.logyard4j:logyard-config-toml"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -561,7 +561,7 @@ dependencies = []
 
 [[package]]
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -573,7 +573,7 @@ dependencies = []
 
 [[package]]
 id = "com.logyard4j:logyard-core"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "test"
 direct = true
@@ -584,7 +584,7 @@ dependencies = []
 
 [[package]]
 id = "com.logyard4j:logyard-jul"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -596,7 +596,7 @@ dependencies = []
 
 [[package]]
 id = "com.logyard4j:logyard-output-console"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -608,7 +608,7 @@ dependencies = []
 
 [[package]]
 id = "com.logyard4j:logyard-output-json"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -620,7 +620,7 @@ dependencies = []
 
 [[package]]
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -632,7 +632,7 @@ dependencies = []
 
 [[package]]
 id = "com.logyard4j:logyard-runtime"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "test"
 direct = true
@@ -643,7 +643,7 @@ dependencies = []
 
 [[package]]
 id = "com.logyard4j:logyard-slf4j2"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -655,7 +655,7 @@ dependencies = ["org.slf4j:slf4j-api:2.0.18:jar:compile"]
 
 [[package]]
 id = "com.logyard4j:logyard-slf4j2"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "test"
 direct = true
@@ -666,7 +666,7 @@ dependencies = ["org.slf4j:slf4j-api:2.0.18:jar:compile"]
 
 [[package]]
 id = "com.logyard4j:logyard-spring-boot"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true
@@ -678,7 +678,7 @@ dependencies = ["org.springframework.boot:spring-boot-autoconfigure:3.5.16:jar:c
 
 [[package]]
 id = "com.logyard4j:logyard-system-logger"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 source = "workspace"
 scope = "compile"
 direct = true

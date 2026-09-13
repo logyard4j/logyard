@@ -1,5 +1,5 @@
 schema = 1
 version = "none"
-first_release = "0.1.0-rc.1"
-reason = "Logyard 0.1.0-rc.1 will be the first public Maven Central release."
+first_release = "0.1.0-rc.2"
+reason = "Logyard 0.1.0-rc.2 will be the first public Maven Central release."
 repository = "https://repo.maven.apache.org/maven2"

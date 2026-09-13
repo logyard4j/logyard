@@ -12,7 +12,7 @@ Add `logyard-api` to your extension project:
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-api</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
   </dependency>
 </dependencies>
 ```
@@ -24,7 +24,7 @@ Add `logyard-api` to your extension project:
 
 ```kotlin
 dependencies {
-    implementation("com.logyard4j:logyard-api:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-api:0.1.0-rc.2")
 }
 ```
 
@@ -35,7 +35,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-api" = "0.1.0-rc.1"
+"com.logyard4j:logyard-api" = "0.1.0-rc.2"
 ```
 
 </details>
@@ -136,6 +136,8 @@ Other provider failures are isolated and retried with bounded watcher backoff. S
 Logyard's Java packages use `com.logyard4j.logyard.*`. Maven coordinates use the `com.logyard4j` group, for example `com.logyard4j:logyard-api`.
 
 Earlier RC checkouts used `com.logyard4j.*`. Update imports, fully qualified class names, `META-INF/services` filenames and contents, and module references to the new prefix, then rebuild applications and extensions together. This pre-stable rename changes source and binary names.
+
+See the [namespace migration notes](RELEASE_NOTES.md#java-namespace-migration) for consumer and custom-provider changes, including reflective configuration.
 
 The [supported API manifest](supported-api.toml) lists the supported packages and types across the native API, runtime bootstrap and management, JUL, Spring Boot, Quarkus, OpenTelemetry, and the test kit.
 

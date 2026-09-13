@@ -4,7 +4,7 @@
 
 Readable console logs. Structured JSON. One runtime for native Java, SLF4J 2, JUL, and `System.Logger`.
 
-[Get started](#get-started) · [Configuration](CONFIGURATION.md) · [Integrations](INTEGRATIONS.md) · [Examples](INTEGRATIONS.md#examples)
+[Get started](#get-started) · [Configuration](CONFIGURATION.md) · [Integrations](INTEGRATIONS.md) · [Examples](INTEGRATIONS.md#examples) · [Release notes](RELEASE_NOTES.md)
 
 ## Why Logyard
 
@@ -29,7 +29,7 @@ For an SLF4J 2 application, add the provider using your build tool:
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-slf4j2</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
   </dependency>
 </dependencies>
 ```
@@ -41,7 +41,7 @@ For an SLF4J 2 application, add the provider using your build tool:
 
 ```kotlin
 dependencies {
-    implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.2")
 }
 ```
 
@@ -52,7 +52,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.1"
+"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.2"
 ```
 
 </details>

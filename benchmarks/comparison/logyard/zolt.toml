@@ -6,8 +6,8 @@ java = 21
 main = "com.logyard4j.logyard.compare.ComparisonMain"
 
 [dependencies]
-"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.1"
-"com.logyard4j:logyard-runtime" = "0.1.0-rc.1"
+"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.2"
+"com.logyard4j:logyard-runtime" = "0.1.0-rc.2"
 "org.slf4j:slf4j-api" = "2.0.18"
 
 [dependencies.test]

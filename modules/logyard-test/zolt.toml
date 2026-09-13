@@ -1,6 +1,6 @@
 [project]
 name = "logyard-test"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 group = "com.logyard4j"
 java = 21
 description = "Isolated runtime capture and event assertions for tests."

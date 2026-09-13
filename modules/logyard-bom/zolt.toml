@@ -1,6 +1,6 @@
 [project]
 name = "logyard-bom"
-version = "0.1.0-rc.1"
+version = "0.1.0-rc.2"
 group = "com.logyard4j"
 description = "Dependency management for the complete Logyard module family."
 url = "https://logyard4j.com"
@@ -35,8 +35,8 @@ members = [
 
 [bom.versions]
 # These two published artifacts are produced by Quarkus' official Maven extension reactor.
-"com.logyard4j:logyard-quarkus" = "0.1.0-rc.1"
-"com.logyard4j:logyard-quarkus-deployment" = "0.1.0-rc.1"
+"com.logyard4j:logyard-quarkus" = "0.1.0-rc.2"
+"com.logyard4j:logyard-quarkus-deployment" = "0.1.0-rc.2"
 
 [publish.signing]
 method = "gpg"

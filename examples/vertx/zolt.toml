@@ -6,7 +6,7 @@ java = 21
 main = "com.logyard4j.logyard.examples.vertx.VertxExampleApplication"
 
 [platforms]
-"com.logyard4j:logyard-bom" = "0.1.0-rc.1"
+"com.logyard4j:logyard-bom" = "0.1.0-rc.2"
 "io.vertx:vertx-stack-depchain" = "5.1.5"
 
 [dependencies]

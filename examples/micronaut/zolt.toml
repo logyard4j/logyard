@@ -6,7 +6,7 @@ java = 21
 main = "com.logyard4j.logyard.examples.micronaut.MicronautExampleApplication"
 
 [platforms]
-"com.logyard4j:logyard-bom" = "0.1.0-rc.1"
+"com.logyard4j:logyard-bom" = "0.1.0-rc.2"
 "io.micronaut.platform:micronaut-platform" = "4.10.9"
 
 [dependencies]

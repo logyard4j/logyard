@@ -20,7 +20,7 @@ Add the SLF4J provider. It includes the runtime, TOML configuration, console out
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-slf4j2</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
   </dependency>
 </dependencies>
 ```
@@ -32,7 +32,7 @@ Add the SLF4J provider. It includes the runtime, TOML configuration, console out
 
 ```kotlin
 dependencies {
-    implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.2")
 }
 ```
 
@@ -43,7 +43,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.1"
+"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.2"
 ```
 
 </details>
@@ -76,7 +76,7 @@ Add the starter and exclude Boot's default logging starter. These snippets targe
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-spring-boot-starter</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
   </dependency>
   <dependency>
     <groupId>org.springframework.boot</groupId>
@@ -98,7 +98,7 @@ Add the starter and exclude Boot's default logging starter. These snippets targe
 
 ```kotlin
 dependencies {
-    implementation("com.logyard4j:logyard-spring-boot-starter:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-spring-boot-starter:0.1.0-rc.2")
     implementation("org.springframework.boot:spring-boot-starter-web") {
         exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
     }
@@ -115,7 +115,7 @@ dependencies {
 "org.springframework.boot:spring-boot-dependencies" = "3.5.16"
 
 [dependencies]
-"com.logyard4j:logyard-spring-boot-starter" = "0.1.0-rc.1"
+"com.logyard4j:logyard-spring-boot-starter" = "0.1.0-rc.2"
 "org.springframework.boot:spring-boot-starter-web" = { managed = true, exclude = ["org.springframework.boot:spring-boot-starter-logging"] }
 ```
 
@@ -150,7 +150,7 @@ Add the runtime extension to your Quarkus application; Quarkus selects its deplo
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-quarkus</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
   </dependency>
 </dependencies>
 ```
@@ -162,7 +162,7 @@ Add the runtime extension to your Quarkus application; Quarkus selects its deplo
 
 ```kotlin
 dependencies {
-    implementation("com.logyard4j:logyard-quarkus:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-quarkus:0.1.0-rc.2")
 }
 ```
 
@@ -173,7 +173,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-quarkus" = "0.1.0-rc.1"
+"com.logyard4j:logyard-quarkus" = "0.1.0-rc.2"
 ```
 
 </details>
@@ -213,7 +213,7 @@ Add the native runtime:
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-runtime</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
   </dependency>
 </dependencies>
 ```
@@ -225,7 +225,7 @@ Add the native runtime:
 
 ```kotlin
 dependencies {
-    implementation("com.logyard4j:logyard-runtime:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-runtime:0.1.0-rc.2")
 }
 ```
 
@@ -236,7 +236,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-runtime" = "0.1.0-rc.1"
+"com.logyard4j:logyard-runtime" = "0.1.0-rc.2"
 ```
 
 </details>
@@ -312,7 +312,7 @@ Add the JUL adapter:
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-jul</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
   </dependency>
 </dependencies>
 ```
@@ -324,7 +324,7 @@ Add the JUL adapter:
 
 ```kotlin
 dependencies {
-    implementation("com.logyard4j:logyard-jul:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-jul:0.1.0-rc.2")
 }
 ```
 
@@ -335,7 +335,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-jul" = "0.1.0-rc.1"
+"com.logyard4j:logyard-jul" = "0.1.0-rc.2"
 ```
 
 </details>
@@ -361,7 +361,7 @@ Add the provider; its `System.LoggerFinder` is discovered automatically:
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-system-logger</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
   </dependency>
 </dependencies>
 ```
@@ -373,7 +373,7 @@ Add the provider; its `System.LoggerFinder` is discovered automatically:
 
 ```kotlin
 dependencies {
-    implementation("com.logyard4j:logyard-system-logger:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-system-logger:0.1.0-rc.2")
 }
 ```
 
@@ -384,7 +384,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-system-logger" = "0.1.0-rc.1"
+"com.logyard4j:logyard-system-logger" = "0.1.0-rc.2"
 ```
 
 </details>
@@ -401,7 +401,7 @@ Add the optional OpenTelemetry module alongside your Logyard integration. It use
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-opentelemetry</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
   </dependency>
 </dependencies>
 ```
@@ -413,7 +413,7 @@ Add the optional OpenTelemetry module alongside your Logyard integration. It use
 
 ```kotlin
 dependencies {
-    implementation("com.logyard4j:logyard-opentelemetry:0.1.0-rc.1")
+    implementation("com.logyard4j:logyard-opentelemetry:0.1.0-rc.2")
 }
 ```
 
@@ -424,7 +424,7 @@ dependencies {
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-opentelemetry" = "0.1.0-rc.1"
+"com.logyard4j:logyard-opentelemetry" = "0.1.0-rc.2"
 ```
 
 </details>
@@ -496,7 +496,7 @@ Import the BOM when using several Logyard artifacts, then declare dependencies w
     <dependency>
       <groupId>com.logyard4j</groupId>
       <artifactId>logyard-bom</artifactId>
-      <version>0.1.0-rc.1</version>
+      <version>0.1.0-rc.2</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -518,7 +518,7 @@ Import the BOM when using several Logyard artifacts, then declare dependencies w
 
 ```kotlin
 dependencies {
-    implementation(platform("com.logyard4j:logyard-bom:0.1.0-rc.1"))
+    implementation(platform("com.logyard4j:logyard-bom:0.1.0-rc.2"))
     implementation("com.logyard4j:logyard-slf4j2")
 }
 ```
@@ -530,7 +530,7 @@ dependencies {
 
 ```toml
 [platforms]
-"com.logyard4j:logyard-bom" = "0.1.0-rc.1"
+"com.logyard4j:logyard-bom" = "0.1.0-rc.2"
 
 [dependencies]
 "com.logyard4j:logyard-slf4j2" = { managed = true }
@@ -552,7 +552,7 @@ Add `logyard-test` as a test dependency:
   <dependency>
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-test</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
     <scope>test</scope>
   </dependency>
 </dependencies>
@@ -565,7 +565,7 @@ Add `logyard-test` as a test dependency:
 
 ```kotlin
 dependencies {
-    testImplementation("com.logyard4j:logyard-test:0.1.0-rc.1")
+    testImplementation("com.logyard4j:logyard-test:0.1.0-rc.2")
 }
 ```
 
@@ -576,7 +576,7 @@ dependencies {
 
 ```toml
 [dependencies.test]
-"com.logyard4j:logyard-test" = "0.1.0-rc.1"
+"com.logyard4j:logyard-test" = "0.1.0-rc.2"
 ```
 
 </details>

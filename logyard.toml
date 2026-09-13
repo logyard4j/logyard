@@ -4,7 +4,7 @@ schema = 1
 # Identify this application in structured events.
 [service]
 name = "${LOGYARD_SERVICE_NAME:-logyard-example}"
-version = "${LOGYARD_SERVICE_VERSION:-0.1.0-rc.1}"
+version = "${LOGYARD_SERVICE_VERSION:-0.1.0-rc.2}"
 environment = "${LOGYARD_ENVIRONMENT:-local}"
 
 # Runtime settings take effect at installation; watch is opt-in.

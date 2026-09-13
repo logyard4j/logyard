@@ -6,7 +6,7 @@
 
     <groupId>com.logyard4j</groupId>
     <artifactId>logyard-quarkus-parent</artifactId>
-    <version>0.1.0-rc.1</version>
+    <version>0.1.0-rc.2</version>
     <packaging>pom</packaging>
 
     <name>Logyard Quarkus Extension Parent</name>
