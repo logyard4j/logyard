@@ -78,6 +78,7 @@ Each report links its raw measurements, source identity, and limitations. Result
 | UTF-8 file output | [Measure bounded reusable record storage](evidence/utf8-file-output.md) |
 | Process-stream baseline | [Profile production UTF-8 conversion and reconcile completed records](evidence/process-stream-baseline.md) |
 | UTF-8 process streams | [Reuse bounded record storage beneath configured stdout/stderr](evidence/utf8-process-stream.md) |
+| Async delivery | [Remove temporary callbacks and healthy-path diagnostic formatting](evidence/async-delivery-temporaries.md) |
 | Virtual-thread delivery | [Measure completed work, latency, drops, and CPU](evidence/virtual-delivery.md) |
 | Provider comparison | [Match semantics and effective buffered capacity](comparison/README.md) |
 | Rejected argument experiments | [Lazy storage attempts and added coverage](evidence/fluent-arguments.md) |

@@ -55,16 +55,18 @@ final class AsyncDelegateDelivery {
                 rejectClosed(List.of(event));
                 return;
             }
-            if (ComponentInvocationBoundary.invoke(
-                    "async output delegate accept",
-                    () -> delegate.accept(event),
-                    (component, failure) -> {
+            try {
+                delegate.accept(event);
+            } catch (Throwable failure) {
+                ComponentInvocationBoundary.report("async output delegate accept", failure,
+                    (component, current) -> {
                         metrics.recordEmergencyFallback();
-                        diagnostics.emergency(event, componentFailure(component, failure));
-                        diagnostics.failure(component, failure);
-                    })) {
-                metrics.recordDelivered();
+                        diagnostics.emergency(event, componentFailure(component, current));
+                        diagnostics.failure(component, current);
+                    });
+                return;
             }
+            metrics.recordDelivered();
         } finally {
             lock.unlock();
         }

@@ -9,6 +9,7 @@ import com.logyard4j.logyard.api.spi.diagnostics.HealthContributor;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 
 /** Bounded asynchronous admission with explicit per-severity overload behavior. */
 public final class AsyncSink implements EventSink, HealthContributor {
@@ -21,6 +22,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     private final AsyncSinkMetrics metrics = new AsyncSinkMetrics();
     private final AsyncSinkDiagnostics diagnostics;
     private final AsyncSinkWorker worker;
+    private final BooleanSupplier acceptingEvents;
 
     public AsyncSink(
             String name,
@@ -57,6 +59,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
                 metrics,
                 diagnostics,
                 overflowPolicy);
+        acceptingEvents = worker::acceptingEvents;
         worker.start();
     }
 
@@ -155,7 +158,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
     }
 
     private boolean offerImmediately(LogEvent event) {
-        return handleOffer(event, eventQueue.offerImmediately(event, worker::acceptingEvents));
+        return handleOffer(event, eventQueue.offerImmediately(event, acceptingEvents));
     }
 
     private void block(LogEvent event, Duration wait) {
@@ -165,7 +168,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
             return;
         }
         try {
-            if (!handleOffer(event, eventQueue.offerWithin(event, wait, worker::acceptingEvents))) {
+            if (!handleOffer(event, eventQueue.offerWithin(event, wait, acceptingEvents))) {
                 metrics.recordEmergencyFallback();
                 diagnostics.emergency(event, "async queue full after block timeout");
             }
@@ -178,7 +181,7 @@ public final class AsyncSink implements EventSink, HealthContributor {
 
     private boolean offerWithWait(LogEvent event, Duration wait) {
         try {
-            return handleOffer(event, eventQueue.offerWithin(event, wait, worker::acceptingEvents));
+            return handleOffer(event, eventQueue.offerWithin(event, wait, acceptingEvents));
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             return false;
