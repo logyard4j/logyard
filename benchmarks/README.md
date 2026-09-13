@@ -20,6 +20,8 @@ The [empty fluent-attribute experiment](evidence/empty-attributes.md) skips unus
 
 The [capture-scope experiment](evidence/capture-scope.md) records a rejected closure optimization and retained nested-capture regressions.
 
+The [formatter-plan experiment](evidence/formatter-plan.md) removes duplicate parse-plan storage and measures ordinary formatting and rejected expansion.
+
 The [UTF-8 file experiment](evidence/utf8-file-output.md) measures reusable record storage and direct integer formatting through real file output.
 
 The [provider comparison](comparison/README.md) adds isolated Logyard, Logback, and Log4j asynchronous delivery experiments with shared or native JSON encoding, matched fields, actual file writes, scheduled arrivals, and drain reconciliation.
