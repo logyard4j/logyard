@@ -13,6 +13,8 @@ def validate(result: dict[str, Any], output: Path, format: str, fields: int) -> 
         model = "VIRTUAL_PER_REQUEST" if case.get("virtual_per_request") else "VIRTUAL" if case.get("virtual") else "PLATFORM"
         if result.get("thread_model") != model:
             raise AssertionError("requested and reported thread models differ")
+        if "policy" in case:
+            validate_capacity(result, case["policy"])
     expected = result["attempted"]
     records: dict[int, str] = {}
     written_bytes = 0
@@ -53,6 +55,19 @@ def validate(result: dict[str, Any], output: Path, format: str, fields: int) -> 
     result["completed_records_per_second"] = len(records) / elapsed
     result["completed_bytes_per_second"] = written_bytes / elapsed
     return records
+
+
+def validate_capacity(result: dict[str, Any], policy: str) -> None:
+    if policy not in ("matched-drop", "default") or result.get("policy") != policy:
+        raise AssertionError("requested and reported delivery policies differ")
+    queued = result.get("queue_capacity")
+    worker = result.get("worker_batch_capacity_outside_queue")
+    if type(queued) is not int or queued <= 0 or type(worker) is not int or worker < 0:
+        raise AssertionError("invalid queue or worker-held capacity")
+    maximum = queued + worker
+    if policy == "matched-drop" and maximum not in (4096, 4097):
+        raise AssertionError(f"matched maximum in-flight capacity must be 4096 or 4097; found {maximum}")
+    result["maximum_in_flight_events"] = maximum
 
 
 def equal_work(outputs: dict[str, dict[int, str]]) -> int:

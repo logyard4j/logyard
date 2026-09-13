@@ -4,10 +4,23 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from .results import equal_work, validate
+from .results import equal_work, validate, validate_capacity
 
 
 class ComparisonResultsTest(unittest.TestCase):
+    def test_rejects_queue_matching_that_ignores_a_worker_held_batch(self) -> None:
+        result = {"policy": "matched-drop", "queue_capacity": 4096, "worker_batch_capacity_outside_queue": 4097}
+        with self.assertRaisesRegex(AssertionError, "in-flight capacity.*8193"):
+            validate_capacity(result, "matched-drop")
+
+    def test_rejects_a_different_policy_or_invalid_capacity_measurement(self) -> None:
+        result = {"policy": "default", "queue_capacity": 256, "worker_batch_capacity_outside_queue": 257}
+        with self.assertRaisesRegex(AssertionError, "policies differ"):
+            validate_capacity(result, "matched-drop")
+        for invalid in (True, -1, None, 1.5):
+            with self.subTest(value=invalid), self.assertRaisesRegex(AssertionError, "invalid.*capacity"):
+                validate_capacity(result | {"worker_batch_capacity_outside_queue": invalid}, "default")
+
     def test_counts_only_complete_unique_file_records(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "events.log"

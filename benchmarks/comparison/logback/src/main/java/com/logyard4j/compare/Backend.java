@@ -47,7 +47,8 @@ public final class Backend implements AutoCloseable {
         async.setName("comparison");
         async.setMaxFlushTime(5_000);
         if (options.policy().equals("matched-drop")) {
-            async.setQueueSize(4_096);
+            // The worker can hold queueSize + 1 additional events after take() and drainTo().
+            async.setQueueSize(2_048);
             async.setDiscardingThreshold(0);
             async.setNeverBlock(true);
         }

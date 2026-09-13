@@ -44,7 +44,15 @@ The native lane omits `attributes` when zero MDC fields are requested. Native ti
 
 Native encoding runs on the output worker. Logyard returns text, which the fixture frames and converts to UTF-8; Logback uses `encode`, and Log4j uses `toByteArray`. All three use the same measured file destination. This covers capture, message formatting, asynchronous dispatch, JSON encoding, and successful writes. Buffered file appenders, direct byte-buffer encoding, rotation, exceptions, and reload remain outside this comparison.
 
-The default comparison policy uses 4,096 queue slots and drops every severity when full. Logback's drained worker batch can hold another 4,097 records; Logyard's custom output holds one active record outside its queue; Log4j's active record occupies the ring buffer. The report includes these capacities. Queue-slot equality is not a total-memory bound. The `default` policy lane deliberately preserves different severity and waiting policies, so interpret its loss and latency together.
+The default comparison policy, `matched-drop`, drops every severity when full and aligns maximum buffered work within one event:
+
+| Provider | Queue slots | Worker-held events outside the queue | Maximum in-flight events |
+| --- | ---: | ---: | ---: |
+| Logyard | 4,096 | 1 | 4,097 |
+| Logback | 2,048 | 2,049 | 4,097 |
+| Log4j | 4,096 | 0 | 4,096 |
+
+Logback's worker takes one event and drains the queue into its batch; producers can refill the queue while that batch is delivered. Log4j's active event occupies its ring buffer. The validator includes worker-held work and rejects a matched lane outside 4,096–4,097 events. Record sizes and allocation still differ, and producer-held capture work remains additional. The `default` policy lane preserves each library's own capacity, severity, and waiting policies, so interpret its loss and latency together.
 
 Each experiment warms its producers, schedules the requested arrivals, then records every attempted call. Overload latency includes lateness before a logging call starts. A queue-capacity check and an ordered marker establish the drain barrier after producers finish.
 
@@ -62,6 +70,7 @@ Results are under `target/benchmark-compare/`; `latest.txt` identifies the last 
 | Arrival-to-write percentiles | Scheduled arrival to successful write for delivered records |
 | `unwritten_info`, `unwritten_error` | Attempted identities absent after drain, grouped by severity |
 | Native counters | Independently reconciled where available: Logyard enqueue/drop totals and the matched Log4j drop policy |
+| `maximum_in_flight_events` | Configured queue capacity plus maximum worker-held records outside that queue |
 | Caller/worker allocation and CPU | Counters for warmed, live threads across measurement and drain; includes instrumentation overhead |
 | Process CPU and peak RSS | Measured-interval process CPU; whole-process sampled peak RSS, including startup and warm-up |
 
