@@ -47,7 +47,7 @@ final class AsyncSinkHealth {
                 Throwable failure = healthFailure.get();
                 status = HealthStatus.FAILED;
                 details.put("delegate_status", "failed");
-                details.put("delegate_health_failure", EmergencyText.failureSummary(failure, 512));
+                details.put("delegate_health_failure", EmergencyText.sanitize(failure.getClass().getName(), 512));
             }
         }
 

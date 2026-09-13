@@ -36,6 +36,8 @@ Async health counters are live, independent snapshots; changing values need not 
 
 Built-in JSON and console health read last-known state independently of output I/O. A stalled write, flush, or close does not block health collection, including async and Spring Actuator health. The `io_operation` detail (`delegate_io_operation` for async outputs) shows `idle`, `write`, `flush`, or `close`; JSON outputs also report `scheduled_flush`. An operation in progress does not by itself mark the output failed; closing reports `STOPPING` until cleanup finishes.
 
+If a health contributor throws, the runtime and async wrapper report its exception type without invoking message accessors. A failed health snapshot does not disable event delivery.
+
 While runtime shutdown is waiting for publishers or output close calls, its health reports `STOPPING`, `ready = false`, and `pending_retirements`. Reaching the caller's shutdown deadline does not itself change that status to `STOPPED`.
 
 | Metric | Meaning |
