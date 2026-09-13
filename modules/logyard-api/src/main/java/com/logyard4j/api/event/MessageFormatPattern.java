@@ -91,12 +91,12 @@ final class MessageFormatPattern {
         private Element element(int opening, int close) {
             int firstComma = delimiter(opening + 1, close);
             if (firstComma < 0) {
-                return new Element(argumentIndex(opening + 1), close - opening + 1, "", "", opening, close);
+                return new Element(argumentIndex(opening + 1, close), close - opening + 1, "", "", opening, close);
             }
             int secondComma = delimiter(firstComma + 1, close);
             String type = pattern.substring(firstComma + 1, secondComma < 0 ? close : secondComma).trim();
             String style = secondComma < 0 ? "" : pattern.substring(secondComma + 1, close);
-            return new Element(argumentIndex(opening + 1), close - opening + 1, type, style, opening, close);
+            return new Element(argumentIndex(opening + 1, firstComma), close - opening + 1, type, style, opening, close);
         }
 
         private int delimiter(int start, int end) {
@@ -141,20 +141,12 @@ final class MessageFormatPattern {
             return -1;
         }
 
-        private int argumentIndex(int cursor) {
-            while (cursor < pattern.length() && Character.isWhitespace(pattern.charAt(cursor))) {
-                cursor++;
+        private int argumentIndex(int start, int end) {
+            try {
+                return Integer.parseInt(pattern, start, end, 10);
+            } catch (NumberFormatException invalid) {
+                return -1;
             }
-            int start = cursor;
-            int value = 0;
-            while (cursor < pattern.length() && Character.isDigit(pattern.charAt(cursor))) {
-                int digit = pattern.charAt(cursor++) - '0';
-                if (value > (Integer.MAX_VALUE - digit) / 10) {
-                    return -1;
-                }
-                value = value * 10 + digit;
-            }
-            return cursor == start ? -1 : value;
         }
     }
 }
