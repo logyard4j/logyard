@@ -4,19 +4,20 @@ import com.logyard4j.api.event.CaptureLimits;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 /** Bounded positional values whose suppliers remain lazy until event capture. */
 final class PendingArguments {
-    private final List<PendingValue> values = new ArrayList<>(4);
+    private final List<Object> values = new ArrayList<>(4);
     private int omitted;
 
     void add(Object value) {
-        add(PendingValue.direct(value));
+        store(value);
     }
 
     void add(Supplier<?> supplier) {
-        add(PendingValue.supplied(supplier));
+        store(new Supplied(Objects.requireNonNull(supplier, "valueSupplier")));
     }
 
     void addAll(Object[] supplied) {
@@ -25,7 +26,7 @@ final class PendingArguments {
         }
         int retained = Math.min(supplied.length, CaptureLimits.MAX_ARGUMENTS - values.size());
         for (int index = 0; index < retained; index++) {
-            values.add(PendingValue.direct(supplied[index]));
+            values.add(supplied[index]);
         }
         addOmitted(supplied.length - retained);
     }
@@ -45,7 +46,8 @@ final class PendingArguments {
     Object[] capture() {
         Object[] captured = new Object[values.size()];
         for (int index = 0; index < values.size(); index++) {
-            captured[index] = values.get(index).resolve();
+            Object value = values.get(index);
+            captured[index] = value instanceof Supplied supplied ? supplied.supplier().get() : value;
         }
         return captured;
     }
@@ -55,7 +57,7 @@ final class PendingArguments {
         omitted = 0;
     }
 
-    private void add(PendingValue value) {
+    private void store(Object value) {
         if (values.size() < CaptureLimits.MAX_ARGUMENTS) {
             values.add(value);
         } else {
@@ -66,5 +68,8 @@ final class PendingArguments {
     private void addOmitted(int additional) {
         long total = (long) omitted + additional;
         omitted = (int) Math.min(Integer.MAX_VALUE, total);
+    }
+
+    private record Supplied(Supplier<?> supplier) {
     }
 }
