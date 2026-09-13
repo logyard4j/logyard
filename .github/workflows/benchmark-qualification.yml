@@ -20,7 +20,7 @@ jobs:
         run: |
           PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
             --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
-            bash ./scripts/bootstrap-zolt
+            "$BASH" ./scripts/bootstrap-zolt
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Qualify packaged delivery in three fresh JVMs per workload
