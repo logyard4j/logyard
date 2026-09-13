@@ -1,6 +1,6 @@
 package com.logyard4j.output.json.file;
 
-/** Immutable, coherently published operational state for one rotating writer. */
+/** Last-known writer state with independently sampled maintenance progress. */
 record WriterHealthSnapshot(
         String writerState,
         String writerFailureType,

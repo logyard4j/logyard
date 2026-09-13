@@ -1,7 +1,7 @@
 version = 7
-projectResolutionFingerprint = "sha256:93d23013c3c3be35a71c9d6b1c41171007a2286781723b664e620f51169a59ee"
-projectResolutionInputFingerprints = ["dependencies.api.workspace=sha256:7847305a184dcb8ea19150919597a3ec04f445d5ca2118eaca379052c75af999", "dependencies.api=sha256:39f5fd06a42367ae0ef58cd55d9f0250316ab47dd4da3fea440edd035cf07ea5", "dependencies.compile.workspace=sha256:f3ad551f39a1b093e0caf159baed26309d897adba0ec2e181c106103e53afbe9", "dependencies.compile=sha256:e3683fb26ffacb3e650d81a4505c7cf5aacf216b1f404f1193a0dbe430f98f45", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:38058139032fc535da4af4c9b8c0fccbc4640418cafa8a8c5c8390856c19faac", "dependencies.test=sha256:c2cd5ca6411e5499ec02883b6978eacf8bf85b6607936df8d7d6002658f64a63", "dependencyMetadata=sha256:680ffc4d1437d12e7cc9f38abec225f231c5492525d2d876a4b91fb75483502c", "framework.quarkus=sha256:48e8e093ab172fce36712e57dcae3a106f954ab20aa835860ad0ee4a7013e0ad", "framework.springBoot.native=sha256:207684aba27b63fc0dc5bba4c50d6f7ac96393193639e7cb74cd99fff5585414", "java=sha256:d2e95bf9f835e0684207d92af1405999be608edb7ce13e71a5f133f4f30b6deb", "package=sha256:38a46871a2485b18f067fca61c6586945244020a94813750d8238e16812c960a", "repositories=sha256:8d83fcace96a7c99979aa18f9632de48e161a2f8f311ea685c4d17730a00b848", "schema=sha256:4080635e231be413ba40f3532f116fdf339d085e15a235fe8ba786955f78456c"]
-workspaceResolutionInputFingerprint = "sha256:eb309033a59778c4d41028d281ec57e13eb7752a2467f1b82451b217490e4397"
+projectResolutionFingerprint = "sha256:d2c64386b40641313cbe4d9bff98b8f93586ba6cbc302aa90c0b8bc9f044dfce"
+projectResolutionInputFingerprints = ["dependencies.api.workspace=sha256:7847305a184dcb8ea19150919597a3ec04f445d5ca2118eaca379052c75af999", "dependencies.api=sha256:39f5fd06a42367ae0ef58cd55d9f0250316ab47dd4da3fea440edd035cf07ea5", "dependencies.compile.workspace=sha256:f3ad551f39a1b093e0caf159baed26309d897adba0ec2e181c106103e53afbe9", "dependencies.compile=sha256:e3683fb26ffacb3e650d81a4505c7cf5aacf216b1f404f1193a0dbe430f98f45", "dependencies.processor=sha256:9aa8cffd85d71e5ac135a1b5dc3e5a9ac5a19660feace72bf76ced3f76c26285", "dependencies.test.workspace=sha256:5f7a1acf54b70592da147442e3188559d326e9f842dba4dbc2eb70a51e21f012", "dependencies.test=sha256:c2cd5ca6411e5499ec02883b6978eacf8bf85b6607936df8d7d6002658f64a63", "dependencyMetadata=sha256:680ffc4d1437d12e7cc9f38abec225f231c5492525d2d876a4b91fb75483502c", "framework.quarkus=sha256:48e8e093ab172fce36712e57dcae3a106f954ab20aa835860ad0ee4a7013e0ad", "framework.springBoot.native=sha256:207684aba27b63fc0dc5bba4c50d6f7ac96393193639e7cb74cd99fff5585414", "java=sha256:d2e95bf9f835e0684207d92af1405999be608edb7ce13e71a5f133f4f30b6deb", "package=sha256:38a46871a2485b18f067fca61c6586945244020a94813750d8238e16812c960a", "repositories=sha256:8d83fcace96a7c99979aa18f9632de48e161a2f8f311ea685c4d17730a00b848", "schema=sha256:4080635e231be413ba40f3532f116fdf339d085e15a235fe8ba786955f78456c"]
+workspaceResolutionInputFingerprint = "sha256:161079c0f0a1090f06e7e57182380ab9557753f4a2f0d089b0070822e48ce826"
 
 [[dependencyRoot]]
 member = "benchmarks/logyard-benchmarks"
@@ -191,6 +191,13 @@ id = "com.logyard4j:logyard-api"
 version = "0.1.0-rc.1"
 lane = "api"
 resolvedScope = "compile"
+
+[[dependencyRoot]]
+member = "modules/logyard-output-json"
+id = "com.logyard4j:logyard-core"
+version = "0.1.0-rc.1"
+lane = "test"
+resolvedScope = "test"
 
 [[dependencyRoot]]
 member = "modules/logyard-output-json"
@@ -565,7 +572,7 @@ scope = "test"
 direct = true
 workspace = "modules/logyard-core"
 workspaceOutput = "target/classes"
-members = ["modules/logyard-jul", "modules/logyard-system-logger"]
+members = ["modules/logyard-jul", "modules/logyard-output-json", "modules/logyard-system-logger"]
 dependencies = []
 
 [[package]]

@@ -39,6 +39,10 @@ final class AsyncSinkHealth {
                 ComponentHealth delegateHealth = result.get();
                 status = HealthStatus.worst(status, delegateHealth.status());
                 details.put("delegate_status", delegateHealth.status().name().toLowerCase(java.util.Locale.ROOT));
+                String ioOperation = delegateHealth.details().get("io_operation");
+                if (ioOperation != null) {
+                    details.put("delegate_io_operation", ioOperation);
+                }
             } else {
                 Throwable failure = healthFailure.get();
                 status = HealthStatus.FAILED;

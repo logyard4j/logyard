@@ -33,6 +33,7 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
     private final boolean closeWriter;
     private final JsonStreamState state = new JsonStreamState();
     private final TimedFlushController timedFlush;
+    private volatile String ioOperation = "idle";
 
     public JsonLinesSink(
             Writer writer,
@@ -60,12 +61,15 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
         String encoded = encoder.encode(Objects.requireNonNull(event, "event"));
         synchronized (writerState) {
             requireOpen();
+            ioOperation = "write";
             try {
                 writer.write(encoded);
                 writer.write('\n');
                 timedFlush.recordWritten();
             } catch (Throwable failure) {
                 throw fail("failed to write Logyard JSON event", failure);
+            } finally {
+                ioOperation = "idle";
             }
         }
     }
@@ -74,11 +78,13 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
     public void flush() {
         synchronized (writerState) {
             requireOpen();
+            ioOperation = "flush";
             try {
                 writer.flush();
             } catch (Throwable failure) {
                 throw fail("failed to flush Logyard JSON output", failure);
             } finally {
+                ioOperation = "idle";
                 timedFlush.flushed();
             }
         }
@@ -93,12 +99,13 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
         }
         timedFlush.close();
         synchronized (writerState) {
-            Throwable primaryFailure = state.failure();
-            if (primaryFailure != null) {
-                closeAfterFailure(primaryFailure);
-                return;
-            }
+            ioOperation = "close";
             try {
+                Throwable primaryFailure = state.failure();
+                if (primaryFailure != null) {
+                    closeAfterFailure(primaryFailure);
+                    return;
+                }
                 if (closeWriter) {
                     writer.close();
                 } else {
@@ -106,6 +113,8 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
                 }
             } catch (Throwable failure) {
                 throw fail("failed to close Logyard JSON output", failure);
+            } finally {
+                ioOperation = "idle";
             }
             state.completeClose();
         }
@@ -113,20 +122,15 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
 
     @Override
     public ComponentHealth health(String componentName) {
-        synchronized (writerState) {
-            Map<String, String> details = new LinkedHashMap<>();
-            details.put("format", "jsonl");
-            details.put("writer", writer.getClass().getName());
-            if (state.failureType() != null) {
-                details.put("writer_failure", state.failureType());
-            }
-            return new ComponentHealth(
-                    componentName,
-                    "json-stream-output",
-                    state.healthStatus(),
-                    details,
-                    Map.of());
+        JsonStreamState.Snapshot snapshot = state.snapshot();
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("format", "jsonl");
+        details.put("writer", writer.getClass().getName());
+        details.put("io_operation", ioOperation);
+        if (snapshot.failureType() != null) {
+            details.put("writer_failure", snapshot.failureType());
         }
+        return new ComponentHealth(componentName, "json-stream-output", snapshot.status(), details, Map.of());
     }
 
     private void flushOnDeadline() {
@@ -134,11 +138,13 @@ public final class JsonLinesSink implements EventSink, HealthContributor {
             if (!timedFlush.flushIsCurrent() || state.failed()) {
                 return;
             }
+            ioOperation = "scheduled_flush";
             try {
                 writer.flush();
             } catch (Throwable failure) {
                 throw fail("failed to flush Logyard JSON output on schedule", failure);
             } finally {
+                ioOperation = "idle";
                 timedFlush.flushCompleted();
             }
         }

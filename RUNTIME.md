@@ -34,6 +34,8 @@ var route = logyard.runtime().explain("com.example.checkout");
 
 Async health counters are live, independent snapshots; changing values need not reconcile during traffic.
 
+Built-in JSON health reads last-known state independently of output I/O. A stalled write, flush, or close does not block health collection, including async and Spring Actuator health. The `io_operation` detail (`delegate_io_operation` for async outputs) shows `idle`, `write`, `flush`, `scheduled_flush`, or `close`. An operation in progress does not by itself mark the output failed; closing reports `STOPPING` until cleanup finishes.
+
 | Metric | Meaning |
 | --- | --- |
 | `capacity` | Fixed queue slot limit |

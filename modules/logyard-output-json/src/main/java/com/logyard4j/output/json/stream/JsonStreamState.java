@@ -6,6 +6,7 @@ import com.logyard4j.api.diagnostics.HealthStatus;
 final class JsonStreamState {
     private Stage stage = Stage.OPEN;
     private Throwable failure;
+    private volatile Snapshot snapshot = new Snapshot(HealthStatus.HEALTHY, null);
 
     void requireOpen() {
         if (stage == Stage.FAILED || stage == Stage.CLOSING_FAILED || stage == Stage.CLOSED_FAILED) {
@@ -25,6 +26,7 @@ final class JsonStreamState {
             case FAILED -> Stage.FAILED;
             case CLOSING, CLOSING_FAILED, CLOSED, CLOSED_FAILED -> Stage.CLOSED_FAILED;
         };
+        publish();
     }
 
     boolean failed() {
@@ -35,8 +37,8 @@ final class JsonStreamState {
         return failure;
     }
 
-    String failureType() {
-        return failure == null ? null : failure.getClass().getName();
+    Snapshot snapshot() {
+        return snapshot;
     }
 
     boolean startClose() {
@@ -53,19 +55,26 @@ final class JsonStreamState {
             case CLOSING_FAILED -> Stage.CLOSED_FAILED;
             case OPEN, FAILED, CLOSED, CLOSED_FAILED -> stage;
         };
+        publish();
     }
 
-    HealthStatus healthStatus() {
-        return switch (stage) {
-            case OPEN, CLOSING -> HealthStatus.HEALTHY;
+    private void publish() {
+        HealthStatus status = switch (stage) {
+            case OPEN -> HealthStatus.HEALTHY;
+            case CLOSING -> HealthStatus.STOPPING;
             case FAILED, CLOSING_FAILED, CLOSED_FAILED -> HealthStatus.FAILED;
             case CLOSED -> HealthStatus.STOPPED;
         };
+        snapshot = new Snapshot(status, failure == null ? null : failure.getClass().getName());
     }
 
     private boolean transitionTo(Stage next) {
         stage = next;
+        publish();
         return true;
+    }
+
+    record Snapshot(HealthStatus status, String failureType) {
     }
 
     private enum Stage {

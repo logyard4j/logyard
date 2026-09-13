@@ -13,6 +13,11 @@ final class WriterLifecycle {
 
     private State state = State.PREPARED;
     private Throwable failure;
+    private volatile Snapshot snapshot = new Snapshot(State.PREPARED, null);
+
+    Snapshot snapshot() {
+        return snapshot;
+    }
 
     State state() {
         return state;
@@ -25,28 +30,43 @@ final class WriterLifecycle {
     void opened() {
         state = State.OPEN;
         failure = null;
+        publish();
     }
 
     void failed(Throwable cause) {
         state = State.FAILED;
         failure = cause;
+        publish();
     }
 
     void recoverableOperationFailed(Throwable cause) {
         failure = cause;
+        publish();
     }
 
     void operationSucceeded() {
-        failure = null;
+        if (failure != null) {
+            failure = null;
+            publish();
+        }
     }
 
     void closed() {
         state = State.CLOSED;
+        publish();
     }
 
     void closeFailed(Throwable cause) {
         failure = cause;
         state = State.CLOSED;
+        publish();
+    }
+
+    private void publish() {
+        snapshot = new Snapshot(state, failure == null ? null : failure.getClass().getName());
+    }
+
+    record Snapshot(State state, String failureType) {
     }
 
     void requireUsable(Path path) {

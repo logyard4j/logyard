@@ -18,12 +18,16 @@ final class JsonFileHealth {
             Path path,
             boolean rotating,
             boolean sinkClosed,
+            boolean sinkClosing,
+            String ioOperation,
             WriterHealthSnapshot snapshot) {
         String writerFailure = snapshot.writerFailureType();
         String maintenanceFailure = snapshot.maintenanceFailureType();
         HealthStatus status;
         if (writerFailure != null || maintenanceFailure != null) {
             status = HealthStatus.FAILED;
+        } else if (sinkClosing) {
+            status = HealthStatus.STOPPING;
         } else if (sinkClosed || snapshot.writerState().equals("CLOSED")) {
             status = HealthStatus.STOPPED;
         } else if (!snapshot.maintenanceWorkerAlive()) {
@@ -41,6 +45,7 @@ final class JsonFileHealth {
         details.put("format", "jsonl");
         details.put("path", path.toString());
         details.put("rotation", Boolean.toString(rotating));
+        details.put("io_operation", ioOperation);
         details.put("writer_state", snapshot.writerState().toLowerCase(Locale.ROOT));
         if (writerFailure != null) {
             details.put("writer_failure", writerFailure);

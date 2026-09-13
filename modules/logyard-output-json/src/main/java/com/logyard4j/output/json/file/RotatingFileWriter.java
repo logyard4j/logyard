@@ -24,7 +24,7 @@ final class RotatingFileWriter implements AutoCloseable {
     private final ActiveFileAge age;
     private final FileRotationTransition rotation;
     private FileLease lease;
-    private ArchiveMaintenance maintenance;
+    private volatile ArchiveMaintenance maintenance;
 
     RotatingFileWriter(Path path, int bufferBytes, boolean append, RotationPolicy policy) {
         this(path, bufferBytes, append, policy, BufferedFileWriter::open);
@@ -106,11 +106,11 @@ final class RotatingFileWriter implements AutoCloseable {
 
     WriterHealthSnapshot healthSnapshot() {
         ArchiveMaintenance currentMaintenance = maintenance;
-        Throwable writerFailure = lifecycle.failure();
+        WriterLifecycle.Snapshot snapshot = lifecycle.snapshot();
         return new WriterHealthSnapshot(
-                lifecycle.state().name(),
-                writerFailure == null ? null : writerFailure.getClass().getName(),
-                !initialized() || currentMaintenance == null || currentMaintenance.workerAlive(),
+                snapshot.state().name(),
+                snapshot.failureType(),
+                currentMaintenance == null || currentMaintenance.workerAlive(),
                 currentMaintenance != null && currentMaintenance.closing(),
                 currentMaintenance == null ? null : currentMaintenance.failureType(),
                 currentMaintenance == null ? 0 : currentMaintenance.queueCapacity(),
