@@ -2,13 +2,36 @@ from pathlib import Path
 import tempfile
 import tomllib
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from example_tools.scenarios import spring_boot_example
 from example_tools.zolt import ZoltExampleRunner
 
 
 class ZoltExampleTest(unittest.TestCase):
+    def test_new_run_discards_logyard_indexes_but_preserves_shared_blobs_and_other_groups(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            stale = (
+                "com/logyard4j/logyard-core/1.0/core.jar",
+                "indexes/" + "a" * 64 + "/com/logyard4j/logyard-core/1.0/core.jar.idx",
+                "indexes/" + "b" * 64 + "/com/logyard4j/logyard-api/1.0/api.pom.idx",
+            )
+            retained = (
+                "blobs/v2/sha256/" + "c" * 64 + "/core.jar",
+                "indexes/" + "a" * 64 + "/org/slf4j/slf4j-api/2.0/api.jar.idx",
+            )
+            for name in stale + retained:
+                path = target / "cache" / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"cached")
+            with patch("example_tools.zolt.ThreadingHTTPServer"), patch("example_tools.zolt.threading.Thread"):
+                with ZoltExampleRunner(target / "bundle", "1.0", target):
+                    for name in stale:
+                        self.assertFalse((target / "cache" / name).exists(), name)
+                    for name in retained:
+                        self.assertEqual(b"cached", (target / "cache" / name).read_bytes())
+
     def test_variant_is_clean_and_preserves_the_original_example(self) -> None:
         root = Path(__file__).resolve().parents[2]
         source = root / "examples/spring-boot/zolt.toml"

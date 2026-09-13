@@ -46,6 +46,8 @@ class ZoltExampleRunner:
         self._target.mkdir(parents=True, exist_ok=True)
         # Each run must resolve Logyard from this bundle, even at the same version.
         shutil.rmtree(self._cache / "com/logyard4j", ignore_errors=True)
+        for group_index in (self._cache / "indexes").glob("*/com/logyard4j"):
+            shutil.rmtree(group_index)
         handler = partial(RepositoryHandler, directory=str(self._release_repository))
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
