@@ -10,11 +10,9 @@ public final class EmergencyText {
     }
 
     public static String sanitize(String value, int maximum) {
-        if (maximum < 1) {
-            throw new IllegalArgumentException("maximum must be positive");
-        }
+        requireMaximum(maximum);
         if (value == null) {
-            return "null";
+            value = "null";
         }
         StringBuilder result = new StringBuilder(Math.min(value.length(), maximum));
         int index = 0;
@@ -68,8 +66,9 @@ public final class EmergencyText {
     }
 
     public static String failureSummary(Throwable failure, int maximum) {
+        requireMaximum(maximum);
         if (failure == null) {
-            return "null";
+            return sanitize(null, maximum);
         }
         String type = failure.getClass().getName();
         String message;
@@ -77,18 +76,17 @@ public final class EmergencyText {
             message = failure.getMessage();
         } catch (Throwable accessorFailure) {
             FailureIsolation.prepareForRecovery(accessorFailure);
-            message = "[message accessor failed: " + accessorFailure.getClass().getName() + ']';
+            message = "[message accessor failed: " + prefix(accessorFailure.getClass().getName(), maximum) + ']';
         }
-        String summary = message == null || message.isBlank() ? type : type + ": " + message;
+        String summary = message == null || message.isBlank() ? type
+                : prefix(type, maximum) + ": " + prefix(message, maximum);
         return sanitize(summary, maximum);
     }
 
     public static String threadComponent(String value, int maximum) {
-        if (maximum < 1) {
-            throw new IllegalArgumentException("maximum must be positive");
-        }
+        requireMaximum(maximum);
         if (value == null || value.isBlank()) {
-            return "unnamed";
+            return prefix("unnamed", maximum);
         }
         StringBuilder result = new StringBuilder(Math.min(value.length(), maximum));
         for (int index = 0; index < value.length() && result.length() < maximum; index++) {
@@ -97,9 +95,20 @@ public final class EmergencyText {
                     ? character : '-');
         }
         if (result.length() == 0) {
-            return "unnamed";
+            return prefix("unnamed", maximum);
         }
         return result.toString();
+    }
+
+    private static void requireMaximum(int maximum) {
+        if (maximum < 1) {
+            throw new IllegalArgumentException("maximum must be positive");
+        }
+    }
+
+    private static String prefix(String value, int maximum) {
+        // Escaping only expands text, so a raw prefix is enough to fill the final output allowance.
+        return value.length() <= maximum ? value : value.substring(0, maximum);
     }
 
     private static boolean fits(StringBuilder result, int addition, int maximum) {

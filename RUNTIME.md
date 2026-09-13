@@ -52,6 +52,8 @@ While runtime shutdown is waiting for publishers or output close calls, its heal
 
 Core publication failures and async delivery/shutdown reports use a shared, rate-limited daemon with at most one bounded message in flight. A stalled stderr cannot block callers on those diagnostic paths or create extra reporters.
 
+Failure summaries bound temporary message assembly before escaping, so oversized exception messages do not require equally large diagnostic buffers.
+
 `runtime.internal_status` controls reload diagnostics. Set it to `off` to suppress those messages.
 
 ## Atomic reload
