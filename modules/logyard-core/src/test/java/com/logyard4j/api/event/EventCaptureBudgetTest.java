@@ -245,8 +245,12 @@ final class EventCaptureBudgetTest {
 
         LogEvent enriched = event.enrich(null, null, enrichment);
 
-        assertTrue(retainedCharacters(enriched.attributes()) <= CaptureLimits.MAX_EVENT_PAYLOAD_TEXT_CHARS);
-        assertEquals(true, enriched.attributes().get("logyard.capture.truncated"));
+        int capturedArgumentCharacters = ((String) event.argumentAt(0)).length();
+        // The fixed diagnostic marker is outside the caller's payload allowance.
+        int retainedPayloadCharacters = retainedCharacters(enriched.attributes()) - SystemAttributes.CAPTURE_TRUNCATED.length();
+        assertTrue(retainedPayloadCharacters
+                <= CaptureLimits.MAX_EVENT_PAYLOAD_TEXT_CHARS - capturedArgumentCharacters);
+        assertEquals(true, enriched.attributes().get(SystemAttributes.CAPTURE_TRUNCATED));
     }
 
     @Test

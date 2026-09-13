@@ -125,7 +125,7 @@ final class CaptureContext {
     }
 
     CaptureAllowance payloadAllowance() {
-        return new CaptureAllowance(structure.remainingNodes(), structure.remainingEntries(), text.remainingPayloadCharacters());
+        return CaptureAllowance.remaining(structure.remainingNodes(), structure.remainingEntries(), text.remainingPayloadCharacters());
     }
 
     private boolean claim(boolean accepted) {

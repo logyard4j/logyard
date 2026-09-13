@@ -12,6 +12,8 @@ The [structured-field declaration experiment](evidence/attribute-declarations.md
 
 The [literal rendering experiment](evidence/literal-rendering.md) removes unnecessary capture and rendering wrappers, with file-delivery reconciliation and a fanout allocation investigation.
 
+The [capture-allowance experiment](evidence/capture-allowance.md) reuses an immutable full-budget snapshot and records its small-event saving and MDC variation.
+
 The [UTF-8 file experiment](evidence/utf8-file-output.md) measures reusable record storage and direct integer formatting through real file output.
 
 The [provider comparison](comparison/README.md) adds isolated Logyard, Logback, and Log4j asynchronous delivery experiments with shared or native JSON encoding, matched fields, actual file writes, scheduled arrivals, and drain reconciliation.
