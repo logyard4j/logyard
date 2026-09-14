@@ -13,6 +13,7 @@
 - Text templates stop resolving values at the output limit and reject Unicode line separators in template sources.
 - Classpath configuration sources normalize long slash prefixes without repeatedly copying the resource name.
 - Provider configuration rejects oversized normalized keys before copying and keeps rejection messages bounded.
+- Adapter source thread names are trimmed within a bounded copy while preserving the existing name limit and Unicode-safe truncation.
 - `EffectiveRoute` includes an `enabled` component and `isEnabled(Level)` so explanations expose operational `OFF` overrides. The five-argument constructor remains available; record deconstruction patterns must include the new component.
 
 ## 0.1.0-rc.2 — candidate changes

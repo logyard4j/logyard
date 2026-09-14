@@ -109,7 +109,8 @@ public final class IngressMetadata {
     }
 
     /**
-     * Returns the normalized source thread name, or {@code null}.
+     * Returns the trimmed source thread name, shortened to {@link CaptureLimits#MAX_NAME_CHARS}
+     * without splitting a surrogate pair, or {@code null} for a null or empty trimmed name.
      *
      * @return source thread name, or {@code null}
      */
@@ -121,7 +122,18 @@ public final class IngressMetadata {
         if (threadName == null) {
             return null;
         }
-        String normalized = threadName.trim();
-        return normalized.isEmpty() ? null : CaptureLimits.name(normalized);
+        int start = 0;
+        int end = threadName.length();
+        while (start < end && threadName.charAt(start) <= ' ') start++;
+        while (start < end && threadName.charAt(end - 1) <= ' ') end--;
+        if (start == end) {
+            return null;
+        }
+        if (start == 0 && end == threadName.length()) {
+            return CaptureLimits.name(threadName);
+        }
+        // One extra character preserves the truncation marker without copying the full interior.
+        int length = Math.min(end - start, CaptureLimits.MAX_NAME_CHARS + 1);
+        return CaptureLimits.name(threadName.substring(start, start + length));
     }
 }
