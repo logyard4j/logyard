@@ -3,7 +3,6 @@ package com.logyard4j.logyard.compare;
 import org.slf4j.Logger;
 import org.slf4j.MDC;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -176,8 +175,9 @@ public final class ProducerTeam implements AutoCloseable {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         for (Thread thread : threads) {
             long remaining = deadline - System.nanoTime();
-            if (remaining > 0) thread.join(Duration.ofNanos(remaining));
-            require(!thread.isAlive(), "producer did not terminate");
+            // This overload waits for isAlive() to become false, including native thread teardown.
+            if (remaining > 0) thread.join(remaining / 1_000_000L, (int) (remaining % 1_000_000L));
+            require(!thread.isAlive(), "producer did not terminate: " + thread.getName());
         }
         requireHealthy();
     }
