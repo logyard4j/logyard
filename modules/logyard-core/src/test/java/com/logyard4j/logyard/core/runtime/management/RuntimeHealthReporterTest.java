@@ -17,8 +17,23 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 final class RuntimeHealthReporterTest {
+    @Test
+    void anUnavailableOutputKeepsTheRuntimeUnreadyBesideADegradedOutput() {
+        try (DefaultLogyardRuntime runtime = new DefaultLogyardRuntime(new RuntimePlan(
+                RouteDefinition.root(Level.INFO, List.of("starting", "degraded"), List.of()),
+                Map.of(),
+                Map.of("starting", new ReadinessSink(HealthStatus.STARTING),
+                        "degraded", new ReadinessSink(HealthStatus.DEGRADED)),
+                Map.of()))) {
+            RuntimeHealth health = runtime.health();
+            assertEquals(HealthStatus.STARTING, health.status());
+            assertFalse(health.ready());
+        }
+    }
+
     @Test
     void isolatesRecoverableHealthContributorErrorsWithoutDisablingDelivery() {
         HostileHealthSink sink = new HostileHealthSink();
@@ -53,6 +68,17 @@ final class RuntimeHealthReporterTest {
         @Override
         public ComponentHealth health(String componentName) {
             throw new AssertionError("health failed");
+        }
+    }
+
+    private record ReadinessSink(HealthStatus status) implements EventSink, HealthContributor {
+        @Override
+        public void accept(LogEvent event) {
+        }
+
+        @Override
+        public ComponentHealth health(String componentName) {
+            return new ComponentHealth(componentName, "output", status, Map.of(), Map.of());
         }
     }
 }

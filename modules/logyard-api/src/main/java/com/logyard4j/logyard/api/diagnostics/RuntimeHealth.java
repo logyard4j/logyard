@@ -36,7 +36,7 @@ public record RuntimeHealth(
     }
 
     /**
-     * Aggregates current component snapshots into a runtime report.
+     * Aggregates current component snapshots into a runtime report, ready only when every component is ready.
      *
      * @param components component snapshots
      * @return report observed at the current instant
