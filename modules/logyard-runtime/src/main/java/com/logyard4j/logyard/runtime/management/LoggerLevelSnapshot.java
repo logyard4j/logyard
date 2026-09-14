@@ -17,7 +17,7 @@ public record LoggerLevelSnapshot(
         LoggerLevelOrigin origin) {
 
     /**
-     * Retains source and binary compatibility with the original two-value management snapshot.
+     * Preserves the original two-argument construction form and its binary descriptor.
      *
      * @param configuredLevel exact configured threshold
      * @param effectiveLevel effective threshold
