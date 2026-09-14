@@ -41,6 +41,12 @@ jobs:
           SOAK_CYCLES: ${{ inputs.cycles || '1200' }}
         # End before the hosted job limit so an interrupted run can retain its evidence.
         run: timeout --signal=TERM --kill-after=30s 315m ./scripts/benchmark-lifecycle-soak --cycles "$SOAK_CYCLES"
+      - name: Publish lifecycle evidence summary
+        if: always()
+        run: |
+          summary="$(PYTHONPATH=scripts python3 -m comparison_tools.lifecycle_summary .)"
+          printf '::notice title=Lifecycle soak evidence::%s\n' "$summary"
+          printf '### Lifecycle soak evidence\n\n```json\n%s\n```\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
       - name: Retain lifecycle and resource evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
