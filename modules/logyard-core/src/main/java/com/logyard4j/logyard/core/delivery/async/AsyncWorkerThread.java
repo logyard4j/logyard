@@ -9,7 +9,8 @@ final class AsyncWorkerThread {
     private final Thread thread;
 
     AsyncWorkerThread(String outputName, Runnable task) {
-        thread = new Thread(task, "logyard-output-" + EmergencyText.threadComponent(outputName, 64));
+        thread = new Thread(null, task, "logyard-output-" + EmergencyText.threadComponent(outputName, 64), 0L, false);
+        thread.setContextClassLoader(Thread.currentThread().getContextClassLoader());
         thread.setDaemon(true);
     }
 

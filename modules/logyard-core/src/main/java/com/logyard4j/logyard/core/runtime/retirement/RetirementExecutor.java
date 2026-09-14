@@ -28,10 +28,14 @@ final class RetirementExecutor {
     private final AtomicInteger pendingReloads = new AtomicInteger();
     private final AtomicReference<WorkerPhase> workerPhase = new AtomicReference<>(WorkerPhase.NOT_STARTED);
     private final Thread worker = new Thread(
+            null,
             this::runLoop,
-            "logyard-plan-retirement-" + NEXT_ID.incrementAndGet());
+            "logyard-plan-retirement-" + NEXT_ID.incrementAndGet(),
+            0L,
+            false);
 
     RetirementExecutor() {
+        worker.setContextClassLoader(Thread.currentThread().getContextClassLoader());
         worker.setDaemon(true);
     }
 

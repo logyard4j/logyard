@@ -15,6 +15,8 @@ Native applications, frameworks, and adapters share one runtime identity with re
 
 Keep a runtime lease for the application's lifetime; see [native setup](INTEGRATIONS.md#native-java).
 
+Output and retirement workers do not inherit the creating thread's `InheritableThreadLocal` values. Capture request metadata into the event; extension callbacks must use that captured data instead of worker-local application context.
+
 Adapters also hold leases. For a coordinated process-wide stop or restart, first stop logging callers, then call `Logyard.shutdown()` to retire every managed lease. Cached facade loggers follow the next installation; see the [lifecycle example](examples/lifecycle).
 
 ## Health and diagnostics
