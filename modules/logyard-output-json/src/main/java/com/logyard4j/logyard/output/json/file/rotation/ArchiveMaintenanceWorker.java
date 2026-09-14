@@ -12,7 +12,8 @@ final class ArchiveMaintenanceWorker {
 
     ArchiveMaintenanceWorker(Path activePath, Runnable task) {
         Objects.requireNonNull(activePath, "activePath");
-        thread = new Thread(task, "logyard-archive-maintenance-" + sanitize(activePath.getFileName().toString()));
+        thread = new Thread(null, task, "logyard-archive-maintenance-" + sanitize(activePath.getFileName().toString()), 0L, false);
+        thread.setContextClassLoader(Thread.currentThread().getContextClassLoader());
         thread.setDaemon(true);
     }
 

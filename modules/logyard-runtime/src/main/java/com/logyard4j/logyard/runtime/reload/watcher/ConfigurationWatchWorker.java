@@ -10,7 +10,8 @@ final class ConfigurationWatchWorker {
     private final Thread thread;
 
     ConfigurationWatchWorker(Path source, Runnable task) {
-        thread = new Thread(task, "logyard-config-watch-" + safeThreadSegment(source.getFileName().toString()));
+        thread = new Thread(null, task, "logyard-config-watch-" + safeThreadSegment(source.getFileName().toString()), 0L, false);
+        thread.setContextClassLoader(Thread.currentThread().getContextClassLoader());
         thread.setDaemon(true);
     }
 
