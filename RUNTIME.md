@@ -60,6 +60,32 @@ Failure summaries bound temporary message assembly before escaping, so oversized
 
 `runtime.internal_status` controls reload diagnostics. Set it to `off` to suppress those messages.
 
+## Temporary logger levels
+
+Use `LoggerLevelManagement` with the standard runtime to change levels without editing TOML:
+
+```java
+import com.logyard4j.logyard.runtime.management.LoggerLevel;
+import com.logyard4j.logyard.runtime.management.LoggerLevelManagement;
+
+var levels = LoggerLevelManagement.forRuntime(logyard.runtime());
+levels.setLevel("com.example.checkout", LoggerLevel.DEBUG);
+levels.setLevel("com.example.noisy", LoggerLevel.OFF);
+var checkout = levels.getLoggerLevel("com.example.checkout");
+levels.clearLevel("com.example.checkout");
+```
+
+Overrides apply to a logger and its descendants. `ROOT` addresses every logger. They survive configuration reload and framework source handoff; clearing an override restores inheritance from the current configuration and remaining overrides.
+
+| API | Returns |
+| --- | --- |
+| `getLoggerLevel(name)` | Exact base level, exact override, effective level, and its origin |
+| `listLoggerLevels()` | A sorted snapshot of configured, overridden, and observed names |
+| `listConfiguredLevels()` | Exact temporary overrides |
+| `listBaseConfiguredLevels()` | Exact thresholds from the active configuration |
+
+Use `clearAllOverrides()` to restore configuration control everywhere. These operations affect the shared process runtime; previously captured snapshots remain unchanged.
+
 ## Atomic reload
 
 Enable [file watching](CONFIGURATION.md#reload-and-shutdown), or request the same reload decision directly:

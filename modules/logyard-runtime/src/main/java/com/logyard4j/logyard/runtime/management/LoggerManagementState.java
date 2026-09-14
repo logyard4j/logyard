@@ -33,27 +33,27 @@ record LoggerManagementState(
     }
 
     LoggerLevelSnapshot logger(String name) {
-        LoggerLevel runtimeOverride = overrides.get(name);
-        LoggerLevel baseConfigured = baseLevels.get(name);
-        LoggerLevel configured = runtimeOverride == null ? baseConfigured : runtimeOverride;
         RuntimeLevelOverride effectiveOverride = runtime.effectiveLevelOverride(name);
         LoggerLevel effective = effectiveOverride == null
                 ? LoggerLevel.from(runtime.effectiveBaseLevel(name))
                 : LoggerLevel.from(effectiveOverride);
-        LoggerLevelOrigin origin = effectiveOverride != null
-                ? LoggerLevelOrigin.RUNTIME_OVERRIDE
-                : baseConfigured == null ? LoggerLevelOrigin.INHERITED : LoggerLevelOrigin.BASE_CONFIGURATION;
-        return new LoggerLevelSnapshot(configured, effective, baseConfigured, runtimeOverride, origin);
+        return snapshot(baseLevels.get(name), overrides.get(name), effective, effectiveOverride);
     }
 
     static LoggerLevelSnapshot logger(RuntimeLoggerLevelSnapshot runtime) {
-        LoggerLevel baseConfigured = from(runtime.baseConfiguredLevel());
-        LoggerLevel runtimeOverride = from(runtime.runtimeOverride());
-        LoggerLevel configured = runtimeOverride == null ? baseConfigured : runtimeOverride;
         LoggerLevel effective = runtime.effectiveRuntimeOverride() == null
                 ? LoggerLevel.from(runtime.effectiveBaseLevel())
                 : LoggerLevel.from(runtime.effectiveRuntimeOverride());
-        LoggerLevelOrigin origin = runtime.effectiveRuntimeOverride() != null
+        return snapshot(from(runtime.baseConfiguredLevel()), from(runtime.runtimeOverride()), effective, runtime.effectiveRuntimeOverride());
+    }
+
+    private static LoggerLevelSnapshot snapshot(
+            LoggerLevel baseConfigured,
+            LoggerLevel runtimeOverride,
+            LoggerLevel effective,
+            RuntimeLevelOverride effectiveOverride) {
+        LoggerLevel configured = runtimeOverride == null ? baseConfigured : runtimeOverride;
+        LoggerLevelOrigin origin = effectiveOverride != null
                 ? LoggerLevelOrigin.RUNTIME_OVERRIDE
                 : baseConfigured == null ? LoggerLevelOrigin.INHERITED : LoggerLevelOrigin.BASE_CONFIGURATION;
         return new LoggerLevelSnapshot(configured, effective, baseConfigured, runtimeOverride, origin);
