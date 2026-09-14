@@ -39,7 +39,8 @@ public final class RuntimeBundle implements AutoCloseable {
     }
 
     /**
-     * Returns the shared runtime. After the final lease closes, the returned runtime is stopped.
+     * Returns the shared runtime associated with this lease, including after the lease closes.
+     * Closing the final managed lease starts shutdown; a borrowed runtime retains its external owner.
      *
      * @return shared Logyard runtime
      */
@@ -48,7 +49,7 @@ public final class RuntimeBundle implements AutoCloseable {
     }
 
     /**
-     * Reports whether this lease still refers to the installed runtime.
+     * Reports whether this lease is open and still refers to the installed runtime.
      *
      * @return {@code true} while active
      */
@@ -66,7 +67,7 @@ public final class RuntimeBundle implements AutoCloseable {
     }
 
     /**
-     * Reports whether the shared runtime currently has an active filesystem watcher.
+     * Reports whether this lease is active and the shared runtime has an active filesystem watcher.
      *
      * @return {@code true} when changes are watched
      */
@@ -78,13 +79,18 @@ public final class RuntimeBundle implements AutoCloseable {
      * Re-reads the active process-wide source and applies changed content atomically.
      * The installation's captured profile and overrides remain fixed until a fresh installation.
      *
-     * @return reload outcome
+     * @return reload outcome, or {@link ReloadResult#REJECTED} if this managed lease is inactive
+     * @throws IllegalStateException if this lease borrows an external runtime with no managed configuration
      */
     public ReloadResult reloadNow() {
         return lease.reloadNow();
     }
 
-    /** Releases this ownership lease and closes the runtime only when it is the final lease. */
+    /**
+     * Releases this lease once. The final managed lease starts runtime shutdown; cleanup may
+     * continue after the configured shutdown timeout. Closing a borrowed lease leaves its
+     * external runtime installed.
+     */
     @Override
     public void close() {
         lease.close();

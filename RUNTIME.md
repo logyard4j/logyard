@@ -11,6 +11,7 @@ Native applications, frameworks, and adapters share one runtime identity with re
 - An early adapter may start the runtime lazily. A later application or framework can reconfigure it without invalidating existing loggers.
 - A late adapter cannot overwrite a framework-selected source.
 - Closing a `RuntimeBundle` releases that owner's lease. The final owner closes the watcher, delivery, outputs, and process-global `Logyard` reference.
+- An adapter lease that borrows a runtime installed with `Logyard.initialize()` leaves configuration and shutdown with the external owner. Closing that lease leaves the runtime installed.
 - Independent logging configurations need separate JVMs, including in parallel tests.
 
 Keep a runtime lease for the application's lifetime; see [native setup](INTEGRATIONS.md#native-java).
