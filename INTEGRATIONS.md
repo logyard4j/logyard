@@ -286,6 +286,9 @@ Explicit event fields override `with` fields, which override scoped fields. Scop
 For repeated submissions, wrap the executor once:
 
 ```java
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+
 Executor contextual = LogContext.wrap(executor);
 CompletableFuture.supplyAsync(this::loadOrder, contextual);
 ```

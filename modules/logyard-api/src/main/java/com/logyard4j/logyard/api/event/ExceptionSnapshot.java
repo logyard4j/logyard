@@ -109,7 +109,7 @@ public final class ExceptionSnapshot {
     }
 
     /**
-     * Returns a single-line type-and-message summary.
+     * Returns a type-and-message summary, retaining the captured message text.
      *
      * @return exception summary
      */

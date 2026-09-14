@@ -120,7 +120,7 @@ Custom filters, formatters, encoders, and outputs use `type = "custom"`, a `prov
 ## Provider contract
 
 - **Prepare without irreversible effects.** A candidate may be rejected or superseded after provider creation. Construction must not irreversibly modify durable external state.
-- **Release resources in `close()`.** Every provider-created closeable component is owned by the runtime plan.
+- **Keep ownership explicit.** The runtime closes output sinks when their plan retires. Context providers, processors, formatters, and encoders have no managed close callback and must not own resources that require cleanup.
 - **Handle concurrency.** Synchronous outputs may share a custom encoder concurrently. Make it thread-safe and allow reentrant logging callbacks; only the built-in `JsonEncoder` is synchronized by Logyard.
 - **Keep lifecycle calls separate.** Providers run outside lifecycle and reload state locks. Recursive installation, reconfiguration, or shutdown from provider lifecycle callbacks is unsupported.
 
