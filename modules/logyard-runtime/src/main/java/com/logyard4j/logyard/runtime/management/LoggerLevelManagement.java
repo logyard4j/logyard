@@ -1,6 +1,7 @@
 package com.logyard4j.logyard.runtime.management;
 
 import com.logyard4j.logyard.api.LogyardRuntime;
+import com.logyard4j.logyard.api.event.CaptureLimits;
 import com.logyard4j.logyard.core.level.RuntimeLevelOverrides;
 import com.logyard4j.logyard.core.runtime.DefaultLogyardRuntime;
 
@@ -122,7 +123,19 @@ public final class LoggerLevelManagement {
     }
 
     private static String normalize(String loggerName) {
-        String normalized = Objects.requireNonNull(loggerName, "loggerName").trim();
+        Objects.requireNonNull(loggerName, "loggerName");
+        int start = 0;
+        int end = loggerName.length();
+        while (start < end && loggerName.charAt(start) <= ' ') start++;
+        while (start < end && loggerName.charAt(end - 1) <= ' ') end--;
+        if (end - start > CaptureLimits.MAX_NAME_CHARS) {
+            throw new IllegalArgumentException(
+                    "loggerName exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters");
+        }
+        String normalized = loggerName.substring(start, end);
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("loggerName must not be blank");
+        }
         return ROOT_LOGGER_NAME.equalsIgnoreCase(normalized) ? ROOT_LOGGER_NAME : normalized;
     }
 }

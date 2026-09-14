@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.logyard4j.logyard.api.LogyardLogger;
 import com.logyard4j.logyard.api.Level;
+import com.logyard4j.logyard.api.event.CaptureLimits;
 import com.logyard4j.logyard.api.spi.output.EventSink;
 import com.logyard4j.logyard.api.reload.ReloadResult;
 import com.logyard4j.logyard.core.routing.RouteDefinition;
@@ -27,6 +28,22 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 final class LoggerLevelManagementTest {
+    @Test
+    void boundsLoggerNamesBeforeManagementNormalization() {
+        EventSink sink = ignored -> { };
+        try (DefaultLogyardRuntime runtime = DefaultLogyardRuntime.consoleOnly(sink)) {
+            LoggerLevelManagement levels = LoggerLevelManagement.forRuntime(runtime);
+            String maximum = "a".repeat(CaptureLimits.MAX_NAME_CHARS);
+            String padding = " \t\r\n".repeat(1_000);
+
+            assertEquals(LoggerLevel.INFO, levels.getEffectiveLevel(padding + maximum + padding));
+            IllegalArgumentException failure = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> levels.getLoggerLevel(padding + maximum + "a" + padding));
+            assertTrue(failure.getMessage().length() <= 128);
+        }
+    }
+
     @Test
     void managesHierarchicalLevelsAndPreservesThemAcrossReload() throws Exception {
         Path directory = Files.createTempDirectory("logyard-level-management-");

@@ -15,7 +15,7 @@
 - Provider configuration, component names, extension references, resource keys, JSON profiles, and output contexts reject oversized normalized input before copying and keep rejection messages bounded.
 - Explicitly capped configuration and JSON profile collections reject oversized inputs before copying or traversal.
 - Adapter source thread names are trimmed within a bounded copy while preserving the existing name limit and Unicode-safe truncation.
-- Logger creation and route explanation reject oversized names before expanding hierarchy prefixes.
+- Logger creation, route explanation, and temporary level management reject oversized names before normalization or hierarchy expansion.
 - `EffectiveRoute` includes an `enabled` component and `isEnabled(Level)` so explanations expose operational `OFF` overrides. The five-argument constructor remains available; record deconstruction patterns must include the new component.
 
 ## 0.1.0-rc.2 — candidate changes

@@ -102,12 +102,17 @@ public final class RuntimeLevelOverrides {
     }
 
     private static String loggerName(String value) {
-        String normalized = Objects.requireNonNull(value, "loggerName").trim();
+        Objects.requireNonNull(value, "loggerName");
+        int start = 0;
+        int end = value.length();
+        while (start < end && value.charAt(start) <= ' ') start++;
+        while (start < end && value.charAt(end - 1) <= ' ') end--;
+        if (end - start > CaptureLimits.MAX_NAME_CHARS) {
+            throw new IllegalArgumentException("loggerName exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters");
+        }
+        String normalized = value.substring(start, end);
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("loggerName must not be blank");
-        }
-        if (normalized.length() > CaptureLimits.MAX_NAME_CHARS) {
-            throw new IllegalArgumentException("loggerName exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters");
         }
         return ROOT_LOGGER_NAME.equalsIgnoreCase(normalized) ? ROOT_LOGGER_NAME : normalized;
     }

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.logyard4j.logyard.api.Level;
+import com.logyard4j.logyard.api.event.CaptureLimits;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -55,5 +56,15 @@ final class RuntimeLevelOverridesTest {
         assertTrue(overrides.affects("com.acme", "com.acme.Service"));
         assertFalse(overrides.affects("com.acme", "com.acmeish.Service"));
         assertThrows(IllegalArgumentException.class, () -> overrides.withLevel(" ", RuntimeLevelOverride.off()));
+
+        String maximum = "a".repeat(CaptureLimits.MAX_NAME_CHARS);
+        String padding = " \t\r\n".repeat(1_000);
+        assertEquals(maximum, overrides.withLevel(
+                padding + maximum + padding,
+                RuntimeLevelOverride.off()).configuredLevels().keySet().iterator().next());
+        IllegalArgumentException oversized = assertThrows(
+                IllegalArgumentException.class,
+                () -> overrides.withLevel(padding + maximum + "a" + padding, RuntimeLevelOverride.off()));
+        assertTrue(oversized.getMessage().length() <= 128);
     }
 }
