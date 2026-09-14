@@ -49,8 +49,12 @@ public record JsonAttributeTransformConfig(
     }
 
     private static List<String> boundedNames(List<String> values, String label) {
-        List<String> copy = List.copyOf(Objects.requireNonNullElse(values, List.of()));
-        if (copy.size() > 128 || new LinkedHashSet<>(copy).size() != copy.size()) {
+        List<String> supplied = Objects.requireNonNullElse(values, List.of());
+        if (supplied.size() > 128) {
+            throw new IllegalArgumentException(label + " must be unique and contain at most 128 entries");
+        }
+        List<String> copy = List.copyOf(supplied);
+        if (new LinkedHashSet<>(copy).size() != copy.size()) {
             throw new IllegalArgumentException(label + " must be unique and contain at most 128 entries");
         }
         for (String value : copy) {

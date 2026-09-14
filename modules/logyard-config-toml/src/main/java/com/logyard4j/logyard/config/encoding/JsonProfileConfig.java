@@ -54,8 +54,12 @@ public record JsonProfileConfig(
             throw new IllegalArgumentException("JSON field transform destinations must be unique");
         }
         rename = Collections.unmodifiableMap(renamed);
-        drop = List.copyOf(Objects.requireNonNullElse(drop, List.of()));
-        if (drop.size() > FIELDS.size() || new LinkedHashSet<>(drop).size() != drop.size()) {
+        List<String> droppedFields = Objects.requireNonNullElse(drop, List.of());
+        if (droppedFields.size() > FIELDS.size()) {
+            throw new IllegalArgumentException("JSON dropped fields must be unique");
+        }
+        drop = List.copyOf(droppedFields);
+        if (new LinkedHashSet<>(drop).size() != drop.size()) {
             throw new IllegalArgumentException("JSON dropped fields must be unique");
         }
         for (String field : drop) {

@@ -2,6 +2,7 @@ package com.logyard4j.logyard.config.runtime;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /** Explicit capture policy for trace identity, local MDC, baggage, and redaction. */
@@ -31,11 +32,12 @@ public record ContextConfig(
     }
 
     private static List<String> boundedUnique(List<String> values, String label) {
-        List<String> copy = List.copyOf(values);
-        if (copy.size() > MAX_ALLOWLIST_ENTRIES) {
+        Objects.requireNonNull(values, label);
+        if (values.size() > MAX_ALLOWLIST_ENTRIES) {
             throw new IllegalArgumentException(
                     label + " must contain at most " + MAX_ALLOWLIST_ENTRIES + " entries");
         }
+        List<String> copy = List.copyOf(values);
         Set<String> unique = new LinkedHashSet<>(copy);
         if (unique.size() != copy.size()) {
             throw new IllegalArgumentException(label + " contains duplicate entries");

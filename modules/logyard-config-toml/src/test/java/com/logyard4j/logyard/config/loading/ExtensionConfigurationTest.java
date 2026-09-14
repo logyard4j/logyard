@@ -1,5 +1,6 @@
 package com.logyard4j.logyard.config.loading;
 
+import com.logyard4j.logyard.api.spi.config.ProviderConfiguration;
 import com.logyard4j.logyard.config.ConfigurationException;
 import com.logyard4j.logyard.config.LogyardConfig;
 import com.logyard4j.logyard.config.encoding.JsonEncoderConfig;
@@ -9,6 +10,7 @@ import com.logyard4j.logyard.config.output.CustomOutputConfig;
 import com.logyard4j.logyard.config.processing.RateLimitFilterConfig;
 import com.logyard4j.logyard.config.processing.SamplingFilterConfig;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ExtensionConfigurationTest {
+    @Test
+    void rejectsProviderArraysBeyondThePublishedLimit() {
+        String values = String.join(", ", Collections.nCopies(
+                ProviderConfiguration.MAX_LIST_ITEMS + 1, "true"));
+
+        expectFailure("""
+                schema = 1
+                [enrichers.policy]
+                provider = "company-policy"
+                config = { flags = [%s] }
+                [outputs.console]
+                type = "console"
+                """.formatted(values),
+                "provider-array.toml",
+                "provider configuration array exceeds 128 items");
+    }
+
     @Test
     void parsesProfilesExtensionsAndExplicitProcessors() {
         String text = """

@@ -38,10 +38,11 @@ public record ConfigOverlays(String profile, List<OverrideEntry> overrides) {
 
     public ConfigOverlays {
         profile = trimToNull(profile);
-        overrides = List.copyOf(Objects.requireNonNull(overrides, "overrides"));
-        if (overrides.size() > MAX_OVERRIDES) {
+        List<OverrideEntry> supplied = Objects.requireNonNull(overrides, "overrides");
+        if (supplied.size() > MAX_OVERRIDES) {
             throw new ConfigurationException("at most " + MAX_OVERRIDES + " configuration overrides are supported");
         }
+        overrides = List.copyOf(supplied);
     }
 
     /** Returns overlays with no profile and no overrides. */

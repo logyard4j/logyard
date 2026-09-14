@@ -75,6 +75,12 @@ final class ProviderReferenceDecoder {
             return value;
         }
         if (value instanceof List<?> list) {
+            if (list.size() > ProviderConfiguration.MAX_LIST_ITEMS) {
+                throw reader.failure(
+                        path,
+                        "provider configuration array exceeds "
+                                + ProviderConfiguration.MAX_LIST_ITEMS + " items");
+            }
             List<Object> copy = new ArrayList<>(list.size());
             for (int index = 0; index < list.size(); index++) {
                 Object item = list.get(index);

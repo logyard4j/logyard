@@ -55,8 +55,12 @@ public record ResourceConfig(Map<String, String> attributes, List<String> includ
     }
 
     private static List<String> selection(List<String> keys, String label) {
+        Objects.requireNonNull(keys, label);
+        if (keys.size() > MAX_ATTRIBUTES) {
+            throw new IllegalArgumentException("resource " + label + " requires at most 64 unique keys");
+        }
         List<String> copy = List.copyOf(keys);
-        if (copy.size() > MAX_ATTRIBUTES || Set.copyOf(copy).size() != copy.size()) {
+        if (Set.copyOf(copy).size() != copy.size()) {
             throw new IllegalArgumentException("resource " + label + " requires at most 64 unique keys");
         }
         for (String key : copy) {
