@@ -9,6 +9,7 @@
 - Output, retirement, watcher, archive-maintenance, and shutdown-hook threads avoid inheriting application thread-local state from their creation.
 - Health aggregation preserves unavailable components regardless of output order. Snapshot construction rejects oversized inputs before copying and refuses aggregate statuses that understate component severity.
 - Component health snapshots reject colliding normalized keys and preserve Unicode characters when shortening text.
+- Minimum-level filters preserve a valid delegate health snapshot when its detail budget is full.
 - Text templates stop resolving values at the output limit and reject Unicode line separators in template sources.
 - `EffectiveRoute` includes an `enabled` component and `isEnabled(Level)` so explanations expose operational `OFF` overrides. The five-argument constructor remains available; record deconstruction patterns must include the new component.
 
