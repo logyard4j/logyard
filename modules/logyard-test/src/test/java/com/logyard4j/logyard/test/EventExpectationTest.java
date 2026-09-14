@@ -66,7 +66,9 @@ final class EventExpectationTest {
             kit.logger("test.Attributes").info("bare");
             kit.events().expect().attribute("order.id").assertCount(1);
             kit.events().expect().attribute("missing").assertCount(1);
+            kit.events().expect().attribute("missing", null).assertCount(1);
             kit.events().expect().attribute("absent").assertNone();
+            kit.events().expect().attribute("absent", null).assertNone();
         }
     }
 

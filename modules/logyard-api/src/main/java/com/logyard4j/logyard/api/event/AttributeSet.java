@@ -2,7 +2,6 @@ package com.logyard4j.logyard.api.event;
 
 import com.logyard4j.logyard.api.annotation.InternalApi;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -43,17 +42,25 @@ public final class AttributeSet {
      * @return insertion-ordered captured value
      */
     public Object valueAt(int index) { return values[index]; }
-    /** Finds a value by its exact captured key.
+    /** Finds a value by its exact captured key; use {@link #containsKey(String)} to distinguish null from absence.
      * @param key exact captured key
-     * @return captured value, or {@code null}
+     * @return captured value, or {@code null} when absent or captured as null
      */
     public Object get(String key) {
+        int index = indexOf(key);
+        return index < 0 ? null : values[index];
+    }
+    /** Reports whether an exact captured key is present, including a captured null value.
+     * @param key exact captured key; {@code null} never matches
+     * @return whether the key is present
+     */
+    public boolean containsKey(String key) { return indexOf(key) >= 0; }
+
+    private int indexOf(String key) {
         for (int index = keys.length - 1; index >= 0; index--) {
-            if (keys[index].equals(key)) {
-                return values[index];
-            }
+            if (keys[index].equals(key)) return index;
         }
-        return null;
+        return -1;
     }
     /** Visits attributes in insertion order.
      * @param consumer receives attributes in insertion order
@@ -67,11 +74,7 @@ public final class AttributeSet {
     /** Creates a mutable insertion-ordered copy.
      * @return mutable insertion-ordered copy
      */
-    public Map<String, Object> toMap() {
-        Map<String, Object> result = new LinkedHashMap<>();
-        forEach(result::put);
-        return result;
-    }
+    public Map<String, Object> toMap() { return AttributeSetOperations.toMap(this); }
 
     AttributeSet withSystemAttribute(String key, Object value) {
         return AttributeSetOperations.withSystemAttribute(this, key, value);

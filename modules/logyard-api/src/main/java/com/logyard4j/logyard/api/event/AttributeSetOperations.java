@@ -1,11 +1,19 @@
 package com.logyard4j.logyard.api.event;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /** Trusted immutable transformations kept outside the public attribute facade. */
 final class AttributeSetOperations {
     private AttributeSetOperations() {
+    }
+
+    static Map<String, Object> toMap(AttributeSet source) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        source.forEach(result::put);
+        return result;
     }
 
     static AttributeSet withSystemAttribute(AttributeSet source, String key, Object value) {

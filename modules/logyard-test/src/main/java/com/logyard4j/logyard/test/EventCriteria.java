@@ -1,12 +1,12 @@
 package com.logyard4j.logyard.test;
 
 import com.logyard4j.logyard.api.Level;
+import com.logyard4j.logyard.api.event.AttributeSet;
 import com.logyard4j.logyard.api.event.ExceptionSnapshot;
 import com.logyard4j.logyard.api.event.LogEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /** Mutable conjunction of event criteria: every criterion added must hold for an event to match. */
@@ -62,7 +62,7 @@ final class EventCriteria {
         if (exceptionType != null && !matchesException(event.exception())) {
             return false;
         }
-        return attributes.isEmpty() || matchesAttributes(event.attributes().toMap());
+        return attributes.isEmpty() || matchesAttributes(event.attributes());
     }
 
     /** Renders bounded, terminal-safe criteria for assertion diagnostics. */
@@ -94,7 +94,7 @@ final class EventCriteria {
         return exception != null && exceptionType.equals(exception.type());
     }
 
-    private boolean matchesAttributes(Map<String, Object> values) {
+    private boolean matchesAttributes(AttributeSet values) {
         for (AttributeCriterion criterion : attributes) {
             if (!criterion.matches(values)) {
                 return false;
@@ -108,7 +108,7 @@ final class EventCriteria {
             Objects.requireNonNull(key, "key");
         }
 
-        boolean matches(Map<String, Object> values) {
+        boolean matches(AttributeSet values) {
             if (!values.containsKey(key)) {
                 return false;
             }
