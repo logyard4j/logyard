@@ -2,6 +2,7 @@ package com.logyard4j.logyard.core.runtime;
 
 import com.logyard4j.logyard.api.Level;
 import com.logyard4j.logyard.api.diagnostics.EffectiveRoute;
+import com.logyard4j.logyard.api.event.CaptureLimits;
 import com.logyard4j.logyard.core.level.RuntimeLevelOverride;
 import com.logyard4j.logyard.core.routing.RouteDefinition;
 import org.junit.jupiter.api.Test;
@@ -11,9 +12,26 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class EffectiveRouteEnablementTest {
+    @Test
+    void explanationsUseThePublicLoggerNameContract() {
+        try (DefaultLogyardRuntime runtime = runtime()) {
+            String maximum = "a".repeat(CaptureLimits.MAX_NAME_CHARS);
+            String oversized = maximum + "a";
+
+            assertEquals(maximum, runtime.explain(maximum).loggerName());
+            IllegalArgumentException loggerFailure = assertThrows(
+                    IllegalArgumentException.class, () -> runtime.logger(oversized));
+            IllegalArgumentException explanationFailure = assertThrows(
+                    IllegalArgumentException.class, () -> runtime.explain(oversized));
+            assertEquals(loggerFailure.getMessage(), explanationFailure.getMessage());
+            assertThrows(IllegalArgumentException.class, () -> runtime.explain(" \t"));
+        }
+    }
+
     @Test
     void explanationsFollowInheritedOffOverridesAndRemainImmutableAfterReenablement() {
         try (DefaultLogyardRuntime runtime = runtime()) {

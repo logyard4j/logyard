@@ -48,23 +48,15 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     @Override
     public LogyardLogger logger(String name) {
-        Objects.requireNonNull(name, "name");
-        if (name.isBlank()) {
-            throw new IllegalArgumentException("logger name must not be blank");
-        }
-        if (name.length() > CaptureLimits.MAX_NAME_CHARS) {
-            throw new IllegalArgumentException(
-                    "logger name exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters");
-        }
-        return publication.logger(name);
+        return publication.logger(requireLoggerName(name));
     }
 
     @Override
     public EffectiveRoute explain(String loggerName) {
-        Objects.requireNonNull(loggerName, "loggerName");
-        CompiledRoute route = compileRoute(loggerName, state);
+        String name = requireLoggerName(loggerName);
+        CompiledRoute route = compileRoute(name, state);
         return new EffectiveRoute(
-                loggerName,
+                name,
                 route.level(),
                 route.outputNames(),
                 route.processorNames(),
@@ -171,6 +163,18 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
 
     private static CompiledRoute compileRoute(String loggerName, RuntimeGeneration state) {
         return RuntimePublication.compileRoute(loggerName, state.plan(), state.levelOverrides(), state.epoch());
+    }
+
+    private static String requireLoggerName(String name) {
+        Objects.requireNonNull(name, "name");
+        if (name.length() > CaptureLimits.MAX_NAME_CHARS) {
+            throw new IllegalArgumentException(
+                    "logger name exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters");
+        }
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("logger name must not be blank");
+        }
+        return name;
     }
 
     private RuntimeGeneration currentGeneration() {

@@ -1,5 +1,6 @@
 package com.logyard4j.logyard.core.routing;
 
+import com.logyard4j.logyard.api.event.CaptureLimits;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,10 @@ public final class LoggerNameHierarchy {
     public static <T> List<Match<T>> matchingRules(String loggerName, Map<String, T> rules) {
         Objects.requireNonNull(loggerName, "loggerName");
         Objects.requireNonNull(rules, "rules");
+        if (loggerName.length() > CaptureLimits.MAX_NAME_CHARS) {
+            throw new IllegalArgumentException(
+                    "logger name exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters");
+        }
         if (loggerName.isBlank()) {
             throw new IllegalArgumentException("logger name must not be blank");
         }

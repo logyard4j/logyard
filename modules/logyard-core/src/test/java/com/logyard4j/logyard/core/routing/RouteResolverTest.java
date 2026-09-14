@@ -1,13 +1,27 @@
 package com.logyard4j.logyard.core.routing;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.logyard4j.logyard.api.Level;
+import com.logyard4j.logyard.api.event.CaptureLimits;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 final class RouteResolverTest {
+    @Test
+    void boundsLoggerNamesBeforeExpandingHierarchyPrefixes() {
+        String maximum = "a".repeat(CaptureLimits.MAX_NAME_CHARS);
+        String oversized = "a.".repeat(CaptureLimits.MAX_NAME_CHARS / 2) + "a";
+
+        assertEquals(List.of(), LoggerNameHierarchy.matchingRules(maximum, Map.of()));
+        IllegalArgumentException failure = assertThrows(
+                IllegalArgumentException.class,
+                () -> LoggerNameHierarchy.matchingRules(oversized, Map.of()));
+        assertEquals("logger name exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters", failure.getMessage());
+    }
+
     @Test
     void overlaysMatchingRulesFromLeastToMostSpecific() {
         RouteDefinition root = RouteDefinition.root(Level.INFO, List.of("console"), List.of("context"));
