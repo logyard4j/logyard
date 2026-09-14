@@ -8,6 +8,7 @@
 - `LogContext.wrap(Executor)` propagates the caller's context separately for each submission, including `CompletableFuture` tasks.
 - Output, retirement, watcher, archive-maintenance, and shutdown-hook threads avoid inheriting application thread-local state from their creation.
 - Health aggregation preserves unavailable components regardless of output order. Snapshot construction rejects oversized inputs before copying and refuses aggregate statuses that understate component severity.
+- Component health snapshots reject colliding normalized keys and preserve Unicode characters when shortening text.
 - `EffectiveRoute` includes an `enabled` component and `isEnabled(Level)` so explanations expose operational `OFF` overrides. The five-argument constructor remains available; record deconstruction patterns must include the new component.
 
 ## 0.1.0-rc.2 — candidate changes
