@@ -2,6 +2,12 @@
 
 [← Logyard](README.md) · [Release process](RELEASING.md)
 
+## Unreleased
+
+- `AttributeSet.containsKey()` distinguishes a captured null value from an absent key.
+- Health aggregation preserves unavailable components regardless of output order. Snapshot construction rejects oversized inputs before copying and refuses aggregate statuses that understate component severity.
+- `EffectiveRoute` includes an `enabled` component and `isEnabled(Level)` so explanations expose operational `OFF` overrides. The five-argument constructor remains available; record deconstruction patterns must include the new component.
+
 ## 0.1.0-rc.2 — candidate changes
 
 This candidate hardens output health, asynchronous delivery, and compatibility checks, and reduces enabled-path allocation. The runtime architecture and public text-encoder SPI are preserved.

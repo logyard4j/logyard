@@ -68,7 +68,8 @@ public final class DefaultLogyardRuntime implements LogyardRuntime {
                 route.level(),
                 route.outputNames(),
                 route.processorNames(),
-                route.matchedRule());
+                route.matchedRule(),
+                route.enabledMask() != 0);
     }
 
     @Override

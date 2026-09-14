@@ -22,7 +22,7 @@ public interface LogyardRuntime extends AutoCloseable {
     LogyardLogger logger(String name);
 
     /**
-     * Explains the effective route for a logger name.
+     * Explains the effective route and operational level enablement for a logger name.
      *
      * @param loggerName logger name to resolve
      * @return immutable route description

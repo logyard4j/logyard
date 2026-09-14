@@ -29,12 +29,14 @@ var route = logyard.runtime().explain("com.example.checkout");
 | API | Shows |
 | --- | --- |
 | `health()` | Output failures, worker status, queue capacity/depth, and dropped-event counts |
-| `explain(name)` | Effective level, inherited rule, processors, outputs, and context keys |
+| `explain(name)` | Effective threshold, level enablement, inherited rule, processors, and outputs |
 | `diagnostics_suppressed_total` | Process-wide count of suppressed internal reports |
 
 Async health counters are live, independent snapshots; changing values need not reconcile during traffic.
 
 Aggregate readiness requires every component to be ready. Starting, open-circuit, stopping, stopped, and failed components take precedence over healthy, recovering, or degraded components, regardless of output order.
+
+Use `route.enabled()` to distinguish an operational `OFF` override from the underlying threshold, or `route.isEnabled(Level.DEBUG)` to test a level against the snapshot. The explanation describes routing policy; filtering, output failure, overload, and shutdown can still prevent delivery.
 
 Built-in JSON and console health read last-known state independently of output I/O. A stalled write, flush, or close does not block health collection, including async and Spring Actuator health. The `io_operation` detail (`delegate_io_operation` for async outputs) shows `idle`, `write`, `flush`, or `close`; JSON outputs also report `scheduled_flush`. An operation in progress does not by itself mark the output failed; closing reports `STOPPING` until cleanup finishes.
 
