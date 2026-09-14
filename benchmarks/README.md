@@ -12,6 +12,7 @@ Use JDK 21+ and the repository's pinned Zolt:
 ./scripts/benchmark-smoke  # short harness, delivery-accounting, and allocation gate
 ./scripts/benchmark        # complete Logyard JMH suite
 ./scripts/benchmark-delivery-qualify  # 33 longer packaged delivery/reload forks on Linux
+./scripts/benchmark-lifecycle-soak   # 12 reload/shutdown cycles in one Linux JVM
 ```
 
 The smoke gate also exercises the official Quarkus extension benchmark. Its packaging requires Maven and resolves the extension from the verified release bundle. The Logyard benchmarks run through Zolt.
@@ -62,6 +63,20 @@ The ceilings below retain headroom over earlier JDK 21 measurements. They are re
 | Copied Quarkus record, four MDC fields | About 3000–3200 | 3328 |
 
 The first four ranges came from four hosted Temurin runs; the copied-record range came from three independent JVMs. Disabled-path ceilings remain 1 B/op.
+
+## Lifecycle soak
+
+`./scripts/benchmark-lifecycle-soak` rebuilds a clean committed candidate and runs twelve cycles in one JVM. Each cycle uses sixteen producers, 20,000 attempts at 2,000 events/s, two buffered file outputs, live reload, cached SLF4J loggers, and full shutdown. It also checks executor context propagation and cleanup. `zcheck run soak` runs the same check.
+
+For roughly six hours of scheduled logging plus setup and validation:
+
+```sh
+./scripts/benchmark-lifecycle-soak --cycles 2160
+```
+
+Every cycle independently reconciles both files, including drop diagnostics. Post-GC resource checks begin after cycle ten: retained heap may grow by at most 32 MiB, and descriptor and thread counts by at most four. JVM heap is capped at 256 MiB.
+
+Reports under `target/benchmark-lifecycle-soak/` record candidate and source hashes, packaged artifacts, JVM arguments, counters, and resource samples. Output retention keeps the first and latest two validated cycles compressed; each archive is verified before raw output is removed. Workload or record-validation failures retain raw files. These are lifecycle stability checks with explicit workload and growth limits.
 
 ## Recorded experiments
 

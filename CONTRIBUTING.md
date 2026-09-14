@@ -4,7 +4,7 @@
 
 ## Build and test
 
-Use a complete JDK 21+ with `javac` and `javadoc`. Bootstrap the repository's pinned Zolt revision, then run the main gate:
+Use a complete JDK 21+ with `javac` and `javadoc`, and Python 3.11+ for repository tooling. Bootstrap the repository's pinned Zolt revision, then run the main gate:
 
 ```sh
 ./scripts/bootstrap-zolt
@@ -31,6 +31,7 @@ Run commands from the repository root:
 | `./scripts/failure-injection-verify` | Durable-resource, delivery, and reload failure cases |
 | `./scripts/ecs-verify` | Zolt-generated JSON, typed Elasticsearch ingestion, and standard ECS queries through Smoque |
 | `./scripts/benchmark-smoke` | Benchmark harness, delivery accounting, and allocation budgets |
+| `./scripts/benchmark-lifecycle-soak` | Twelve reload/shutdown cycles in one JVM with independent output and resource checks |
 | `./scripts/comparison-verify` | Isolated Zolt provider builds and equal-output delivery comparisons through Smoque |
 | `./scripts/api-compatibility --baseline` | Reviewed compatibility policy against immutable release artifacts |
 

@@ -24,3 +24,11 @@ run = ["bash", "scripts/benchmark-delivery-qualify"]
 tools = ["bash", "java", "javac", "javadoc", "python3", "zolt", "mvn"]
 platforms = ["linux"]
 resources = ["logyard-build"]
+
+[tasks.soak]
+description = "Check repeated packaged reload and shutdown in one JVM with resource accounting."
+run = ["bash", "scripts/benchmark-lifecycle-soak"]
+tools = ["bash", "java", "javac", "javadoc", "python3", "zolt", "mvn"]
+platforms = ["linux"]
+timeout = "12h"
+resources = ["logyard-build"]
