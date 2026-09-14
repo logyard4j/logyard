@@ -1,0 +1,58 @@
+name: Lifecycle soak
+
+on:
+  push:
+    paths:
+      - '.github/workflows/lifecycle-soak.yml'
+  workflow_dispatch:
+    inputs:
+      cycles:
+        description: 'Reload/shutdown cycles in one JVM (1200 takes roughly four hours)'
+        type: choice
+        default: '1200'
+        options:
+          - '12'
+          - '600'
+          - '1200'
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Bootstrap the pinned Zolt revision
+        timeout-minutes: 10
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
+            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
+            "$BASH" ./scripts/bootstrap-zolt
+      - name: Put Zolt on PATH
+        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+      - name: Soak packaged reload and shutdown in one JVM
+        env:
+          SOAK_CYCLES: ${{ inputs.cycles || '1200' }}
+        # End before the hosted job limit so an interrupted run can retain its evidence.
+        run: timeout --signal=TERM --kill-after=30s 315m ./scripts/benchmark-lifecycle-soak --cycles "$SOAK_CYCLES"
+      - name: Retain lifecycle and resource evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lifecycle-soak-${{ github.sha }}-${{ github.run_attempt }}
+          retention-days: 14
+          path: |
+            target/ci/zolt-bootstrap.log
+            target/benchmark-lifecycle-soak/latest.txt
+            target/benchmark-lifecycle-soak/*/*.json
+            target/benchmark-lifecycle-soak/*/*.jsonl
+            target/benchmark-lifecycle-soak/*/*.log
+            target/benchmark-lifecycle-soak/*/cycle-*/*
+            target/benchmark-lifecycle-soak/*/projects/logyard/zolt.lock
+          if-no-files-found: warn

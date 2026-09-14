@@ -68,7 +68,11 @@ The first four ranges came from four hosted Temurin runs; the copied-record rang
 
 `./scripts/benchmark-lifecycle-soak` rebuilds a clean committed candidate and runs twelve cycles in one JVM. Each cycle uses sixteen producers, 20,000 attempts at 2,000 events/s, two buffered file outputs, live reload, cached SLF4J loggers, and full shutdown. It also checks executor context propagation and cleanup. `zcheck run soak` runs the same check.
 
-For roughly six hours of scheduled logging plus setup and validation:
+The [Lifecycle soak workflow](../.github/workflows/lifecycle-soak.yml) runs on Linux with JDK 21. It starts when that workflow changes, or manually with 12, 600, or 1,200 cycles. The default 1,200 cycles take roughly four hours in one JVM; actual duration depends on the runner. Evidence is uploaded on success or failure and retained for 14 days.
+
+[GitHub-hosted jobs stop after six hours](https://docs.github.com/en/actions/reference/limits). The workflow interrupts the soak after 315 minutes to leave time for evidence upload; an interrupted run fails. Longer continuous soaks need a local machine or self-hosted CI runner. Separate jobs start separate JVMs and do not extend one JVM's lifetime.
+
+For roughly seven hours locally, including setup and validation:
 
 ```sh
 ./scripts/benchmark-lifecycle-soak --cycles 2160
