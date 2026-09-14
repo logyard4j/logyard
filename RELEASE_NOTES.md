@@ -5,6 +5,7 @@
 ## Unreleased
 
 - `AttributeSet.containsKey()` distinguishes a captured null value from an absent key.
+- `LogContext.wrap(Executor)` propagates the caller's context separately for each submission, including `CompletableFuture` tasks.
 - Health aggregation preserves unavailable components regardless of output order. Snapshot construction rejects oversized inputs before copying and refuses aggregate statuses that understate component severity.
 - `EffectiveRoute` includes an `enabled` component and `isEnabled(Level)` so explanations expose operational `OFF` overrides. The five-argument constructor remains available; record deconstruction patterns must include the new component.
 

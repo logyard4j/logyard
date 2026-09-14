@@ -283,6 +283,15 @@ try (var scope = LogContext.push("request.id", "req-42")) {
 
 Explicit event fields override `with` fields, which override scoped fields. Scope values are captured on the caller thread. Use `executor.execute(LogContext.wrap(task))` to propagate a snapshot to another thread; the wrapper restores the worker's previous context even when the task fails.
 
+For repeated submissions, wrap the executor once:
+
+```java
+Executor contextual = LogContext.wrap(executor);
+CompletableFuture.supplyAsync(this::loadOrder, contextual);
+```
+
+Each submission captures its caller's current context. The wrapper also propagates an empty context, restores the worker after failures, and leaves executor shutdown with your application. SLF4J MDC and OpenTelemetry context remain separate.
+
 Applications can pass an explicit source to `LogyardBootstrap.start(source)`. Framework integrations acquire their own lease:
 
 ```java

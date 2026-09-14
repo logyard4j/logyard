@@ -4,6 +4,7 @@ import com.logyard4j.logyard.api.event.AttributeSet;
 
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
 
 /**
  * Thread-confined, immutable attributes attached to events captured in an open scope.
@@ -77,6 +78,21 @@ public final class LogContext {
                 installed.restoreAfterTask();
             }
         };
+    }
+
+    /**
+     * Wraps an executor to capture the submitting thread's context for each task.
+     *
+     * <p>Each task replaces the worker context while running and restores it afterwards,
+     * including after failure. Scheduling, rejection, and executor ownership stay with the
+     * supplied executor. The wrapper itself captures no context.</p>
+     *
+     * @param executor executor receiving the wrapped tasks
+     * @return executor propagating context separately for every submission
+     */
+    public static Executor wrap(Executor executor) {
+        Objects.requireNonNull(executor, "executor");
+        return task -> executor.execute(wrap(task));
     }
 
     static ContextScope activeScope() {
