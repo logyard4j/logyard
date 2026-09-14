@@ -8,6 +8,9 @@ import java.util.Set;
 /**
  * Exact configuration-key contract published by an extension provider.
  *
+ * <p>Allowed and required sets are each limited to {@value ProviderConfiguration#MAX_ENTRIES}
+ * keys. Oversized specifications are rejected before their keys are normalized or copied.</p>
+ *
  * @param allowedKeys complete set of accepted keys
  * @param requiredKeys subset that must be present
  */
@@ -19,9 +22,6 @@ public record ProviderConfigurationSpec(Set<String> allowedKeys, Set<String> req
     public ProviderConfigurationSpec {
         allowedKeys = normalized(Objects.requireNonNull(allowedKeys, "allowedKeys"), "allowed");
         requiredKeys = normalized(Objects.requireNonNull(requiredKeys, "requiredKeys"), "required");
-        if (allowedKeys.size() > ProviderConfiguration.MAX_ENTRIES) {
-            throw new IllegalArgumentException("provider configuration spec has too many keys");
-        }
         if (!allowedKeys.containsAll(requiredKeys)) {
             throw new IllegalArgumentException("required provider keys must also be allowed");
         }
@@ -67,6 +67,9 @@ public record ProviderConfigurationSpec(Set<String> allowedKeys, Set<String> req
     }
 
     private static Set<String> normalized(Set<String> keys, String label) {
+        if (keys.size() > ProviderConfiguration.MAX_ENTRIES) {
+            throw new IllegalArgumentException("provider configuration spec has too many " + label + " keys");
+        }
         LinkedHashSet<String> result = new LinkedHashSet<>();
         for (String key : keys) {
             String normalized = ProviderConfigurationValues.normalizeKey(Objects.requireNonNull(key));
