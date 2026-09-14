@@ -25,6 +25,9 @@ public final class ProviderConfiguration {
     /**
      * Creates a validated immutable configuration.
      *
+     * <p>Keys are trimmed and limited to {@value #MAX_KEY_CHARS} characters. Oversized keys
+     * are rejected before copying, and diagnostics omit their contents.</p>
+     *
      * @param values flattened scalar and scalar-list values
      */
     public ProviderConfiguration(Map<String, ?> values) {

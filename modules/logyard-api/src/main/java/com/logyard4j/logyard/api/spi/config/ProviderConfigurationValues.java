@@ -31,9 +31,17 @@ final class ProviderConfigurationValues {
     }
 
     static String normalizeKey(String key) {
-        String normalized = Objects.requireNonNull(key, "provider configuration key").trim();
-        if (normalized.isEmpty() || normalized.length() > ProviderConfiguration.MAX_KEY_CHARS
-                || !normalized.matches("[A-Za-z0-9][A-Za-z0-9_.-]*")) {
+        Objects.requireNonNull(key, "provider configuration key");
+        int start = 0;
+        int end = key.length();
+        while (start < end && key.charAt(start) <= ' ') start++;
+        while (start < end && key.charAt(end - 1) <= ' ') end--;
+        if (end - start > ProviderConfiguration.MAX_KEY_CHARS) {
+            throw new IllegalArgumentException(
+                    "provider configuration key exceeds " + ProviderConfiguration.MAX_KEY_CHARS + " characters after trimming");
+        }
+        String normalized = key.substring(start, end);
+        if (normalized.isEmpty() || !normalized.matches("[A-Za-z0-9][A-Za-z0-9_.-]*")) {
             throw new IllegalArgumentException("invalid provider configuration key: " + normalized);
         }
         return normalized;
