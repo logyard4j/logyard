@@ -75,6 +75,29 @@ final class LogyardConfigurationSourceTest {
     }
 
     @Test
+    void classpathSourceNormalizesLeadingSlashesWithoutChangingItsIdentity() {
+        ClassLoader loader = getClass().getClassLoader();
+        Path base = Path.of(".");
+        LogyardConfigurationSource canonical = LogyardConfigurationSource.classpath(loader, "nested/logyard.toml", base);
+
+        for (String prefix : new String[] {"/", "///", "/".repeat(50_000)}) {
+            LogyardConfigurationSource source = LogyardConfigurationSource.classpath(
+                    loader, " \t" + prefix + "nested/logyard.toml\r\n", base);
+            assertEquals(canonical.description(), source.description());
+            assertEquals(canonical.identity(), source.identity());
+        }
+    }
+
+    @Test
+    void classpathSourceRejectsEmptyAndBackslashPathsAfterNormalization() {
+        ClassLoader loader = getClass().getClassLoader();
+        for (String resource : new String[] {"", " \t\r\n", "///", "/".repeat(50_000), "///nested\\logyard.toml"}) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> LogyardConfigurationSource.classpath(loader, resource, Path.of(".")));
+        }
+    }
+
+    @Test
     void textSourceIsDigestStableAndExplicitlyReloadable() throws Exception {
         LogyardConfigurationSource source = LogyardConfigurationSource.text("framework:test", consoleConfig("debug"), Path.of("."));
         LogyardConfigurationSource equivalent = LogyardConfigurationSource.text("framework:test", consoleConfig("debug"), Path.of("."));

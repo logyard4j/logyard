@@ -69,7 +69,7 @@ final class ConfigurationSourceChain {
             ClassLoader loader,
             Path baseDirectory) {
         if (location.startsWith("classpath:")) {
-            String resource = stripLeadingSlashes(location.substring("classpath:".length()));
+            String resource = ConfigurationSourceFactory.stripLeadingSlashes(location.substring("classpath:".length()));
             if (loader.getResource(resource) == null) {
                 throw new IllegalStateException("Logyard configuration from " + origin + " does not exist: " + location);
             }
@@ -107,14 +107,6 @@ final class ConfigurationSourceChain {
 
     private static Path directory(Path directory) {
         return Objects.requireNonNull(directory, "workingDirectory").toAbsolutePath().normalize();
-    }
-
-    private static String stripLeadingSlashes(String value) {
-        String result = value;
-        while (result.startsWith("/")) {
-            result = result.substring(1);
-        }
-        return result;
     }
 
     private static boolean present(String value) {

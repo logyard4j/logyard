@@ -71,6 +71,26 @@ final class ConfigurationDiscoveryTest {
     }
 
     @Test
+    void explicitClasspathLocationsNormalizeLongLeadingSlashPrefixes() throws Exception {
+        Path directory = directoryWithConventionalFile();
+        try (URLClassLoader loader = classpathWithConfig()) {
+            LogyardConfigurationSource canonical = LogyardConfigurationSource.classpath(loader, "logyard.toml", directory);
+            String location = "classpath:" + "/".repeat(50_000) + "logyard.toml";
+            LogyardConfigurationSource property = ConfigurationDiscovery.resolve(
+                    location, null, Map.of(), loader, directory, null);
+            LogyardConfigurationSource environment = ConfigurationDiscovery.resolve(
+                    null, null, Map.of(ConfigurationDiscovery.ENVIRONMENT_VARIABLE, location), loader, directory, null);
+
+            assertEquals(canonical.identity(), property.identity());
+            assertEquals(canonical.identity(), environment.identity());
+            assertEquals(canonical.description(), property.description());
+            assertEquals(canonical.description(), environment.description());
+            assertEquals(canonical.snapshot().sha256(), property.snapshot().sha256());
+            assertEquals(canonical.snapshot().sha256(), environment.snapshot().sha256());
+        }
+    }
+
+    @Test
     void workingDirectoryWinsSafeDefaults() throws Exception {
         Path directory = directoryWithConventionalFile();
         try (URLClassLoader loader = emptyClasspath()) {

@@ -85,14 +85,19 @@ final class ConfigurationSourceFactory {
     }
 
     private static String resource(String value) {
-        String normalized = Objects.requireNonNull(value, "resource").trim();
-        while (normalized.startsWith("/")) {
-            normalized = normalized.substring(1);
-        }
+        String normalized = stripLeadingSlashes(Objects.requireNonNull(value, "resource").trim());
         if (normalized.isEmpty() || normalized.indexOf('\\') >= 0) {
             throw new IllegalArgumentException("classpath resource must be a non-blank forward-slash path");
         }
         return normalized;
+    }
+
+    static String stripLeadingSlashes(String value) {
+        int start = 0;
+        while (start < value.length() && value.charAt(start) == '/') {
+            start++;
+        }
+        return value.substring(start);
     }
 
     private static Path directory(Path value) {
