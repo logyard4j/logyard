@@ -2,8 +2,8 @@ name: Lifecycle soak
 
 on:
   push:
-    paths:
-      - '.github/workflows/lifecycle-soak.yml'
+    branches:
+      - 'soak/**'
   workflow_dispatch:
     inputs:
       cycles:
