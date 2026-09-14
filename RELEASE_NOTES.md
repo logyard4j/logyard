@@ -12,7 +12,7 @@
 - Minimum-level filters preserve a valid delegate health snapshot when its detail budget is full.
 - Text templates stop resolving values at the output limit and reject Unicode line separators in template sources.
 - Classpath configuration sources normalize long slash prefixes without repeatedly copying the resource name.
-- Provider configuration, component names, extension references, resource keys, and output contexts reject oversized normalized input before copying and keep rejection messages bounded.
+- Provider configuration, component names, extension references, resource keys, JSON profiles, and output contexts reject oversized normalized input before copying and keep rejection messages bounded.
 - Explicitly capped configuration and JSON profile collections reject oversized inputs before copying or traversal.
 - Adapter source thread names are trimmed within a bounded copy while preserving the existing name limit and Unicode-safe truncation.
 - Logger creation and route explanation reject oversized names before expanding hierarchy prefixes.

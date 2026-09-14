@@ -85,8 +85,7 @@ public final class JsonProfile {
             List<String> drop,
             JsonAttributeTransform attributes) {
         String normalizedName = component(name, "profile name");
-        String normalizedPreset = Objects.requireNonNull(preset, "preset")
-                .trim()
+        String normalizedPreset = JsonTextBoundary.trim(preset, "preset", 7)
                 .toLowerCase(Locale.ROOT);
         Map<String, String> base = PRESETS.get(normalizedPreset);
         if (base == null) {
@@ -197,7 +196,7 @@ public final class JsonProfile {
     }
 
     private static String component(String value, String label) {
-        String normalized = Objects.requireNonNull(value, label).trim();
+        String normalized = JsonTextBoundary.trim(value, label, 64);
         if (!normalized.matches("[A-Za-z][A-Za-z0-9_.-]{0,63}")) {
             throw new IllegalArgumentException("invalid JSON " + label + ": " + normalized);
         }
@@ -205,7 +204,7 @@ public final class JsonProfile {
     }
 
     private static String normalizeOutputName(String value) {
-        String normalized = Objects.requireNonNull(value, "JSON output field").trim();
+        String normalized = JsonTextBoundary.trim(value, "JSON output field", 128);
         if (normalized.isEmpty() || normalized.length() > 128) {
             throw new IllegalArgumentException("JSON output field must be 1 to 128 characters");
         }

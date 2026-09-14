@@ -1,5 +1,6 @@
 package com.logyard4j.logyard.config.encoding;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -17,7 +18,9 @@ public record JsonAttributeTransformConfig(
         List<String> exclude,
         Map<String, String> rename) {
     public JsonAttributeTransformConfig {
-        mode = Objects.requireNonNullElse(mode, "nested").trim().toLowerCase(Locale.ROOT);
+        mode = JsonTextBoundary.trim(
+                Objects.requireNonNullElse(mode, "nested"), "JSON attribute mode", 7)
+                .toLowerCase(Locale.ROOT);
         if (!Set.of("nested", "flatten", "drop").contains(mode)) {
             throw new IllegalArgumentException("JSON attribute mode must be nested, flatten, or drop");
         }
@@ -57,18 +60,18 @@ public record JsonAttributeTransformConfig(
         if (supplied.size() > 128) {
             throw new IllegalArgumentException(label + " must be unique and contain at most 128 entries");
         }
-        List<String> copy = List.copyOf(supplied);
-        if (new LinkedHashSet<>(copy).size() != copy.size()) {
+        List<String> normalized = new ArrayList<>(supplied.size());
+        for (String value : supplied) {
+            normalized.add(attributeName(value, label + " entry"));
+        }
+        if (new LinkedHashSet<>(normalized).size() != normalized.size()) {
             throw new IllegalArgumentException(label + " must be unique and contain at most 128 entries");
         }
-        for (String value : copy) {
-            attributeName(value, label + " entry");
-        }
-        return copy;
+        return List.copyOf(normalized);
     }
 
     private static String attributeName(String value, String label) {
-        String normalized = Objects.requireNonNull(value, label).trim();
+        String normalized = JsonTextBoundary.trim(value, label, 256);
         if (normalized.isEmpty() || normalized.length() > 256 || containsControl(normalized)) {
             throw new IllegalArgumentException(label + " must be 1 to 256 safe characters");
         }

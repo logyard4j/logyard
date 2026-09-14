@@ -38,7 +38,9 @@ public record JsonProfileConfig(
             throw new IllegalArgumentException(
                     "custom JSON profile name must not shadow built-in profile '" + name + "'");
         }
-        preset = Objects.requireNonNullElse(preset, "logyard").trim().toLowerCase(Locale.ROOT);
+        preset = JsonTextBoundary.trim(
+                Objects.requireNonNullElse(preset, "logyard"), "JSON profile preset", 7)
+                .toLowerCase(Locale.ROOT);
         if (!PRESETS.contains(preset)) {
             throw new IllegalArgumentException("JSON profile preset must be logyard, ecs, or compact");
         }
@@ -81,7 +83,7 @@ public record JsonProfileConfig(
     }
 
     private static String outputName(String value) {
-        String normalized = Objects.requireNonNull(value, "JSON field transform target").trim();
+        String normalized = JsonTextBoundary.trim(value, "JSON field transform target", 128);
         if (normalized.isEmpty() || normalized.length() > 128) {
             throw new IllegalArgumentException("JSON field transform target must be 1 to 128 characters");
         }

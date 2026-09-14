@@ -17,8 +17,7 @@ public final class JsonAttributeTransform {
 
         public static Mode parse(String value) {
             try {
-                return valueOf(Objects.requireNonNull(value, "attribute mode")
-                        .trim()
+                return valueOf(JsonTextBoundary.trim(value, "attribute mode", 7)
                         .toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException exception) {
                 throw new IllegalArgumentException(
@@ -111,7 +110,7 @@ public final class JsonAttributeTransform {
             String label,
             int maximum,
             boolean allowEmpty) {
-        String normalized = Objects.requireNonNull(value, label).trim();
+        String normalized = JsonTextBoundary.trim(value, label, maximum);
         if ((!allowEmpty && normalized.isEmpty()) || normalized.length() > maximum) {
             throw new IllegalArgumentException(
                     label + " must be " + (allowEmpty ? "0" : "1") + " to " + maximum + " characters");
