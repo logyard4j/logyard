@@ -8,7 +8,7 @@ import java.util.Objects;
  * Immutable point-in-time health report for one Logyard runtime.
  *
  * @param observedAt time at which the snapshot was assembled
- * @param status worst component status
+ * @param status overall status, at least as severe as every component
  * @param ready whether the runtime can accept ordinary event traffic
  * @param components component snapshots contributing to the aggregate
  */
@@ -20,18 +20,23 @@ public record RuntimeHealth(
     /** Maximum number of component snapshots in one report. */
     public static final int MAX_COMPONENTS = 1_024;
 
-    /** Validates consistency and detaches the report from caller-owned collections. */
+    /**
+     * Validates consistency and detaches the report from caller-owned collections.
+     *
+     * @throws IllegalArgumentException if the component limit is exceeded, the status understates
+     * a component's severity, or an unavailable status reports ready
+     */
     public RuntimeHealth {
         Objects.requireNonNull(observedAt, "observedAt");
         Objects.requireNonNull(status, "status");
-        Objects.requireNonNull(components, "components");
-        if (components.size() > MAX_COMPONENTS) {
-            throw new IllegalArgumentException(
-                    "components exceeds " + MAX_COMPONENTS + " entries");
-        }
-        components = List.copyOf(components);
+        components = snapshot(components);
         if (ready && !status.ready()) {
             throw new IllegalArgumentException("a non-ready status cannot report ready=true");
+        }
+        for (ComponentHealth component : components) {
+            if (HealthStatus.worst(status, component.status()) != status) {
+                throw new IllegalArgumentException("status must be at least as severe as every component");
+            }
         }
     }
 
@@ -40,13 +45,22 @@ public record RuntimeHealth(
      *
      * @param components component snapshots
      * @return report observed at the current instant
+     * @throws IllegalArgumentException if the component limit is exceeded
      */
     public static RuntimeHealth from(List<ComponentHealth> components) {
-        List<ComponentHealth> snapshot = List.copyOf(components);
+        List<ComponentHealth> snapshot = snapshot(components);
         HealthStatus aggregate = HealthStatus.HEALTHY;
         for (ComponentHealth component : snapshot) {
             aggregate = HealthStatus.worst(aggregate, component.status());
         }
         return new RuntimeHealth(Instant.now(), aggregate, aggregate.ready(), snapshot);
+    }
+
+    private static List<ComponentHealth> snapshot(List<ComponentHealth> components) {
+        Objects.requireNonNull(components, "components");
+        if (components.size() > MAX_COMPONENTS) {
+            throw new IllegalArgumentException("components exceeds " + MAX_COMPONENTS + " entries");
+        }
+        return List.copyOf(components);
     }
 }
