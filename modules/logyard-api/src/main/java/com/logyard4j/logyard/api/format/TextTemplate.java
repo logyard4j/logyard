@@ -108,7 +108,8 @@ public final class TextTemplate {
     }
 
     /**
-     * Renders using a bounded value resolver. Missing values become empty strings.
+     * Renders bounded text. Missing values become empty strings, and no further
+     * placeholders are resolved once the output limit is reached.
      *
      * @param values placeholder value resolver
      * @return bounded rendered text
@@ -117,13 +118,13 @@ public final class TextTemplate {
         Objects.requireNonNull(values, "values");
         StringBuilder result = new StringBuilder(Math.min(source.length() + 128, 1_024));
         for (Segment segment : segments) {
-            String value = segment.literal() == null
-                    ? Objects.requireNonNullElse(values.apply(segment.placeholder()), "")
-                    : segment.literal();
             int remaining = CaptureLimits.MAX_TEXT_CHARS - result.length();
             if (remaining <= 0) {
                 break;
             }
+            String value = segment.literal() == null
+                    ? Objects.requireNonNullElse(values.apply(segment.placeholder()), "")
+                    : segment.literal();
             if (value.length() <= remaining) {
                 result.append(value);
             } else {
@@ -155,8 +156,8 @@ public final class TextTemplate {
     private static void rejectControls(String value) {
         for (int index = 0; index < value.length(); index++) {
             char character = value.charAt(index);
-            if (Character.isISOControl(character)) {
-                throw syntax(index, "control characters are not allowed");
+            if (Character.isISOControl(character) || character == '\u2028' || character == '\u2029') {
+                throw syntax(index, "control characters and line separators are not allowed");
             }
         }
     }

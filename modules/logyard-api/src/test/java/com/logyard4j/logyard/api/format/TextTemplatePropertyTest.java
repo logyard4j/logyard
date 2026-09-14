@@ -57,7 +57,8 @@ final class TextTemplatePropertyTest {
             char character;
             do {
                 character = (char) random.nextInt(0x20, 0xd800);
-            } while (character == '{' || character == '}' || Character.isISOControl(character));
+            } while (character == '{' || character == '}' || Character.isISOControl(character)
+                    || character == '\u2028' || character == '\u2029');
             source.append(character);
             rendered.append(character);
         }
