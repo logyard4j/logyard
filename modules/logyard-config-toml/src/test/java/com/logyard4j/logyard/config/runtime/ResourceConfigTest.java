@@ -8,11 +8,30 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ResourceConfigTest {
+    @Test
+    void boundsOversizedKeysWhilePreservingPaddedAttributes() {
+        String key = "a".repeat(ResourceConfig.MAX_KEY_LENGTH);
+        String padding = " \t\r\n".repeat(1_000);
+        ResourceConfig resource = new ResourceConfig(Map.of(padding + key + padding, "value"));
+
+        assertEquals(Map.of(key, "value"), resource.attributes());
+        for (IllegalArgumentException failure : List.of(
+                assertThrows(IllegalArgumentException.class,
+                        () -> new ResourceConfig(Map.of("x".repeat(1_000_000), "value"))),
+                assertThrows(IllegalArgumentException.class,
+                        () -> new ResourceConfig(Map.of(), List.of("x".repeat(1_000_000)), List.of())))) {
+            assertTrue(
+                    failure.getMessage().length() <= 128,
+                    "oversized resource-key diagnostics must remain bounded");
+        }
+    }
+
     @Test
     void parsesCanonicalSelectionsAndGivesExclusionsPrecedence() {
         ResourceConfig resource = LogyardConfigLoader.parse("""

@@ -31,12 +31,8 @@ public record ResourceConfig(Map<String, String> attributes, List<String> includ
         }
         LinkedHashMap<String, String> copy = new LinkedHashMap<>();
         attributes.forEach((key, value) -> {
-            String normalizedKey = Objects.requireNonNull(key, "resource attribute key").trim();
+            String normalizedKey = normalizedAttributeKey(key);
             String normalizedValue = Objects.requireNonNull(value, "resource attribute value");
-            if (normalizedKey.isEmpty() || normalizedKey.length() > MAX_KEY_LENGTH
-                    || !normalizedKey.matches("[A-Za-z][A-Za-z0-9_.-]*")) {
-                throw new IllegalArgumentException("invalid resource attribute key: " + normalizedKey);
-            }
             if (RESERVED.contains(normalizedKey)) {
                 throw new IllegalArgumentException(
                         "resource attribute is managed by [service]: " + normalizedKey);
@@ -64,10 +60,31 @@ public record ResourceConfig(Map<String, String> attributes, List<String> includ
             throw new IllegalArgumentException("resource " + label + " requires at most 64 unique keys");
         }
         for (String key : copy) {
-            if (key.length() > MAX_KEY_LENGTH || !key.matches("[A-Za-z][A-Za-z0-9_.-]*")) {
+            if (key.length() > MAX_KEY_LENGTH) {
+                throw new IllegalArgumentException(
+                        "resource " + label + " key exceeds " + MAX_KEY_LENGTH + " characters");
+            }
+            if (!key.matches("[A-Za-z][A-Za-z0-9_.-]*")) {
                 throw new IllegalArgumentException("invalid resource " + label + " key: " + key);
             }
         }
         return copy;
+    }
+
+    private static String normalizedAttributeKey(String key) {
+        Objects.requireNonNull(key, "resource attribute key");
+        int start = 0;
+        int end = key.length();
+        while (start < end && key.charAt(start) <= ' ') start++;
+        while (start < end && key.charAt(end - 1) <= ' ') end--;
+        if (end - start > MAX_KEY_LENGTH) {
+            throw new IllegalArgumentException(
+                    "resource attribute key exceeds " + MAX_KEY_LENGTH + " characters after trimming");
+        }
+        String normalized = key.substring(start, end);
+        if (normalized.isEmpty() || !normalized.matches("[A-Za-z][A-Za-z0-9_.-]*")) {
+            throw new IllegalArgumentException("invalid resource attribute key: " + normalized);
+        }
+        return normalized;
     }
 }

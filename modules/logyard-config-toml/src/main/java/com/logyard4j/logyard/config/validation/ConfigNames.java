@@ -8,15 +8,18 @@ import java.util.Objects;
 
 /** Central normalization policy for configured component names and references. */
 public final class ConfigNames {
-    private static final String COMPONENT_PATTERN = "[A-Za-z][A-Za-z0-9_.-]{0,63}";
-    private static final String PROVIDER_PATTERN = "[a-z][a-z0-9_.-]{0,63}";
+    /** Maximum UTF-16 characters in a normalized component or provider name. */
+    public static final int MAX_NAME_CHARS = 64;
+
+    private static final String COMPONENT_PATTERN = "[A-Za-z][A-Za-z0-9_.-]*";
+    private static final String PROVIDER_PATTERN = "[a-z][a-z0-9_.-]*";
 
     private ConfigNames() {
     }
 
     /** Returns one validated component name. */
     public static String component(String value, String label) {
-        String normalized = Objects.requireNonNull(value, label).trim();
+        String normalized = boundedTrim(value, label, "invalid " + label);
         if (!normalized.matches(COMPONENT_PATTERN)) {
             throw new IllegalArgumentException("invalid " + label + ": " + normalized);
         }
@@ -25,7 +28,7 @@ public final class ConfigNames {
 
     /** Returns one normalized lower-case provider name. */
     public static String provider(String value) {
-        String normalized = Objects.requireNonNull(value, "provider").trim().toLowerCase(Locale.ROOT);
+        String normalized = boundedTrim(value, "provider", "invalid provider name").toLowerCase(Locale.ROOT);
         if (!normalized.matches(PROVIDER_PATTERN)) {
             throw new IllegalArgumentException("invalid provider name: " + normalized);
         }
@@ -54,5 +57,18 @@ public final class ConfigNames {
             throw new IllegalArgumentException(label + " contains duplicate entries");
         }
         return List.copyOf(copy);
+    }
+
+    private static String boundedTrim(String value, String nullLabel, String invalidLabel) {
+        Objects.requireNonNull(value, nullLabel);
+        int start = 0;
+        int end = value.length();
+        while (start < end && value.charAt(start) <= ' ') start++;
+        while (start < end && value.charAt(end - 1) <= ' ') end--;
+        if (end - start > MAX_NAME_CHARS) {
+            throw new IllegalArgumentException(
+                    invalidLabel + ": exceeds " + MAX_NAME_CHARS + " characters after trimming");
+        }
+        return value.substring(start, end);
     }
 }
