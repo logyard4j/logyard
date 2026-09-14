@@ -7,6 +7,8 @@ import com.logyard4j.logyard.config.loading.overlay.OverrideEntry;
 import com.logyard4j.logyard.config.runtime.ContextConfig;
 import com.logyard4j.logyard.config.runtime.ResourceConfig;
 import java.util.AbstractList;
+import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -32,11 +34,23 @@ final class BoundedCollectionValidationTest {
                 oversized(129),
                 List.of(),
                 Map.of()));
+        assertOversized(() -> new JsonAttributeTransformConfig(
+                "nested",
+                "attributes.",
+                List.of(),
+                List.of(),
+                oversizedMap(129)));
         assertOversized(() -> new JsonProfileConfig(
                 "custom",
                 "logyard",
                 Map.of(),
                 oversized(JsonProfileConfig.FIELDS.size() + 1),
+                JsonAttributeTransformConfig.nested()));
+        assertOversized(() -> new JsonProfileConfig(
+                "custom",
+                "logyard",
+                oversizedMap(JsonProfileConfig.FIELDS.size() + 1),
+                List.of(),
                 JsonAttributeTransformConfig.nested()));
         assertOversized(() -> new ConfigOverlays(
                 null,
@@ -53,6 +67,20 @@ final class BoundedCollectionValidationTest {
             @Override
             public T get(int index) {
                 throw new AssertionError("oversized list was traversed");
+            }
+
+            @Override
+            public int size() {
+                return size;
+            }
+        };
+    }
+
+    private static <K, V> Map<K, V> oversizedMap(int size) {
+        return new AbstractMap<>() {
+            @Override
+            public AbstractSet<Entry<K, V>> entrySet() {
+                throw new AssertionError("oversized map was traversed");
             }
 
             @Override

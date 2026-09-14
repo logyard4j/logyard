@@ -42,8 +42,12 @@ public record JsonProfileConfig(
         if (!PRESETS.contains(preset)) {
             throw new IllegalArgumentException("JSON profile preset must be logyard, ecs, or compact");
         }
+        Map<String, String> suppliedRenames = Objects.requireNonNullElse(rename, Map.of());
+        if (suppliedRenames.size() > FIELDS.size()) {
+            throw new IllegalArgumentException("JSON field transforms exceed the canonical field count");
+        }
         LinkedHashMap<String, String> renamed = new LinkedHashMap<>();
-        Objects.requireNonNullElse(rename, Map.<String, String>of()).forEach((field, target) -> {
+        suppliedRenames.forEach((field, target) -> {
             if (!FIELDS.contains(field)) {
                 throw new IllegalArgumentException("unknown JSON field transform source: " + field);
             }

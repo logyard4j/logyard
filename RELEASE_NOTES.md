@@ -13,7 +13,7 @@
 - Text templates stop resolving values at the output limit and reject Unicode line separators in template sources.
 - Classpath configuration sources normalize long slash prefixes without repeatedly copying the resource name.
 - Provider configuration, component names, extension references, resource keys, and output contexts reject oversized normalized input before copying and keep rejection messages bounded.
-- Explicitly capped configuration collections reject oversized inputs before copying or traversal.
+- Explicitly capped configuration and JSON profile collections reject oversized inputs before copying or traversal.
 - Adapter source thread names are trimmed within a bounded copy while preserving the existing name limit and Unicode-safe truncation.
 - Logger creation and route explanation reject oversized names before expanding hierarchy prefixes.
 - `EffectiveRoute` includes an `enabled` component and `isEnabled(Level)` so explanations expose operational `OFF` overrides. The five-argument constructor remains available; record deconstruction patterns must include the new component.

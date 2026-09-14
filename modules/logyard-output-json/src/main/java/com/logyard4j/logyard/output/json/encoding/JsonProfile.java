@@ -92,13 +92,20 @@ public final class JsonProfile {
         if (base == null) {
             throw new IllegalArgumentException("JSON profile preset must be logyard, ecs, or compact");
         }
+        Map<String, String> suppliedRenames = Objects.requireNonNullElse(rename, Map.of());
+        if (suppliedRenames.size() > FIELDS.size()) {
+            throw new IllegalArgumentException("JSON field renames exceed the canonical field count");
+        }
         LinkedHashMap<String, String> names = new LinkedHashMap<>(base);
-        Objects.requireNonNullElse(rename, Map.<String, String>of()).forEach((field, target) -> {
+        suppliedRenames.forEach((field, target) -> {
             requireField(field);
             names.put(field, normalizeOutputName(target));
         });
         LinkedHashSet<String> dropped = new LinkedHashSet<>();
         List<String> droppedFields = drop == null ? List.of() : drop;
+        if (droppedFields.size() > FIELDS.size()) {
+            throw new IllegalArgumentException("dropped JSON fields exceed the canonical field count");
+        }
         for (String field : droppedFields) {
             requireField(field);
             if (!dropped.add(field)) {

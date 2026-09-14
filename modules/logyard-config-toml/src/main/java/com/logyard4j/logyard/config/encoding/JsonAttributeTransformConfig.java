@@ -30,15 +30,19 @@ public record JsonAttributeTransformConfig(
         }
         include = boundedNames(include, "JSON attribute include");
         exclude = boundedNames(exclude, "JSON attribute exclude");
+        Map<String, String> suppliedRenames = Objects.requireNonNullElse(rename, Map.of());
+        if (suppliedRenames.size() > 128) {
+            throw new IllegalArgumentException("JSON attribute renames must be unique and at most 128 entries");
+        }
         LinkedHashMap<String, String> copy = new LinkedHashMap<>();
-        Objects.requireNonNullElse(rename, Map.<String, String>of()).forEach((key, value) -> {
+        suppliedRenames.forEach((key, value) -> {
             String source = attributeName(key, "JSON attribute rename source");
             String target = attributeName(value, "JSON attribute rename target");
             if (copy.put(source, target) != null) {
                 throw new IllegalArgumentException("duplicate JSON attribute rename source: " + source);
             }
         });
-        if (copy.size() > 128 || new LinkedHashSet<>(copy.values()).size() != copy.size()) {
+        if (new LinkedHashSet<>(copy.values()).size() != copy.size()) {
             throw new IllegalArgumentException("JSON attribute renames must be unique and at most 128 entries");
         }
         rename = Collections.unmodifiableMap(copy);

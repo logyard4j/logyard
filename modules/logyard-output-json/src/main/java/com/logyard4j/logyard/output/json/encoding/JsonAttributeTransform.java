@@ -46,8 +46,13 @@ public final class JsonAttributeTransform {
         }
         this.include = names(include, "attribute include");
         this.exclude = names(exclude, "attribute exclude");
+        Map<String, String> suppliedRenames = Objects.requireNonNullElse(rename, Map.of());
+        if (suppliedRenames.size() > 128) {
+            throw new IllegalArgumentException(
+                    "JSON attribute renames must be unique and contain at most 128 entries");
+        }
         LinkedHashMap<String, String> renamed = new LinkedHashMap<>();
-        Objects.requireNonNullElse(rename, Map.<String, String>of()).forEach((source, target) -> {
+        suppliedRenames.forEach((source, target) -> {
             String normalizedSource = safe(source, "attribute rename source", 256, false);
             String normalizedTarget = safe(target, "attribute rename target", 256, false);
             if (renamed.putIfAbsent(normalizedSource, normalizedTarget) != null) {
@@ -55,7 +60,7 @@ public final class JsonAttributeTransform {
                         "duplicate JSON attribute rename source: " + normalizedSource);
             }
         });
-        if (renamed.size() > 128 || new LinkedHashSet<>(renamed.values()).size() != renamed.size()) {
+        if (new LinkedHashSet<>(renamed.values()).size() != renamed.size()) {
             throw new IllegalArgumentException(
                     "JSON attribute renames must be unique and contain at most 128 entries");
         }
