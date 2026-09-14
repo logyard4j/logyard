@@ -114,7 +114,7 @@ public final class ProducerTeam implements AutoCloseable {
                 failure.compareAndSet(null, error);
             }
         } finally {
-            MDC.clear();
+            clearContext();
             warmed.countDown();
             done.countDown();
         }
@@ -134,7 +134,7 @@ public final class ProducerTeam implements AutoCloseable {
             } catch (Throwable error) {
                 failure.compareAndSet(null, error);
             } finally {
-                MDC.clear();
+                clearContext();
             }
         });
         try {
@@ -154,6 +154,14 @@ public final class ProducerTeam implements AutoCloseable {
 
     private void requireHealthy() {
         if (failure.get() != null) throw new IllegalStateException("producer failed", failure.get());
+    }
+
+    private void clearContext() {
+        try {
+            MDC.clear();
+        } catch (Throwable error) {
+            failure.compareAndSet(null, error);
+        }
     }
 
     private void requireRunning() throws InterruptedException {
