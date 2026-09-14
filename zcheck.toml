@@ -1,0 +1,26 @@
+schema = 1
+default = "check"
+
+[execution]
+jobs = 1
+default_timeout = "30m"
+repository_state = "preserve"
+
+[tasks.check]
+description = "Run the canonical repository, build, API, integration, and failure checks."
+run = ["bash", "scripts/ci"]
+tools = ["bash", "java", "javac", "javadoc", "python3", "zolt"]
+resources = ["logyard-build"]
+
+[tasks.examples]
+description = "Package Logyard and exercise the supported JVM consumers through Smoque."
+run = ["bash", "scripts/examples-verify"]
+tools = ["bash", "java", "javac", "javadoc", "python3", "zolt", "mvn", "node", "npm"]
+resources = ["logyard-build"]
+
+[tasks.delivery]
+description = "Qualify a clean committed candidate in 33 packaged delivery and reload forks."
+run = ["bash", "scripts/benchmark-delivery-qualify"]
+tools = ["bash", "java", "javac", "javadoc", "python3", "zolt", "mvn"]
+platforms = ["linux"]
+resources = ["logyard-build"]

@@ -17,6 +17,8 @@ A clean bootstrap needs network access and curl 7.71+. Artifact downloads allow 
 
 `scripts/ci` runs repository and architecture checks, strict Javadocs, the locked Zolt build, resolved JUnit tests, executable integrations, constrained-heap canaries, provider discovery, and failure injection. Zolt is required; missing dependencies fail the gate.
 
+With zcheck 0.0.2+, `zcheck run check` runs the same gate. `zcheck run examples` packages and tests JVM consumers; `zcheck run delivery` runs the 33-fork delivery qualification on a clean committed Linux checkout. Tasks selected in one run share a build resource. Use `--receipt target/check-receipt.json` to retain a machine-readable result; the receipt path must be new.
+
 ## Choose a check
 
 Run commands from the repository root:
