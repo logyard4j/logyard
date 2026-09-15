@@ -117,7 +117,7 @@ final class EventCriteria {
 
         String describe() {
             String name = "attribute[" + CapturedEventDump.text(key) + "]";
-            return valueChecked ? name + "=" + CapturedEventDump.text(String.valueOf(value)) : name + " present";
+            return valueChecked ? name + "=" + CapturedEventDump.expectedValue(value) : name + " present";
         }
     }
 }

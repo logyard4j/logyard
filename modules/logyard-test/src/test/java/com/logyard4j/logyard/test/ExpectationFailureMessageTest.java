@@ -41,6 +41,23 @@ final class ExpectationFailureMessageTest {
     }
 
     @Test
+    void failureMessageDoesNotInvokeExpectedObjectToString() {
+        Object hostile = new Object() {
+            @Override
+            public String toString() {
+                throw new IllegalStateException("hostile expected value");
+            }
+        };
+        try (LogyardTestKit kit = LogyardTestKit.isolated()) {
+            kit.logger("test.Failure").atInfo().add("tenant", "north").log("recorded");
+            AssertionError failure = assertThrows(AssertionError.class, () -> kit.events().expect()
+                    .attribute("tenant", hostile).assertPresent());
+            assertTrue(failure.getMessage().contains("expected at least one matching event"));
+            assertTrue(failure.getMessage().contains("attribute[tenant]=<" + hostile.getClass().getName() + ">"));
+        }
+    }
+
+    @Test
     void anEmptyRecorderStillReportsTheCriteria() {
         try (LogyardTestKit kit = LogyardTestKit.isolated()) {
             AssertionError failure = assertThrows(

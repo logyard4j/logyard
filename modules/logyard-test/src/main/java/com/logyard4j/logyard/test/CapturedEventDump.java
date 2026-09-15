@@ -54,4 +54,19 @@ final class CapturedEventDump {
     static String text(String value) {
         return EmergencyText.sanitize(value, 256);
     }
+
+    /** Keeps failure messages bounded without invoking application-defined value renderers. */
+    static String expectedValue(Object value) {
+        if (value == null) return "null";
+        if (value instanceof String string) return text(string);
+        if (value instanceof Boolean || value instanceof Character || value instanceof Byte
+                || value instanceof Short || value instanceof Integer || value instanceof Long
+                || value instanceof Float || value instanceof Double) {
+            return text(String.valueOf(value));
+        }
+        if (value instanceof Enum<?> constant) {
+            return text(constant.getDeclaringClass().getName()) + '.' + text(constant.name());
+        }
+        return '<' + text(value.getClass().getName()) + '>';
+    }
 }
