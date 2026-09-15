@@ -96,12 +96,19 @@ public final class Logyard {
         return runtime().logger(name);
     }
 
-    /** Removes and closes the process-global runtime, if one is installed. */
+    /**
+     * Removes and closes the process-global runtime, if one is installed.
+     *
+     * @throws IllegalStateException if managed shutdown rejects a runtime that remains installed
+     */
     public static void shutdown() {
         while (true) {
             RuntimeSlot slot = RUNTIME.get();
             if (slot == null || shutdown(slot)) {
                 return;
+            }
+            if (RUNTIME.get() == slot) {
+                throw new IllegalStateException("Managed Logyard shutdown did not retire the installed runtime");
             }
         }
     }

@@ -3,11 +3,14 @@ package com.logyard4j.logyard.api;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.logyard4j.logyard.api.diagnostics.EffectiveRoute;
 import com.logyard4j.logyard.api.diagnostics.RuntimeHealth;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -43,6 +46,38 @@ final class LogyardLifecycleTest {
         } finally {
             installed.close();
             Logyard.shutdown();
+        }
+    }
+
+    @Test
+    void rejectedManagedShutdownCannotSpinOnAnUnchangedRuntime() {
+        TestRuntime installed = new TestRuntime();
+        Logyard.initializeManaged(installed, () -> false);
+        try {
+            assertTimeoutPreemptively(Duration.ofSeconds(2), () ->
+                    assertThrows(IllegalStateException.class, Logyard::shutdown));
+            assertSame(installed, Logyard.runtime());
+            assertEquals(0, installed.closes());
+        } finally {
+            Logyard.detachManagedIfCurrent(installed);
+            installed.close();
+        }
+    }
+
+    @Test
+    void rejectedManagedShutdownMayObserveItsRuntimeDetached() {
+        TestRuntime installed = new TestRuntime();
+        Logyard.initializeManaged(installed, () -> {
+            Logyard.detachManagedIfCurrent(installed);
+            return false;
+        });
+        try {
+            assertTimeoutPreemptively(Duration.ofSeconds(2), Logyard::shutdown);
+            assertFalse(Logyard.isInitialized());
+            assertEquals(0, installed.closes());
+        } finally {
+            Logyard.detachManagedIfCurrent(installed);
+            installed.close();
         }
     }
 
