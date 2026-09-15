@@ -14,12 +14,26 @@ public final class EarlyEnablement {
     }
 
     private static boolean parse(String value) {
-        if (value == null || value.isBlank() || "true".equalsIgnoreCase(value.trim())) {
+        if (value == null || value.isBlank()) {
             return true;
         }
-        if ("false".equalsIgnoreCase(value.trim())) {
+        int start = 0;
+        int end = value.length();
+        while (start < end && value.charAt(start) <= ' ') {
+            start++;
+        }
+        while (end > start && value.charAt(end - 1) <= ' ') {
+            end--;
+        }
+        if (end - start == 4 && value.regionMatches(true, start, "true", 0, 4)) {
+            return true;
+        }
+        if (end - start == 5 && value.regionMatches(true, start, "false", 0, 5)) {
             return false;
         }
-        throw new IllegalStateException(PROPERTY + " must be true or false, but was: " + value);
+        String displayed = value.length() <= 128
+                ? value
+                : value.substring(start, Math.min(end, start + 128)) + (end - start > 128 ? "..." : "");
+        throw new IllegalStateException(PROPERTY + " must be true or false, but was: " + displayed);
     }
 }
