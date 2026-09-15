@@ -47,6 +47,7 @@ public final class RuntimeCanaries {
         String source = "-Dlogyard.config=" + config;
         run(AdversarialBoundednessMain.class, List.of(source, "-Xmx64m"));
         run(ConfigurationSourceBoundednessMain.class, List.of(source, "-Xmx64m"));
+        run(SystemLoggerNameBoundednessMain.class, List.of(source, "-Xmx64m"));
         run(AdapterBoundednessMain.class, List.of(source, "-Xmx64m", "-Xss256k"));
         run(SystemLoggerCanaryMain.class, List.of(), config.toString(), output.toString());
     }

@@ -1,6 +1,7 @@
 package com.logyard4j.logyard.systemlogger.internal.factory;
 
 import com.logyard4j.logyard.api.event.AttributeSet;
+import com.logyard4j.logyard.api.event.CaptureLimits;
 import com.logyard4j.logyard.api.ingress.LogEventIngress;
 import com.logyard4j.logyard.runtime.adapter.AdapterReentryGuard;
 import com.logyard4j.logyard.runtime.adapter.AdapterRuntimeAccess;
@@ -114,11 +115,23 @@ public final class LogyardSystemLogger implements System.Logger {
         }
     }
 
-    private static String requireName(String value) {
-        String normalized = Objects.requireNonNull(value, "name").trim();
-        if (normalized.isEmpty()) {
+    static String requireName(String value) {
+        Objects.requireNonNull(value, "name");
+        int start = 0;
+        int end = value.length();
+        while (start < end && value.charAt(start) <= ' ') {
+            start++;
+        }
+        while (end > start && value.charAt(end - 1) <= ' ') {
+            end--;
+        }
+        if (start == end) {
             throw new IllegalArgumentException("System.Logger name must not be blank");
         }
-        return normalized;
+        if (end - start > CaptureLimits.MAX_NAME_CHARS) {
+            throw new IllegalArgumentException(
+                    "logger name exceeds " + CaptureLimits.MAX_NAME_CHARS + " characters");
+        }
+        return value.substring(start, end);
     }
 }

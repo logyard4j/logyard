@@ -15,9 +15,9 @@ public final class LogyardSystemLoggerRegistry {
     }
 
     public System.Logger logger(String name, Module module) {
-        Objects.requireNonNull(name, "name");
+        String normalizedName = LogyardSystemLogger.requireName(name);
         Objects.requireNonNull(module, "module");
-        return loggers.computeIfAbsent(new Key(name, module),
+        return loggers.computeIfAbsent(new Key(normalizedName, module),
                 key -> new LogyardSystemLogger(key.name(), key.module(), runtime));
     }
 

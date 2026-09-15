@@ -4,11 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.logyard4j.logyard.api.Level;
 import com.logyard4j.logyard.api.LogyardRuntime;
+import com.logyard4j.logyard.api.event.CaptureLimits;
 import com.logyard4j.logyard.api.event.LogEvent;
 import com.logyard4j.logyard.api.spi.output.EventSink;
 import com.logyard4j.logyard.core.routing.RouteDefinition;
@@ -16,6 +18,7 @@ import com.logyard4j.logyard.core.runtime.DefaultLogyardRuntime;
 import com.logyard4j.logyard.core.runtime.RuntimePlan;
 import com.logyard4j.logyard.runtime.adapter.AdapterRuntimeAccess;
 import com.logyard4j.logyard.runtime.adapter.BorrowedAdapterRuntime;
+import com.logyard4j.logyard.runtime.adapter.LazyAdapterRuntime;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -158,6 +161,29 @@ final class LogyardSystemLoggerBehaviorTest {
         }
 
         assertEquals("unnamed", sink.events.getFirst().attributes().get("java.module.name"));
+    }
+
+    @Test
+    void nameBoundaryPreservesPaddedValidNamesAndRejectsOversizedCore() {
+        AdapterRuntimeAccess access = new LazyAdapterRuntime("system-logger");
+        String maximum = "x".repeat(CaptureLimits.MAX_NAME_CHARS);
+        assertEquals(maximum,
+                new LogyardSystemLogger(" \t" + maximum + "\r\n", module(), access).getName());
+        assertThrows(IllegalArgumentException.class,
+                () -> new LogyardSystemLogger(" \t" + maximum + "x\r\n", module(), access));
+    }
+
+    @Test
+    void finderCacheUsesTheNormalizedLoggerName() {
+        LogyardSystemLoggerRegistry registry = new LogyardSystemLoggerRegistry(new LazyAdapterRuntime("system-logger"));
+        Module module = module();
+        System.Logger canonical = registry.logger("probe.Service", module);
+
+        assertSame(canonical, registry.logger(" \tprobe.Service\r\n", module));
+        assertEquals(1, registry.size());
+        assertThrows(IllegalArgumentException.class,
+                () -> registry.logger("x".repeat(CaptureLimits.MAX_NAME_CHARS + 1), module));
+        assertEquals(1, registry.size());
     }
 
     @Test
