@@ -25,7 +25,7 @@ public final class LogyardConfigurationSource {
     /**
      * Creates a classpath resource source with an explicit base directory for relative output paths.
      * @param loader class loader used to resolve the resource
-     * @param resource classpath resource name
+     * @param resource classpath resource name, at most 2048 characters after leading slashes are removed
      * @param baseDirectory base directory for relative output paths
      * @return classpath configuration source
      */
@@ -35,7 +35,7 @@ public final class LogyardConfigurationSource {
 
     /**
      * Creates an immutable bounded-text source for tests and framework handoff.
-     * @param description source description for diagnostics
+     * @param description source description for diagnostics, at most 2048 characters after trimming
      * @param toml TOML configuration content
      * @param baseDirectory base directory for relative output paths
      * @return text configuration source

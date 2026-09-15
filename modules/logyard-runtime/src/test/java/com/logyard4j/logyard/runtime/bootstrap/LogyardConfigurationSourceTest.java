@@ -98,6 +98,20 @@ final class LogyardConfigurationSourceTest {
     }
 
     @Test
+    void sourceIdentifiersRejectOversizedNormalizedNames() {
+        ClassLoader loader = getClass().getClassLoader();
+        Path base = Path.of(".");
+        String maximum = "x".repeat(2_048);
+        assertEquals(maximum, LogyardConfigurationSource.text(" \t" + maximum + "\r\n", "schema = 1", base).description());
+        assertEquals("classpath:" + maximum,
+                LogyardConfigurationSource.classpath(loader, "///" + maximum, base).description());
+        assertThrows(IllegalArgumentException.class,
+                () -> LogyardConfigurationSource.text(" \t" + maximum + "x\r\n", "schema = 1", base));
+        assertThrows(IllegalArgumentException.class,
+                () -> LogyardConfigurationSource.classpath(loader, "///" + maximum + "x", base));
+    }
+
+    @Test
     void textSourceIsDigestStableAndExplicitlyReloadable() throws Exception {
         LogyardConfigurationSource source = LogyardConfigurationSource.text("framework:test", consoleConfig("debug"), Path.of("."));
         LogyardConfigurationSource equivalent = LogyardConfigurationSource.text("framework:test", consoleConfig("debug"), Path.of("."));
