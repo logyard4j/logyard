@@ -29,6 +29,12 @@ var health = logyard.runtime().health();
 var route = logyard.runtime().explain("com.example.checkout");
 ```
 
+Default asynchronous delivery protects callers from output I/O by using a finite queue for each output. When a queue fills, an output fails, or shutdown reaches its deadline, Logyard may discard events at any severity, including ERROR. It counts admission and shutdown drops; logging remains best effort. Queue admission waits are bounded per output, while capture, processors, scheduling, and custom extensions still contribute to caller latency.
+
+For each asynchronous output, compare `dropped_total` in successive `health().components()` snapshots and alert when it rises. Check output status and `delegate_status` for failures; `queued` approaching `capacity` signals pressure. Counters describe the current output installation, so start a new comparison baseline after reload. A historical drop can leave an output `DEGRADED` even after traffic recovers.
+
+An audit record that must accompany a business transaction needs its own durable, acknowledged path. A finite queue cannot guarantee both bounded caller latency and lossless delivery while its destination is unavailable.
+
 | API | Shows |
 | --- | --- |
 | `health()` | Output failures, worker status, queue capacity/depth, and dropped-event counts |

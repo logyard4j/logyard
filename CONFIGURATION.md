@@ -315,6 +315,29 @@ A full default queue can retain about 32 MiB of event text before object overhea
 
 Any output can set `min_level` (default `trace`) and override delivery with `delivery = { mode = "async", capacity = 512 }`. Overflow rules remain global. Total asynchronous queue capacity is capped at 16,777,216 slots per configuration.
 
+### Give ERROR its own output
+
+For applications that need fewer ERROR losses during ordinary bursts, route ERROR to a separate queue as well as the main console. Size its capacity from measured traffic and alert on changes to that output's `dropped_total` and health status:
+
+```toml
+[loggers]
+root = { level = "info", outputs = ["console", "errors"] }
+
+[outputs.console]
+type = "console"
+stream = "stderr"
+
+[outputs.errors]
+type = "file"
+path = "logs/errors.jsonl"
+min_level = "error"
+delivery = { mode = "async", capacity = 1024 }
+flush = "1s"
+fsync = true
+```
+
+INFO traffic cannot fill the ERROR-only queue. `fsync` forces file contents after each flush, at a storage cost; the one-second flush interval remains a crash window. Both outputs still use the global ERROR admission policy and can count drops if they fill or fail. Check the [runtime health and durability contract](RUNTIME.md#health-and-diagnostics) before using this recipe for production.
+
 ## Context and redaction
 
 ```toml
