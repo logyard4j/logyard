@@ -60,7 +60,7 @@ def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunn
                                    "spring-boot-starter-webmvc").zolt
         fixture = replace(base, replacements=base.replacements + (
             ('[dependencies]', '[dependencies]\n"org.slf4j:slf4j-simple" = "2.0.18"'),
-        ))
+        ), provider_conflict_expected=True)
         built = runner.build(fixture)
         process = subprocess.run(runner.executable_jar_command(built, "logyard-spring-boot-example-1.0.0-SNAPSHOT.jar"),
                                  cwd=built.example.project_directory, capture_output=True, text=True, timeout=30)

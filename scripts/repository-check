@@ -70,6 +70,7 @@ required_files=(
   scripts/central-publish
   scripts/zolt-publication-check
   scripts/examples-verify
+  scripts/slf4j-provider-preflight
   scripts/release-bundle
   scripts/release-verify
   scripts/lib/logyard-release.sh

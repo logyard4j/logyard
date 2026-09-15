@@ -50,6 +50,14 @@ dependencies {
 
 Keep Logyard as the only SLF4J provider.
 
+Check the runtime classpath you will deploy, then smoke-start that package. The repository's [provider preflight](scripts/slf4j-provider-preflight) rejects missing or competing SLF4J 2 providers before application startup. From a Zolt application directory, run:
+
+```sh
+/path/to/logyard/scripts/slf4j-provider-preflight --classpath "$(zolt classpath runtime)"
+```
+
+For a Spring Boot executable JAR, use `--jar path/to/application.jar` instead; the preflight inspects its nested dependencies. Run the command with the application package, not Logyard's library JAR alone.
+
 Continue using `LoggerFactory`, fluent SLF4J logging, and MDC. Logyard starts lazily when the adapter first needs it.
 
 MDC capture is opt-in through `context.mdc`.

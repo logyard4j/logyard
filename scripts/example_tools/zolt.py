@@ -11,6 +11,13 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from .providers import (
+    classpath_providers,
+    executable_providers,
+    require_competing_provider,
+    require_single_logyard,
+)
+
 
 @dataclass(frozen=True)
 class ZoltExample:
@@ -20,6 +27,7 @@ class ZoltExample:
     replacements: tuple[tuple[str, str], ...] = ()
     omit_config: bool = False
     test: bool = False
+    provider_conflict_expected: bool = False
     runtime_arguments: tuple[str, ...] = ("-Dlogyard.config=classpath:logyard.toml",)
 
 
@@ -87,7 +95,9 @@ class ZoltExampleRunner:
             if command == "resolve":
                 self.verify_artifacts(project)
         classpath = self._run(self.command("classpath", "runtime"), project, capture=True)
-        return BuiltZoltExample(staged, classpath.stdout.strip())
+        built = BuiltZoltExample(staged, classpath.stdout.strip())
+        self.verify_provider(built)
+        return built
 
     def verify_artifacts(self, project: Path) -> None:
         packages = tomllib.loads((project / "zolt.lock").read_text())["package"]
@@ -136,7 +146,23 @@ class ZoltExampleRunner:
     @staticmethod
     def executable_jar_command(built: BuiltZoltExample, jar_name: str) -> tuple[str, ...]:
         jar = built.example.project_directory / "target" / jar_name
+        ZoltExampleRunner.verify_provider(built, jar)
         return ("java", *built.example.runtime_arguments, "-jar", str(jar))
+
+    @staticmethod
+    def verify_provider(built: BuiltZoltExample, executable: Path | None = None) -> None:
+        packages = tomllib.loads((built.example.project_directory / "zolt.lock").read_text())["package"]
+        if not any(package["id"] == "com.logyard4j:logyard-slf4j2" for package in packages):
+            return
+        source = f"{built.example.name} " + ("executable package" if executable else "runtime classpath")
+        providers = (executable_providers(executable) if executable is not None
+                     else classpath_providers(built.runtime_classpath))
+        if built.example.provider_conflict_expected:
+            require_competing_provider(providers, source)
+            print(f"SLF4J provider preflight confirmed expected conflict: {source}", flush=True)
+        else:
+            require_single_logyard(providers, source)
+            print(f"SLF4J provider preflight passed: {source}", flush=True)
 
     @staticmethod
     def _run(command: tuple[str, ...], directory: Path, environment: dict[str, str] | None = None,
