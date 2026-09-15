@@ -19,6 +19,7 @@ public enum Level {
     /** Failures requiring operator or application attention. */
     ERROR(17);
 
+    private static final String INVALID_NAME_MESSAGE = "level must be trace, debug, info, warn, or error";
     private final int severityNumber;
 
     Level(int severityNumber) {
@@ -80,10 +81,14 @@ public enum Level {
         if (value == null) {
             throw new IllegalArgumentException("level must not be null");
         }
+        String trimmed = value.trim();
+        if (trimmed.length() > 5) {
+            throw new IllegalArgumentException(INVALID_NAME_MESSAGE);
+        }
         try {
-            return valueOf(value.trim().toUpperCase(Locale.ROOT));
+            return valueOf(trimmed.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("level must be trace, debug, info, warn, or error", exception);
+            throw new IllegalArgumentException(INVALID_NAME_MESSAGE, exception);
         }
     }
 }

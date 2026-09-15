@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Constrained-heap process probe for the adversarial graphs and scalars guarded by event capture. */
+/** Constrained-heap process probe for adversarial inputs guarded by public capture and parsing. */
 public final class AdversarialBoundednessMain {
     private static final int MAX_JSON_CHARACTERS = 262_144;
     private static final int MAX_CONSOLE_CHARACTERS = 131_072;
@@ -28,6 +28,7 @@ public final class AdversarialBoundednessMain {
     }
 
     public static void main(String[] args) {
+        verifyLevelParseBounds();
         Object graph = sharedGraph();
         RuntimeException failure = repeatedExceptionGraph();
         BigDecimal compactExponent = new BigDecimal(BigInteger.ONE, -1_000_000);
@@ -96,6 +97,16 @@ public final class AdversarialBoundednessMain {
                 "nested dotted-key redaction failed");
 
         System.out.println("Adversarial boundedness verification passed under constrained heap");
+    }
+
+    private static void verifyLevelParseBounds() {
+        String invalid = "invalid".repeat(5_000_000);
+        try {
+            Level.parse(invalid);
+            throw new AssertionError("oversized invalid level was accepted");
+        } catch (IllegalArgumentException expected) {
+            require(expected.getMessage().contains("level must be"), "level rejection lost its public message");
+        }
     }
 
     private static Object sharedGraph() {
