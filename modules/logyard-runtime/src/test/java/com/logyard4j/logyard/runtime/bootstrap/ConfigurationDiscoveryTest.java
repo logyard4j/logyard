@@ -2,6 +2,7 @@ package com.logyard4j.logyard.runtime.bootstrap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
@@ -87,6 +88,40 @@ final class ConfigurationDiscoveryTest {
             assertEquals(canonical.description(), environment.description());
             assertEquals(canonical.snapshot().sha256(), property.snapshot().sha256());
             assertEquals(canonical.snapshot().sha256(), environment.snapshot().sha256());
+
+            LogyardConfigurationSource padded = ConfigurationDiscovery.resolve(
+                    " \t" + location + "\r\n", null, Map.of(), loader, directory, null);
+            assertEquals(canonical.identity(), padded.identity());
+        }
+    }
+
+    @Test
+    void explicitLocationsRejectOversizedNormalizedPaths() throws Exception {
+        Path directory = directoryWithConventionalFile();
+        String oversizedFile = " \t" + "x".repeat(32_769) + "\r\n";
+        String oversizedResource = "classpath:///" + "x".repeat(2_049);
+        try (URLClassLoader loader = classpathWithConfig()) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> ConfigurationDiscovery.resolve(oversizedFile, null, Map.of(), loader, directory, null));
+            assertThrows(IllegalArgumentException.class,
+                    () -> ConfigurationDiscovery.resolve(
+                            null, null, Map.of(ConfigurationDiscovery.ENVIRONMENT_VARIABLE, oversizedFile), loader, directory, null));
+            assertThrows(IllegalArgumentException.class,
+                    () -> ConfigurationDiscovery.find(oversizedFile, Map.of(), directory));
+            assertThrows(IllegalArgumentException.class,
+                    () -> ConfigurationDiscovery.resolve(oversizedResource, null, Map.of(), loader, directory, null));
+        }
+    }
+
+    @Test
+    void oversizedStrictnessSettingHasBoundedDiagnostic() throws Exception {
+        Path directory = Files.createTempDirectory("logyard-discovery-strict-");
+        try (URLClassLoader loader = emptyClasspath()) {
+            IllegalStateException error = assertThrows(IllegalStateException.class,
+                    () -> ConfigurationDiscovery.resolve(
+                            null, " \t" + "invalid".repeat(20_000) + "\r\n", Map.of(), loader, directory, null));
+            assertTrue(error.getMessage().length() < 300);
+            assertTrue(error.getMessage().contains("must be true or false"));
         }
     }
 

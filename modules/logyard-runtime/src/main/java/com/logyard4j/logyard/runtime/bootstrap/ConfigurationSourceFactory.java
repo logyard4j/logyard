@@ -43,7 +43,7 @@ final class ConfigurationSourceFactory {
 
     static ConfigurationSourceDescriptor classpath(ClassLoader loader, String resource, Path baseDirectory) {
         ClassLoader sourceLoader = Objects.requireNonNull(loader, "loader");
-        String normalizedResource = resource(resource);
+        String normalizedResource = resource(resource, 0);
         Path normalizedBaseDirectory = directory(baseDirectory);
         return new ConfigurationSourceDescriptor(
                 "classpath:" + normalizedResource,
@@ -94,9 +94,9 @@ final class ConfigurationSourceFactory {
         return safe.toString();
     }
 
-    private static String resource(String value) {
+    static String resource(String value, int offset) {
         Objects.requireNonNull(value, "resource");
-        int start = 0;
+        int start = offset;
         int end = value.length();
         while (start < end && value.charAt(start) <= ' ') {
             start++;
@@ -119,14 +119,6 @@ final class ConfigurationSourceFactory {
             }
         }
         return value.substring(start, end);
-    }
-
-    static String stripLeadingSlashes(String value) {
-        int start = 0;
-        while (start < value.length() && value.charAt(start) == '/') {
-            start++;
-        }
-        return value.substring(start);
     }
 
     private static Path directory(Path value) {
