@@ -37,6 +37,8 @@ Run from the repository root before tagging:
 
 These gates cover runtime failures, packaged JVM consumers and ECS ingestion through Smoque, API compatibility, allocation budgets, and the signed Central bundle. The ECS gate needs Docker or `LOGYARD_ECS_URL` pointing to a disposable Elasticsearch instance. Linux, macOS, and Windows [CI](.github/workflows/ci.yml) must also pass.
 
+The first release's integration promise is for the packaged JVM modes in [Integrations](INTEGRATIONS.md). Native-image/AOT execution, Quarkus dev and test profiles, and SmallRye readiness are outside that qualified matrix. Resource metadata alone is not execution evidence; add actual Spring AOT/native and Quarkus native integration runs before extending the promise.
+
 `benchmark-delivery-qualify` runs 33 standalone delivery/reload JVM forks and writes candidate, artifact, environment, and accounting evidence under `target/benchmark-delivery-qualification/`. Keep that evidence and the successful CI run tied to the frozen SHA. This gate is separate from the JMH allocation smoke suite.
 
 The final command creates a signed, deterministic ZIP locally. It does not upload.

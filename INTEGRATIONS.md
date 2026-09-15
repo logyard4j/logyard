@@ -199,7 +199,7 @@ quarkus.logyard.config=classpath:logyard.toml
 | `quarkus.logyard.required=true` | Fail if configuration is missing |
 | `quarkus.logyard.enabled=false` | Disable handler installation |
 
-With `quarkus-smallrye-health`, Logyard adds a `logyard` readiness check without taking another runtime lease. This requires extension capability handling, which the pinned Zolt does not yet provide.
+The extension has an optional `LogyardReadinessCheck` build step for `quarkus-smallrye-health`, but that combination is outside the first release's verified scope. The pinned Zolt cannot qualify its extension capability handling, so do not rely on the optional check as the application's readiness signal. The packaged JVM example without SmallRye Health verifies that `/q/health/ready` is absent.
 
 Quarkus build-time minimum levels apply before Logyard sees an event. Preserve any level you want to enable later:
 
@@ -501,7 +501,7 @@ The [OpenTelemetry example](examples/opentelemetry) includes a Zolt test using t
 
 Spring and Quarkus include classpath resources named `logyard.toml` and `logyard-*.toml`, including nested paths such as `logging/logyard-prod.toml`.
 
-Framework metadata is present, but native-image execution is outside the pinned Zolt verification scope. The qualified consumer examples are JVM applications.
+The first release supports the verified JVM applications. Resource hints are present, but native-image execution and Spring AOT are unqualified and outside that support contract. Quarkus dev mode, framework test profiles, and the optional SmallRye readiness integration also need executable qualification before support is claimed.
 
 ## Manage dependency versions
 

@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Production guidance describes counted overload loss, a separate ERROR-only output recipe, and the durable audit boundary. Packaged SLF4J consumers now check the application runtime classpath and Spring Boot executable JAR for exactly one Logyard provider.
+- The first release's verified integration contract covers packaged JVM applications. Native-image/AOT execution, Quarkus dev and test profiles, and optional SmallRye readiness remain outside that contract.
 - `AttributeSet.containsKey()` distinguishes a captured null value from an absent key.
 - `LogContext.wrap(Executor)` propagates the caller's context separately for each submission, including `CompletableFuture` tasks.
 - Output, retirement, watcher, archive-maintenance, and shutdown-hook threads avoid inheriting application thread-local state from their creation.
