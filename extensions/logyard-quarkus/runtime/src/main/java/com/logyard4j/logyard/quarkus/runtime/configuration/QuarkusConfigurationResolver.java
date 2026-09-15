@@ -22,8 +22,8 @@ public final class QuarkusConfigurationResolver {
     public static LogyardConfigurationSource resolve(LogyardQuarkusRuntimeConfig configuration) {
         Objects.requireNonNull(configuration, "configuration");
         LogyardConfigurationSource frameworkSource = configuration.config()
-                .map(String::trim)
-                .filter(location -> !location.isEmpty())
+                .filter(location -> !location.isBlank())
+                .map(ConfigurationLocationResolver::normalize)
                 .map(location -> source(contextClassLoader(), location))
                 .orElse(null);
         return ConfigurationDiscovery.resolve(frameworkSource, configuration.required());

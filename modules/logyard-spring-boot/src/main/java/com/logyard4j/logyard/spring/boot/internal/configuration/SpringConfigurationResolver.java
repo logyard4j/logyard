@@ -58,6 +58,6 @@ public final class SpringConfigurationResolver {
     }
 
     private static String value(String candidate) {
-        return candidate == null || candidate.isBlank() ? null : candidate.trim();
+        return candidate == null || candidate.isBlank() ? null : ConfigurationLocationResolver.normalize(candidate);
     }
 }
