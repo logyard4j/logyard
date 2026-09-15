@@ -50,4 +50,24 @@ final class ConfigurationLocationResolverTest {
                 "Quarkus Logyard configuration supports classpath: and filesystem locations, but was: https://example.invalid/logyard.toml",
                 failure.getMessage());
     }
+
+    @Test
+    void normalizesClasspathLocationsBeforeFrameworkAliasComparison() {
+        String canonical = "classpath:config/logyard.toml";
+        assertEquals(canonical, ConfigurationLocationResolver.normalize(
+                " \tclasspath:" + "/".repeat(50_000) + "config/logyard.toml\r\n"));
+        assertEquals(canonical, ConfigurationLocationResolver.normalize("classpath:config/logyard.toml"));
+    }
+
+    @Test
+    void rejectsOversizedNormalizedFrameworkLocations() {
+        assertThrows(IllegalArgumentException.class,
+                () -> ConfigurationLocationResolver.normalize(" \t" + "x".repeat(32_769) + "\r\n"));
+        assertThrows(IllegalArgumentException.class,
+                () -> ConfigurationLocationResolver.normalize("classpath:///" + "x".repeat(2_049)));
+        assertThrows(IllegalArgumentException.class,
+                () -> ConfigurationLocationResolver.normalize("classpath:///"));
+        assertThrows(IllegalArgumentException.class,
+                () -> ConfigurationLocationResolver.normalize("classpath:///nested\\logyard.toml"));
+    }
 }

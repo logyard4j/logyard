@@ -2,6 +2,7 @@ package com.logyard4j.logyard.canaries;
 
 import com.logyard4j.logyard.runtime.bootstrap.ConfigurationDiscovery;
 import com.logyard4j.logyard.runtime.bootstrap.LogyardConfigurationSource;
+import com.logyard4j.logyard.runtime.bootstrap.location.ConfigurationLocationResolver;
 
 import java.nio.file.Path;
 
@@ -14,6 +15,7 @@ public final class ConfigurationSourceBoundednessMain {
         rejectOversizedDescription();
         rejectOversizedResource();
         rejectOversizedDiscoveryLocation();
+        rejectOversizedFrameworkLocation();
         System.out.println("Configuration source boundedness verification passed under constrained heap");
     }
 
@@ -41,6 +43,14 @@ public final class ConfigurationSourceBoundednessMain {
         } finally {
             System.clearProperty(ConfigurationDiscovery.SYSTEM_PROPERTY);
         }
+    }
+
+    private static void rejectOversizedFrameworkLocation() {
+        String location = " x".repeat(17_500_000);
+        expectRejection(
+                () -> ConfigurationLocationResolver.resolve(
+                        "probe", ConfigurationSourceBoundednessMain.class.getClassLoader(), location, Path.of(".")),
+                "configuration location exceeds");
     }
 
     private static void expectRejection(Runnable operation, String message) {
