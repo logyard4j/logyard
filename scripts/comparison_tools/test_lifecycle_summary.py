@@ -11,7 +11,7 @@ def output(written=20, dropped=0):
         "enqueued": written,
         "dropped": dropped,
         "written": written,
-        "unwritten_info": 0,
+        "unwritten_info": dropped,
         "unwritten_error": 0,
         "warmup_enqueued": 5,
         "warmup_dropped": 5,
@@ -53,6 +53,36 @@ class LifecycleSummaryTest(unittest.TestCase):
                              summary["resources"]["heap_after_gc"])
             self.assertEqual(run, latest_run(root))
 
+    def test_reconciles_bounded_output_loss(self):
+        with tempfile.TemporaryDirectory() as name:
+            run = self.write_run(Path(name), [cycle(1, written=19, dropped=1)],
+                                 requested=1, completed=1)
+
+            summary = summarize(run)
+
+            self.assertEqual("passed", summary["status"])
+            self.assertEqual(20, summary["attempted"])
+            self.assertEqual(19, summary["outputs"]["first"]["written"])
+            self.assertEqual(1, summary["outputs"]["first"]["unwritten_info"])
+
+    def test_rejects_passed_receipt_missing_output_pair(self):
+        with tempfile.TemporaryDirectory() as name:
+            row = cycle(1)
+            row["delivery"]["outputs"].pop("second")
+            run = self.write_run(Path(name), [row], requested=1, completed=1)
+
+            with self.assertRaisesRegex(AssertionError, "output pair"):
+                summarize(run)
+
+    def test_rejects_passed_receipt_without_requested_work(self):
+        with tempfile.TemporaryDirectory() as name:
+            row = cycle(1, written=0)
+            row["delivery"]["reloads"] = 0
+            run = self.write_run(Path(name), [row], requested=1, completed=1)
+
+            with self.assertRaisesRegex(AssertionError, "measured work"):
+                summarize(run)
+
     def test_rejects_a_passed_receipt_with_incomplete_cycles(self):
         with tempfile.TemporaryDirectory() as name:
             run = self.write_run(Path(name), [cycle(1)], completed=1)
@@ -79,6 +109,7 @@ class LifecycleSummaryTest(unittest.TestCase):
             "status": "passed",
             "requested_cycles": requested,
             "completed_cycles": completed,
+            "records_per_cycle": 20,
             "elapsed_seconds": 12.5,
             "baseline_cycle": 1,
             "heap_growth_limit_bytes": 32,

@@ -21,6 +21,11 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def nonnegative(value: object, name: str) -> int:
+    require(type(value) is int and value >= 0, f"invalid lifecycle counter: {name}")
+    return value
+
+
 def latest_run(root: Path) -> Path:
     target = root / "target/benchmark-lifecycle-soak"
     runs = sorted(path.parent for path in target.glob("*/receipt.json"))
@@ -38,6 +43,8 @@ def summarize(run: Path) -> dict[str, object]:
     ]
     completed = receipt["completed_cycles"]
     requested = receipt["requested_cycles"]
+    records_per_cycle = nonnegative(receipt["records_per_cycle"], "records_per_cycle")
+    require(records_per_cycle > 0, "lifecycle receipt requested no measured work")
     require(len(rows) == completed, "cycle ledger does not match completed cycle count")
     require([row["cycle"] for row in rows] == list(range(1, completed + 1)),
             "cycle ledger is not contiguous")
@@ -51,19 +58,30 @@ def summarize(run: Path) -> dict[str, object]:
     outputs: dict[str, dict[str, int]] = {}
     for row in rows:
         delivery = row["delivery"]
-        attempted += delivery["attempted"]
-        warmup_attempted += delivery["warmup_attempted"]
-        reloads += delivery["reloads"]
-        threads_missing += delivery["threads_missing_at_end"]
+        cycle = row["cycle"]
+        measured = nonnegative(delivery["attempted"], "attempted")
+        warmup = nonnegative(delivery["warmup_attempted"], "warmup_attempted")
+        applied = nonnegative(delivery["reloads"], "reloads")
+        require(measured == records_per_cycle and warmup > 0 and applied > 0,
+                f"missing measured work in cycle {cycle}")
+        require(isinstance(delivery["outputs"], dict)
+                and set(delivery["outputs"]) == {"first", "second"},
+                f"missing reload output pair in cycle {cycle}")
+        attempted += measured
+        warmup_attempted += warmup
+        reloads += applied
+        threads_missing += nonnegative(delivery["threads_missing_at_end"], "threads_missing_at_end")
         for name, output in delivery["outputs"].items():
-            require(output["enqueued"] + output["dropped"] == delivery["attempted"],
-                    f"measured admission mismatch in cycle {row['cycle']} output {name}")
-            require(output["written"] + output["unwritten_info"]
-                    + output["unwritten_error"] == output["enqueued"],
-                    f"measured delivery mismatch in cycle {row['cycle']} output {name}")
-            require(output["warmup_enqueued"] + output["warmup_dropped"]
-                    == delivery["warmup_attempted"],
-                    f"warmup admission mismatch in cycle {row['cycle']} output {name}")
+            for field in ("enqueued", "dropped", "written", "unwritten_info", "unwritten_error",
+                          "warmup_enqueued", "warmup_dropped"):
+                nonnegative(output[field], f"{name}.{field}")
+            require(output["enqueued"] + output["dropped"] == measured,
+                    f"measured admission mismatch in cycle {cycle} output {name}")
+            require(output["written"] == output["enqueued"]
+                    and output["unwritten_info"] + output["unwritten_error"] == output["dropped"],
+                    f"measured delivery mismatch in cycle {cycle} output {name}")
+            require(output["warmup_enqueued"] + output["warmup_dropped"] == warmup,
+                    f"warmup admission mismatch in cycle {cycle} output {name}")
             total = outputs.setdefault(name, {
                 "written": 0, "dropped": 0, "unwritten_info": 0, "unwritten_error": 0,
                 "warmup_enqueued": 0, "warmup_dropped": 0,
