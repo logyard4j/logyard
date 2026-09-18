@@ -132,7 +132,7 @@ JSON supports `logyard`, `ecs`, and `compact` profiles, plus field renaming and 
 | `System.Logger` | [logyard-system-logger](INTEGRATIONS.md#systemlogger) |
 | OpenTelemetry | [logyard-opentelemetry](INTEGRATIONS.md#opentelemetry) |
 
-JVM examples cover plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16 and 4.1.0, and Quarkus 3.37.3. Optional OpenTelemetry integration adds trace correlation, allowlisted baggage, and forwarding to your Logs SDK.
+JVM examples cover plain SLF4J 2, Lombok 1.18.48, Kafka Streams 4.3.1, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16 and 4.1.0, and Quarkus 3.37.3. Optional OpenTelemetry integration adds trace correlation, allowlisted baggage, and forwarding to your Logs SDK.
 
 Java 21 is the minimum runtime. Use the same version for all Logyard artifacts. SLF4J 1.x is unsupported.
 Native-image and AOT execution are outside the first release's [verified integration scope](INTEGRATIONS.md#native-images).

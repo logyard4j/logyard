@@ -6,6 +6,8 @@ from dataclasses import replace
 from pathlib import Path
 
 from .contracts import (
+    require_kafka_streams_events,
+    require_lombok_events,
     require_micronaut_events,
     require_plain_slf4j_events,
     require_quarkus_events,
@@ -25,7 +27,8 @@ def main() -> None:
     parser.add_argument("release_repository", type=Path)
     parser.add_argument("version")
     parser.add_argument("--scenario", required=True, choices=(
-        "slf4j", "lifecycle", "opentelemetry", "test-kit", "migration", "vertx", "micronaut", "spring-boot-3-mvc", "spring-boot-4-mvc",
+        "slf4j", "lombok", "kafka-streams", "lifecycle", "opentelemetry", "test-kit",
+        "migration", "vertx", "micronaut", "spring-boot-3-mvc", "spring-boot-4-mvc",
         "spring-boot-3-webflux", "spring-boot-4-webflux", "spring-boot-4-no-actuator",
         "spring-boot-4-external-config", "spring-boot-4-safe-defaults", "quarkus", "quarkus-disabled",
         "spring-boot-4-provider-conflict",
@@ -43,6 +46,10 @@ def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunn
     versions = framework_versions(root)
     if scenario in ("test-kit", "migration"):
         runner.build(ZoltExample(scenario, root / "examples" / scenario, "", test=True, runtime_arguments=()))
+        return
+    if scenario == "kafka-streams":
+        runner.build(ZoltExample(scenario, root / "examples/kafka-streams", "", test=True, runtime_arguments=()))
+        require_kafka_streams_events(EventLog.read(runner.build_output_path(scenario)))
         return
     if scenario == "lifecycle":
         example = ZoltExample(scenario, root / "examples/lifecycle",
@@ -87,12 +94,14 @@ def verify_scenario(root: Path, runner: ZoltExampleRunner, http: HttpExampleRunn
             )))
         events.require_last("trace shutdown flush")
         return
-    if scenario in ("slf4j", "vertx", "micronaut"):
-        name = {"slf4j": "Slf4j", "vertx": "Vertx", "micronaut": "Micronaut"}[scenario]
+    if scenario in ("slf4j", "lombok", "vertx", "micronaut"):
+        name = {"slf4j": "Slf4j", "lombok": "Lombok", "vertx": "Vertx", "micronaut": "Micronaut"}[scenario]
         example = ZoltExample(scenario, root / "examples" / scenario,
                               f"com.logyard4j.logyard.examples.{scenario}.{name}ExampleApplication")
         if scenario == "slf4j":
             verify_plain_slf4j(runner, example)
+        elif scenario == "lombok":
+            require_lombok_events(EventLog.read(runner.build_and_run(example)))
         elif scenario == "vertx":
             verify_vertx(http, HttpExample(example))
         else:

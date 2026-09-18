@@ -70,7 +70,7 @@ MDC capture is opt-in through `context.mdc`.
 | Capture loss | `logyard.capture.truncated`; reset by `clear()` or `setContextMap()` |
 | Invalid operations | Null keys and deque overflow throw; push/pop pairs stay balanced |
 
-See the [SLF4J](examples/slf4j), [Vert.x](examples/vertx), and [Micronaut](examples/micronaut) examples.
+See the [SLF4J](examples/slf4j), [Lombok](examples/lombok), [Kafka Streams](examples/kafka-streams), [Vert.x](examples/vertx), and [Micronaut](examples/micronaut) examples.
 
 ## Spring Boot
 
@@ -627,6 +627,8 @@ Each example includes a `zolt.toml` build; application examples include output c
 | [Migration](examples/migration) | Real Logback/Log4j 2 output, pattern spacing, exclusions, MDC and repeated-logger refusal, destinations, filtering, and counts |
 | [Test kit](examples/test-kit) | Isolated log assertions, scoped context, lazy values, and capture overflow |
 | [SLF4J](examples/slf4j) | Fluent structured logging |
+| [Lombok](examples/lombok) | `@Slf4j` with parameterized `log.info`, `log.warn`, and `log.error` calls |
+| [Kafka Streams](examples/kafka-streams) | Processor API logging and a topology test driver |
 | [Managed lifecycle](examples/lifecycle) | Cached SLF4J, JUL, and System.Logger instances across restart, level changes, formatting, and close-time drain |
 | [OpenTelemetry](examples/opentelemetry) | Trace identity, allowlisted baggage, executor propagation, Logs SDK export, and restart with the same SDK |
 | [Vert.x](examples/vertx) | Logging from a Vert.x application |

@@ -23,8 +23,11 @@ spring_boot_current="$(framework_version spring_boot_current)"
 quarkus="$(framework_version quarkus)"
 micronaut="$(framework_version micronaut)"
 vertx="$(framework_version vertx)"
+kafka_streams="$(framework_version kafka_streams)"
+lombok="$(framework_version lombok)"
 jmh="$(framework_version jmh)"
-for version in "$spring_boot_baseline" "$spring_boot_current" "$quarkus" "$micronaut" "$vertx" "$jmh"; do
+for version in "$spring_boot_baseline" "$spring_boot_current" "$quarkus" "$micronaut" "$vertx" \
+    "$kafka_streams" "$lombok" "$jmh"; do
   [[ -n "$version" ]] || {
     printf 'framework version check failed: framework-versions.toml is incomplete\n' >&2
     exit 1
@@ -40,8 +43,10 @@ require_fragment extensions/logyard-quarkus/runtime/pom.xml "<artifactId>quarkus
 require_fragment extensions/logyard-quarkus/deployment/pom.xml "<artifactId>quarkus-core-deployment</artifactId>"
 require_fragment examples/micronaut/zolt.toml "\"io.micronaut.platform:micronaut-platform\" = \"$micronaut\""
 require_fragment examples/vertx/zolt.toml "\"io.vertx:vertx-stack-depchain\" = \"$vertx\""
+require_fragment examples/kafka-streams/zolt.toml "\"org.apache.kafka:kafka-streams\" = \"$kafka_streams\""
+require_fragment examples/lombok/zolt.toml "\"org.projectlombok:lombok\" = \"$lombok\""
 require_fragment benchmarks/logyard-benchmarks/zolt.toml "\"org.openjdk.jmh:jmh-core\" = \"$jmh\""
 require_fragment extensions/logyard-quarkus/benchmarks/pom.xml "<jmh.version>$jmh</jmh.version>"
-require_fragment README.md "plain SLF4J 2, Vert.x $vertx, Micronaut $micronaut, Spring Boot $spring_boot_baseline and $spring_boot_current, and Quarkus $quarkus"
+require_fragment README.md "plain SLF4J 2, Lombok $lombok, Kafka Streams $kafka_streams, Vert.x $vertx, Micronaut $micronaut, Spring Boot $spring_boot_baseline and $spring_boot_current, and Quarkus $quarkus"
 
-printf 'Framework versions are aligned across 12 declarations.\n'
+printf 'Framework versions are aligned across 14 declarations.\n'

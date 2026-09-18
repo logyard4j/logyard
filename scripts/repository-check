@@ -79,6 +79,8 @@ required_files=(
   modules/logyard-spring-boot/src/main/resources/META-INF/spring.factories
   modules/logyard-spring-boot/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
   examples/slf4j/zolt.toml
+  examples/lombok/zolt.toml
+  examples/kafka-streams/zolt.toml
   examples/vertx/zolt.toml
   examples/micronaut/zolt.toml
   examples/spring-boot/zolt.toml

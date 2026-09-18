@@ -27,6 +27,27 @@ def require_plain_slf4j_events(events: EventLog) -> None:
     events.require_last("plain SLF4J shutdown flush")
 
 
+def require_lombok_events(events: EventLog) -> None:
+    events.require_real_timestamps()
+    logger = "com.logyard4j.logyard.examples.lombok.LombokExampleApplication"
+    events.require(EventExpectation("Lombok example started", logger, "INFO"))
+    events.require(EventExpectation("Processing order id=order-1042 itemCount=3", logger, "INFO"))
+    events.require(EventExpectation("Order id=order-1042 exceeded 250 ms", logger, "WARN"))
+    events.require(EventExpectation(
+        "Order id=order-1042 failed", logger, "ERROR", exception_message="expected Lombok example failure"
+    ))
+    events.require_last("Lombok example shutdown flush")
+
+
+def require_kafka_streams_events(events: EventLog) -> None:
+    events.require_real_timestamps()
+    events.require(EventExpectation(
+        "Processing Kafka order key=order-1042",
+        "com.logyard4j.logyard.examples.kafkastreams.OrderLoggingProcessor",
+        "INFO",
+    ))
+
+
 def require_vertx_events(events: EventLog) -> None:
     events.require_real_timestamps()
     events.require_logger_prefix("io.vertx")
