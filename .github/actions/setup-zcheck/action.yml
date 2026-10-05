@@ -1,0 +1,9 @@
+name: Set up zcheck
+description: Install the pinned zcheck binary.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        bash scripts/bootstrap-zcheck
+        echo "$HOME/.zcheck/bin" >> "$GITHUB_PATH"

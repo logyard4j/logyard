@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup-zcheck
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
@@ -22,36 +23,11 @@ jobs:
         with:
           node-version: '24'
       - name: Bootstrap the pinned Zolt revision
-        run: |
-          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
-            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
-            "$BASH" ./scripts/bootstrap-zolt
+        run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
-      - name: Resolve the locked workspace
-        run: zolt resolve --workspace --locked
-      - name: Repository, Javadoc, build, and test checks
-        run: ./scripts/ci
-      - name: Enforce the reviewed API compatibility baseline policy
-        run: ./scripts/api-compatibility --baseline
-      - name: Smoke japicmp wiring and public-surface filters
-        run: ./scripts/api-compatibility --self-test
-      # Compatibility checks rebuild packages; assemble the consumer bundle afterward.
-      - name: Package and verify the published Maven surface
-        run: ./scripts/release-bundle
-      - name: Verify the Zolt workspace publication family
-        run: ./scripts/zolt-publication-check
-      - name: Smoke Zolt consumer examples
-        env:
-          LOGYARD_EXAMPLES_SKIP_RELEASE: '1'
-        run: ./scripts/examples-verify
-      - name: Smoke the benchmark harness
-        env:
-          LOGYARD_BENCHMARK_SKIP_RELEASE: '1'
-        run: |
-          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
-            --log target/benchmark-smoke/gate.log --title "Benchmark smoke failed" -- \
-            "$BASH" ./scripts/benchmark-smoke
+      - name: Run CI checks through zcheck
+        run: zcheck run ci --format github --logs-dir "$RUNNER_TEMP/zcheck/ci-logs" --receipt "$RUNNER_TEMP/zcheck/ci.json"
       - name: Upload benchmark results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -62,10 +38,6 @@ jobs:
             target/benchmark-smoke/*.jsonl
             target/benchmark-smoke/*.log
           if-no-files-found: ignore
-      - name: Verify the provider comparison harness
-        env:
-          LOGYARD_COMPARISON_SKIP_RELEASE: '1'
-        run: ./scripts/comparison-verify
       - name: Upload provider comparison evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -96,6 +68,13 @@ jobs:
             target/examples-verify/*.log
             target/examples-verify/*.jsonl
           if-no-files-found: ignore
+      - name: Upload zcheck logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zcheck-${{ github.job }}-${{ runner.os }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/zcheck
+          if-no-files-found: ignore
 
   ecs:
     name: ECS ingestion
@@ -103,6 +82,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup-zcheck
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
@@ -111,20 +91,24 @@ jobs:
         with:
           node-version: '24'
       - name: Bootstrap the pinned Zolt revision
-        run: |
-          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
-            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
-            "$BASH" ./scripts/bootstrap-zolt
+        run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Verify ECS ingestion and standard queries
-        run: ./scripts/ecs-verify
+        run: zcheck run ecs --format github --logs-dir "$RUNNER_TEMP/zcheck/ecs-logs" --receipt "$RUNNER_TEMP/zcheck/ecs.json"
       - name: Upload ECS smoke results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ecs-smoke-results
           path: target/ecs-verify/
+          if-no-files-found: ignore
+      - name: Upload zcheck logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zcheck-${{ github.job }}-${{ runner.os }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/zcheck
           if-no-files-found: ignore
 
   platform:
@@ -140,25 +124,24 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup-zcheck
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
           java-version: '21'
       - name: Bootstrap the pinned Zolt revision
-        run: |
-          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
-            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
-            "$BASH" ./scripts/bootstrap-zolt
+        run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Exercise file locking, reload, rotation, and packaged services
-        run: |
-          source "$GITHUB_WORKSPACE/scripts/lib/logyard-release.sh"
-          test_members="$(logyard_test_members | paste -sd, -)"
-          zolt resolve --workspace
-          zolt test --workspace --members "$test_members" --no-progress --color never
-          ./scripts/package
-          ./scripts/package-verify
+        run: zcheck run platform --format github --logs-dir "$RUNNER_TEMP/zcheck/platform-logs" --receipt "$RUNNER_TEMP/zcheck/platform.json"
+      - name: Upload zcheck logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zcheck-${{ github.job }}-${{ runner.os }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/zcheck
+          if-no-files-found: ignore
 
   forward-jdk:
     name: Forward compatibility (JDK 25)
@@ -166,6 +149,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup-zcheck
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
@@ -174,24 +158,13 @@ jobs:
         with:
           node-version: '24'
       - name: Bootstrap the pinned Zolt revision
-        run: |
-          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
-            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
-            "$BASH" ./scripts/bootstrap-zolt
+        run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Build and test the Java 21 surface on JDK 25
-        run: |
-          source "$GITHUB_WORKSPACE/scripts/lib/logyard-release.sh"
-          test_members="$(logyard_test_members | paste -sd, -)"
-          zolt resolve --workspace
-          zolt build --workspace --all --no-progress --color never
-          zolt test --workspace --members "$test_members" --no-progress --color never
+        run: zcheck run test --format github --logs-dir "$RUNNER_TEMP/zcheck/test-logs" --receipt "$RUNNER_TEMP/zcheck/test.json"
       - name: Package and smoke the supported JVM consumers
-        run: |
-          ./scripts/release-bundle
-          LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-verify
-          LOGYARD_COMPARISON_SKIP_RELEASE=1 ./scripts/comparison-verify
+        run: zcheck run consumers --format github --logs-dir "$RUNNER_TEMP/zcheck/consumers-logs" --receipt "$RUNNER_TEMP/zcheck/consumers.json"
       - name: Upload JDK 25 consumer evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -210,4 +183,11 @@ jobs:
             target/benchmark-compare/*/iteration-*/reload.log
             target/benchmark-compare/*/iteration-*/reload.json
             target/benchmark-compare/*/iteration-*/reload/*.jsonl
+          if-no-files-found: ignore
+      - name: Upload zcheck logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zcheck-${{ github.job }}-${{ runner.os }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/zcheck
           if-no-files-found: ignore

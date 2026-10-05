@@ -74,3 +74,31 @@ class JunitReportsTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("no fresh JUnit reports", result.stderr)
         self.assertNotIn("verification passed", result.stdout)
+
+    def test_workspace_gate_rejects_a_success_exit_without_fresh_test_execution(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        scripts = self.directory / "scripts"
+        tools = scripts / "verify_tools"
+        library = scripts / "lib"
+        tools.mkdir(parents=True)
+        library.mkdir()
+        for name in ("__init__.py", "junit_reports.py"):
+            shutil.copyfile(root / "scripts/verify_tools" / name, tools / name)
+        shutil.copyfile(root / "scripts/lib/logyard-release.sh", library / "logyard-release.sh")
+        gate = scripts / "test-workspace"
+        shutil.copyfile(root / "scripts/test-workspace", gate)
+        (self.directory / "zolt.toml").write_text(
+            '[workspace.members]\ninclude = [\n  "modules/fixture",\n]\n', encoding="utf-8")
+        (self.directory / "modules/fixture/src/test/java").mkdir(parents=True)
+        stale = self.directory / "modules/fixture/target/ci-test-reports"
+        stale.mkdir(parents=True)
+        (stale / "TEST-old.xml").write_text(
+            '<testsuite><testcase classname="old.Run" name="passed"/></testsuite>', encoding="utf-8")
+        runner = self.directory / "fake-zolt"
+        runner.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        runner.chmod(0o755)
+        result = subprocess.run(["bash", str(gate)], cwd=self.directory,
+                                env={**os.environ, "ZOLT": str(runner)},
+                                text=True, capture_output=True, timeout=10, check=False)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("no fresh JUnit reports", result.stderr)

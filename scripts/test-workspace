@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-release.sh"
+ZOLT="$(logyard_require_zolt)"
+test_members="$(logyard_test_members | paste -sd, -)"
+
+while IFS= read -r member; do
+  rm -rf "$ROOT/$member/target/ci-test-reports"
+done < <(logyard_test_members)
+"$ZOLT" test --directory "$ROOT" --workspace --members "$test_members" \
+  --reports-dir target/ci-test-reports --no-progress --color never
+while IFS= read -r member; do
+  PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$ROOT/scripts" python3 -m verify_tools.junit_reports \
+    "$ROOT/$member/target/ci-test-reports"
+done < <(logyard_test_members)

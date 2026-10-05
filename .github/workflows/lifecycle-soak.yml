@@ -24,29 +24,23 @@ jobs:
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup-zcheck
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
           java-version: '21'
       - name: Bootstrap the pinned Zolt revision
-        timeout-minutes: 10
-        run: |
-          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.ci_command \
-            --log target/ci/zolt-bootstrap.log --title "Zolt bootstrap failed" -- \
-            "$BASH" ./scripts/bootstrap-zolt
+        run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Soak packaged reload and shutdown in one JVM
         env:
           SOAK_CYCLES: ${{ inputs.cycles || '1200' }}
         # End before the hosted job limit so an interrupted run can retain its evidence.
-        run: timeout --signal=TERM --kill-after=30s 315m ./scripts/benchmark-lifecycle-soak --cycles "$SOAK_CYCLES"
+        run: zcheck run soak --format github --logs-dir "$RUNNER_TEMP/zcheck/soak-logs" --receipt "$RUNNER_TEMP/zcheck/soak.json" -- --cycles "$SOAK_CYCLES"
       - name: Publish lifecycle evidence summary
         if: always()
-        run: |
-          summary="$(PYTHONPATH=scripts python3 -m comparison_tools.lifecycle_summary .)"
-          printf '::notice title=Lifecycle soak evidence::%s\n' "$summary"
-          printf '### Lifecycle soak evidence\n\n```json\n%s\n```\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
+        run: zcheck run soak-summary --format github --logs-dir "$RUNNER_TEMP/zcheck/soak-summary-logs" --receipt "$RUNNER_TEMP/zcheck/soak-summary.json"
       - name: Retain lifecycle and resource evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -54,7 +48,6 @@ jobs:
           name: lifecycle-soak-${{ github.sha }}-${{ github.run_attempt }}
           retention-days: 14
           path: |
-            target/ci/zolt-bootstrap.log
             target/benchmark-lifecycle-soak/latest.txt
             target/benchmark-lifecycle-soak/*/*.json
             target/benchmark-lifecycle-soak/*/*.jsonl
@@ -62,3 +55,10 @@ jobs:
             target/benchmark-lifecycle-soak/*/cycle-*/*
             target/benchmark-lifecycle-soak/*/projects/logyard/zolt.lock
           if-no-files-found: warn
+      - name: Upload zcheck logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zcheck-${{ github.job }}-${{ runner.os }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/zcheck
+          if-no-files-found: ignore

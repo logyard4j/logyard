@@ -35,14 +35,22 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: ./.github/actions/setup-zcheck
       - name: Exercise the provenance boundary with disposable keys
-        run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.provenance_canary
+        run: zcheck run provenance-canary --format github --logs-dir "$RUNNER_TEMP/zcheck/provenance-canary-logs" --receipt "$RUNNER_TEMP/zcheck/provenance-canary.json"
       - name: Verify the signed tag before executing release code
         id: verify
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           TRUSTED_MAIN_SHA: ${{ github.sha }}
-        run: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.release_provenance
+        run: zcheck run provenance --format github --logs-dir "$RUNNER_TEMP/zcheck/provenance-logs" --receipt "$RUNNER_TEMP/zcheck/provenance.json"
+      - name: Upload zcheck logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zcheck-${{ github.job }}-${{ runner.os }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/zcheck
+          if-no-files-found: ignore
 
   release:
     needs: provenance
@@ -56,6 +64,7 @@ jobs:
         with:
           ref: ${{ needs.provenance.outputs.commit }}
           persist-credentials: false
+      - uses: ./.github/actions/setup-zcheck
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
@@ -63,23 +72,8 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
-      - name: Confirm the verified release metadata
-        env:
-          RELEASE_TAG: ${{ needs.provenance.outputs.tag }}
-          VERIFIED_VERSION: ${{ needs.provenance.outputs.version }}
-        run: |
-          source "$GITHUB_WORKSPACE/scripts/lib/logyard-release.sh"
-          version="$(logyard_release_version)"
-          [[ "$version" != *-SNAPSHOT ]] || {
-            echo "release versions must not end in -SNAPSHOT" >&2
-            exit 1
-          }
-          [[ "$RELEASE_TAG" == "v$version" && "$version" == "$VERIFIED_VERSION" ]] || {
-            echo "tag $RELEASE_TAG does not match version $version" >&2
-            exit 1
-          }
       - name: Bootstrap the pinned Zolt revision
-        run: ./scripts/bootstrap-zolt
+        run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
         run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
       - name: Import the release signing key
@@ -96,16 +90,13 @@ jobs:
           LOGYARD_GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
           LOGYARD_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          zolt resolve --workspace --locked
-          ./scripts/ci
-          ./scripts/api-compatibility --baseline
-          ./scripts/api-compatibility --self-test
-          ./scripts/release-bundle --sign
-          ./scripts/zolt-publication-check --signed
-          LOGYARD_EXAMPLES_SKIP_RELEASE=1 ./scripts/examples-verify
-          ./scripts/ecs-verify
-          LOGYARD_BENCHMARK_SKIP_RELEASE=1 ./scripts/benchmark-smoke
-          LOGYARD_COMPARISON_SKIP_RELEASE=1 ./scripts/comparison-verify
+          zcheck run check api-self-test --format github --logs-dir "$RUNNER_TEMP/zcheck/check-logs" --receipt "$RUNNER_TEMP/zcheck/check.json"
+          zcheck run bundle --format github --logs-dir "$RUNNER_TEMP/zcheck/bundle-logs" --receipt "$RUNNER_TEMP/zcheck/bundle.json" -- --sign
+          zcheck run publications --format github --logs-dir "$RUNNER_TEMP/zcheck/publications-logs" --receipt "$RUNNER_TEMP/zcheck/publications.json" -- --signed
+          LOGYARD_EXAMPLES_SKIP_RELEASE=1 zcheck run examples --format github --logs-dir "$RUNNER_TEMP/zcheck/examples-logs" --receipt "$RUNNER_TEMP/zcheck/examples.json"
+          zcheck run ecs --format github --logs-dir "$RUNNER_TEMP/zcheck/ecs-logs" --receipt "$RUNNER_TEMP/zcheck/ecs.json"
+          LOGYARD_BENCHMARK_SKIP_RELEASE=1 zcheck run benchmark-smoke --format github --logs-dir "$RUNNER_TEMP/zcheck/benchmark-smoke-logs" --receipt "$RUNNER_TEMP/zcheck/benchmark-smoke.json"
+          LOGYARD_COMPARISON_SKIP_RELEASE=1 zcheck run comparison --format github --logs-dir "$RUNNER_TEMP/zcheck/comparison-logs" --receipt "$RUNNER_TEMP/zcheck/comparison.json"
       - name: Upload example smoke results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -138,7 +129,7 @@ jobs:
           archive="$GITHUB_WORKSPACE/target/logyard-$version-central-bundle.zip"
           export LOGYARD_CENTRAL_SKIP_RELEASE=1
           export LOGYARD_CENTRAL_BUNDLE="$archive"
-          ./scripts/central-publish
+          zcheck run central --format github --logs-dir "$RUNNER_TEMP/zcheck/central-logs" --receipt "$RUNNER_TEMP/zcheck/central.json"
           sha256sum "$archive" > "$archive.sha256"
           if [[ -n "$LOGYARD_GPG_PASSPHRASE" ]]; then
             printf '%s' "$LOGYARD_GPG_PASSPHRASE" \
@@ -163,7 +154,7 @@ jobs:
           }
           version="$(cat target/release-bundle/VERSION)"
           export LOGYARD_CENTRAL_BUNDLE="$GITHUB_WORKSPACE/target/logyard-$version-central-bundle.zip"
-          ./scripts/central-publish --upload --automatic --wait
+          zcheck run central --format github --logs-dir "$RUNNER_TEMP/zcheck/publish-logs" --receipt "$RUNNER_TEMP/zcheck/publish.json" -- --upload --automatic --wait
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -187,3 +178,10 @@ jobs:
             --generate-notes \
             "${release_flags[@]}" \
             --verify-tag
+      - name: Upload zcheck logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zcheck-${{ github.job }}-${{ runner.os }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/zcheck
+          if-no-files-found: ignore

@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/scripts/lib/logyard-bootstrap.sh"
+VERSION=0.0.2
+INSTALL_ROOT="${ZCHECK_HOME:-$HOME/.zcheck}"
+
+case "$(uname -s)/$(uname -m)" in
+  Linux/x86_64) target=x86_64-unknown-linux-gnu; checksum=a9e3ca964b6f5e86c693edeff4aeaddb46ee9d62f8713d3ded0bb6533b758e53 ;;
+  Linux/aarch64|Linux/arm64) target=aarch64-unknown-linux-gnu; checksum=f5b296fa2c316f017bc8a189ac186c658ea1dc72b3311d7e0d3639d52d2608c7 ;;
+  Darwin/x86_64) target=x86_64-apple-darwin; checksum=37c382c741999d8749318a52851695a55724371da5ad2f964daa318bf4fe3163 ;;
+  Darwin/arm64) target=aarch64-apple-darwin; checksum=973c5ad9a83590a664c69f62aac2e38b07bbcc8c1d887389507f80cf77347883 ;;
+  MINGW*/x86_64|MSYS*/x86_64|CYGWIN*/x86_64) target=x86_64-pc-windows-msvc; checksum=f4cc273e06cebdc9c830dd3c6b0dacbd0b1947db7ab2e3cf293e7740b2cd8e1c ;;
+  *) printf 'Unsupported zcheck platform: %s/%s\n' "$(uname -s)" "$(uname -m)" >&2; exit 2 ;;
+esac
+
+extension=tar.gz
+binary=zcheck
+if [[ "$target" == *windows* ]]; then
+  extension=zip
+  binary=zcheck.exe
+fi
+if [[ -x "$INSTALL_ROOT/bin/$binary" ]] && [[ "$("$INSTALL_ROOT/bin/$binary" --version)" == "zcheck $VERSION" ]]; then
+  printf 'Using zcheck %s at %s.\n' "$VERSION" "$INSTALL_ROOT/bin/$binary"
+  exit 0
+fi
+
+mkdir -p "$INSTALL_ROOT/bin"
+temporary="$(mktemp -d "$INSTALL_ROOT/download.XXXXXX")"
+trap 'rm -rf "$temporary"' EXIT
+archive="$temporary/zcheck.$extension"
+logyard_bootstrap_run curl --fail --location --silent --show-error \
+  "https://github.com/zsumz/zcheck/releases/download/v$VERSION/zcheck-$VERSION-$target.$extension" -o "$archive"
+python3 - "$archive" "$checksum" "$binary" "$temporary/$binary" <<'PY'
+import hashlib
+import pathlib
+import sys
+import tarfile
+import zipfile
+
+archive, expected, binary, output = sys.argv[1:]
+data = pathlib.Path(archive).read_bytes()
+if hashlib.sha256(data).hexdigest() != expected:
+    raise SystemExit("zcheck download checksum mismatch")
+if archive.endswith(".zip"):
+    with zipfile.ZipFile(archive) as source:
+        contents = source.read(binary)
+else:
+    with tarfile.open(archive) as source:
+        with source.extractfile(binary) as executable:
+            contents = executable.read()
+pathlib.Path(output).write_bytes(contents)
+PY
+chmod +x "$temporary/$binary"
+[[ "$("$temporary/$binary" --version)" == "zcheck $VERSION" ]]
+mv "$temporary/$binary" "$INSTALL_ROOT/bin/$binary"
+printf 'Installed zcheck %s at %s.\n' "$VERSION" "$INSTALL_ROOT/bin/$binary"

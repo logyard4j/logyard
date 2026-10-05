@@ -3,7 +3,7 @@ set -euo pipefail
 export PYTHONDONTWRITEBYTECODE=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZOLT="${ZOLT:-$HOME/.zolt/bin/zolt}"
+ZOLT="${ZOLT:-$(command -v zolt || printf '%s' "$HOME/.zolt/bin/zolt")}"
 
 [[ -x "$ZOLT" ]] || {
   printf 'failure-injection verification requires Zolt at %s\n' "$ZOLT" >&2

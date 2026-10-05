@@ -17,38 +17,38 @@ export PATH="$JAVA_HOME/bin:$(brew --prefix python@3.13)/libexec/bin:$PATH"
 From the repository root:
 
 ```sh
-./scripts/bootstrap-zolt
-export PATH="$HOME/.zolt/bin:$PATH"
-zolt resolve --workspace --locked
-./scripts/ci
+bash scripts/bootstrap-zcheck
+export PATH="$HOME/.zcheck/bin:$HOME/.zolt/bin:$PATH"
+zcheck run bootstrap
+zcheck run check
 ```
 
-The bootstrap downloads the pinned Zolt revision. `scripts/ci` builds the workspace and runs the tests, documentation checks, and repository checks.
+The bootstrap installs zcheck 0.0.2. `zcheck run bootstrap` installs the pinned Zolt revision; `zcheck run check` builds the workspace and runs the checks.
 
 ## Run the examples
 
 Install Maven 3.9+ and Node.js 22.18+ with npm, then run:
 
 ```sh
-./scripts/examples-verify
+zcheck run examples
 ```
 
 This packages Logyard and runs the [example applications](INTEGRATIONS.md#examples). Results are in `target/examples-verify/`.
 
-To build the local Maven repository on its own, run `./scripts/release-bundle`. It writes to `target/release-bundle/`.
+To build the local Maven repository on its own, run `zcheck run bundle`. It writes to `target/release-bundle/`.
 
 ## Useful commands
 
 | Command | Use |
 | --- | --- |
-| `./scripts/repository-check` | Check layout, tooling, and source boundaries |
-| `./scripts/javadoc` | Build the API docs |
-| `./scripts/failure-injection-verify` | Run output and reload failure tests |
-| `./scripts/api-compatibility --baseline` | Check against the previous release |
-| `./scripts/ecs-verify` | Test Elasticsearch ingestion; needs Docker |
-| `./scripts/benchmark-smoke` | Run short performance regression checks |
+| `zcheck run repository` | Check layout, tooling, and source boundaries |
+| `zcheck run javadoc` | Build the API docs |
+| `zcheck run failures` | Run output and reload failure tests |
+| `zcheck run api-baseline` | Check against the previous release |
+| `zcheck run ecs` | Test Elasticsearch ingestion; needs Docker |
+| `zcheck run benchmark-smoke` | Run short performance regression checks |
 
-If you use zcheck, `zcheck run check` and `zcheck run examples` run the same commands. See [benchmarks](benchmarks/README.md) for longer runs and [releasing](RELEASING.md) for publication.
+CI uses the same tasks in [zcheck.toml](zcheck.toml). Use `zcheck list` to see them. See [benchmarks](benchmarks/README.md) for longer runs and [releasing](RELEASING.md) for publication.
 
 ## Making changes
 
@@ -58,4 +58,4 @@ Keep new production classes at or below 220 lines, and tests and examples at or 
 
 Use the public SPI for extensions. When changing dependencies, update [framework-versions.toml](framework-versions.toml) and the lock file. Show dependency setup with Zolt, Gradle Kotlin DSL, and Maven, in that order.
 
-Use short, single-subject Conventional Commits. Run `./scripts/ci` before opening a pull request.
+Use short, single-subject Conventional Commits. Run `zcheck run check` before opening a pull request.

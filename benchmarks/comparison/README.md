@@ -7,15 +7,15 @@ The harness runs Logyard, Logback, and Log4j 2 in separate JVMs against the same
 ## Run
 
 ```sh
-./scripts/comparison-verify
-./scripts/benchmark-compare --events 100000 --producers 16 --arguments 2 --repeat 3
+zcheck run comparison
+zcheck run compare -- --events 100000 --producers 16 --arguments 2 --repeat 3
 ```
 
 Choose another workload:
 
 ```sh
-./scripts/benchmark-compare --format native-json --fields 4 --virtual-per-request --producers 16
-./scripts/benchmark-compare --rate 100000 --stall-ms 100 --delay-us 50
+zcheck run compare -- --format native-json --fields 4 --virtual-per-request --producers 16
+zcheck run compare -- --rate 100000 --stall-ms 100 --delay-us 50
 ```
 
 The default policy matches queue capacity and drops on overflow. Use `--policy default` to test each library's defaults. `--format json` uses a shared encoder; `native-json` uses each library's own encoder.
@@ -28,4 +28,4 @@ Results and log files are in `target/benchmark-compare/`. `latest.txt` points to
 
 Compare completed records, latency, and loss together. The harness checks file contents after draining. Its destination does not cover each library's production file buffering or rotation.
 
-For longer Logyard delivery and reload runs, use `./scripts/benchmark-delivery-qualify` on Linux. It needs a clean committed checkout. Results go to `target/benchmark-delivery-qualification/`.
+For longer Logyard delivery and reload runs, use `zcheck run delivery` on Linux. It needs a clean committed checkout. Results go to `target/benchmark-delivery-qualification/`.

@@ -9,13 +9,7 @@ Set one version across the libraries, BOM, and Quarkus extension. Update [releas
 Commit the changes on `main`. Run the checks on that commit; rerun them if it changes.
 
 ```sh
-./scripts/ci
-./scripts/api-compatibility --baseline
-./scripts/examples-verify
-./scripts/ecs-verify
-./scripts/benchmark-smoke
-./scripts/comparison-verify
-./scripts/benchmark-delivery-qualify
+zcheck run release
 ```
 
 The delivery check needs Linux and a clean checkout. ECS needs Docker or `LOGYARD_ECS_URL` pointing to a disposable local Elasticsearch instance. The [CI matrix](.github/workflows/ci.yml) must also pass.
@@ -30,10 +24,10 @@ For a local signed bundle:
 
 ```sh
 export LOGYARD_GPG_KEY_ID='your signing key'
-./scripts/central-publish
+zcheck run central
 ```
 
-The ZIP is built locally. To upload it for manual publication in Central Portal, set `CENTRAL_TOKEN_USERNAME` and `CENTRAL_TOKEN_PASSWORD`, then run `./scripts/central-publish --upload`.
+The ZIP is built locally. To upload it for manual publication in Central Portal, set `CENTRAL_TOKEN_USERNAME` and `CENTRAL_TOKEN_PASSWORD`, then run `zcheck run central -- --upload`.
 
 Use the complete bundle: it includes the Zolt libraries and the Maven-built Quarkus artifacts. Published coordinates cannot be replaced.
 

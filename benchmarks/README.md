@@ -7,19 +7,19 @@ Use the repository's JDK and Zolt setup. Maven is needed for the Quarkus cases.
 ## Run
 
 ```sh
-./scripts/benchmark-smoke    # short regression checks
-./scripts/benchmark          # full JMH suite
-./scripts/comparison-verify  # Logyard, Logback, and Log4j 2
+zcheck run benchmark-smoke  # short regression checks
+zcheck run benchmark        # full JMH suite
+zcheck run comparison       # Logyard, Logback, and Log4j 2
 ```
 
 For longer delivery and restart checks on a clean, committed Linux checkout:
 
 ```sh
-./scripts/benchmark-delivery-qualify
-./scripts/benchmark-lifecycle-soak
+zcheck run delivery
+zcheck run soak
 ```
 
-The soak runs 12 cycles by default. Use `--cycles 600` for a longer run, or the [soak workflow](../.github/workflows/lifecycle-soak.yml).
+The soak runs 12 cycles by default. Use `zcheck run soak -- --cycles 600` for a longer run, or the [soak workflow](../.github/workflows/lifecycle-soak.yml).
 
 ## Results
 
@@ -29,4 +29,4 @@ Use allocation, latency, delivered records, and drops together when reading a re
 
 Record the JDK, commit, CPU limits, and filesystem when sharing a run. The smoke suite catches regressions; use longer runs on your deployment setup for performance decisions.
 
-See [provider comparisons](comparison/README.md) for the comparison commands. Historical measurements are stored as JSON in `benchmarks/evidence/`.
+See [provider comparisons](comparison/README.md) for the comparison commands.

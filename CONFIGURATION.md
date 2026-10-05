@@ -15,7 +15,7 @@ type = "console"
 stream = "stderr"
 ```
 
-Add the settings below as needed. Replace an existing TOML table rather than declaring it twice. [logyard.toml](logyard.toml) is a complete console and file example.
+Add the settings below as needed. Replace an existing TOML table rather than declaring it twice. [logyard.toml](logyard.toml) has a console and file example.
 
 ## Select a configuration
 

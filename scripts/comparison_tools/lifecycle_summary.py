@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from .records import reject_constant, unique_object
@@ -125,7 +126,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     arguments = parser.parse_args()
-    print(json.dumps(summarize(latest_run(arguments.root.resolve())), separators=(",", ":")))
+    summary = json.dumps(summarize(latest_run(arguments.root.resolve())), separators=(",", ":"))
+    print(summary)
+    if destination := os.environ.get("GITHUB_STEP_SUMMARY"):
+        with Path(destination).open("a", encoding="utf-8") as output:
+            output.write(f"### Lifecycle soak\n\n```json\n{summary}\n```\n")
 
 
 if __name__ == "__main__":

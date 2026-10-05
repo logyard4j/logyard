@@ -69,7 +69,7 @@ mdc = ["request.id", "tenant.id"]
 If provider selection goes wrong, check your application's deployed classpath:
 
 ```sh
-/path/to/logyard/scripts/slf4j-provider-preflight --classpath "$(zolt classpath runtime)"
+zcheck --root /path/to/logyard run provider -- --classpath "$(zolt classpath runtime)"
 ```
 
 For a Spring Boot executable JAR, use `--jar path/to/application.jar`.
@@ -312,6 +312,6 @@ implementation("com.logyard4j:logyard-slf4j2")
 | [Lifecycle](examples/lifecycle) | Cached loggers across restarts |
 | [Migration](examples/migration) | Moving from Logback or Log4j 2 |
 
-Run them with `./scripts/examples-verify`; see [build setup](CONTRIBUTING.md#run-the-examples).
+Run them with `zcheck run examples`; see [build setup](CONTRIBUTING.md#run-the-examples).
 
 Spring AOT and native images are not supported yet. Tested framework versions are listed in [framework-versions.toml](framework-versions.toml).

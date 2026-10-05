@@ -55,7 +55,7 @@ def main() -> None:
     run.mkdir(parents=True)
     sources = subprocess.check_output(
         ["git", "ls-files", "-z", "--", "benchmarks/comparison", "scripts/comparison_tools",
-         "scripts/benchmark-lifecycle-soak"], cwd=root, timeout=30).decode().split("\0")
+         "zcheck.toml"], cwd=root, timeout=30).decode().split("\0")
     source_hashes = {name: digest(root / name) for name in sources if name}
     receipt = {**identity, "status": "running", "scope": "one-JVM reload/shutdown lifecycle soak",
                "requested_cycles": cycles, "completed_cycles": 0, "source_sha256": source_hashes,

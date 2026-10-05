@@ -6,29 +6,258 @@ jobs = 1
 default_timeout = "30m"
 repository_state = "preserve"
 
+[tasks.bootstrap]
+description = "Install the pinned Zolt build tool."
+run = ["bash", "scripts/bootstrap-zolt"]
+tools = ["bash", "git", "curl", "java", "javac"]
+
+[tasks.repository]
+description = "Check repository layout and tooling."
+run = ["bash", "scripts/repository-check"]
+tools = ["bash", "git", "python3"]
+
+[tasks.resolve]
+description = "Resolve the locked workspace."
+run = ["bash", "-c", 'exec zolt "$@"', "zolt", "resolve", "--workspace", "--locked"]
+tools = ["bash", "zolt"]
+
+[tasks.build]
+description = "Build every workspace member."
+needs = ["resolve"]
+run = ["bash", "-c", 'exec zolt "$@"', "zolt", "build", "--workspace", "--all", "--no-progress", "--color", "never"]
+tools = ["bash", "zolt", "java", "javac"]
+resources = ["logyard-build"]
+
+[tasks.test]
+description = "Run unit tests and check fresh JUnit reports."
+needs = ["build"]
+run = ["bash", "scripts/test-workspace"]
+tools = ["bash", "zolt", "java", "python3"]
+resources = ["logyard-build"]
+
+[tasks.javadoc]
+description = "Build the API documentation."
+needs = ["resolve"]
+run = ["bash", "scripts/javadoc"]
+tools = ["bash", "zolt", "java", "javadoc"]
+resources = ["logyard-build"]
+
+[tasks.integration]
+description = "Run runtime integration tests."
+needs = ["build"]
+run = ["bash", "-c", 'exec zolt "$@"', "zolt", "run", "--workspace", "--member", "tests/logyard-integration-tests", "--no-progress", "--color", "never"]
+tools = ["bash", "zolt", "java"]
+resources = ["logyard-build"]
+
+[tasks.canaries]
+description = "Check bounded capture and adapter discovery."
+needs = ["build"]
+run = ["bash", "-c", 'exec zolt "$@"', "zolt", "run", "--workspace", "--member", "tests/logyard-adapter-canaries", "--no-progress", "--color", "never"]
+tools = ["bash", "zolt", "java"]
+resources = ["logyard-build"]
+
+[tasks.failures]
+description = "Run output and reload failure tests."
+needs = ["build"]
+run = ["bash", "scripts/failure-injection-verify"]
+tools = ["bash", "zolt", "java", "python3"]
+resources = ["logyard-build"]
+
 [tasks.check]
-description = "Run the canonical repository, build, API, integration, and failure checks."
-run = ["bash", "scripts/ci"]
-tools = ["bash", "java", "javac", "javadoc", "python3", "zolt"]
+description = "Build and test the repository."
+needs = ["repository", "javadoc", "test", "integration", "canaries", "failures"]
+
+[tasks.api-baseline]
+description = "Check the previous release's API baseline."
+run = ["bash", "scripts/api-compatibility", "--baseline"]
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3"]
+resources = ["logyard-build"]
+
+[tasks.api-self-test]
+description = "Test API compatibility detection."
+needs = ["api-baseline"]
+run = ["bash", "scripts/api-compatibility", "--self-test"]
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3"]
+resources = ["logyard-build"]
+
+[tasks.package]
+description = "Package the Zolt libraries."
+run = ["bash", "scripts/package"]
+tools = ["bash", "zolt", "java", "javac", "javadoc"]
+resources = ["logyard-build"]
+
+[tasks.package-verify]
+description = "Check packaged services and module names."
+run = ["bash", "scripts/package-verify"]
+tools = ["bash", "zolt", "java", "javac", "python3"]
+resources = ["logyard-build"]
+
+[tasks.bundle]
+description = "Assemble the local release repository."
+run = ["bash", "scripts/release-bundle"]
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3", "mvn"]
+resources = ["logyard-build"]
+
+[tasks.bundle-verify]
+description = "Check the release repository."
+run = ["bash", "scripts/release-verify"]
+tools = ["bash", "java", "python3"]
+
+[tasks.publications]
+description = "Check the Zolt publication family."
+run = ["bash", "scripts/zolt-publication-check"]
+tools = ["bash", "zolt", "java", "python3"]
 resources = ["logyard-build"]
 
 [tasks.examples]
-description = "Package Logyard and exercise the supported JVM consumers through Smoque."
+description = "Run the example applications."
 run = ["bash", "scripts/examples-verify"]
-tools = ["bash", "java", "javac", "javadoc", "python3", "zolt", "mvn", "node", "npm"]
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3", "mvn", "node", "npm"]
+resources = ["logyard-build"]
+
+[tasks.provider]
+description = "Check the SLF4J provider on an application classpath."
+run = ["python3", "-m", "example_tools.provider_cli"]
+env = { PYTHONPATH = "scripts", PYTHONDONTWRITEBYTECODE = "1" }
+tools = ["python3"]
+
+[tasks.ecs]
+description = "Check Elasticsearch ingestion."
+run = ["bash", "scripts/ecs-verify"]
+tools = ["bash", "zolt", "java", "python3", "node", "npm"]
+resources = ["logyard-build"]
+
+[tasks.benchmark-smoke]
+description = "Run short performance regression checks."
+run = ["bash", "scripts/benchmark-smoke"]
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3", "mvn"]
+resources = ["logyard-build"]
+
+[tasks.benchmark]
+description = "Run the full JMH suite."
+run = ["bash", "scripts/benchmark"]
+tools = ["bash", "zolt", "java", "python3"]
+resources = ["logyard-build"]
+timeout = "12h"
+
+[tasks.comparison]
+description = "Check Logyard, Logback, and Log4j 2."
+run = ["bash", "scripts/comparison-verify"]
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3", "mvn", "node", "npm"]
+resources = ["logyard-build"]
+
+[tasks.compare]
+description = "Run a provider comparison workload."
+run = ["bash", "scripts/benchmark-compare"]
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3", "mvn"]
 resources = ["logyard-build"]
 
 [tasks.delivery]
-description = "Qualify a clean committed candidate in 33 packaged delivery and reload forks."
-run = ["bash", "scripts/benchmark-delivery-qualify"]
-tools = ["bash", "java", "javac", "javadoc", "python3", "zolt", "mvn"]
+description = "Run packaged delivery and reload workloads."
+run = ["python3", "-m", "comparison_tools.qualification", "."]
+env = { PYTHONPATH = "scripts", PYTHONDONTWRITEBYTECODE = "1" }
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3", "mvn", "git"]
 platforms = ["linux"]
 resources = ["logyard-build"]
 
 [tasks.soak]
-description = "Check repeated packaged reload and shutdown in one JVM with resource accounting."
-run = ["bash", "scripts/benchmark-lifecycle-soak"]
-tools = ["bash", "java", "javac", "javadoc", "python3", "zolt", "mvn"]
+description = "Run repeated reload and shutdown in one JVM."
+run = ["python3", "-m", "comparison_tools.lifecycle_soak", "."]
+env = { PYTHONPATH = "scripts", PYTHONDONTWRITEBYTECODE = "1" }
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3", "mvn", "git"]
 platforms = ["linux"]
-timeout = "12h"
+timeout = "315m"
 resources = ["logyard-build"]
+
+[tasks.soak-summary]
+description = "Summarize the latest lifecycle run."
+run = ["python3", "-m", "comparison_tools.lifecycle_summary", "."]
+env = { PYTHONPATH = "scripts", PYTHONDONTWRITEBYTECODE = "1" }
+tools = ["python3"]
+
+[tasks.ci-bundle]
+needs = ["check", "api-self-test"]
+run = ["bash", "scripts/release-bundle"]
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3", "mvn"]
+resources = ["logyard-build"]
+
+[tasks.ci-publications]
+needs = ["ci-bundle"]
+run = ["bash", "scripts/zolt-publication-check"]
+tools = ["bash", "zolt", "java", "python3"]
+resources = ["logyard-build"]
+
+[tasks.ci-examples]
+needs = ["ci-publications"]
+run = ["bash", "scripts/examples-verify"]
+env = { LOGYARD_EXAMPLES_SKIP_RELEASE = "1" }
+tools = ["bash", "zolt", "java", "python3", "mvn", "node", "npm"]
+resources = ["logyard-build"]
+
+[tasks.ci-benchmark]
+needs = ["ci-examples"]
+run = ["bash", "scripts/benchmark-smoke"]
+env = { LOGYARD_BENCHMARK_SKIP_RELEASE = "1" }
+tools = ["bash", "zolt", "java", "python3", "mvn"]
+resources = ["logyard-build"]
+
+[tasks.ci-comparison]
+needs = ["ci-benchmark"]
+run = ["bash", "scripts/comparison-verify"]
+env = { LOGYARD_COMPARISON_SKIP_RELEASE = "1" }
+tools = ["bash", "zolt", "java", "python3", "node", "npm"]
+resources = ["logyard-build"]
+
+[tasks.ci]
+description = "Run the Linux CI checks."
+needs = ["ci-comparison"]
+
+[tasks.platform-package]
+needs = ["test"]
+run = ["bash", "scripts/package"]
+tools = ["bash", "zolt", "java", "javac", "javadoc"]
+resources = ["logyard-build"]
+
+[tasks.platform]
+description = "Check platform tests and packaged services."
+needs = ["platform-package"]
+run = ["bash", "scripts/package-verify"]
+tools = ["bash", "zolt", "java", "javac", "python3"]
+resources = ["logyard-build"]
+
+[tasks.consumer-examples]
+needs = ["bundle"]
+run = ["bash", "scripts/examples-verify"]
+env = { LOGYARD_EXAMPLES_SKIP_RELEASE = "1" }
+tools = ["bash", "zolt", "java", "python3", "mvn", "node", "npm"]
+resources = ["logyard-build"]
+
+[tasks.consumers]
+description = "Check packaged JVM consumers."
+needs = ["consumer-examples"]
+run = ["bash", "scripts/comparison-verify"]
+env = { LOGYARD_COMPARISON_SKIP_RELEASE = "1" }
+tools = ["bash", "zolt", "java", "python3", "node", "npm"]
+resources = ["logyard-build"]
+
+[tasks.release]
+description = "Check a release candidate on Linux."
+needs = ["ci", "ecs", "delivery"]
+
+[tasks.central]
+description = "Create a signed Central Portal bundle."
+run = ["bash", "scripts/central-publish"]
+tools = ["bash", "zolt", "java", "javac", "javadoc", "python3", "mvn", "gpg", "curl"]
+resources = ["logyard-build"]
+
+[tasks.provenance-canary]
+description = "Test signed release tag verification."
+run = ["python3", "-m", "verify_tools.provenance_canary"]
+env = { PYTHONPATH = "scripts", PYTHONDONTWRITEBYTECODE = "1" }
+tools = ["python3", "git", "gpg", "gpgconf"]
+
+[tasks.provenance]
+description = "Verify the requested signed release tag."
+run = ["python3", "-m", "verify_tools.release_provenance"]
+env = { PYTHONPATH = "scripts", PYTHONDONTWRITEBYTECODE = "1" }
+tools = ["python3", "git", "gpg"]
