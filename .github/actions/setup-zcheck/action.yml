@@ -6,4 +6,4 @@ runs:
     - shell: bash
       run: |
         bash scripts/bootstrap-zcheck
-        echo "$HOME/.zcheck/bin" >> "$GITHUB_PATH"
+        python3 -c 'from pathlib import Path; print(Path.home() / ".zcheck" / "bin")' >> "$GITHUB_PATH"

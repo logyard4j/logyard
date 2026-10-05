@@ -25,7 +25,7 @@ jobs:
       - name: Bootstrap the pinned Zolt revision
         run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
-        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+        run: python3 -c 'from pathlib import Path; print(Path.home() / ".zolt" / "bin")' >> "$GITHUB_PATH"
       - name: Run CI checks through zcheck
         run: zcheck run ci --format github --logs-dir "$RUNNER_TEMP/zcheck/ci-logs" --receipt "$RUNNER_TEMP/zcheck/ci.json"
       - name: Upload benchmark results
@@ -93,7 +93,7 @@ jobs:
       - name: Bootstrap the pinned Zolt revision
         run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
-        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+        run: python3 -c 'from pathlib import Path; print(Path.home() / ".zolt" / "bin")' >> "$GITHUB_PATH"
       - name: Verify ECS ingestion and standard queries
         run: zcheck run ecs --format github --logs-dir "$RUNNER_TEMP/zcheck/ecs-logs" --receipt "$RUNNER_TEMP/zcheck/ecs.json"
       - name: Upload ECS smoke results
@@ -132,7 +132,7 @@ jobs:
       - name: Bootstrap the pinned Zolt revision
         run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
-        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+        run: python3 -c 'from pathlib import Path; print(Path.home() / ".zolt" / "bin")' >> "$GITHUB_PATH"
       - name: Exercise file locking, reload, rotation, and packaged services
         run: zcheck run platform --format github --logs-dir "$RUNNER_TEMP/zcheck/platform-logs" --receipt "$RUNNER_TEMP/zcheck/platform.json"
       - name: Upload zcheck logs
@@ -160,7 +160,7 @@ jobs:
       - name: Bootstrap the pinned Zolt revision
         run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
-        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+        run: python3 -c 'from pathlib import Path; print(Path.home() / ".zolt" / "bin")' >> "$GITHUB_PATH"
       - name: Build and test the Java 21 surface on JDK 25
         run: zcheck run test --format github --logs-dir "$RUNNER_TEMP/zcheck/test-logs" --receipt "$RUNNER_TEMP/zcheck/test.json"
       - name: Package and smoke the supported JVM consumers

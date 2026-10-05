@@ -75,7 +75,7 @@ jobs:
       - name: Bootstrap the pinned Zolt revision
         run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
-        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+        run: python3 -c 'from pathlib import Path; print(Path.home() / ".zolt" / "bin")' >> "$GITHUB_PATH"
       - name: Import the release signing key
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}

@@ -32,7 +32,7 @@ jobs:
       - name: Bootstrap the pinned Zolt revision
         run: zcheck run bootstrap --format github --logs-dir "$RUNNER_TEMP/zcheck/bootstrap-logs" --receipt "$RUNNER_TEMP/zcheck/bootstrap.json"
       - name: Put Zolt on PATH
-        run: echo "$HOME/.zolt/bin" >> "$GITHUB_PATH"
+        run: python3 -c 'from pathlib import Path; print(Path.home() / ".zolt" / "bin")' >> "$GITHUB_PATH"
       - name: Soak packaged reload and shutdown in one JVM
         env:
           SOAK_CYCLES: ${{ inputs.cycles || '1200' }}
