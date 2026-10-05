@@ -1,54 +1,15 @@
 # Logyard
 
-**Structured logging for Java 21+ JVM applications.**
+Logyard is a logging backend for Java 21+. It writes readable console logs and structured JSON, with levels and routes set in TOML.
 
-Readable console logs. Structured JSON. One runtime for the direct Java API, SLF4J 2, JUL, and `System.Logger`.
-
-[Get started](#get-started) · [Configuration](CONFIGURATION.md) · [Integrations](INTEGRATIONS.md) · [Examples](INTEGRATIONS.md#examples) · [Release notes](RELEASE_NOTES.md)
-
-## Why Logyard
-
-- **Keep your logging API.** Use SLF4J, a JDK logger, or Logyard's native API.
-- **Capture once, send to many outputs.** Every output receives the same immutable event.
-- **Control your logs with TOML.** Set levels, routes, redaction, formats, and delivery in one file.
-- **Keep work bounded.** Event capture has explicit limits; asynchronous outputs have separate queues.
-- **Reload safely.** Apply valid configurations atomically while rejected changes leave the current runtime active.
-- **See what is happening.** Inspect output health, queue depth, drops, and effective logger routes.
+Use it through SLF4J 2, JUL, `System.Logger`, or the Java API. Spring Boot and Quarkus have their own integrations.
 
 ## Get started
 
-### 1. Add Logyard
-
-For an SLF4J 2 application, add the provider using your build tool:
+Add `logyard-slf4j2` and remove your existing SLF4J provider, such as Logback.
 
 <details open>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-slf4j2</artifactId>
-    <version>0.1.0-rc.2</version>
-  </dependency>
-</dependencies>
-```
-
-</details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
+<summary>Zolt</summary>
 
 ```toml
 [dependencies]
@@ -57,11 +18,29 @@ dependencies {
 
 </details>
 
-Keep one SLF4J provider on the classpath. Remove an existing provider such as Logback when adding Logyard.
+<details>
+<summary>Gradle Kotlin DSL</summary>
 
-Using [Spring Boot](INTEGRATIONS.md#spring-boot), [Quarkus](INTEGRATIONS.md#quarkus), or the [native API](INTEGRATIONS.md#native-java)? Start with that integration instead.
+```kotlin
+implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.2")
+```
 
-### 2. Configure
+</details>
+
+<details>
+<summary>Maven</summary>
+
+```xml
+<dependency>
+  <groupId>com.logyard4j</groupId>
+  <artifactId>logyard-slf4j2</artifactId>
+  <version>0.1.0-rc.2</version>
+</dependency>
+```
+
+</details>
+
+For [Spring Boot](INTEGRATIONS.md#spring-boot) or [Quarkus](INTEGRATIONS.md#quarkus), use the framework integration instead.
 
 Create `src/main/resources/logyard.toml`:
 
@@ -79,72 +58,37 @@ type = "console"
 stream = "stderr"
 ```
 
-That is enough for an INFO console logger. Add [JSON output](CONFIGURATION.md#json-output), [redaction](CONFIGURATION.md#context-and-redaction), or [file watching](CONFIGURATION.md#reload-and-shutdown) as needed.
-
-Without a configuration file, Logyard uses an INFO stderr console and a 256-event asynchronous queue. When a queue is full, WARN waits up to 2 ms and ERROR up to 20 ms for a slot; other levels drop immediately. Events still unable to enter are dropped and counted. See [delivery policies](CONFIGURATION.md#delivery-and-overflow) for sizing and latency choices.
-
-### 3. Log
-
-Use the SLF4J API you already know:
+Keep using your SLF4J logger:
 
 ```java
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-private static final Logger LOG = LoggerFactory.getLogger("com.example.checkout");
-
-LOG.atInfo()
+var log = LoggerFactory.getLogger("com.example.checkout");
+log.atInfo()
         .addKeyValue("order.id", "ord-1042")
         .addKeyValue("amount", 42)
         .log("order accepted");
 ```
 
-On the console:
+Console output:
 
 ```text
 01:00:54.785 INFO  com.example.checkout               order accepted order.id=ord-1042 amount=42 thread=main
 ```
 
-Messages, structured fields, context, and exceptions travel together. Disabled levels skip capture; use suppliers to defer expensive argument computation.
+Add a [JSON file](CONFIGURATION.md#json-output), [request context](CONFIGURATION.md#context-and-redaction), or [config reload](CONFIGURATION.md#reload-and-shutdown) when you need it.
 
-## Choose your output
+## More
 
-| Output | What you get |
+| Guide | Start here for |
 | --- | --- |
-| Console | Readable text, templates, color themes, and compact or full exceptions |
-| JSON stream | Newline-delimited JSON on stdout or stderr |
-| JSON file | Buffered writes, timed flushes, size or interval rotation, retention, and optional gzip |
-| OpenTelemetry | Forward structured records to your application’s Logs SDK |
-| Custom | Your own transport through the [extension SPI](EXTENDING.md) |
+| [Configuration](CONFIGURATION.md) | Levels, outputs, context, and reload |
+| [Integrations](INTEGRATIONS.md) | Frameworks, JDK logging, and the Java API |
+| [Examples](INTEGRATIONS.md#examples) | Small working applications |
+| [Runtime](RUNTIME.md) | Health, shutdown, and event limits |
+| [Extensions](EXTENDING.md) | Custom filters and outputs |
+| [Contributing](CONTRIBUTING.md) | Building and changing Logyard |
 
-JSON supports `logyard`, `ecs`, and `compact` profiles, plus field renaming and attribute transforms. Route one logger to several outputs in the same configuration.
+The current candidate is `0.1.0-rc.2`. Use the same version for all Logyard dependencies. See [release notes](RELEASE_NOTES.md) and [framework versions](framework-versions.toml).
 
-## Fits your application
-
-| Application | Dependency |
-| --- | --- |
-| SLF4J 2, Vert.x, Micronaut | [logyard-slf4j2](INTEGRATIONS.md#slf4j-vertx-and-micronaut) |
-| Spring Boot | [logyard-spring-boot-starter](INTEGRATIONS.md#spring-boot) |
-| Quarkus | [logyard-quarkus](INTEGRATIONS.md#quarkus) |
-| Tests | [logyard-test](INTEGRATIONS.md#testing) |
-| Native Java | [logyard-runtime](INTEGRATIONS.md#native-java) |
-| JUL | [logyard-jul](INTEGRATIONS.md#jul) |
-| `System.Logger` | [logyard-system-logger](INTEGRATIONS.md#systemlogger) |
-| OpenTelemetry | [logyard-opentelemetry](INTEGRATIONS.md#opentelemetry) |
-
-JVM examples cover plain SLF4J 2, Vert.x 5.1.5, Micronaut 4.10.9, Spring Boot 3.5.16 and 4.1.0, and Quarkus 3.37.3. Optional OpenTelemetry integration adds trace correlation, allowlisted baggage, and forwarding to your Logs SDK.
-
-Java 21 is the minimum runtime. Use the same version for all Logyard artifacts. SLF4J 1.x is unsupported.
-Native-image and AOT execution are outside the first release's [verified integration scope](INTEGRATIONS.md#native-images).
-
-## Explore
-
-| Guide | Find |
-| --- | --- |
-| [Configuration](CONFIGURATION.md) | Copyable recipes, defaults, routing, delivery, and reload settings |
-| [Integrations](INTEGRATIONS.md) | Framework setup, native Java, JDK adapters, and dependency management |
-| [Examples](INTEGRATIONS.md#examples) | Small applications with working build and configuration files |
-| [Runtime behavior](RUNTIME.md) | Lifecycle, health, reload boundaries, and event limits |
-| [Extensions](EXTENDING.md) | Custom processors, formatters, encoders, and outputs |
-
-[Contributing](CONTRIBUTING.md) · [Release guide](RELEASING.md) · [Apache-2.0 license](LICENSE)
+[Releasing](RELEASING.md) · [Security](SECURITY.md) · [Apache-2.0](LICENSE)

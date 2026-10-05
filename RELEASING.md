@@ -1,26 +1,12 @@
-# Releasing Logyard
+# Releasing
 
-[← Logyard](README.md) · [Build and test](CONTRIBUTING.md) · [Release workflow](.github/workflows/release.yml)
-
-Logyard publishes one sixteen-artifact family to Maven Central. Use `scripts/central-publish` for uploads.
+[Logyard](README.md) · [Build setup](CONTRIBUTING.md)
 
 ## Prepare
 
-- Use a complete JDK with `javadoc`. Packaging checks `ZOLT_JAVA_HOME`, then `JAVA_HOME`, then installed JDK discovery.
-- Install the [pinned Zolt revision](CONTRIBUTING.md#build-and-test) and configure the release signing key.
-- Keep all artifact versions aligned. A release tag must be `v` followed by that exact version.
-- Review [compatibility-baseline.toml](compatibility-baseline.toml).
-- Finalize the version and [namespace migration notes](RELEASE_NOTES.md#java-namespace-migration), commit every candidate change, and freeze the SHA before qualification. Land that exact commit on `main`; any later candidate change requires fresh qualification.
+Set one version across the libraries, BOM, and Quarkus extension. Update [release notes](RELEASE_NOTES.md) and review [compatibility-baseline.toml](compatibility-baseline.toml).
 
-[supported-api.toml](supported-api.toml) defines the supported packages and types for API, runtime, JUL, Spring, Quarkus, OpenTelemetry, and test-kit artifacts. Compatibility, strict Javadoc selection, and package-boundary checks consume it. `@InternalApi` declarations remain outside the compatibility promise.
-
-The baseline identifies the previous immutable release and the SHA-256 of all seven JARs. Use `version = "none"` only before the first public release. After publication, set `version` to that release and add an `[artifacts]` entry for every manifest surface name, each with its `artifact` and the `sha256` of the JAR retrieved from Maven Central. The gate downloads and verifies those exact artifacts; current build outputs cannot substitute for them.
-
-`scripts/api-compatibility --baseline` enforces that policy. `--self-test` compares packaged artifacts against themselves, then removes a real supported declaration from a disposable copy of each JAR and requires rejection. It also checks that removing an internal method passes. These canaries validate the gate, not compatibility with a previous release.
-
-## Qualify the release
-
-Run from the repository root before tagging:
+Commit the changes on `main`. Run the checks on that commit; rerun them if it changes.
 
 ```sh
 ./scripts/ci
@@ -30,75 +16,29 @@ Run from the repository root before tagging:
 ./scripts/benchmark-smoke
 ./scripts/comparison-verify
 ./scripts/benchmark-delivery-qualify
-./scripts/release-bundle --sign
-./scripts/zolt-publication-check --signed
+```
+
+The delivery check needs Linux and a clean checkout. ECS needs Docker or `LOGYARD_ECS_URL` pointing to a disposable local Elasticsearch instance. The [CI matrix](.github/workflows/ci.yml) must also pass.
+
+## Publish
+
+Configure the GitHub `release` environment with `GPG_PRIVATE_KEY`, `GPG_KEY_ID`, `GPG_PASSPHRASE` if needed, `CENTRAL_TOKEN_USERNAME`, and `CENTRAL_TOKEN_PASSWORD`.
+
+Create an annotated tag, signed with the [release key](.github/release-signing-key.asc), named `v` followed by the version. Run the [Release workflow](.github/workflows/release.yml) from `main` with that tag. It publishes to Maven Central and creates the GitHub release.
+
+For a local signed bundle:
+
+```sh
+export LOGYARD_GPG_KEY_ID='your signing key'
 ./scripts/central-publish
 ```
 
-These gates cover runtime failures, packaged JVM consumers and ECS ingestion through Smoque, API compatibility, allocation budgets, and the signed Central bundle. The ECS gate needs Docker or `LOGYARD_ECS_URL` pointing to a disposable Elasticsearch instance. Linux, macOS, and Windows [CI](.github/workflows/ci.yml) must also pass.
+The ZIP is built locally. To upload it for manual publication in Central Portal, set `CENTRAL_TOKEN_USERNAME` and `CENTRAL_TOKEN_PASSWORD`, then run `./scripts/central-publish --upload`.
 
-The first release's integration promise is for the packaged JVM modes in [Integrations](INTEGRATIONS.md). Native-image/AOT execution, Quarkus dev and test profiles, and SmallRye readiness are outside that qualified matrix. Resource metadata alone is not execution evidence; add actual Spring AOT/native and Quarkus native integration runs before extending the promise.
+Use the complete bundle: it includes the Zolt libraries and the Maven-built Quarkus artifacts. Published coordinates cannot be replaced.
 
-`benchmark-delivery-qualify` runs 33 standalone delivery/reload JVM forks and writes candidate, artifact, environment, and accounting evidence under `target/benchmark-delivery-qualification/`. Keep that evidence and the successful CI run tied to the frozen SHA. This gate is separate from the JMH allocation smoke suite.
+## After publication
 
-The final command creates a signed, deterministic ZIP locally. It does not upload.
+Check that all 16 artifacts resolve from Maven Central, then run the consumer examples with fresh caches against Central.
 
-## Verify the publication family
-
-| Owner | Publications |
-| --- | --- |
-| Zolt | Thirteen Java libraries and `logyard-bom` |
-| Official Quarkus Maven reactor | `logyard-quarkus` and `logyard-quarkus-deployment` |
-| Central bundle | All sixteen artifacts in one Maven layout |
-
-The BOM includes Quarkus through its `[bom.versions]` table. Quarkus POMs are flattened and standalone; the bundle copies Zolt-produced POMs and artifacts without regenerating them.
-
-Every library JAR includes canonical `META-INF/LICENSE` and `META-INF/NOTICE` files. The bundle includes applicable JARs, sources, Javadocs, CycloneDX SBOMs, detached PGP signatures, and MD5, SHA-1, and SHA-256 checksums.
-
-`scripts/zolt-publication-check` validates workspace artifacts and Central metadata without release credentials. `--signed` also checks signing and assembles the signed Zolt family locally. Only unsigned checks defer signing; snapshot versions remain blocked from Central.
-
-`scripts/release-verify --require-signatures` validates the complete hybrid bundle. Do not upload with live `zolt publish --workspace --central`: that family excludes the two Maven-built Quarkus artifacts.
-
-## Publish to Central
-
-Supply credentials through your environment:
-
-```sh
-export CENTRAL_TOKEN_USERNAME='token username'
-export CENTRAL_TOKEN_PASSWORD='token password'
-./scripts/central-publish --upload
-```
-
-This uploads for validation and manual release in Central Portal.
-
-| Command | Effect |
-| --- | --- |
-| `./scripts/central-publish` | Build and verify the signed ZIP locally |
-| `./scripts/central-publish --upload` | Upload for validation and manual publication |
-| `./scripts/central-publish --upload --automatic --wait` | Publish automatically after validation; wait for the terminal state |
-
-`CENTRAL_BEARER_TOKEN` can replace the username/password variables when it contains the base64-encoded `username:password` value. Central releases are immutable; uploads reject snapshot versions and require explicit `--upload`.
-
-## Release workflow
-
-Create an annotated release tag signed by the [pinned release key](.github/release-signing-key.asc), then manually run the [release workflow](.github/workflows/release.yml) from `main` with that tag. Configure the GitHub `release` environment and its secrets before use.
-
-The workflow verifies the signature, exact version, and ancestry on `main` before executing the tagged commit. The signed tag binds its commit; individual commits may be unsigned. It runs the release gates, checks that the remote tag is unchanged before each publication, waits for Central to reach `PUBLISHED`, then creates the GitHub release.
-
-After publication, verify all sixteen coordinates and their expected artifacts, metadata, checksums, and signatures from Maven Central. Then run consumer resolution with fresh dependency caches against that remote repository, without a local candidate repository. The seventeen consumer fixtures and the sixteen-publication inventory are separate checks. Finally, pin the seven supported compatibility surfaces to the published JAR hashes in `compatibility-baseline.toml`.
-
-To exercise tag verification locally with disposable keys and repositories:
-
-```sh
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=scripts python3 -m verify_tools.provenance_canary
-```
-
-| GitHub Actions secret | Purpose |
-| --- | --- |
-| `GPG_PRIVATE_KEY` | Release signing key to import |
-| `GPG_KEY_ID` | Signing identity |
-| `GPG_PASSPHRASE` | Key passphrase, when required |
-| `CENTRAL_TOKEN_USERNAME` | Central token username |
-| `CENTRAL_TOKEN_PASSWORD` | Central token password |
-
-Credential details: [Central Portal Publisher API](https://central.sonatype.org/publish/publish-portal-api/).
+Update `compatibility-baseline.toml` to the published version. For each surface in [supported-api.toml](supported-api.toml), add its artifact name and the SHA-256 of the published JAR. `version = "none"` is only for the first release.

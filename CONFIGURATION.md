@@ -1,10 +1,8 @@
 # Configuration
 
-[← Logyard](README.md) · [Outputs](#console-output) · [Delivery](#delivery-and-overflow) · [Context](#context-and-redaction) · [Reload](#reload-and-shutdown)
+[Logyard](README.md) · [Runtime](RUNTIME.md)
 
-Logyard uses one TOML file. Define outputs, then choose which loggers send events to them.
-
-## Start small
+Start with `src/main/resources/logyard.toml`:
 
 ```toml
 schema = 1
@@ -14,89 +12,24 @@ root = { level = "info", outputs = ["console"] }
 
 [outputs.console]
 type = "console"
+stream = "stderr"
 ```
 
-Save this as `src/main/resources/logyard.toml` or `./logyard.toml`. It writes INFO and above to stderr. The sections below are recipes to merge into that file; replace a matching table instead of declaring it twice.
-
-See [logyard.toml](logyard.toml) for a complete console-and-file example.
+Add the settings below as needed. Replace an existing TOML table rather than declaring it twice. [logyard.toml](logyard.toml) is a complete console and file example.
 
 ## Select a configuration
 
-Logyard uses the first available source in this order:
-
-| Priority | Source |
-| --- | --- |
-| 1 | `-Dlogyard.config=/path/to/logyard.toml` |
-| 2 | `LOGYARD_CONFIG=/path/to/logyard.toml` |
-| 3 | Framework-selected source |
-| 4 | `classpath:logyard.toml` |
-| 5 | `./logyard.toml` |
-| 6 | Built-in defaults: INFO, stderr console, async delivery, no watcher |
-
-An explicit source may be a filesystem path or `classpath:logging/logyard-prod.toml`. A missing or invalid explicit source fails startup. Set `-Dlogyard.config.required=true` to require a source when using discovery.
-
-Relative output paths resolve against the configuration file's directory. Classpath and in-memory sources use the base directory supplied by their bootstrap integration.
-
-## TOML basics
-
-| Value | Example |
-| --- | --- |
-| Environment variable | `name = "${SERVICE_NAME}"` |
-| Environment variable with fallback | `name = "${SERVICE_NAME:-checkout}"` |
-| Duration | `"250ms"`, `"3s"`, `"2m"`, `"1h"` |
-| Size | `"64KiB"`, `"32MiB"`, `"1GiB"` |
-| Logger name containing dots | `"com.example.checkout"` |
-
-Use `schema = 1`. Unknown keys, invalid values, and missing component references are rejected.
-
-## Profiles and overrides
-
-Keep environment differences in the same file:
-
-```toml
-[profiles.production.loggers]
-root = { level = "warn", outputs = ["console"] }
-```
-
-Select it with `-Dlogyard.profile=production` or `LOGYARD_PROFILE=production`. Tables merge; other values, including arrays, replace. The base and every declared profile are validated on each load. Profiles cannot change `schema` or declare nested profiles.
-
-| Applied in order | Example |
-| --- | --- |
-| Base file | `[loggers]` |
-| Selected profile | `[profiles.production.loggers]` |
-| Environment overrides | `LOGYARD_OVERRIDES='delivery.capacity=512;runtime.watch=false'` |
-| System-property overrides | `-Dlogyard.override.delivery.capacity=1024` |
-
-Later values win. Overrides use TOML key paths and values; simple strings such as `debug` need no quotes. Quote dotted logger names: `loggers."com.example".level=debug`. Limits are 16 profiles and 64 overrides, with at most 512 characters per override key and 4,096 per value. The active profile and overrides are captured once per runtime installation. File reloads and source handoffs reuse that snapshot; changing system properties takes effect after the runtime fully closes and a new installation starts.
-
-Errors identify the file line, profile, or override that supplied the value, with scoped suggestions for misspelled keys.
-
-## Validate, inspect, and migrate
-
-From a Zolt project that depends on Logyard, validate a file without starting the logging runtime:
+Logyard checks a system property, an environment variable, the framework source, then `classpath:logyard.toml` and `./logyard.toml`.
 
 ```sh
-zolt build
-java -cp "$(zolt classpath runtime)" \
-  com.logyard4j.logyard.runtime.tools.LogyardConfigTool validate logyard.toml
+java -Dlogyard.config=/etc/my-app/logyard.toml -jar my-app.jar
 ```
 
-Use the same command with these arguments:
+You can also set `LOGYARD_CONFIG`. Explicit sources can use `classpath:logging/logyard-prod.toml`; a missing or invalid explicit source fails startup.
 
-| Arguments | Result |
-| --- | --- |
-| `validate logyard.toml --profile production` | Validate the base and every profile; select production |
-| `explain logyard.toml --key delivery.capacity` | Selected input value and its origin |
-| `explain logyard.toml --logger com.example.Checkout` | Resolved level, outputs, enrichers, and filters |
-| `schema` | Accepted configuration keys as JSON |
-| `migrate-logback logback.xml --output logyard.toml --strict` | Convert supported Logback XML settings |
-| `migrate-log4j2 log4j2.xml --output logyard.toml --strict` | Convert supported Log4j 2 XML settings |
+Without a file, Logyard uses an INFO stderr console and async delivery. To require a file during discovery, use `-Dlogyard.config.required=true`.
 
-`explain` shows environment expressions as written. Migration reports `EXACT`, `LOSSY`, or `UNSUPPORTED` on stderr. `--strict` writes only exact conversions and never overwrites a file. Omit it to generate a draft with diagnostics for manual review.
-
-Exact conversion covers explicit console patterns, destinations, supported thresholds, and non-additive routes. Width/date options are lossy. Repeated Logback logger declarations, MDC selection, custom plugins, file layouts, async wrappers, and other unhandled XML are unsupported in strict mode. MDC patterns never enable capture or expand into all fields. Synchronous source appenders stay synchronous; review delivery before switching to async. Logyard's event bounds, sanitization, and exception rendering still apply.
-
-Exit codes: 0 valid output (including a non-strict draft), 1 invalid configuration, 2 usage or I/O error, 3 strict refusal. Refusal writes no TOML to stdout or the requested file.
+Relative output paths use the config file's directory. Classpath sources use the application's base directory.
 
 ## Service identity
 
@@ -110,17 +43,9 @@ environment = "${APP_ENVIRONMENT:-development}"
 region = "eu-west"
 ```
 
-Service fields are strings: `name`, `namespace`, `version`, `environment`, and `instance_id`. The defaults are `unknown-service` for the name, an empty namespace, and `unknown` for the remaining fields. Resource attributes are string key/value pairs.
+Use `${NAME}` for an environment variable or `${NAME:-fallback}` for a default. Service fields also include `namespace` and `instance_id`.
 
-Filter resource fields before JSON capture and profile projection:
-
-```toml
-[resource]
-include = ["service.name", "service.version", "deployment.environment.name", "region"]
-exclude = ["service.version"]
-```
-
-Both lists default to empty. An empty `include` keeps every key; `exclude` always wins. Keys are exact, use canonical names, and each list allows at most 64 entries. Excluded keys stay absent from normal, truncated, and exception records, including ECS service fields.
+To omit resource metadata, use `[resource]` with `exclude = ["service.version"]`. An `include` list keeps only the named keys; exclusions win.
 
 ## Levels and routes
 
@@ -131,16 +56,9 @@ root = { level = "info", outputs = ["console", "json"] }
 "com.example.noisy" = { level = "warn", outputs = ["json"] }
 ```
 
-Define both named outputs before using this route. Quote dotted logger names so TOML treats them as one key.
+Define every named output. Levels are `trace`, `debug`, `info`, `warn`, and `error`. Quote logger names containing dots.
 
-| Rule field | Meaning |
-| --- | --- |
-| `level` | `trace`, `debug`, `info`, `warn`, or `error` |
-| `outputs` | Named destinations for accepted events |
-| `enrich` | Named enrichment processors |
-| `filters` | Named filters |
-
-Child loggers inherit omitted fields from their nearest configured parent. Explicit lists replace inherited lists; `outputs = []` silences a route, including the root. With no root rule, the root defaults to INFO and all declared outputs.
+Child loggers inherit omitted fields. Explicit lists replace inherited lists; `outputs = []` silences a route. With no root rule, the root uses INFO and every declared output.
 
 ## Console output
 
@@ -156,23 +74,13 @@ formatter = "console"
 color = { mode = "auto", theme = "ember" }
 ```
 
-| Option | Default | Choices |
-| --- | --- | --- |
-| `stream` | `stderr` | `stdout`, `stderr` |
-| `formatter` | Built-in console layout | A named formatter |
-| `color.mode` | `auto` | `auto`, `always`, `never` |
-| `color.theme` | `ember` | `ember`, `nord`, `mono`, or a custom theme |
-| `color.capability` | `auto` | `auto`, `ansi16`, `ansi256`, `truecolor` |
-| `exception.style` | `compact` | `compact`, `full` |
-| `exception.common_frames` | `collapse` | `collapse`, `show` |
+Omit `formatter` to use the default layout. Templates accept `timestamp`, `level`, `logger`, `thread`, `event`, `message`, and `fields`.
 
-Template fields: `{timestamp}`, `{level}`, `{logger}`, `{thread}`, `{event}`, `{message}`, and `{fields}`. Any field may be omitted; `{level} approved-marker` never renders the message.
-
-Custom themes use `[themes.NAME]` with styles for `timestamp`, `logger`, `thread`, `event`, `message`, `field_key`, `field_value`, `punctuation`, `exception`, and `stack_frame`. Each style accepts `fg`, `bg`, `bold`, `dim`, `italic`, and `underline`; level styles live under `[themes.NAME.level]`.
+Color modes are `auto`, `always`, and `never`. Themes are `ember`, `nord`, and `mono`. Use `exception = { style = "full" }` for full stack traces; the default is compact.
 
 ## JSON output
 
-Write newline-delimited JSON to stdout:
+Write JSON lines to stdout:
 
 ```toml
 [outputs.json]
@@ -180,7 +88,7 @@ type = "stream"
 stream = "stdout"
 ```
 
-Or use a rotating file:
+Or write to a rotating file:
 
 ```toml
 [outputs.json]
@@ -192,31 +100,15 @@ flush = "1s"
 rotate = { size = "32MiB", keep = 5, compression = "gzip" }
 ```
 
-Add `"json"` to your root logger's `outputs` list.
+Add `"json"` to the root logger's `outputs`.
 
-| Option | File default | Meaning |
-| --- | --- | --- |
-| `path` | Required | Active file path |
-| `append` | `true` | Preserve existing content when opening the file |
-| `buffer` | `"256KiB"` | Process buffer; accepts `1KiB`–`16MiB` |
-| `flush` | `"1s"` | Flush interval; `"0s"` flushes every record |
-| `fsync` | `false` | Force file contents after each flush and on close |
-| `rotate` | Disabled | A nonempty table enables rotation |
-| `rotate.size` | `"1GiB"` when enabled | Rotation threshold |
-| `rotate.interval` | Disabled | Elapsed-time rotation, `"1s"`–`"365d"` |
-| `rotate.keep` | `10` when enabled | Archive retention count |
-| `rotate.compression` | `none` | `none` or `gzip` |
-| `encoder` | Built-in Logyard JSON | A named encoder |
+Files default to a 256 KiB buffer and a one-second flush interval. `flush = "0s"` flushes each record. Add `fsync = true` to force file contents after flushing; it adds storage latency.
 
-JSON streams default to stdout and `flush = "0s"`; they also accept `encoder` and `flush`.
-
-A positive flush interval starts with the first unflushed record, so sparse traffic also flushes on time. Add `fsync = true` to force file contents at each flush; this adds storage latency. Flush timing still determines how long records remain buffered.
-
-Size and interval rotation happen between complete records, whichever limit is reached first. Intervals run from file open, without calendar alignment. See [file behavior](RUNTIME.md#file-output) for restart, durability, and ownership rules.
+Rotation can use `size`, `interval`, or both. It happens between complete records. See [runtime behavior](RUNTIME.md#shutdown-and-files) for ownership and shutdown.
 
 ### JSON profiles
 
-Select a built-in profile through a named encoder:
+Choose `logyard`, `ecs`, or `compact` through an encoder:
 
 ```toml
 [encoders.application]
@@ -228,7 +120,9 @@ type = "stream"
 encoder = "application"
 ```
 
-Profiles are `logyard`, `ecs`, and `compact`. To customize one, give the profile a new name and use that name in the encoder's `profile` field:
+The ECS profile emits ECS 9.4 fields, including `@timestamp`, service details, trace IDs, and errors. Event attributes become labels.
+
+To customize field names, create a profile and set the encoder's `profile` to its name:
 
 ```toml
 [json_profiles.application]
@@ -242,38 +136,11 @@ prefix = "field."
 exclude = ["authorization", "cookie"]
 ```
 
-| Transform | Options |
-| --- | --- |
-| Top-level fields | `rename` and `drop` use canonical field names |
-| Attribute placement | `mode = "nested"` (default), `"flatten"`, or `"drop"` |
-| Attribute selection | `include`, `exclude`, and `rename` use exact attribute names |
-| Flattened attributes | `prefix` defaults to `"attributes."`; must be nonempty |
-
-Canonical fields are `timestamp`, `observed_timestamp_unix_nano`, `severity_number`, `severity_text`, `logger`, `event_name`, `body`, `message_template`, `attributes`, `resource`, `thread`, and `exception`. Keep `timestamp` and at least one of `body` or `event_name`.
-
-Excluded fields stay excluded in normal, truncated, and error output. Oversized JSON falls back to the profile's timestamp and permitted severity, logger, event name, and body. `logyard.output.truncated` is reserved and cannot be renamed or overwritten.
-
-### ECS projection
-
-The `ecs` preset targets ECS 9.4 and emits `ecs.version = "9.4.0"`, including on truncation.
-
-| Captured field | ECS output |
-| --- | --- |
-| Source and observed timestamps | `@timestamp` and `event.created`, as ISO timestamps |
-| Service name, environment, version | `service.name`, `service.environment`, `service.version` |
-| Service instance ID | `service.node.name` |
-| Other resource keys, including namespace | `logyard.resource` |
-| Thread ID and name | `process.thread.id`, `process.thread.name` |
-| Exception | `error.type`, `error.message`, plain-text `error.stack_trace` with causes and suppressed exceptions |
-| Message template | `logyard.message_template` |
-| Attributes | Scalar strings in `labels`; objects and arrays become JSON text |
-| String attributes `trace_id`, `span_id`, `trace_flags` | `trace.id`, `span.id`, `logyard.trace_flags` |
-
-Attribute selection and renaming happen before trace projection. Dropping `attributes` also drops trace fields; dropping `resource` also drops `logyard.resource`. Explicit flattening keeps the configured attribute names and value types. Custom renames or flattening can change ECS compatibility.
-
-The [ingestion gate](CONTRIBUTING.md#choose-a-check) checks service, trace, thread, error, and label queries against [typed ECS mappings](tests/ecs/mapping.json), with no repair pipeline.
+Attribute modes are `nested`, `flatten`, and `drop`. Attribute selection supports `include`, `exclude`, and `rename`. Keep `timestamp` and at least one of `body` or `event_name`. Custom field changes can affect ECS compatibility.
 
 ## Delivery and overflow
+
+Async delivery is the default. Each output gets its own queue and worker:
 
 ```toml
 [delivery]
@@ -281,17 +148,9 @@ mode = "async"
 capacity = 256
 ```
 
-Each asynchronous output gets its own queue and worker. On a full queue, WARN and ERROR briefly wait for a slot before dropping. Lower severities drop immediately. Drops are counted in health and summarized by the worker; the defaults perform no caller-thread output I/O.
+When full, TRACE, DEBUG, and INFO drop immediately. WARN waits up to 2 ms and ERROR up to 20 ms for space, then drops. Drops are counted in runtime health.
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `mode` | `async` | `async` queues events; `sync` writes on the caller thread |
-| `capacity` | `256` | Slots per output; range `16`–`16,777,216` |
-| `overflow.trace`, `.debug`, `.info` | `drop` | Discard immediately when full |
-| `overflow.warn` | `wait_drop`, `2ms` | Brief admission window, then discard |
-| `overflow.error` | `wait_drop`, `20ms` | Longer admission window, then discard |
-
-Override only the levels you need. For latency-first operation, disable the two admission waits:
+For no queue admission waits:
 
 ```toml
 [delivery.overflow]
@@ -299,102 +158,76 @@ warn = "drop"
 error = "drop"
 ```
 
-| Action | When the queue stays full |
-| --- | --- |
-| `drop` | Discard immediately |
-| `block` | Wait up to `timeout`, then write the emergency representation to stderr |
-| `wait_drop` | Wait up to `timeout`, then drop and count the event; interruption or closing also drops |
-| `sync` | Wait up to `timeout`, then deliver on the caller thread |
-| `stderr` | Wait up to `timeout`, then write the emergency representation to stderr |
-
-A rule you write without `timeout` uses zero. Timeouts bound queue waiting **per output**, not the whole logging call. Multiple output queues, scheduling, capture, and processors add to caller latency.
-
-`block`, `sync`, and `stderr` may perform a subsequent output or stderr write that blocks. Logging is best effort; neither recipe guarantees durable delivery.
-
-A full default queue can retain about 32 MiB of event text before object overhead. Size queues for your heap and expected bursts.
-
-Any output can set `min_level` (default `trace`) and override delivery with `delivery = { mode = "async", capacity = 512 }`. Overflow rules remain global. Total asynchronous queue capacity is capped at 16,777,216 slots per configuration.
-
-### Give ERROR its own output
-
-For applications that need fewer ERROR losses during ordinary bursts, route ERROR to a separate queue as well as the main console. Size its capacity from measured traffic and alert on changes to that output's `dropped_total` and health status:
+For another wait duration:
 
 ```toml
-[loggers]
-root = { level = "info", outputs = ["console", "errors"] }
-
-[outputs.console]
-type = "console"
-stream = "stderr"
-
-[outputs.errors]
-type = "file"
-path = "logs/errors.jsonl"
-min_level = "error"
-delivery = { mode = "async", capacity = 1024 }
-flush = "1s"
-fsync = true
+[delivery.overflow]
+error = { action = "wait_drop", timeout = "50ms" }
 ```
 
-INFO traffic cannot fill the ERROR-only queue. `fsync` forces file contents after each flush, at a storage cost; the one-second flush interval remains a crash window. Both outputs still use the global ERROR admission policy and can count drops if they fill or fail. Check the [runtime health and durability contract](RUNTIME.md#health-and-diagnostics) before using this recipe for production.
+Other actions are `block`, `sync`, and `stderr`. `block` and `stderr` fall back to emergency stderr; `sync` falls back to writing on the caller thread. These writes can block. A rule with no timeout waits zero seconds.
+
+Waits apply per output. Use `mode = "sync"` to write directly on the caller thread.
+
+An output can set `min_level = "error"` and `delivery = { mode = "async", capacity = 1024 }`. This gives ERROR its own queue when the output is also listed on the logger route. Size queues for expected bursts and your heap.
+
+Logging can lose events during overload, output failure, or shutdown. See [health](RUNTIME.md#health) for what to monitor.
 
 ## Context and redaction
 
 ```toml
 [context]
-mdc = ["request.id", "trace.id"]
+mdc = ["request.id", "tenant.id"]
 redact = ["authorization", "cookie", "password", "*.secret", "*.token"]
 ```
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `trace` | `true` | Request trace identity from context providers |
-| `mdc` | `[]` | MDC keys to capture |
-| `baggage` | `[]` | Baggage keys requested from context providers |
-| `redact` | `[]` | Key or path globs to redact recursively before output |
+MDC capture is opt-in. Prefer a finite list of keys. [OpenTelemetry](INTEGRATIONS.md#opentelemetry) adds active trace context and selected baggage.
 
-The optional [OpenTelemetry integration](INTEGRATIONS.md#opentelemetry) supplies active trace identity and allowlisted baggage before asynchronous delivery. Context propagation remains application-owned.
-
-SLF4J and Quarkus preserve original MDC key names, so the same allowlist and redaction keys work for both.
-
-Use a finite MDC allowlist. With Quarkus/JBoss Log Manager, `mdc = ["*"]` copies the entire source MDC for each accepted event.
-
-Redaction matches a map-key leaf or its full path, such as `request.users[0].token`. The `logyard.*` attribute namespace is reserved for system diagnostics.
-
-Key-based redaction covers event attributes, including captured MDC and baggage. It does not inspect message arguments, rendered messages, exception messages, or resource fields. Use resource exclusions above for metadata; sanitize sensitive message content in the application.
+Redaction matches attribute keys or paths, including nested maps. It does not inspect messages, message arguments, exceptions, or resource metadata. Keep secrets out of those values.
 
 ## Filters and enrichment
 
-Define a filter, then attach its name to a logger:
+Define a filter and attach its name with `filters = ["sample"]` on a logger rule:
 
 ```toml
 [filters.sample]
 type = "sampling"
 probability = 0.25
 key = "event-instance"
-seed = 42
+```
 
+For a per-logger rate limit:
+
+```toml
 [filters.noisy]
 type = "rate_limit"
 permits_per_second = 20
 burst = 40
 key = "logger"
 max_keys = 256
-
-[loggers]
-root = { level = "info", outputs = ["console"] }
-"com.example.verbose" = { filters = ["sample"] }
-"com.example.noisy" = { filters = ["noisy"] }
 ```
 
-| Filter | Keys | Defaults |
-| --- | --- | --- |
-| `sampling` | `event-instance`, `event`, `trace`, `logger`, `attribute:NAME` | Probability `1.0`, key `event-instance`, seed `0` |
-| `rate_limit` | `global`, `logger`, `event`, `attribute:NAME` | 100 permits/s, burst 100, key `logger`, max 1,024 keys |
+Filters apply to every accepted level on their route. See [extensions](EXTENDING.md) for custom filters and enrichers.
 
-Filters apply to all accepted levels on their route. A sampling key such as `logger` groups decisions by that key; use `event-instance` to sample individual events.
+## Profiles and overrides
 
-For custom enrichment and filtering, see [Extensions](EXTENDING.md).
+Put environment-specific changes in a profile:
+
+```toml
+[profiles.production.loggers]
+root = { level = "warn", outputs = ["console"] }
+```
+
+Select it with `-Dlogyard.profile=production` or `LOGYARD_PROFILE=production`. Tables merge; arrays and other values replace.
+
+Environment overrides follow the profile, and system properties follow environment overrides:
+
+```sh
+export LOGYARD_OVERRIDES='delivery.capacity=512'
+java -Dlogyard.override.delivery.capacity=1024 -jar my-app.jar
+```
+
+The active profile and overrides are fixed until the runtime is fully closed and started again.
 
 ## Reload and shutdown
 
@@ -406,13 +239,20 @@ shutdown_timeout = "3s"
 internal_status = "warn"
 ```
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `watch` | `false` | Watch a filesystem configuration for changes |
-| `reload_debounce` | `"250ms"` | Coalesce changes; accepts `0s`–`30s` |
-| `shutdown_timeout` | `"3s"` | Shutdown wait budget; `"0s"` starts no-wait daemon cleanup |
-| `internal_status` | `warn` | Reload diagnostics: `off`, `error`, `warn`, `info`, `debug` |
+Watching is off by default and works with filesystem configs. Valid changes replace the routing plan; invalid changes leave the current plan running.
 
-Valid reloads replace the routing plan atomically. Invalid candidates leave the current plan active.
+Runtime settings, adapter MDC policy, and file-output settings at an owned path need a handoff or restart. See [reload](RUNTIME.md#reload).
 
-Runtime settings and adapter-owned `context.mdc` policy cannot change through an in-place reload. File output changes at an already-owned path may also require a restart. See the [reload compatibility table](RUNTIME.md#what-can-reload).
+## Validate or migrate a file
+
+From a Zolt application that depends on Logyard:
+
+```sh
+zolt build
+java -cp "$(zolt classpath runtime)" \
+  com.logyard4j.logyard.runtime.tools.LogyardConfigTool validate logyard.toml
+```
+
+Use `schema` for all accepted keys, or `explain logyard.toml --logger com.example.Checkout` to inspect a route.
+
+The tool also accepts `migrate-logback logback.xml --output logyard.toml --strict` and `migrate-log4j2 log4j2.xml --output logyard.toml --strict`. Strict mode writes only exact conversions and does not overwrite files. Omit `--strict` for a draft, then review the reported differences.

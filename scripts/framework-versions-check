@@ -42,6 +42,6 @@ require_fragment examples/micronaut/zolt.toml "\"io.micronaut.platform:micronaut
 require_fragment examples/vertx/zolt.toml "\"io.vertx:vertx-stack-depchain\" = \"$vertx\""
 require_fragment benchmarks/logyard-benchmarks/zolt.toml "\"org.openjdk.jmh:jmh-core\" = \"$jmh\""
 require_fragment extensions/logyard-quarkus/benchmarks/pom.xml "<jmh.version>$jmh</jmh.version>"
-require_fragment README.md "plain SLF4J 2, Vert.x $vertx, Micronaut $micronaut, Spring Boot $spring_boot_baseline and $spring_boot_current, and Quarkus $quarkus"
+require_fragment README.md '(framework-versions.toml)'
 
-printf 'Framework versions are aligned across 12 declarations.\n'
+printf 'Framework versions are aligned across 11 declarations.\n'

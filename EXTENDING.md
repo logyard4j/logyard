@@ -1,59 +1,20 @@
 # Extensions
 
-[← Logyard](README.md) · [Configuration](CONFIGURATION.md) · [Runtime behavior](RUNTIME.md)
+[Logyard](README.md) · [Configuration](CONFIGURATION.md)
 
-Add `logyard-api` to your extension project:
+Add `logyard-api` using the [dependency setup](INTEGRATIONS.md#dependencies). Providers are discovered through Java's `ServiceLoader`.
 
-<details>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-api</artifactId>
-    <version>0.1.0-rc.2</version>
-  </dependency>
-</dependencies>
-```
-
-</details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation("com.logyard4j:logyard-api:0.1.0-rc.2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
-
-```toml
-[dependencies]
-"com.logyard4j:logyard-api" = "0.1.0-rc.2"
-```
-
-</details>
-
-Providers are discovered with `ServiceLoader` and create runtime-owned instances from bounded, immutable configuration.
-
-| Extension | Purpose |
+| Provider | Use |
 | --- | --- |
-| Context provider | Capture application context |
-| Event processor | Enrich or filter events |
-| Text formatter | Render console text |
-| Event encoder | Encode an event for transport |
-| Output | Deliver events to a destination |
-| Health contributor | Report component health |
+| `ContextProvider` | Capture application context |
+| `EventProcessorProvider` | Add fields or filter events |
+| `TextFormatterProvider` | Format console text |
+| `EventEncoderProvider` | Encode an event |
+| `OutputProvider` | Send events to a destination |
 
 ## Add an enricher
 
-This provider adds a configured tenant to every event on its route:
+This provider adds a tenant field:
 
 ```java
 package com.example.logging;
@@ -90,19 +51,13 @@ public final class TenantEnricherProvider implements EventProcessorProvider {
 }
 ```
 
-Create this file under `src/main/resources`:
-
-```text
-META-INF/services/com.logyard4j.logyard.api.spi.processing.EventProcessorProvider
-```
-
-Its content is the provider's fully qualified class name:
+Create `src/main/resources/META-INF/services/com.logyard4j.logyard.api.spi.processing.EventProcessorProvider` containing:
 
 ```text
 com.example.logging.TenantEnricherProvider
 ```
 
-Then define the enricher and attach it to a route alongside your existing console output:
+Add it to `logyard.toml`, alongside your console output:
 
 ```toml
 [enrichers.tenant]
@@ -115,30 +70,16 @@ name = "north"
 root = { level = "info", outputs = ["console"], enrich = ["tenant"] }
 ```
 
-Custom filters, formatters, encoders, and outputs use `type = "custom"`, a `provider` name, and a `config` table. Provider names must be unambiguous; duplicate names, unknown keys, and missing required keys fail assembly.
+Custom filters, formatters, encoders, and outputs use `type = "custom"`, a `provider` name, and a `config` table. Provider names must be unique.
 
-## Provider contract
+## Writing a provider
 
-- **Prepare without irreversible effects.** A candidate may be rejected or superseded after provider creation. Construction must not irreversibly modify durable external state.
-- **Keep ownership explicit.** The runtime closes output sinks when their plan retires. Context providers, processors, formatters, and encoders have no managed close callback and must not own resources that require cleanup.
-- **Handle concurrency.** Synchronous outputs may share a custom encoder concurrently. Make it thread-safe and allow reentrant logging callbacks; only the built-in `JsonEncoder` is synchronized by Logyard.
-- **Keep lifecycle calls separate.** Providers run outside lifecycle and reload state locks. Recursive installation, reconfiguration, or shutdown from provider lifecycle callbacks is unsupported.
+A reload can create your provider and then reject the candidate. Keep construction reversible.
 
-| Failure | Throw |
-| --- | --- |
-| Deterministically invalid candidate configuration | `IllegalArgumentException` |
-| Temporary I/O or resource condition | `UncheckedIOException` |
+The runtime closes output sinks when their plan retires. Other provider types have no managed close callback, so they should not own resources that need cleanup.
 
-Other provider failures are isolated and retried with bounded watcher backoff. See [reload behavior](RUNTIME.md#retry-behavior).
+Make custom encoders thread-safe. Providers may log through callbacks, but must not install, reconfigure, or shut down the runtime from lifecycle callbacks.
 
-## Supported API
+Throw `IllegalArgumentException` for invalid configuration and `UncheckedIOException` for temporary I/O failures. The watcher retries temporary failures.
 
-Logyard's Java packages use `com.logyard4j.logyard.*`. Maven coordinates use the `com.logyard4j` group, for example `com.logyard4j:logyard-api`.
-
-Earlier RC checkouts used `com.logyard4j.*`. Update imports, fully qualified class names, `META-INF/services` filenames and contents, and module references to the new prefix, then rebuild applications and extensions together. This pre-stable rename changes source and binary names.
-
-See the [namespace migration notes](RELEASE_NOTES.md#java-namespace-migration) for consumer and custom-provider changes, including reflective configuration.
-
-The [supported API manifest](supported-api.toml) lists the supported packages and types across the native API, runtime bootstrap and management, JUL, Spring Boot, Quarkus, OpenTelemetry, and the test kit.
-
-Declarations outside that manifest and declarations marked `@InternalApi` are implementation details. Use the public SPI when building extensions. Published JARs include stable `Automatic-Module-Name` values, source JARs, and Javadoc JARs.
+Use the packages and types listed in [supported-api.toml](supported-api.toml). Declarations marked `@InternalApi` are implementation details. See [release notes](RELEASE_NOTES.md#java-namespace-migration) when updating an extension from an earlier RC.

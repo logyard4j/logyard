@@ -1,246 +1,28 @@
 # Integrations
 
-[← Logyard](README.md) · [Spring Boot](#spring-boot) · [Quarkus](#quarkus) · [Native Java](#native-java) · [JDK logging](#jdk-logging)
+[Logyard](README.md) · [Configuration](CONFIGURATION.md)
 
-All integrations share one process-wide runtime and the same [TOML configuration](CONFIGURATION.md). Use Java 21+ and the same version for every Logyard dependency.
+Use Java 21+ and the same version for every Logyard dependency.
 
-Java packages use `com.logyard4j.logyard.*`. Applications upgrading from earlier RC checkouts should follow the [package migration note](EXTENDING.md#supported-api).
+## Dependencies
 
-Choose your build tool below and merge the snippet into your existing build file. Gradle examples use Kotlin DSL.
+Choose the artifact for your application:
 
-## SLF4J, Vert.x, and Micronaut
-
-Add the SLF4J provider. It includes the runtime, TOML configuration, console output, and JSON output.
-
-<details>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-slf4j2</artifactId>
-    <version>0.1.0-rc.2</version>
-  </dependency>
-</dependencies>
-```
-
-</details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
-
-```toml
-[dependencies]
-"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.2"
-```
-
-</details>
-
-Keep Logyard as the only SLF4J provider.
-
-Check the runtime classpath you will deploy, then smoke-start that package. The repository's [provider preflight](scripts/slf4j-provider-preflight) rejects missing or competing SLF4J 2 providers before application startup. From a Zolt application directory, run:
-
-```sh
-/path/to/logyard/scripts/slf4j-provider-preflight --classpath "$(zolt classpath runtime)"
-```
-
-For a Spring Boot executable JAR, use `--jar path/to/application.jar` instead; the preflight inspects its nested dependencies. Run the command with the application package, not Logyard's library JAR alone.
-
-Continue using `LoggerFactory`, fluent SLF4J logging, and MDC. Logyard starts lazily when the adapter first needs it.
-
-MDC capture is opt-in through `context.mdc`.
-
-| MDC boundary | Behavior |
+| Application | Artifact |
 | --- | --- |
-| Map capacity | 128 entries per thread; excess entries are dropped |
-| Key length | Keys over 256 characters are dropped without collisions |
-| Bulk import | Inspects at most 128 entries |
-| Capture loss | `logyard.capture.truncated`; reset by `clear()` or `setContextMap()` |
-| Invalid operations | Null keys and deque overflow throw; push/pop pairs stay balanced |
+| SLF4J 2, Vert.x, Micronaut | `logyard-slf4j2` |
+| Spring Boot | `logyard-spring-boot-starter` |
+| Quarkus | `logyard-quarkus` |
+| Java API | `logyard-runtime` |
+| JUL | `logyard-jul` |
+| System.Logger | `logyard-system-logger` |
+| OpenTelemetry | `logyard-opentelemetry` |
+| Tests | `logyard-test` |
 
-See the [SLF4J](examples/slf4j), [Vert.x](examples/vertx), and [Micronaut](examples/micronaut) examples.
-
-## Spring Boot
-
-Add the starter and exclude Boot's default logging starter. These snippets target an existing Boot 3.5 MVC application:
-
-<details>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-spring-boot-starter</artifactId>
-    <version>0.1.0-rc.2</version>
-  </dependency>
-  <dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-web</artifactId>
-    <exclusions>
-      <exclusion>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-logging</artifactId>
-      </exclusion>
-    </exclusions>
-  </dependency>
-</dependencies>
-```
-
-</details>
+These examples use `logyard-runtime`. Replace the artifact name with your choice above.
 
 <details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation("com.logyard4j:logyard-spring-boot-starter:0.1.0-rc.2")
-    implementation("org.springframework.boot:spring-boot-starter-web") {
-        exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
-    }
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
-
-```toml
-[platforms]
-"org.springframework.boot:spring-boot-dependencies" = "3.5.16"
-
-[dependencies]
-"com.logyard4j:logyard-spring-boot-starter" = "0.1.0-rc.2"
-"org.springframework.boot:spring-boot-starter-web" = { managed = true, exclude = ["org.springframework.boot:spring-boot-starter-logging"] }
-```
-
-</details>
-
-For Boot 4.1 MVC, use `spring-boot-starter-webmvc` and update the Boot platform to `4.1.0`. Apply the logging exclusion to WebFlux, Actuator, and every other dependency that brings Logback.
-
-Use `logyard.toml` for logging policy. Boot properties select the source:
-
-| Setting | Purpose |
-| --- | --- |
-| `logyard.config` | Filesystem or classpath TOML source |
-| `logyard.required=true` | Fail if configuration is missing |
-| `logging.config` | Alias for `logyard.config`; conflicting values fail |
-| `-Dlogyard.enabled=false` or `LOGYARD_ENABLED=false` | Opt out before Boot chooses its logging system |
-
-The integration handles early logging, lifecycle, dynamic levels, JUL capture, Actuator, and native-image resource hints. Startup reports missing or competing SLF4J providers with remediation.
-
-Application contexts, DevTools restarts, and tests in one JVM share runtime ownership. Closing one context releases its lease. Use separate JVMs for parallel tests that need independent logging configurations.
-
-See the [Spring Boot example](examples/spring-boot).
-
-## Quarkus
-
-Add the runtime extension to your Quarkus application; Quarkus selects its deployment companion automatically:
-
-<details>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-quarkus</artifactId>
-    <version>0.1.0-rc.2</version>
-  </dependency>
-</dependencies>
-```
-
-</details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation("com.logyard4j:logyard-quarkus:0.1.0-rc.2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
-
-```toml
-[dependencies]
-"com.logyard4j:logyard-quarkus" = "0.1.0-rc.2"
-```
-
-</details>
-
-Keep the Quarkus/JBoss logging API. In `application.properties`, disable the built-in console handler to avoid duplicate output:
-
-```properties
-quarkus.log.console.enabled=false
-quarkus.logyard.config=classpath:logyard.toml
-```
-
-| Setting | Purpose |
-| --- | --- |
-| `quarkus.logyard.config` | Filesystem or classpath TOML source |
-| `quarkus.logyard.required=true` | Fail if configuration is missing |
-| `quarkus.logyard.enabled=false` | Disable handler installation |
-
-The extension has an optional `LogyardReadinessCheck` build step for `quarkus-smallrye-health`, but that combination is outside the first release's verified scope. The pinned Zolt cannot qualify its extension capability handling, so do not rely on the optional check as the application's readiness signal. The packaged JVM example without SmallRye Health verifies that `/q/health/ready` is absent.
-
-Quarkus build-time minimum levels apply before Logyard sees an event. Preserve any level you want to enable later:
-
-```properties
-quarkus.log.category."com.example.checkout".min-level=DEBUG
-```
-
-See the [Quarkus example](examples/quarkus).
-
-## Native Java
-
-Add the native runtime:
-
-<details>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-runtime</artifactId>
-    <version>0.1.0-rc.2</version>
-  </dependency>
-</dependencies>
-```
-
-</details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation("com.logyard4j:logyard-runtime:0.1.0-rc.2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
+<summary>Zolt</summary>
 
 ```toml
 [dependencies]
@@ -249,205 +31,174 @@ dependencies {
 
 </details>
 
-Start the runtime for the lifetime of your application:
+<details>
+<summary>Gradle Kotlin DSL</summary>
+
+```kotlin
+implementation("com.logyard4j:logyard-runtime:0.1.0-rc.2")
+```
+
+</details>
+
+<details>
+<summary>Maven</summary>
+
+```xml
+<dependency>
+  <groupId>com.logyard4j</groupId>
+  <artifactId>logyard-runtime</artifactId>
+  <version>0.1.0-rc.2</version>
+</dependency>
+```
+
+</details>
+
+## SLF4J, Vert.x, and Micronaut
+
+Add `logyard-slf4j2` and remove other SLF4J providers. Keep using `LoggerFactory`, fluent logging, and MDC. The adapter starts Logyard lazily.
+
+To capture MDC fields, list them in `logyard.toml`:
+
+```toml
+[context]
+mdc = ["request.id", "tenant.id"]
+```
+
+If provider selection goes wrong, check your application's deployed classpath:
+
+```sh
+/path/to/logyard/scripts/slf4j-provider-preflight --classpath "$(zolt classpath runtime)"
+```
+
+For a Spring Boot executable JAR, use `--jar path/to/application.jar`.
+
+## Spring Boot
+
+Add `logyard-spring-boot-starter`. Exclude `spring-boot-starter-logging` from each dependency that brings it in, including web and Actuator starters.
+
+<details>
+<summary>Zolt exclusion</summary>
+
+```toml
+[dependencies]
+"org.springframework.boot:spring-boot-starter-web" = { managed = true, exclude = ["org.springframework.boot:spring-boot-starter-logging"] }
+```
+
+</details>
+
+<details>
+<summary>Gradle Kotlin DSL exclusion</summary>
+
+```kotlin
+implementation("org.springframework.boot:spring-boot-starter-web") {
+    exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
+}
+```
+
+</details>
+
+<details>
+<summary>Maven exclusion</summary>
+
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-web</artifactId>
+  <exclusions>
+    <exclusion>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-logging</artifactId>
+    </exclusion>
+  </exclusions>
+</dependency>
+```
+
+</details>
+
+These examples use Boot 3's MVC starter. For Boot 4, use `spring-boot-starter-webmvc`. Keep your application's Boot dependency management.
+
+Put `logyard.toml` in `src/main/resources`. To use another source, set `logyard.config` in Boot properties; `logging.config` is an alias. Set `logyard.required=true` to require a file.
+
+Boot manages startup and shutdown. The integration also captures JUL and exposes runtime health and logger levels through Actuator when present.
+
+To opt out before Boot starts, use `-Dlogyard.enabled=false` or `LOGYARD_ENABLED=false`.
+
+## Quarkus
+
+Add `logyard-quarkus` and keep using Quarkus's logging API. In `application.properties`:
+
+```properties
+quarkus.log.console.enabled=false
+quarkus.logyard.config=classpath:logyard.toml
+```
+
+This avoids duplicate console output. Use `quarkus.logyard.required=true` to require the config, or `quarkus.logyard.enabled=false` to disable Logyard.
+
+Quarkus filters events before Logyard sees them. Preserve levels you may want to enable later:
+
+```properties
+quarkus.log.category."com.example.checkout".min-level=DEBUG
+```
+
+Use the packaged JVM application. Native images, dev and test profiles, and SmallRye readiness are not supported yet.
+
+## Java API
+
+Add `logyard-runtime` and keep the runtime open for your application's lifetime:
 
 ```java
-import com.logyard4j.logyard.api.LogyardLogger;
 import com.logyard4j.logyard.runtime.bootstrap.LogyardBootstrap;
-import com.logyard4j.logyard.runtime.bootstrap.RuntimeBundle;
 
-try (RuntimeBundle logyard = LogyardBootstrap.start()) {
-    LogyardLogger log = logyard.runtime().logger("com.example.checkout");
-
-    log.atInfo()
-            .event("order.accepted")
-            .add("order.id", "ord-1042")
+try (var logyard = LogyardBootstrap.start()) {
+    var log = logyard.runtime().logger("com.example.checkout");
+    log.atInfo().event("order.accepted").add("order.id", "ord-1042")
             .log("order accepted");
 }
 ```
 
-Use suppliers for expensive attributes:
+Use `addLazy("plan", this::expensivePlan)` or `argumentLazy(supplier)` for work that should only run when logging is enabled.
 
-```java
-log.atDebug()
-        .addLazy("plan", this::expensivePlan)
-        .log("selected execution plan");
-```
-
-`expensivePlan()` runs only when an enabled event enters publication. Closing the final runtime owner shuts down watching, delivery, and outputs.
-
-Use `argumentLazy(supplier)` for lazy message arguments and `addAll(attributes)` for a captured attribute set. Two-argument and varargs convenience calls extract a trailing exception as the cause, as SLF4J does. Use a builder argument to render an exception as a value.
-
-Attach request context with a scope, and stable component context with `with`:
+For request context:
 
 ```java
 import com.logyard4j.logyard.api.context.LogContext;
 
-var orders = log.with("component", "orders");
 try (var scope = LogContext.push("request.id", "req-42")) {
-    orders.atInfo().add("order.id", "ord-1042").log("order accepted");
+    log.atInfo().log("order accepted");
 }
 ```
 
-Explicit event fields override `with` fields, which override scoped fields. Scope values are captured on the caller thread. Use `executor.execute(LogContext.wrap(task))` to propagate a snapshot to another thread; the wrapper restores the worker's previous context even when the task fails.
+Use `log.with("component", "orders")` for fields shared by a logger. Event fields override logger fields, which override scoped fields.
 
-For repeated submissions, wrap the executor once:
+Wrap an executor with `LogContext.wrap(executor)` to carry the caller's context into each submitted task. SLF4J MDC and OpenTelemetry context need their own propagation.
 
-```java
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-
-Executor contextual = LogContext.wrap(executor);
-CompletableFuture.supplyAsync(this::loadOrder, contextual);
-```
-
-Each submission captures its caller's current context. The wrapper also propagates an empty context, restores the worker after failures, and leaves executor shutdown with your application. SLF4J MDC and OpenTelemetry context remain separate.
-
-Applications can pass an explicit source to `LogyardBootstrap.start(source)`. Framework integrations acquire their own lease:
-
-```java
-import com.logyard4j.logyard.runtime.bootstrap.LogyardConfigurationSource;
-import com.logyard4j.logyard.runtime.bootstrap.RuntimeOwner;
-
-LogyardConfigurationSource source = LogyardConfigurationSource.classpath(
-        applicationClassLoader, "logging/logyard.toml", applicationDirectory);
-
-try (RuntimeBundle logyard = LogyardBootstrap.acquire(RuntimeOwner.FRAMEWORK, source)) {
-    logyard.runtime().logger("com.example.framework").atInfo().log("framework started");
-    // Run the framework while holding this lease.
-}
-```
+See the [lifecycle example](examples/lifecycle) for a full stop and restart.
 
 ## JDK logging
 
 ### JUL
 
-Add the JUL adapter:
-
-<details>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-jul</artifactId>
-    <version>0.1.0-rc.2</version>
-  </dependency>
-</dependencies>
-```
-
-</details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation("com.logyard4j:logyard-jul:0.1.0-rc.2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
-
-```toml
-[dependencies]
-"com.logyard4j:logyard-jul" = "0.1.0-rc.2"
-```
-
-</details>
-
-Select the handler in `logging.properties`:
+Add `logyard-jul` and create `logging.properties`:
 
 ```properties
 handlers=com.logyard4j.logyard.jul.LogyardHandler
 .level=ALL
 ```
 
-Load it with `-Djava.util.logging.config.file=/path/to/logging.properties`. JUL's own levels filter first; `ALL` lets TOML choose the effective threshold.
+Load it with `-Djava.util.logging.config.file=/path/to/logging.properties`. `ALL` lets Logyard's TOML levels decide what to keep.
 
 ### System.Logger
 
-Add the provider; its `System.LoggerFinder` is discovered automatically:
+Add `logyard-system-logger`. The provider is discovered automatically:
 
-<details>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-system-logger</artifactId>
-    <version>0.1.0-rc.2</version>
-  </dependency>
-</dependencies>
+```java
+System.getLogger("com.example.checkout")
+        .log(System.Logger.Level.INFO, "order accepted");
 ```
-
-</details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation("com.logyard4j:logyard-system-logger:0.1.0-rc.2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
-
-```toml
-[dependencies]
-"com.logyard4j:logyard-system-logger" = "0.1.0-rc.2"
-```
-
-</details>
 
 ## OpenTelemetry
 
-Add the optional OpenTelemetry module alongside your Logyard integration. It uses the OpenTelemetry API; it does not install an SDK or exporter.
-
-<details>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-opentelemetry</artifactId>
-    <version>0.1.0-rc.2</version>
-  </dependency>
-</dependencies>
-```
-
-</details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation("com.logyard4j:logyard-opentelemetry:0.1.0-rc.2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
-
-```toml
-[dependencies]
-"com.logyard4j:logyard-opentelemetry" = "0.1.0-rc.2"
-```
-
-</details>
+Add `logyard-opentelemetry` alongside your logging integration. It captures active trace IDs and selected baggage:
 
 ```toml
 [context]
@@ -455,15 +206,9 @@ trace = true
 baggage = ["tenant.id"]
 ```
 
-Logyard captures valid active trace IDs, span IDs, flags, and only the named baggage keys on the publishing thread. Unsampled spans still correlate. Baggage keys are literal: `"*"` does not request every key.
+Your application or instrumentation must propagate OpenTelemetry context between threads.
 
-Logyard and compact JSON keep `trace_id`, `span_id`, `trace_flags`, and `baggage.tenant.id` in their attribute object. ECS projects trace identity to `trace.id`, `span.id`, and `logyard.trace_flags`; baggage becomes a label.
-
-Your application or instrumentation must propagate context across executors and framework callbacks. Logyard does not create spans or propagate context automatically. See the [executor example](examples/opentelemetry) and the Spring Boot example's [`/trace` endpoint](examples/spring-boot/src/main/java/com/logyard4j/logyard/examples/springboot/TraceExampleController.java).
-
-### Forward to an OpenTelemetry SDK
-
-Install your **configured, application-owned SDK** before starting Logyard:
+To forward logs to your application's Logs SDK, install it before starting Logyard:
 
 ```java
 import com.logyard4j.logyard.opentelemetry.LogyardOpenTelemetry;
@@ -471,7 +216,7 @@ import com.logyard4j.logyard.opentelemetry.LogyardOpenTelemetry;
 LogyardOpenTelemetry.install(applicationSdk);
 ```
 
-Then route to the Logs API:
+Then add an output and route logs to it:
 
 ```toml
 [outputs.telemetry]
@@ -482,33 +227,56 @@ provider = "otel"
 root = { level = "info", outputs = ["telemetry"] }
 ```
 
-| Record data | OpenTelemetry output |
-| --- | --- |
-| Level, timestamps, message, event name | Native log-record fields |
-| Captured trace and span | Native trace context; worker context is ignored |
-| Attributes | Typed scalars, nested lists/maps, and null; arbitrary-precision numbers use exact text |
-| Logger | Instrumentation scope and `logger.name`; after 1,024 names per output, new names share a fallback scope |
-| Exception | `exception.type`, `exception.message`, bounded `exception.stacktrace` |
-| Service identity | SDK resource; configure it on your SDK |
+Reuse the same SDK across runtime restarts. Configure its resource and exporters in your application, and close Logyard before flushing and shutting down the SDK.
 
-Output creation fails without explicit installation. Registration lasts for the process lifetime, even after every output closes. Runtime and application-context restarts must reuse the same live SDK; replacement and independently owned SDKs per context are unsupported. Configure exporters on that SDK; the output accepts no provider options, encoder, or formatter. Apply JSON field policies to JSON outputs.
+## Testing
 
-Logyard delivers on a bounded output worker. Its health and drain cover forwarding to the Logs API. **Exporter failures, export completion, and SDK flush/shutdown remain application-owned.** Close Logyard before shutting down the SDK. Avoid exporter diagnostics that feed back into the same logging route.
+Add `logyard-test` as a test dependency: Zolt's `[dependencies.test]`, Gradle `testImplementation`, or Maven `<scope>test</scope>`.
 
-The [OpenTelemetry example](examples/opentelemetry) includes a Zolt test using the real Logs SDK and an in-memory exporter.
+```java
+import com.logyard4j.logyard.api.Level;
+import com.logyard4j.logyard.test.LogyardTestKit;
 
-## Native images
+try (var kit = LogyardTestKit.isolated()) {
+    kit.logger("checkout").atInfo().add("order.id", 7L).log("order accepted");
+    kit.events().expect().level(Level.INFO).attribute("order.id", 7L).assertCount(1);
+    kit.events().expect().level(Level.ERROR).assertNone();
+}
+```
 
-Spring and Quarkus include classpath resources named `logyard.toml` and `logyard-*.toml`, including nested paths such as `logging/logyard-prod.toml`.
+Inject the kit's logger or runtime into the code under test. Each kit is independent; static SLF4J calls still use the process runtime.
 
-The first release supports the verified JVM applications. Resource hints are present, but native-image execution and Spring AOT are unqualified and outside that support contract. Quarkus dev mode, framework test profiles, and the optional SmallRye readiness integration also need executable qualification before support is claimed.
+The kit holds 1,024 events by default. Use `isolated(capacity)` to change the limit. Overflow makes assertions fail until `events().clear()`. Wait for application tasks to finish before asserting.
 
 ## Manage dependency versions
 
-Import the BOM when using several Logyard artifacts, then declare dependencies without individual versions:
+When using several modules, import `com.logyard4j:logyard-bom:0.1.0-rc.2` and omit individual Logyard versions.
 
 <details>
-<summary>Maven (pom.xml)</summary>
+<summary>Zolt</summary>
+
+```toml
+[platforms]
+"com.logyard4j:logyard-bom" = "0.1.0-rc.2"
+
+[dependencies]
+"com.logyard4j:logyard-slf4j2" = { managed = true }
+```
+
+</details>
+
+<details>
+<summary>Gradle Kotlin DSL</summary>
+
+```kotlin
+implementation(platform("com.logyard4j:logyard-bom:0.1.0-rc.2"))
+implementation("com.logyard4j:logyard-slf4j2")
+```
+
+</details>
+
+<details>
+<summary>Maven</summary>
 
 ```xml
 <dependencyManagement>
@@ -522,130 +290,24 @@ Import the BOM when using several Logyard artifacts, then declare dependencies w
     </dependency>
   </dependencies>
 </dependencyManagement>
-
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-slf4j2</artifactId>
-  </dependency>
-</dependencies>
 ```
 
 </details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    implementation(platform("com.logyard4j:logyard-bom:0.1.0-rc.2"))
-    implementation("com.logyard4j:logyard-slf4j2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
-
-```toml
-[platforms]
-"com.logyard4j:logyard-bom" = "0.1.0-rc.2"
-
-[dependencies]
-"com.logyard4j:logyard-slf4j2" = { managed = true }
-```
-
-</details>
-
-The BOM manages every Logyard module, including both Quarkus artifacts.
-
-## Testing
-
-Add `logyard-test` as a test dependency:
-
-<details>
-<summary>Maven (pom.xml)</summary>
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>com.logyard4j</groupId>
-    <artifactId>logyard-test</artifactId>
-    <version>0.1.0-rc.2</version>
-    <scope>test</scope>
-  </dependency>
-</dependencies>
-```
-
-</details>
-
-<details>
-<summary>Gradle (build.gradle.kts)</summary>
-
-```kotlin
-dependencies {
-    testImplementation("com.logyard4j:logyard-test:0.1.0-rc.2")
-}
-```
-
-</details>
-
-<details>
-<summary>Zolt (zolt.toml)</summary>
-
-```toml
-[dependencies.test]
-"com.logyard4j:logyard-test" = "0.1.0-rc.2"
-```
-
-</details>
-
-Inject a kit logger or runtime into the code under test:
-
-```java
-import com.logyard4j.logyard.api.Level;
-import com.logyard4j.logyard.test.LogyardTestKit;
-
-try (LogyardTestKit kit = LogyardTestKit.isolated()) {
-    kit.logger("checkout").atInfo().add("order.id", 7L).log("order accepted");
-    kit.events().expect().level(Level.INFO).attribute("order.id", 7L).assertCount(1);
-    kit.events().expect().level(Level.ERROR).assertNone();
-}
-```
-
-Each kit owns a synchronous private runtime, suitable for parallel tests. It captures calls through its own loggers; static SLF4J and global Logyard calls use the process runtime.
-
-The default limit is **1,024 events**. Use `isolated(capacity)` to change it. Overflow makes reads and assertions fail until `events().clear()`; clearing also discards captured records. Join application tasks before asserting their logs. Attribute values use exact equality, including numeric types.
 
 ## Examples
 
-Each example includes a `zolt.toml` build; application examples include output configuration.
-
-| Application | Shows |
+| Example | Shows |
 | --- | --- |
-| [Migration](examples/migration) | Real Logback/Log4j 2 output, pattern spacing, exclusions, MDC and repeated-logger refusal, destinations, filtering, and counts |
-| [Test kit](examples/test-kit) | Isolated log assertions, scoped context, lazy values, and capture overflow |
-| [SLF4J](examples/slf4j) | Fluent structured logging |
-| [Managed lifecycle](examples/lifecycle) | Cached SLF4J, JUL, and System.Logger instances across restart, level changes, formatting, and close-time drain |
-| [OpenTelemetry](examples/opentelemetry) | Trace identity, allowlisted baggage, executor propagation, Logs SDK export, and restart with the same SDK |
-| [Vert.x](examples/vertx) | Logging from a Vert.x application |
-| [Micronaut](examples/micronaut) | Startup, structured events, and shutdown flush |
-| [Spring Boot](examples/spring-boot) | MVC, WebFlux, Actuator, dynamic levels, JUL, and shutdown flush |
-| [Quarkus](examples/quarkus) | JVM packaging, tests, redaction, and shutdown flush |
+| [SLF4J](examples/slf4j) | Structured logging |
+| [Spring Boot](examples/spring-boot) | Web requests, Actuator, and JUL |
+| [Quarkus](examples/quarkus) | Packaged JVM application |
+| [Vert.x](examples/vertx) | Logging from Vert.x |
+| [Micronaut](examples/micronaut) | Startup and shutdown |
+| [OpenTelemetry](examples/opentelemetry) | Trace context and Logs SDK export |
+| [Test kit](examples/test-kit) | Assertions on captured logs |
+| [Lifecycle](examples/lifecycle) | Cached loggers across restarts |
+| [Migration](examples/migration) | Moving from Logback or Log4j 2 |
 
-Run every example against freshly packaged Logyard artifacts:
+Run them with `./scripts/examples-verify`; see [build setup](CONTRIBUTING.md#run-the-examples).
 
-```sh
-./scripts/examples-verify
-```
-
-This builds `target/release-bundle`, then runs the Zolt examples through Smoque. Checks cover isolated test capture, HTTP responses, structured fields, redaction, framework logging, trace correlation, and shutdown flushes.
-
-Spring Boot covers both supported versions, MVC and WebFlux, Actuator present and absent, external and default configuration, propagated trace context, and rejection of competing SLF4J providers. Quarkus covers tests and packaged JVM applications with Logyard enabled and disabled.
-
-Verification covers JVM applications. Framework native images, Spring AOT, Quarkus dev mode, test profiles, and Logyard readiness integration are outside the pinned Zolt's supported coverage.
-
-See [consumer setup](CONTRIBUTING.md#package-and-exercise-consumers) for prerequisites and reports.
-
-Example configurations use `LOGYARD_EXAMPLE_OUTPUT` for temporary JSON files and may set `append = false`. Choose your own output path and retention settings when adapting them.
+Spring AOT and native images are not supported yet. Tested framework versions are listed in [framework-versions.toml](framework-versions.toml).

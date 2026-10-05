@@ -1,4 +1,4 @@
-# Console and rotating JSON file example. See CONFIGURATION.md for all options.
+# Console and rotating JSON file example. See CONFIGURATION.md for more recipes.
 schema = 1
 
 # Identify this application in structured events.

@@ -1,47 +1,27 @@
 # Release notes
 
-[← Logyard](README.md) · [Release process](RELEASING.md)
+[Logyard](README.md)
 
 ## Unreleased
 
-- Production guidance describes counted overload loss, a separate ERROR-only output recipe, and the durable audit boundary. Packaged SLF4J consumers now check the application runtime classpath and Spring Boot executable JAR for exactly one Logyard provider.
-- The first release's verified integration contract covers packaged JVM applications. Native-image/AOT execution, Quarkus dev and test profiles, and optional SmallRye readiness remain outside that contract.
-- `AttributeSet.containsKey()` distinguishes a captured null value from an absent key.
-- `LogContext.wrap(Executor)` propagates the caller's context separately for each submission, including `CompletableFuture` tasks.
-- Output, retirement, watcher, archive-maintenance, and shutdown-hook threads avoid inheriting application thread-local state from their creation.
-- Health aggregation preserves unavailable components regardless of output order. Snapshot construction rejects oversized inputs before copying and refuses aggregate statuses that understate component severity.
-- Component health snapshots reject colliding normalized keys and preserve Unicode characters when shortening text.
-- Minimum-level filters preserve a valid delegate health snapshot when its detail budget is full.
-- Text templates stop resolving values at the output limit and reject Unicode line separators in template sources.
-- Classpath configuration sources normalize long slash prefixes without repeatedly copying the resource name.
-- Provider configuration, component names, extension references, resource keys, JSON profiles, and output contexts reject oversized normalized input before copying and keep rejection messages bounded.
-- Explicitly capped configuration and JSON profile collections reject oversized inputs before copying or traversal.
-- Adapter source thread names are trimmed within a bounded copy while preserving the existing name limit and Unicode-safe truncation.
-- Logger creation, route explanation, and temporary level management reject oversized names before normalization or hierarchy expansion.
-- `EffectiveRoute` includes an `enabled` component and `isEnabled(Level)` so explanations expose operational `OFF` overrides. The five-argument constructor remains available; record deconstruction patterns must include the new component.
+- `LogContext.wrap(Executor)` carries the caller's context into each submitted task.
+- `AttributeSet.containsKey()` distinguishes a null value from a missing key.
+- Route explanations now expose `enabled` and `isEnabled(Level)`. Record patterns for `EffectiveRoute` need the new `enabled` component.
+- Spring Boot startup detects competing SLF4J providers.
+- Oversized logger names and configuration values are rejected before copying them.
 
-## 0.1.0-rc.2 — candidate changes
+## 0.1.0-rc.2 (candidate)
 
-This candidate hardens output health, asynchronous delivery, and compatibility checks, and reduces enabled-path allocation. The runtime architecture and public text-encoder SPI are preserved.
+- Output health stays readable while a write, flush, or close is stalled.
+- Async writes are serialized with output closure.
+- JSON output reuses buffers, and event capture avoids extra copies.
 
-- Built-in output health remains observable during stalled write, flush, and close operations, including async wrappers and framework health integration. Snapshots report last-known state; custom health contributors must honor the bounded-snapshot contract.
-- Async delivery and delegate closure share the same serialization boundary. Queue retraction identifies an individual admission, including repeated submissions of the same detached event. Retirement and outstanding-work accounting retain their shutdown barriers.
-- One supported-API manifest covers API, runtime, JUL, Spring, Quarkus, OpenTelemetry, and test-kit contracts. Deliberate API-break canaries verify that the compatibility gate rejects supported-surface changes.
-- Capture avoids unnecessary temporary objects and copies. Built-in JSON files and process streams reuse output-owned UTF-8 storage. Oversized record storage is released after delivery, retaining at most 4 KiB; larger records remain supported within the existing capture and encoding limits.
-- Batch assembly reuses private storage while delegates receive independent immutable snapshots. Allocation is lower in the recorded fixtures; throughput results are mixed.
-
-[Benchmark reports](benchmarks/README.md#recorded-experiments) retain individual measurements, source identities, and limitations. These results do not establish a competitive ranking against other logging backends.
+This is a release candidate for Java 21+ JVM applications. Native images, Spring AOT, Quarkus dev and test profiles, and SmallRye readiness are not supported yet.
 
 ## Java namespace migration
 
-Java packages now use `com.logyard4j.logyard.*`. Maven coordinates retain the `com.logyard4j` group and existing artifact names. This is a source and binary compatibility break from earlier RC checkouts.
+Java packages changed from `com.logyard4j.*` to `com.logyard4j.logyard.*`. For example, `com.logyard4j.api.event.AttributeSet` is now `com.logyard4j.logyard.api.event.AttributeSet`.
 
-| Previous reference | New reference |
-| --- | --- |
-| `com.logyard4j.api.event.AttributeSet` | `com.logyard4j.logyard.api.event.AttributeSet` |
-| `com.logyard4j.api.spi.config.ProviderConfiguration` | `com.logyard4j.logyard.api.spi.config.ProviderConfiguration` |
-| Module `com.logyard4j.api` | Module `com.logyard4j.logyard.api` |
+Update imports, reflective class names, service-provider files, and module references, then rebuild your applications and extensions. Earlier compiled code is incompatible.
 
-Update Java imports and fully qualified names, including custom implementations and reflective configuration. Update applicable `META-INF/services` filenames and provider names, and JPMS module declarations and launch options. Rebuild applications and extensions against the new artifacts together; previously compiled classes referencing the old namespace are incompatible.
-
-The Maven group is not a Java package: keep dependency coordinates such as `com.logyard4j:logyard-api`. Use a new release version for changed bytes; an already-published coordinate must never be replaced.
+Maven coordinates still use `com.logyard4j`; dependency names stay the same.
