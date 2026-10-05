@@ -1,0 +1,22 @@
+[project]
+name = "logyard-lombok-example"
+version = "1.0.0-SNAPSHOT"
+group = "com.logyard4j.logyard.examples"
+java = 21
+main = "com.logyard4j.logyard.examples.lombok.LombokExampleApplication"
+
+[platforms]
+"com.logyard4j:logyard-bom" = "0.1.0-rc.2"
+
+[dependencies]
+"com.logyard4j:logyard-slf4j2" = { managed = true }
+
+[dependencies.provided]
+"org.projectlombok:lombok" = "1.18.48"
+
+[dependencies.processor]
+"org.projectlombok:lombok" = "1.18.48"
+
+[resources]
+main = ["src/main/resources"]
+test = ["src/test/resources"]

@@ -57,6 +57,8 @@ implementation("com.logyard4j:logyard-runtime:0.1.0-rc.2")
 
 Add `logyard-slf4j2` and remove other SLF4J providers. Keep using `LoggerFactory`, fluent logging, and MDC. The adapter starts Logyard lazily.
 
+Lombok's `@Slf4j` and Kafka Streams use the same provider; see their examples below.
+
 To capture MDC fields, list them in `logyard.toml`:
 
 ```toml
@@ -299,6 +301,8 @@ implementation("com.logyard4j:logyard-slf4j2")
 | Example | Shows |
 | --- | --- |
 | [SLF4J](examples/slf4j) | Structured logging |
+| [Lombok](examples/lombok) | Logging with `@Slf4j` |
+| [Kafka Streams](examples/kafka-streams) | Processor logging and topology tests |
 | [Spring Boot](examples/spring-boot) | Web requests, Actuator, and JUL |
 | [Quarkus](examples/quarkus) | Packaged JVM application |
 | [Vert.x](examples/vertx) | Logging from Vert.x |

@@ -1,0 +1,31 @@
+schema = 1
+
+[service]
+name = "logyard-kafka-streams-example"
+environment = "verification"
+
+[runtime]
+watch = false
+internal_status = "warn"
+
+[delivery]
+mode = "async"
+capacity = 64
+
+[delivery.overflow]
+trace = "drop"
+debug = "drop"
+info = "drop"
+warn = "drop"
+error = "drop"
+
+[loggers]
+root = { level = "warn", outputs = ["json"] }
+"com.logyard4j.logyard.examples.kafkastreams" = { level = "info" }
+
+[outputs.json]
+type = "file"
+path = "${LOGYARD_EXAMPLE_OUTPUT:-target/kafka-streams.jsonl}"
+append = false
+buffer = "4KiB"
+flush = "1s"

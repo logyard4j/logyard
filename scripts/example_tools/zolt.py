@@ -99,6 +99,9 @@ class ZoltExampleRunner:
         self.verify_provider(built)
         return built
 
+    def build_output_path(self, example_name: str) -> Path:
+        return self._target / f"{example_name}-build.jsonl"
+
     def verify_artifacts(self, project: Path) -> None:
         packages = tomllib.loads((project / "zolt.lock").read_text())["package"]
         context_versions = {package["version"] for package in packages

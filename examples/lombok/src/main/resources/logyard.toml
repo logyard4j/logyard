@@ -1,0 +1,30 @@
+schema = 1
+
+[service]
+name = "logyard-lombok-example"
+environment = "verification"
+
+[runtime]
+watch = false
+internal_status = "warn"
+
+[delivery]
+mode = "async"
+capacity = 64
+
+[delivery.overflow]
+trace = "drop"
+debug = "drop"
+info = "drop"
+warn = "drop"
+error = "drop"
+
+[loggers]
+root = { level = "info", outputs = ["json"] }
+
+[outputs.json]
+type = "file"
+path = "${LOGYARD_EXAMPLE_OUTPUT:-target/lombok.jsonl}"
+append = false
+buffer = "4KiB"
+flush = "1s"
