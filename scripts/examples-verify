@@ -2,7 +2,7 @@
 set -euo pipefail
 export PYTHONDONTWRITEBYTECODE=1
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source "$ROOT/scripts/lib/logyard-release.sh"
 RELEASE_REPOSITORY="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
 export ZOLT="$(logyard_require_zolt)"

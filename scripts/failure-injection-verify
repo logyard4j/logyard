@@ -2,7 +2,7 @@
 set -euo pipefail
 export PYTHONDONTWRITEBYTECODE=1
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 ZOLT="${ZOLT:-$(command -v zolt || printf '%s' "$HOME/.zolt/bin/zolt")}"
 
 [[ -x "$ZOLT" ]] || {

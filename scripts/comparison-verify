@@ -2,7 +2,7 @@
 set -euo pipefail
 export PYTHONDONTWRITEBYTECODE=1
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source "$ROOT/scripts/lib/logyard-release.sh"
 export ZOLT="$(logyard_require_zolt)"
 command -v npx >/dev/null 2>&1 || { printf 'Comparison smoke tests require Node.js and npm (npx)\n' >&2; exit 2; }

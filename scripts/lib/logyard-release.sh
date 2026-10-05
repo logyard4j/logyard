@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shared release helpers. Zolt owns every native publication; Maven contributes only Quarkus artifacts.
 
-LOGYARD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+LOGYARD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 
 logyard_release_fail() {
   printf 'release failed: %s\n' "$1" >&2

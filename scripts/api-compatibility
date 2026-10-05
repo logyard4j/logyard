@@ -3,7 +3,7 @@ set -euo pipefail
 
 export PYTHONDONTWRITEBYTECODE=1
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source "$ROOT/scripts/lib/logyard-release.sh"
 ZOLT="$(logyard_require_zolt)"
 JAPICMP_VERSION="0.26.1"

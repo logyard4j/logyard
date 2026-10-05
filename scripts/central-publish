@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source "$ROOT/scripts/lib/logyard-release.sh"
 RELEASE_TARGET="${LOGYARD_RELEASE_TARGET:-$ROOT/target/release-bundle}"
 ARCHIVE="${LOGYARD_CENTRAL_BUNDLE:-$ROOT/target/logyard-central-bundle.zip}"

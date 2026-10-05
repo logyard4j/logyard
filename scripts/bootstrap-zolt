@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 source "$ROOT/scripts/lib/logyard-bootstrap.sh"
 readonly ZOLT_COMMIT="${ZOLT_BOOTSTRAP_COMMIT:-49c0a48bddd9968a8f0ac82088a92242a01b4112}"
 readonly ZOLT_VERSION="${ZOLT_BOOTSTRAP_VERSION:-0.1.0-alpha.1}"
@@ -129,7 +129,7 @@ printf '%s\n' "$ZOLT_VERSION" > "$VERSION_FILE"
 cat > "$BIN_ROOT/zolt" <<'WRAPPER'
 #!/usr/bin/env bash
 set -euo pipefail
-INSTALL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+INSTALL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 SOURCE_ROOT="$INSTALL_ROOT/source"
 BUILD_VERSION="$(tr -d '\r\n' < "$INSTALL_ROOT/bootstrap-version.txt")"
 CLASSPATH="$SOURCE_ROOT/build/bootstrap-zolt/zolt-bootstrap.jar"
