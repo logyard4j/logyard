@@ -1,13 +1,13 @@
 schema = 1
-version = "0.1.0-rc.2"
+version = "0.1.0"
 group = "com.logyard4j"
 repository = "https://repo.maven.apache.org/maven2"
 
 [artifacts]
-api = { artifact = "logyard-api", sha256 = "ba5974d7f1f0f2d811f74e31592515ab4de4fdcf6eb4bbb155280da15fb12e6b" }
-runtime = { artifact = "logyard-runtime", sha256 = "960829f7f60ec1dd03510416d37dd7ca2cea98cd04af793b0caef269bc849cf9" }
-jul = { artifact = "logyard-jul", sha256 = "bcfc31dc1578d254b8b34f3b27ddb397be24cff7428fe38d57366b3987b422bb" }
-spring = { artifact = "logyard-spring-boot", sha256 = "d29c37d4ddfd3b5a5c32fba88e0592b140f2ebbaa1457e48e12eb8817f827a8a" }
-quarkus = { artifact = "logyard-quarkus", sha256 = "88a14025497ba288c78c5b0bb45c9eacc9c09eff83661eaf596d684def4133d9" }
-opentelemetry = { artifact = "logyard-opentelemetry", sha256 = "86a5d2d9ec9983af8f620d76d2480c8a1d2196fbb09bd0f521bb670e967e346e" }
-test = { artifact = "logyard-test", sha256 = "1ce5c7cb03ff3cc7a404e4c0c40f1e4d1c77862a78e9604270c7550527fc4f11" }
+api = { artifact = "logyard-api", sha256 = "38884ef1d5a91c0ca69ecdd98992d10953bfd31f3bd538f4d1aa74293ccee1fe" }
+runtime = { artifact = "logyard-runtime", sha256 = "487a7c3e0dfc26c4f8279e1102d366f50fc969185783134b9cdf72d805c26527" }
+jul = { artifact = "logyard-jul", sha256 = "a20d240f2c3f41707749f96d06e12ede00ed71a9d70f75db35453b89002a9b52" }
+spring = { artifact = "logyard-spring-boot", sha256 = "2f350088ba2674334c1433a31640e3ad2c927f53626ec3d5056d77e8dcbc9073" }
+quarkus = { artifact = "logyard-quarkus", sha256 = "50571d1c6effe4cd6b55225176041c0a2938881e785ac4263679734027815b99" }
+opentelemetry = { artifact = "logyard-opentelemetry", sha256 = "9aebf7c8623167f9cc5a4b1ec460feb65352e9faa931760605d858f3a02d8cab" }
+test = { artifact = "logyard-test", sha256 = "48142ce2f9cda9c09949c6d03aeec24f6ad76e9092bac7a26e49737691247a8f" }
