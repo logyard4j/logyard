@@ -75,14 +75,23 @@ final class AsyncEventQueue {
     boolean awaitQuiescence(Duration timeout) {
         long timeoutNanos = saturatedNanos(timeout);
         long started = System.nanoTime();
-        while (outstanding.get() != 0) {
-            long elapsed = System.nanoTime() - started;
-            if (elapsed >= timeoutNanos) {
-                return false;
+        boolean interrupted = Thread.interrupted();
+        try {
+            while (outstanding.get() != 0) {
+                long elapsed = System.nanoTime() - started;
+                if (elapsed >= timeoutNanos) {
+                    return false;
+                }
+                // Keep this bounded wait uninterruptible without making park return immediately.
+                interrupted |= Thread.interrupted();
+                LockSupport.parkNanos(Math.min(100_000L, timeoutNanos - elapsed));
             }
-            LockSupport.parkNanos(Math.min(100_000L, timeoutNanos - elapsed));
+            return true;
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
-        return true;
     }
 
     int capacity() {
