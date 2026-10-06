@@ -2,15 +2,13 @@
 
 [Logyard](README.md)
 
-## Unreleased
+## 0.1.0-rc.2 — 2026-10-06
 
 - `LogContext.wrap(Executor)` carries the caller's context into each submitted task.
 - `AttributeSet.containsKey()` distinguishes a null value from a missing key.
 - Route explanations now expose `enabled` and `isEnabled(Level)`. Record patterns for `EffectiveRoute` need the new `enabled` component.
 - Spring Boot startup detects competing SLF4J providers.
 - Oversized logger names and configuration values are rejected before copying them.
-
-## 0.1.0-rc.2 (candidate)
 
 - Output health stays readable while a write, flush, or close is stalled.
 - Async writes are serialized with output closure.
