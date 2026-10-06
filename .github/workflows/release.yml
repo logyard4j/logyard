@@ -91,6 +91,13 @@ jobs:
           LOGYARD_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           zcheck run check api-self-test --format github --logs-dir "$RUNNER_TEMP/zcheck/check-logs" --receipt "$RUNNER_TEMP/zcheck/check.json"
+          # Zolt signs through gpg-agent; unlock protected keys before its signing preflight.
+          if [[ -n "$LOGYARD_GPG_PASSPHRASE" ]]; then
+            printf '%s' "$LOGYARD_GPG_PASSPHRASE" \
+              | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+                  --local-user "$LOGYARD_GPG_KEY_ID" --armor --detach-sign \
+                  --output "$RUNNER_TEMP/logyard-signing-check.asc" .github/release-signing-key.asc
+          fi
           zcheck run bundle --format github --logs-dir "$RUNNER_TEMP/zcheck/bundle-logs" --receipt "$RUNNER_TEMP/zcheck/bundle.json" -- --sign
           zcheck run publications --format github --logs-dir "$RUNNER_TEMP/zcheck/publications-logs" --receipt "$RUNNER_TEMP/zcheck/publications.json" -- --signed
           LOGYARD_EXAMPLES_SKIP_RELEASE=1 zcheck run examples --format github --logs-dir "$RUNNER_TEMP/zcheck/examples-logs" --receipt "$RUNNER_TEMP/zcheck/examples.json"
