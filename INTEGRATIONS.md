@@ -26,7 +26,7 @@ These examples use `logyard-runtime`. Replace the artifact name with your choice
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-runtime" = "0.1.0-rc.2"
+"com.logyard4j:logyard-runtime" = "0.1.0"
 ```
 
 </details>
@@ -35,7 +35,7 @@ These examples use `logyard-runtime`. Replace the artifact name with your choice
 <summary>Gradle Kotlin DSL</summary>
 
 ```kotlin
-implementation("com.logyard4j:logyard-runtime:0.1.0-rc.2")
+implementation("com.logyard4j:logyard-runtime:0.1.0")
 ```
 
 </details>
@@ -47,7 +47,7 @@ implementation("com.logyard4j:logyard-runtime:0.1.0-rc.2")
 <dependency>
   <groupId>com.logyard4j</groupId>
   <artifactId>logyard-runtime</artifactId>
-  <version>0.1.0-rc.2</version>
+  <version>0.1.0</version>
 </dependency>
 ```
 
@@ -252,14 +252,14 @@ The kit holds 1,024 events by default. Use `isolated(capacity)` to change the li
 
 ## Manage dependency versions
 
-When using several modules, import `com.logyard4j:logyard-bom:0.1.0-rc.2` and omit individual Logyard versions.
+When using several modules, import `com.logyard4j:logyard-bom:0.1.0` and omit individual Logyard versions.
 
 <details>
 <summary>Zolt</summary>
 
 ```toml
 [platforms]
-"com.logyard4j:logyard-bom" = "0.1.0-rc.2"
+"com.logyard4j:logyard-bom" = "0.1.0"
 
 [dependencies]
 "com.logyard4j:logyard-slf4j2" = { managed = true }
@@ -271,7 +271,7 @@ When using several modules, import `com.logyard4j:logyard-bom:0.1.0-rc.2` and om
 <summary>Gradle Kotlin DSL</summary>
 
 ```kotlin
-implementation(platform("com.logyard4j:logyard-bom:0.1.0-rc.2"))
+implementation(platform("com.logyard4j:logyard-bom:0.1.0"))
 implementation("com.logyard4j:logyard-slf4j2")
 ```
 
@@ -286,7 +286,7 @@ implementation("com.logyard4j:logyard-slf4j2")
     <dependency>
       <groupId>com.logyard4j</groupId>
       <artifactId>logyard-bom</artifactId>
-      <version>0.1.0-rc.2</version>
+      <version>0.1.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>

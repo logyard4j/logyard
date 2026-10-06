@@ -13,7 +13,7 @@ Add `logyard-slf4j2` and remove your existing SLF4J provider, such as Logback.
 
 ```toml
 [dependencies]
-"com.logyard4j:logyard-slf4j2" = "0.1.0-rc.2"
+"com.logyard4j:logyard-slf4j2" = "0.1.0"
 ```
 
 </details>
@@ -22,7 +22,7 @@ Add `logyard-slf4j2` and remove your existing SLF4J provider, such as Logback.
 <summary>Gradle Kotlin DSL</summary>
 
 ```kotlin
-implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.2")
+implementation("com.logyard4j:logyard-slf4j2:0.1.0")
 ```
 
 </details>
@@ -34,7 +34,7 @@ implementation("com.logyard4j:logyard-slf4j2:0.1.0-rc.2")
 <dependency>
   <groupId>com.logyard4j</groupId>
   <artifactId>logyard-slf4j2</artifactId>
-  <version>0.1.0-rc.2</version>
+  <version>0.1.0</version>
 </dependency>
 ```
 
@@ -89,6 +89,6 @@ Add a [JSON file](CONFIGURATION.md#json-output), [request context](CONFIGURATION
 | [Extensions](EXTENDING.md) | Custom filters and outputs |
 | [Contributing](CONTRIBUTING.md) | Building and changing Logyard |
 
-The current candidate is `0.1.0-rc.2`. Use the same version for all Logyard dependencies. See [release notes](RELEASE_NOTES.md) and [framework versions](framework-versions.toml).
+The current stable release is `0.1.0`. Use the same version for all Logyard dependencies. See [release notes](RELEASE_NOTES.md) and [framework versions](framework-versions.toml).
 
 [Releasing](RELEASING.md) · [Security](SECURITY.md) · [Apache-2.0](LICENSE)

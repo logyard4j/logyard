@@ -3,7 +3,7 @@ schema = 1
 
 [service]
 name = "${LOGYARD_SERVICE_NAME:-logyard-example}"
-version = "${LOGYARD_SERVICE_VERSION:-0.1.0-rc.2}"
+version = "${LOGYARD_SERVICE_VERSION:-0.1.0}"
 environment = "${LOGYARD_ENVIRONMENT:-local}"
 
 [loggers]

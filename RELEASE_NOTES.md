@@ -2,6 +2,16 @@
 
 [Logyard](README.md)
 
+## 0.1.0 — 2026-10-06
+
+First stable release for Java 21+ JVM applications. Use `0.1.0` across the full Logyard artifact family, including the BOM and Quarkus extension.
+
+- Async flush now waits without busy-spinning when the caller is interrupted. It retains the same quiescence and deadline behavior and restores the caller's interrupt status before returning.
+- Regression tests cover interruption before and during the wait, eventual quiescence, timeout, and zero-timeout accounting.
+- The supported API remains compatible with `0.1.0-rc.2` across all seven published surfaces.
+
+Native images, Spring AOT, Quarkus dev and test profiles, and SmallRye readiness remain unsupported.
+
 ## 0.1.0-rc.2 — 2026-10-06
 
 - `LogContext.wrap(Executor)` carries the caller's context into each submitted task.
